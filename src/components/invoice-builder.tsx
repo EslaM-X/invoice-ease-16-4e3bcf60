@@ -22,6 +22,10 @@ export type BuilderItem = {
   quantity: number;
   unit_price: number;
   discount: number;
+  /** UI-only: how the user entered the discount. Persisted EGP value lives in `discount`. */
+  discount_mode?: "amount" | "percent";
+  /** UI-only: raw percent value when mode === "percent" */
+  discount_percent?: number;
 };
 
 type Props = {
@@ -48,6 +52,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
   const [items, setItems] = useState<BuilderItem[]>(initial?.items ?? []);
   const [discount, setDiscount] = useState<number>(initial?.discount ?? 0);
+  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [scanning, setScanning] = useState(false);
   const [continuous, setContinuous] = useState(true);
@@ -55,6 +61,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
+  const [savingCustomer, setSavingCustomer] = useState(false);
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
 
@@ -208,8 +217,95 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
+  /** Set item discount as a percentage of (qty * unit_price). */
+  const setItemDiscountPercent = (idx: number, pct: number) => {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== idx) return it;
+        const clamped = Math.max(0, Math.min(100, pct || 0));
+        const base = it.quantity * it.unit_price;
+        return { ...it, discount_mode: "percent", discount_percent: clamped, discount: +((base * clamped) / 100).toFixed(2) };
+      }),
+    );
+  };
+
+  /** Switch an item between amount and percent discount modes. */
+  const setItemDiscountMode = (idx: number, mode: "amount" | "percent") => {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== idx) return it;
+        if (mode === "percent") {
+          const base = it.quantity * it.unit_price;
+          const pct = base > 0 ? +((it.discount / base) * 100).toFixed(2) : 0;
+          return { ...it, discount_mode: "percent", discount_percent: Math.min(100, pct) };
+        }
+        return { ...it, discount_mode: "amount", discount_percent: undefined };
+      }),
+    );
+  };
+
   const subtotal = items.reduce((s, it) => s + it.quantity * it.unit_price - it.discount, 0);
+
+  // Keep global discount EGP in sync when in percent mode
+  useEffect(() => {
+    if (discountMode === "percent") {
+      const v = Math.max(0, Math.min(100, discountPercent || 0));
+      setDiscount(+((subtotal * v) / 100).toFixed(2));
+    }
+  }, [discountMode, discountPercent, subtotal]);
+
+  // Recompute item EGP discount when qty / unit price change while in percent mode
+  useEffect(() => {
+    setItems((prev) => {
+      let changed = false;
+      const next = prev.map((it) => {
+        if (it.discount_mode === "percent" && typeof it.discount_percent === "number") {
+          const base = it.quantity * it.unit_price;
+          const newDisc = +((base * it.discount_percent) / 100).toFixed(2);
+          if (Math.abs(newDisc - it.discount) > 0.001) {
+            changed = true;
+            return { ...it, discount: newDisc };
+          }
+        }
+        return it;
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.map((i) => `${i.quantity}-${i.unit_price}`).join("|")]);
+
   const total = Math.max(0, subtotal - discount);
+
+  const saveNewCustomer = async () => {
+    if (!user || savingCustomer) return;
+    const name = newCustomer.name.trim();
+    if (!name) return toast.error(t("name"));
+    setSavingCustomer(true);
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert({
+          user_id: user.id,
+          name,
+          phone: newCustomer.phone.trim() || null,
+          address: newCustomer.address.trim() || null,
+        })
+        .select()
+        .single();
+      if (error || !data) {
+        toast.error(error?.message ?? "");
+        return;
+      }
+      const created = data as Customer;
+      setCustomers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setCustomerId(created.id);
+      setShowNewCustomer(false);
+      setNewCustomer({ name: "", phone: "", address: "" });
+      toast.success(t("customer_added"));
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     const s = productSearch.trim().toLowerCase();
@@ -327,19 +423,25 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         <div className="lg:col-span-2 space-y-5">
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <Label>{t("customer")}</Label>
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">— {t("select_customer")} —</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.phone ? ` · ${c.phone}` : ""}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1.5 flex gap-2">
+              <select
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">— {t("select_customer")} —</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.phone ? ` · ${c.phone}` : ""}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" className="gap-1 shrink-0" onClick={() => setShowNewCustomer(true)}>
+                <Plus className="h-4 w-4" />
+                {t("new_customer")}
+              </Button>
+            </div>
             {customer && (
               <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                 <div>
@@ -407,13 +509,34 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">{t("discount")}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={it.discount}
-                          onChange={(e) => updateItem(idx, { discount: Number(e.target.value) || 0 })}
-                        />
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">{t("discount")}</Label>
+                          <button
+                            type="button"
+                            onClick={() => setItemDiscountMode(idx, it.discount_mode === "percent" ? "amount" : "percent")}
+                            className="text-[10px] font-semibold rounded border px-1.5 py-0.5 hover:bg-muted"
+                            title={it.discount_mode === "percent" ? t("discount_amount") : t("discount_percent")}
+                          >
+                            {it.discount_mode === "percent" ? "%" : "EGP"}
+                          </button>
+                        </div>
+                        {it.discount_mode === "percent" ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            max={100}
+                            value={it.discount_percent ?? 0}
+                            onChange={(e) => setItemDiscountPercent(idx, Number(e.target.value) || 0)}
+                          />
+                        ) : (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={it.discount}
+                            onChange={(e) => updateItem(idx, { discount: Number(e.target.value) || 0, discount_mode: "amount", discount_percent: undefined })}
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="mt-2 text-end text-sm font-semibold">
@@ -440,14 +563,49 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">{t("discount")}</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-                  className="w-32 text-end"
-                />
+                <div className="flex items-center gap-1">
+                  {discountMode === "percent" ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={100}
+                      value={discountPercent}
+                      onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
+                      className="w-24 text-end"
+                    />
+                  ) : (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={discount}
+                      onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                      className="w-24 text-end"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (discountMode === "amount") {
+                        const pct = subtotal > 0 ? +((discount / subtotal) * 100).toFixed(2) : 0;
+                        setDiscountPercent(Math.min(100, pct));
+                        setDiscountMode("percent");
+                      } else {
+                        setDiscountMode("amount");
+                      }
+                    }}
+                    className="text-[10px] font-semibold rounded border px-1.5 py-1 hover:bg-muted"
+                    title={discountMode === "percent" ? t("discount_amount") : t("discount_percent")}
+                  >
+                    {discountMode === "percent" ? "%" : "EGP"}
+                  </button>
+                </div>
               </div>
+              {discountMode === "percent" && (
+                <div className="text-end text-[11px] text-muted-foreground">
+                  = {fmtMoney(discount, "EGP", lang)}
+                </div>
+              )}
               <div className="border-t pt-2 flex justify-between text-lg font-bold">
                 <span>{t("total")}</span>
                 <span>{fmtMoney(total, "EGP", lang)}</span>
@@ -502,6 +660,32 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             <span>{t("continuous_scan")}</span>
           </label>
           {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showNewCustomer} onOpenChange={setShowNewCustomer}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("new_customer")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">{t("name")}</Label>
+              <Input value={newCustomer.name} onChange={(e) => setNewCustomer((s) => ({ ...s, name: e.target.value }))} autoFocus />
+            </div>
+            <div>
+              <Label className="text-xs">{t("phone")}</Label>
+              <Input value={newCustomer.phone} onChange={(e) => setNewCustomer((s) => ({ ...s, phone: e.target.value }))} />
+            </div>
+            <div>
+              <Label className="text-xs">{t("address")}</Label>
+              <Input value={newCustomer.address} onChange={(e) => setNewCustomer((s) => ({ ...s, address: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setShowNewCustomer(false)}>{t("cancel")}</Button>
+              <Button onClick={saveNewCustomer} disabled={savingCustomer}>{t("save")}</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
