@@ -217,8 +217,95 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
+  /** Set item discount as a percentage of (qty * unit_price). */
+  const setItemDiscountPercent = (idx: number, pct: number) => {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== idx) return it;
+        const clamped = Math.max(0, Math.min(100, pct || 0));
+        const base = it.quantity * it.unit_price;
+        return { ...it, discount_mode: "percent", discount_percent: clamped, discount: +((base * clamped) / 100).toFixed(2) };
+      }),
+    );
+  };
+
+  /** Switch an item between amount and percent discount modes. */
+  const setItemDiscountMode = (idx: number, mode: "amount" | "percent") => {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== idx) return it;
+        if (mode === "percent") {
+          const base = it.quantity * it.unit_price;
+          const pct = base > 0 ? +((it.discount / base) * 100).toFixed(2) : 0;
+          return { ...it, discount_mode: "percent", discount_percent: Math.min(100, pct) };
+        }
+        return { ...it, discount_mode: "amount", discount_percent: undefined };
+      }),
+    );
+  };
+
   const subtotal = items.reduce((s, it) => s + it.quantity * it.unit_price - it.discount, 0);
+
+  // Keep global discount EGP in sync when in percent mode
+  useEffect(() => {
+    if (discountMode === "percent") {
+      const v = Math.max(0, Math.min(100, discountPercent || 0));
+      setDiscount(+((subtotal * v) / 100).toFixed(2));
+    }
+  }, [discountMode, discountPercent, subtotal]);
+
+  // Recompute item EGP discount when qty / unit price change while in percent mode
+  useEffect(() => {
+    setItems((prev) => {
+      let changed = false;
+      const next = prev.map((it) => {
+        if (it.discount_mode === "percent" && typeof it.discount_percent === "number") {
+          const base = it.quantity * it.unit_price;
+          const newDisc = +((base * it.discount_percent) / 100).toFixed(2);
+          if (Math.abs(newDisc - it.discount) > 0.001) {
+            changed = true;
+            return { ...it, discount: newDisc };
+          }
+        }
+        return it;
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.map((i) => `${i.quantity}-${i.unit_price}`).join("|")]);
+
   const total = Math.max(0, subtotal - discount);
+
+  const saveNewCustomer = async () => {
+    if (!user || savingCustomer) return;
+    const name = newCustomer.name.trim();
+    if (!name) return toast.error(t("name"));
+    setSavingCustomer(true);
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert({
+          user_id: user.id,
+          name,
+          phone: newCustomer.phone.trim() || null,
+          address: newCustomer.address.trim() || null,
+        })
+        .select()
+        .single();
+      if (error || !data) {
+        toast.error(error?.message ?? "");
+        return;
+      }
+      const created = data as Customer;
+      setCustomers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setCustomerId(created.id);
+      setShowNewCustomer(false);
+      setNewCustomer({ name: "", phone: "", address: "" });
+      toast.success(t("customer_added"));
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     const s = productSearch.trim().toLowerCase();
