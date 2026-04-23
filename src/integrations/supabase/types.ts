@@ -370,6 +370,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_invoice: { Args: { _invoice_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -377,6 +378,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_invoice: {
+        Args: {
+          _customer_id: string
+          _discount: number
+          _invoice_id: string
+          _items: Json
+          _language: string
+          _notes: string
+        }
+        Returns: string
+      }
+      void_invoice: { Args: { _invoice_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"
