@@ -17,6 +17,50 @@ export type InvoiceRow = {
   created_at: string;
 };
 
+export type CustomerRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  created_at: string;
+};
+
+export function exportCustomersToExcel(rows: CustomerRow[], lang: Lang) {
+  const data = rows.map((c, i) => ({
+    "#": i + 1,
+    [lang === "ar" ? "الاسم" : "Name"]: c.name,
+    [lang === "ar" ? "الهاتف" : "Phone"]: c.phone || "",
+    [lang === "ar" ? "العنوان" : "Address"]: c.address || "",
+    [lang === "ar" ? "تاريخ الإضافة" : "Added On"]: fmtDateTime(c.created_at, lang),
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = [{ wch: 5 }, { wch: 28 }, { wch: 18 }, { wch: 40 }, { wch: 28 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, lang === "ar" ? "العملاء" : "Customers");
+  XLSX.writeFile(wb, `customers-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export function exportCustomersToCSV(rows: CustomerRow[], lang: Lang) {
+  const headers = lang === "ar"
+    ? ["#", "الاسم", "الهاتف", "العنوان", "تاريخ الإضافة"]
+    : ["#", "Name", "Phone", "Address", "Added On"];
+  const escape = (v: any) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(",")];
+  rows.forEach((c, i) => {
+    lines.push([i + 1, c.name, c.phone || "", c.address || "", fmtDateTime(c.created_at, lang)].map(escape).join(","));
+  });
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function exportInvoicesToExcel(rows: InvoiceRow[], lang: Lang) {
   const data = rows.map((r) => ({
     [lang === "ar" ? "رقم الإيصال" : "Receipt #"]: r.receipt_number ?? "",
