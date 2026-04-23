@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { Languages, Moon, Sun, FileText, ScanLine, Boxes, BarChart3, ArrowLeft, ArrowRight } from "lucide-react";
+import steinheimLogo from "@/assets/steinheim-logo.png";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
