@@ -662,6 +662,32 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showNewCustomer} onOpenChange={setShowNewCustomer}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("new_customer")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">{t("name")}</Label>
+              <Input value={newCustomer.name} onChange={(e) => setNewCustomer((s) => ({ ...s, name: e.target.value }))} autoFocus />
+            </div>
+            <div>
+              <Label className="text-xs">{t("phone")}</Label>
+              <Input value={newCustomer.phone} onChange={(e) => setNewCustomer((s) => ({ ...s, phone: e.target.value }))} />
+            </div>
+            <div>
+              <Label className="text-xs">{t("address")}</Label>
+              <Input value={newCustomer.address} onChange={(e) => setNewCustomer((s) => ({ ...s, address: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setShowNewCustomer(false)}>{t("cancel")}</Button>
+              <Button onClick={saveNewCustomer} disabled={savingCustomer}>{t("save")}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
