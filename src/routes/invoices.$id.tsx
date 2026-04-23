@@ -5,13 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye } from "lucide-react";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
 import { getSettings } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import steinheimLogo from "@/assets/steinheim-logo.png";
+import { InvoiceTimeline } from "@/components/invoice-timeline";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
@@ -24,6 +26,7 @@ function InvoiceView() {
   const [items, setItems] = useState<any[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -85,6 +88,7 @@ function InvoiceView() {
               </AlertDialog>
             </>
           )}
+          <Button variant="outline" className="gap-2 rounded-full" onClick={() => setPreviewOpen(true)}><Eye className="h-4 w-4" />{t("print_preview")}</Button>
           <Button onClick={() => window.print()} className="gap-2 rounded-full px-5 shadow-glow"><Printer className="h-4 w-4" />{t("print")} / PDF</Button>
         </div>
       </div>
@@ -116,6 +120,11 @@ function InvoiceView() {
             <div className="text-end">
               <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{isAr ? "فاتورة" : "Invoice"}</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{inv.invoice_number}</div>
+              {inv.receipt_number != null && (
+                <div className="mt-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                  {t("receipt_no")}: <span className="font-semibold text-foreground">#{inv.receipt_number}</span>
+                </div>
+              )}
               <div className="mt-1 text-xs text-muted-foreground">{fmtDateTime(inv.created_at, lang)}</div>
             </div>
           </header>
@@ -189,6 +198,82 @@ function InvoiceView() {
           <div className="mt-8 text-center text-xs font-medium tracking-wide text-muted-foreground">{t("thank_you")}</div>
         </div>
       </div>
+
+      <div className="mx-auto max-w-3xl">
+        <InvoiceTimeline invoiceId={id} />
+      </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-3">
+              <span>{t("print_preview")}</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
+                  <Languages className="h-3.5 w-3.5" />{lang === "ar" ? "EN" : "ع"}
+                </Button>
+                <Button size="sm" className="gap-1.5" onClick={() => { setPreviewOpen(false); setTimeout(() => window.print(), 100); }}>
+                  <Printer className="h-3.5 w-3.5" />{t("print")}
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="rounded-2xl border bg-card p-6 shadow-sm" dir={dir}>
+            <div className="flex items-start justify-between gap-3 pb-5 border-b">
+              <div className="flex items-center gap-3">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="" className="h-12 w-12 rounded-xl object-contain" />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black p-1.5">
+                    <img src={steinheimLogo} alt="" className="h-full w-full object-contain" />
+                  </div>
+                )}
+                <div>
+                  <div className="text-sm font-semibold">{settings?.company_name || "Steinheim"}</div>
+                  <div className="text-[11px] text-muted-foreground">{settings?.company_phone}</div>
+                </div>
+              </div>
+              <div className="text-end">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{isAr ? "فاتورة" : "Invoice"}</div>
+                <div className="text-lg font-semibold tabular-nums">{inv.invoice_number}</div>
+                {inv.receipt_number != null && <div className="text-[10px] text-muted-foreground">#{inv.receipt_number}</div>}
+              </div>
+            </div>
+            <div className="mt-4 text-sm">
+              <div className="text-muted-foreground text-xs">{t("bill_to")}</div>
+              <div className="font-semibold">{inv.customer_name || "—"}</div>
+            </div>
+            <table className="mt-4 w-full text-xs">
+              <thead className="text-muted-foreground">
+                <tr className="border-b">
+                  <th className="pb-1.5 text-start">{isAr ? "المنتج" : "Item"}</th>
+                  <th className="pb-1.5 text-end">{t("quantity")}</th>
+                  <th className="pb-1.5 text-end">{t("unit_price")}</th>
+                  <th className="pb-1.5 text-end">{t("line_total")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {items.map((it) => (
+                  <tr key={it.id}>
+                    <td className="py-1.5">{it.product_name}</td>
+                    <td className="py-1.5 text-end tabular-nums">{it.quantity}</td>
+                    <td className="py-1.5 text-end tabular-nums">{fmtMoney(Number(it.unit_price), settings?.currency || "EGP", lang)}</td>
+                    <td className="py-1.5 text-end font-medium tabular-nums">{fmtMoney(Number(it.line_total), settings?.currency || "EGP", lang)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-4 ms-auto w-56 space-y-1 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
+              <div className="mt-1 flex justify-between border-t pt-2 text-base font-semibold">
+                <span>{t("total")}</span>
+                <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "EGP", lang)}</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

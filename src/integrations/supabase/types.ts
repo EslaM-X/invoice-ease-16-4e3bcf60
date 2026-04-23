@@ -89,6 +89,41 @@ export type Database = {
           },
         ]
       }
+      invoice_events: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          invoice_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          invoice_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          invoice_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           color: string | null
@@ -158,6 +193,7 @@ export type Database = {
           invoice_number: string
           language: string
           notes: string | null
+          receipt_number: number | null
           status: string
           subtotal: number
           total: number
@@ -175,6 +211,7 @@ export type Database = {
           invoice_number: string
           language?: string
           notes?: string | null
+          receipt_number?: number | null
           status?: string
           subtotal?: number
           total?: number
@@ -192,6 +229,7 @@ export type Database = {
           invoice_number?: string
           language?: string
           notes?: string | null
+          receipt_number?: number | null
           status?: string
           subtotal?: number
           total?: number
@@ -332,6 +370,24 @@ export type Database = {
           social_instagram?: string | null
           social_twitter?: string | null
           social_website?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_counters: {
+        Row: {
+          receipt_seq: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          receipt_seq?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          receipt_seq?: number
           updated_at?: string
           user_id?: string
         }

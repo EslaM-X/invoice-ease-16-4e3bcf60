@@ -54,6 +54,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [productSearch, setProductSearch] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
 
@@ -74,7 +75,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   useEffect(() => {
     if (mode !== "new" || !draftKey || draftLoaded.current) return;
     draftLoaded.current = true;
-    if (initial) return; // don't overwrite an explicit initial
+    if (initial) return;
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
@@ -84,6 +85,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           setCustomerId(d.customerId || "");
           setDiscount(d.discount || 0);
           setNotes(d.notes || "");
+          setDraftRecovered({ savedAt: d.savedAt || new Date().toISOString() });
         }
       }
     } catch {}
@@ -93,7 +95,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     if (mode !== "new" || !draftKey) return;
     const id = setTimeout(() => {
       if (items.length || customerId || notes) {
-        localStorage.setItem(draftKey, JSON.stringify({ customerId, items, discount, notes }));
+        localStorage.setItem(draftKey, JSON.stringify({ customerId, items, discount, notes, savedAt: new Date().toISOString() }));
       }
     }, 500);
     return () => clearTimeout(id);
@@ -298,6 +300,28 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           {t("save_invoice")}
         </Button>
       </div>
+
+      {draftRecovered && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <div>
+            <span className="font-semibold">{t("draft_recovered")}</span>
+            <span className="ms-2 text-muted-foreground tabular-nums">
+              {new Date(draftRecovered.savedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (draftKey) localStorage.removeItem(draftKey);
+              setItems([]); setCustomerId(""); setDiscount(0); setNotes("");
+              setDraftRecovered(null);
+            }}
+          >
+            {t("discard_draft")}
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">

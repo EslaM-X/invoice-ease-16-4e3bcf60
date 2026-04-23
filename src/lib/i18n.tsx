@@ -149,6 +149,18 @@ const ar: Dict = {
   adjust_stock_amount: "الكمية (+/-)",
   adjust_stock_reason: "سبب التعديل",
   stock_adjusted: "تم تعديل المخزون",
+  receipt_no: "رقم الإيصال",
+  timeline: "السجل الزمني",
+  event_created: "تم إنشاء الفاتورة",
+  event_edited: "تم تعديل الفاتورة",
+  event_voided: "تم إلغاء الفاتورة",
+  preview: "معاينة",
+  print_preview: "معاينة الطباعة",
+  draft_recovered: "تم استرجاع المسودة",
+  discard_draft: "تجاهل المسودة",
+  exporting: "جارٍ التصدير...",
+  exported: "تم التصدير",
+  export_filtered: "تصدير المعروض",
 };
 
 const en: Dict = {
@@ -296,6 +308,18 @@ const en: Dict = {
   adjust_stock_amount: "Amount (+/-)",
   adjust_stock_reason: "Reason",
   stock_adjusted: "Stock adjusted",
+  receipt_no: "Receipt #",
+  timeline: "Timeline",
+  event_created: "Invoice created",
+  event_edited: "Invoice edited",
+  event_voided: "Invoice voided",
+  preview: "Preview",
+  print_preview: "Print Preview",
+  draft_recovered: "Draft recovered",
+  discard_draft: "Discard draft",
+  exporting: "Exporting...",
+  exported: "Exported",
+  export_filtered: "Export filtered",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };
