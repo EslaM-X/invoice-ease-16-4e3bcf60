@@ -21,7 +21,7 @@ function SettingsPage() {
     company_name: "", company_address: "", company_phone: "", company_email: "",
     payment_terms: "", delivery_terms: "",
     social_facebook: "", social_instagram: "", social_twitter: "", social_website: "",
-    currency: "SAR", default_language: "ar",
+    currency: "EGP", default_language: "ar",
   });
   const [logoPath, setLogoPath] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -38,7 +38,7 @@ function SettingsPage() {
           payment_terms: s.payment_terms ?? "", delivery_terms: s.delivery_terms ?? "",
           social_facebook: s.social_facebook ?? "", social_instagram: s.social_instagram ?? "",
           social_twitter: s.social_twitter ?? "", social_website: s.social_website ?? "",
-          currency: s.currency ?? "SAR", default_language: s.default_language ?? "ar",
+          currency: s.currency ?? "EGP", default_language: s.default_language ?? "ar",
         });
         if (s.logo_url) {
           setLogoPath(s.logo_url);
