@@ -563,14 +563,49 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">{t("discount")}</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-                  className="w-32 text-end"
-                />
+                <div className="flex items-center gap-1">
+                  {discountMode === "percent" ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={100}
+                      value={discountPercent}
+                      onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
+                      className="w-24 text-end"
+                    />
+                  ) : (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={discount}
+                      onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                      className="w-24 text-end"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (discountMode === "amount") {
+                        const pct = subtotal > 0 ? +((discount / subtotal) * 100).toFixed(2) : 0;
+                        setDiscountPercent(Math.min(100, pct));
+                        setDiscountMode("percent");
+                      } else {
+                        setDiscountMode("amount");
+                      }
+                    }}
+                    className="text-[10px] font-semibold rounded border px-1.5 py-1 hover:bg-muted"
+                    title={discountMode === "percent" ? t("discount_amount") : t("discount_percent")}
+                  >
+                    {discountMode === "percent" ? "%" : "EGP"}
+                  </button>
+                </div>
               </div>
+              {discountMode === "percent" && (
+                <div className="text-end text-[11px] text-muted-foreground">
+                  = {fmtMoney(discount, "EGP", lang)}
+                </div>
+              )}
               <div className="border-t pt-2 flex justify-between text-lg font-bold">
                 <span>{t("total")}</span>
                 <span>{fmtMoney(total, "EGP", lang)}</span>
