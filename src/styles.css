@@ -167,10 +167,11 @@
 @media print {
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
-  .print-area { position: absolute; inset: 0; padding: 24px; }
+  .print-area { position: absolute; inset: 0; padding: 24px; box-shadow: none !important; border: none !important; }
+  .print-area img { -webkit-print-color-adjust: exact; print-color-adjust: exact; max-height: 80px; width: auto; object-fit: contain; }
   .print-only, .print-only * { visibility: visible; }
   .print-only { display: block !important; }
   .no-print { display: none !important; }
-  @page { margin: 10mm; }
+  @page { margin: 12mm; }
 }
 

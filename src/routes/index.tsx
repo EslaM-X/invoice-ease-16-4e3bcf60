@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { Languages, Moon, Sun, FileText, ScanLine, Boxes, BarChart3, ArrowLeft, ArrowRight } from "lucide-react";
+import steinheimLogo from "@/assets/steinheim-logo.png";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
@@ -25,9 +26,7 @@ function Landing() {
       <header className="sticky top-0 z-30 glass border-b border-border/40">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shadow-glow">
-              <FileText className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <img src={steinheimLogo} alt="Steinheim" className="h-8 w-auto max-w-[120px] object-contain" />
             <span className="text-sm font-semibold tracking-tight">{t("app_name")}</span>
           </div>
           <div className="flex items-center gap-1">

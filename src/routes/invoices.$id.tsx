@@ -102,19 +102,17 @@ function InvoiceView() {
           </div>
         )}
         <div className="px-10 pt-10 pb-8">
-          <header className="flex items-start justify-between gap-4 pb-8">
-            <div className="flex items-center gap-3">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-16 w-16 rounded-2xl object-contain" />
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black p-2">
-                  <img src={steinheimLogo} alt="Steinheim" className="h-full w-full object-contain" />
-                </div>
-              )}
-              <div>
-                <div className="text-base font-semibold tracking-tight">{settings?.company_name || "Steinheim"}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">{settings?.company_address}</div>
-                <div className="text-xs text-muted-foreground">{settings?.company_phone} {settings?.company_email ? `· ${settings.company_email}` : ""}</div>
+          <header className="flex items-start justify-between gap-6 pb-8">
+            <div className="flex items-center gap-4 min-w-0">
+              <img
+                src={logoUrl || steinheimLogo}
+                alt={settings?.company_name || "Steinheim"}
+                className="h-16 w-auto max-w-[180px] object-contain shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="text-base font-semibold tracking-tight truncate">{settings?.company_name || "Steinheim"}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground truncate">{settings?.company_address}</div>
+                <div className="text-xs text-muted-foreground truncate">{settings?.company_phone} {settings?.company_email ? `· ${settings.company_email}` : ""}</div>
               </div>
             </div>
             <div className="text-end">
@@ -220,17 +218,15 @@ function InvoiceView() {
           </DialogHeader>
           <div className="rounded-2xl border bg-card p-6 shadow-sm" dir={dir}>
             <div className="flex items-start justify-between gap-3 pb-5 border-b">
-              <div className="flex items-center gap-3">
-                {logoUrl ? (
-                  <img src={logoUrl} alt="" className="h-12 w-12 rounded-xl object-contain" />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black p-1.5">
-                    <img src={steinheimLogo} alt="" className="h-full w-full object-contain" />
-                  </div>
-                )}
-                <div>
-                  <div className="text-sm font-semibold">{settings?.company_name || "Steinheim"}</div>
-                  <div className="text-[11px] text-muted-foreground">{settings?.company_phone}</div>
+              <div className="flex items-center gap-3 min-w-0">
+                <img
+                  src={logoUrl || steinheimLogo}
+                  alt=""
+                  className="h-12 w-auto max-w-[140px] object-contain shrink-0"
+                />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate">{settings?.company_name || "Steinheim"}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{settings?.company_phone}</div>
                 </div>
               </div>
               <div className="text-end">
