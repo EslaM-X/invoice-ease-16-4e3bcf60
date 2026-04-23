@@ -184,9 +184,6 @@ const ar: Dict = {
   op_edit: "تعديل فاتورة",
   op_manual: "تسوية يدوية",
   product: "المنتج",
-  reason: "السبب",
-  change: "التغيير",
-  all: "الكل",
 };
 
 const en: Dict = {
@@ -369,9 +366,6 @@ const en: Dict = {
   op_edit: "Edit invoice",
   op_manual: "Manual",
   product: "Product",
-  reason: "Reason",
-  change: "Change",
-  all: "All",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };
