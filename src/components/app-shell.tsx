@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
-  Plus, Languages, Moon, Sun, LogOut, Menu, X
+  Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList
 } from "lucide-react";
 import { useState } from "react";
 
@@ -15,6 +15,7 @@ const items = [
   { to: "/customers", icon: Users, key: "customers" as const },
   { to: "/products", icon: Package, key: "products" as const },
   { to: "/inventory", icon: Boxes, key: "inventory" as const },
+  { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
   { to: "/invoices", icon: FileText, key: "invoices" as const },
   { to: "/reports", icon: BarChart3, key: "reports" as const },
   { to: "/settings", icon: Settings, key: "settings" as const },
