@@ -5,6 +5,7 @@ type Props = { onScan: (text: string) => void; onClose: () => void };
 export function QrScanner({ onScan, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
+  const lastScan = useRef<{ text: string; at: number }>({ text: "", at: 0 });
 
   useEffect(() => {
     let stopped = false;
@@ -19,7 +20,13 @@ export function QrScanner({ onScan, onClose }: Props) {
         await sc.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 240, height: 240 } },
-          (text: string) => { onScan(text); },
+          (text: string) => {
+            // Debounce: ignore the same text within 1.5s to avoid duplicate fires
+            const now = Date.now();
+            if (lastScan.current.text === text && now - lastScan.current.at < 1500) return;
+            lastScan.current = { text, at: now };
+            onScan(text);
+          },
           () => {},
         );
       } catch (e) {
