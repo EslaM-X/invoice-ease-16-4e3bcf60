@@ -218,17 +218,15 @@ function InvoiceView() {
           </DialogHeader>
           <div className="rounded-2xl border bg-card p-6 shadow-sm" dir={dir}>
             <div className="flex items-start justify-between gap-3 pb-5 border-b">
-              <div className="flex items-center gap-3">
-                {logoUrl ? (
-                  <img src={logoUrl} alt="" className="h-12 w-12 rounded-xl object-contain" />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black p-1.5">
-                    <img src={steinheimLogo} alt="" className="h-full w-full object-contain" />
-                  </div>
-                )}
-                <div>
-                  <div className="text-sm font-semibold">{settings?.company_name || "Steinheim"}</div>
-                  <div className="text-[11px] text-muted-foreground">{settings?.company_phone}</div>
+              <div className="flex items-center gap-3 min-w-0">
+                <img
+                  src={logoUrl || steinheimLogo}
+                  alt=""
+                  className="h-12 w-auto max-w-[140px] object-contain shrink-0"
+                />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate">{settings?.company_name || "Steinheim"}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{settings?.company_phone}</div>
                 </div>
               </div>
               <div className="text-end">
