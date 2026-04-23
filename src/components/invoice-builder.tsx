@@ -509,13 +509,34 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">{t("discount")}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={it.discount}
-                          onChange={(e) => updateItem(idx, { discount: Number(e.target.value) || 0 })}
-                        />
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">{t("discount")}</Label>
+                          <button
+                            type="button"
+                            onClick={() => setItemDiscountMode(idx, it.discount_mode === "percent" ? "amount" : "percent")}
+                            className="text-[10px] font-semibold rounded border px-1.5 py-0.5 hover:bg-muted"
+                            title={it.discount_mode === "percent" ? t("discount_amount") : t("discount_percent")}
+                          >
+                            {it.discount_mode === "percent" ? "%" : "EGP"}
+                          </button>
+                        </div>
+                        {it.discount_mode === "percent" ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            max={100}
+                            value={it.discount_percent ?? 0}
+                            onChange={(e) => setItemDiscountPercent(idx, Number(e.target.value) || 0)}
+                          />
+                        ) : (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={it.discount}
+                            onChange={(e) => updateItem(idx, { discount: Number(e.target.value) || 0, discount_mode: "amount", discount_percent: undefined })}
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="mt-2 text-end text-sm font-semibold">
