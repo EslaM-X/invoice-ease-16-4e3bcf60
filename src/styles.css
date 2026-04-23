@@ -159,6 +159,20 @@
   }
   .text-balance { text-wrap: balance; }
   .hairline { border-color: color-mix(in oklab, var(--foreground) 10%, transparent); }
+
+  @keyframes hero-fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes hero-scale-in {
+    from { opacity: 0; transform: scale(0.96); letter-spacing: 0.02em; }
+    to { opacity: 1; transform: scale(1); letter-spacing: -0.02em; }
+  }
+  .animate-hero-title { animation: hero-scale-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .animate-hero-up { animation: hero-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-hero-title, .animate-hero-up { animation: none !important; }
+  }
 }
 
 
