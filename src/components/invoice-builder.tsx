@@ -423,19 +423,25 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         <div className="lg:col-span-2 space-y-5">
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <Label>{t("customer")}</Label>
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">— {t("select_customer")} —</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.phone ? ` · ${c.phone}` : ""}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1.5 flex gap-2">
+              <select
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">— {t("select_customer")} —</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.phone ? ` · ${c.phone}` : ""}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" className="gap-1 shrink-0" onClick={() => setShowNewCustomer(true)}>
+                <Plus className="h-4 w-4" />
+                {t("new_customer")}
+              </Button>
+            </div>
             {customer && (
               <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                 <div>
