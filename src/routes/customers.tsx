@@ -64,27 +64,57 @@ function Customers() {
     load();
   };
 
+  const { lang } = useI18n();
+  const doExport = (kind: "xlsx" | "csv") => {
+    if (filtered.length === 0) return toast.error(t("no_data") || "No data");
+    try {
+      const rows = filtered as CustomerRow[];
+      if (kind === "xlsx") exportCustomersToExcel(rows, lang as any);
+      else exportCustomersToCSV(rows, lang as any);
+      toast.success(t("exported") || "Exported");
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">{t("customers")}</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" /> {t("add_customer")}</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{editing ? t("edit_customer") : t("add_customer")}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>{t("phone")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-              <div><Label>{t("address")}</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-              <Button onClick={save}>{t("save")}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 rounded-full">
+                <Download className="h-4 w-4" />{t("export_filtered") || "Export"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => doExport("xlsx")} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />{t("export_excel") || "Excel"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doExport("csv")} className="gap-2">
+                <FileText className="h-4 w-4" />{t("export_csv") || "CSV"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" /> {t("add_customer")}</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>{editing ? t("edit_customer") : t("add_customer")}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                <div><Label>{t("phone")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+                <div><Label>{t("address")}</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+                <Button onClick={save}>{t("save")}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="relative">
