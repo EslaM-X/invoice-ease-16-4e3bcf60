@@ -171,7 +171,7 @@ function NewInvoice() {
       _notes: notes || null,
       _language: lang,
       _items: payload as any,
-    });
+    } as any);
 
     if (error || !invoiceId) {
       const msg = error?.message ?? "";
