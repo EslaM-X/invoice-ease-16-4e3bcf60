@@ -89,11 +89,49 @@ function InvoicesList() {
     navigate({ to: "/invoices/$id", params: { id: newId as string } });
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const doExport = async (kind: "csv" | "xlsx" | "pdf") => {
+    if (filtered.length === 0) return toast.error(t("no_data"));
+    setExporting(true);
+    try {
+      const rows = filtered as InvoiceRow[];
+      if (kind === "csv") exportInvoicesToCSV(rows, lang);
+      else if (kind === "xlsx") exportInvoicesToExcel(rows, lang);
+      else await exportInvoicesBatchPDF(rows, lang);
+      toast.success(t("exported"));
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">{t("invoices")}</h1>
-        <Link to="/invoices/new"><Button className="gap-2 shadow-glow"><Plus className="h-4 w-4" />{t("new_invoice")}</Button></Link>
+        <div className="flex flex-wrap gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={exporting} className="gap-2 rounded-full">
+                <Download className="h-4 w-4" />{exporting ? t("exporting") : t("export_filtered")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => doExport("xlsx")} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />{t("export_excel")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doExport("csv")} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />{t("export_csv")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doExport("pdf")} className="gap-2">
+                <FileText className="h-4 w-4" />{t("export_pdf")} (batch)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Link to="/invoices/new"><Button className="gap-2 shadow-glow"><Plus className="h-4 w-4" />{t("new_invoice")}</Button></Link>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -127,6 +165,9 @@ function InvoicesList() {
                     <tr key={i.id} className={`hover:bg-muted/30 ${voided ? "opacity-60" : ""}`}>
                       <td className="px-4 py-3 font-medium">
                         <div className="flex items-center gap-2">
+                          {i.receipt_number != null && (
+                            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">#{i.receipt_number}</span>
+                          )}
                           <span>{i.invoice_number}</span>
                           {voided && (
                             <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
