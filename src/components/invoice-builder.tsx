@@ -22,6 +22,10 @@ export type BuilderItem = {
   quantity: number;
   unit_price: number;
   discount: number;
+  /** UI-only: how the user entered the discount. Persisted EGP value lives in `discount`. */
+  discount_mode?: "amount" | "percent";
+  /** UI-only: raw percent value when mode === "percent" */
+  discount_percent?: number;
 };
 
 type Props = {
