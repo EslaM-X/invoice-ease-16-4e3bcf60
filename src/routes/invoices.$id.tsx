@@ -5,13 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye } from "lucide-react";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
 import { getSettings } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import steinheimLogo from "@/assets/steinheim-logo.png";
+import { InvoiceTimeline } from "@/components/invoice-timeline";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
