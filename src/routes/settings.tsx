@@ -8,15 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, ImageIcon } from "lucide-react";
+import { Upload, ImageIcon, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getSettings, upsertSettings } from "@/lib/data";
+import { useI18n as _u } from "@/lib/i18n";
+import { exportFullBackupExcel, exportFullBackupCSV } from "@/lib/backup-export";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
 function SettingsPage() {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     company_name: "", company_address: "", company_phone: "", company_email: "",
     payment_terms: "", delivery_terms: "",
@@ -113,6 +117,34 @@ function SettingsPage() {
           <div><Label>{t("instagram")}</Label><Input value={form.social_instagram} onChange={(e) => setForm({ ...form, social_instagram: e.target.value })} /></div>
           <div><Label>{t("twitter")}</Label><Input value={form.social_twitter} onChange={(e) => setForm({ ...form, social_twitter: e.target.value })} /></div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <h3 className="mb-1 font-semibold">{t("backup_full")}</h3>
+        <p className="mb-4 text-xs text-muted-foreground">{t("backup_full_desc")}</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" disabled={busy} className="gap-2 rounded-full">
+              <Download className="h-4 w-4" />{busy ? t("exporting") : t("download_backup")}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem className="gap-2" onClick={async () => {
+              if (!user) return;
+              setBusy(true);
+              try { await exportFullBackupExcel(user.id, lang); toast.success(t("exported")); }
+              catch (e: any) { toast.error(e?.message || "Export failed"); }
+              finally { setBusy(false); }
+            }}><FileSpreadsheet className="h-4 w-4" />{t("export_excel")} (.xlsx)</DropdownMenuItem>
+            <DropdownMenuItem className="gap-2" onClick={async () => {
+              if (!user) return;
+              setBusy(true);
+              try { await exportFullBackupCSV(user.id, lang); toast.success(t("exported")); }
+              catch (e: any) { toast.error(e?.message || "Export failed"); }
+              finally { setBusy(false); }
+            }}><FileText className="h-4 w-4" />{t("export_csv")} (multiple)</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex justify-end">
