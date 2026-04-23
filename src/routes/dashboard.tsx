@@ -26,10 +26,11 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [{ data: invs }, { count: cust }, { data: prods }] = await Promise.all([
+      const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
         supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
         supabase.from("customers").select("*", { count: "exact", head: true }).eq("user_id", user.id),
         supabase.from("products").select("id, name, stock_quantity, low_stock_threshold").eq("user_id", user.id),
+        supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(user_id)").eq("invoices.user_id", user.id),
       ]);
       const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
       const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
@@ -41,11 +42,6 @@ function Dashboard() {
         lowStock,
       });
       setRecent((invs ?? []).slice(0, 5));
-      // top products by line_total
-      const { data: items } = await supabase
-        .from("invoice_items")
-        .select("product_name, quantity, line_total, invoice_id, invoices!inner(user_id)")
-        .eq("invoices.user_id", user.id);
       const map = new Map<string, { name: string; qty: number; total: number }>();
       (items ?? []).forEach((it: any) => {
         const prev = map.get(it.product_name) ?? { name: it.product_name, qty: 0, total: 0 };
@@ -65,69 +61,71 @@ function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("dashboard")}</h1>
-          <p className="text-sm text-muted-foreground">{t("welcome")}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t("dashboard")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
         </div>
-        <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 shadow-glow">
+        <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 shadow-glow">
           <Plus className="h-4 w-4" /> {t("new_invoice")}
         </Button>
       </div>
 
       {stats.lowStock > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
-          <AlertTriangle className="h-4 w-4 text-warning-foreground" />
-          <span>{t("stock_low_alert")}: {stats.lowStock}</span>
-          <Link to="/inventory" className="ms-auto font-medium underline">{t("view")}</Link>
+        <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <span className="font-medium">{t("stock_low_alert")}: {stats.lowStock}</span>
+          <Link to="/inventory" className="ms-auto text-xs font-semibold text-primary hover:underline">{t("view")} →</Link>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, Icon, accent }) => (
-          <div key={label} className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div key={label} className="group rounded-2xl border border-border/60 bg-card p-5 transition hover:shadow-md">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">{label}</div>
-              <Icon className={`h-4 w-4 ${accent}`} />
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+              <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-accent ${accent}`}>
+                <Icon className="h-3.5 w-3.5" />
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-bold">{value}</div>
+            <div className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
           </div>
         ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold">{t("recent_invoices")}</h3>
+        <div className="rounded-2xl border border-border/60 bg-card p-6">
+          <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("recent_invoices")}</h3>
           {recent.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">{t("no_data")}</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
           ) : (
-            <div className="divide-y">
+            <div className="-mx-2 divide-y divide-border/60">
               {recent.map((r) => (
-                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between py-3 hover:bg-muted/50 -mx-2 px-2 rounded">
+                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between rounded-lg px-2 py-3 transition hover:bg-accent/50">
                   <div>
-                    <div className="font-medium">{r.invoice_number}</div>
+                    <div className="text-sm font-medium">{r.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
                   </div>
-                  <div className="font-semibold">{fmtMoney(Number(r.total), "SAR", lang)}</div>
+                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "SAR", lang)}</div>
                 </Link>
               ))}
             </div>
           )}
         </div>
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold">{t("top_products")}</h3>
+        <div className="rounded-2xl border border-border/60 bg-card p-6">
+          <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("top_products")}</h3>
           {top.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">{t("no_data")}</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border/60">
               {top.map((p) => (
                 <div key={p.name} className="flex items-center justify-between py-3">
                   <div>
-                    <div className="font-medium">{p.name}</div>
+                    <div className="text-sm font-medium">{p.name}</div>
                     <div className="text-xs text-muted-foreground">× {p.qty}</div>
                   </div>
-                  <div className="font-semibold">{fmtMoney(p.total, "SAR", lang)}</div>
+                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(p.total, "SAR", lang)}</div>
                 </div>
               ))}
             </div>
