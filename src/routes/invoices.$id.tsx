@@ -26,6 +26,7 @@ function InvoiceView() {
   const [items, setItems] = useState<any[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -87,6 +88,7 @@ function InvoiceView() {
               </AlertDialog>
             </>
           )}
+          <Button variant="outline" className="gap-2 rounded-full" onClick={() => setPreviewOpen(true)}><Eye className="h-4 w-4" />{t("print_preview")}</Button>
           <Button onClick={() => window.print()} className="gap-2 rounded-full px-5 shadow-glow"><Printer className="h-4 w-4" />{t("print")} / PDF</Button>
         </div>
       </div>
@@ -118,6 +120,11 @@ function InvoiceView() {
             <div className="text-end">
               <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{isAr ? "فاتورة" : "Invoice"}</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{inv.invoice_number}</div>
+              {inv.receipt_number != null && (
+                <div className="mt-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                  {t("receipt_no")}: <span className="font-semibold text-foreground">#{inv.receipt_number}</span>
+                </div>
+              )}
               <div className="mt-1 text-xs text-muted-foreground">{fmtDateTime(inv.created_at, lang)}</div>
             </div>
           </header>
