@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download } from "lucide-react";
+import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -181,7 +181,10 @@ function InvoicesList() {
                       <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "EGP", lang)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
-                          <Link to="/invoices/$id" params={{ id: i.id }}><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></Link>
+                          <Link to="/invoices/$id" params={{ id: i.id }}><Button variant="ghost" size="icon" title={t("view")}><Eye className="h-4 w-4" /></Button></Link>
+                          {!voided && (
+                            <Link to="/invoices/$id/edit" params={{ id: i.id }}><Button variant="ghost" size="icon" title={t("edit")}><Pencil className="h-4 w-4" /></Button></Link>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => duplicate(i.id)} title={t("duplicate")}><Copy className="h-4 w-4" /></Button>
                           {!voided && (
                             <AlertDialog>
