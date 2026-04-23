@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, ImageIcon, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getSettings, upsertSettings } from "@/lib/data";
-import { useI18n as _u } from "@/lib/i18n";
+
 import { exportFullBackupExcel, exportFullBackupCSV } from "@/lib/backup-export";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
