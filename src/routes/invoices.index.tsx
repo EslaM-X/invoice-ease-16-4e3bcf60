@@ -6,11 +6,10 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Copy, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Copy, Ban, Trash2 } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { nextInvoiceNumber } from "@/lib/data";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
@@ -39,8 +38,24 @@ function InvoicesList() {
     return (i.invoice_number ?? "").toLowerCase().includes(s) || (i.customer_name ?? "").toLowerCase().includes(s);
   });
 
-  const remove = async (id: string) => {
-    const { error } = await supabase.from("invoices").delete().eq("id", id);
+  const handleRpcError = (msg: string) => {
+    if (msg.includes("OUT_OF_STOCK")) {
+      const name = msg.split("OUT_OF_STOCK:")[1]?.split("\n")[0]?.trim() ?? "";
+      toast.error(`${t("not_enough_stock")}${name ? `: ${name}` : ""}`);
+    } else {
+      toast.error(msg || t("error_occurred"));
+    }
+  };
+
+  const voidInvoice = async (id: string) => {
+    const { error } = await supabase.rpc("void_invoice", { _invoice_id: id } as any);
+    if (error) return toast.error(error.message);
+    toast.success(t("invoice_voided"));
+    load();
+  };
+
+  const deleteInvoice = async (id: string) => {
+    const { error } = await supabase.rpc("delete_invoice", { _invoice_id: id } as any);
     if (error) return toast.error(error.message);
     toast.success(t("invoice_deleted"));
     load();
@@ -51,26 +66,25 @@ function InvoicesList() {
     const { data: inv } = await supabase.from("invoices").select("*").eq("id", id).single();
     const { data: items } = await supabase.from("invoice_items").select("*").eq("invoice_id", id);
     if (!inv) return;
-    const number = await nextInvoiceNumber(user.id);
-    const { data: nInv, error } = await supabase.from("invoices").insert({
-      user_id: user.id,
-      invoice_number: number,
-      customer_id: inv.customer_id, customer_name: inv.customer_name,
-      customer_phone: inv.customer_phone, customer_address: inv.customer_address,
-      subtotal: inv.subtotal, discount: inv.discount, total: inv.total,
-      notes: inv.notes, language: inv.language, status: "completed",
-    }).select("id").single();
-    if (error || !nInv) return toast.error(error?.message ?? t("error_occurred"));
-    if (items?.length) {
-      await supabase.from("invoice_items").insert(items.map((it: any) => ({
-        invoice_id: nInv.id,
-        product_id: it.product_id, product_name: it.product_name,
-        serial_number: it.serial_number, color: it.color,
-        quantity: it.quantity, unit_price: it.unit_price, discount: it.discount, line_total: it.line_total,
-      })));
-    }
+    const payload = (items ?? []).map((it: any) => ({
+      product_id: it.product_id,
+      product_name: it.product_name,
+      serial_number: it.serial_number,
+      color: it.color,
+      quantity: it.quantity,
+      unit_price: Number(it.unit_price),
+      discount: Number(it.discount),
+    }));
+    const { data: newId, error } = await supabase.rpc("create_invoice", {
+      _customer_id: inv.customer_id,
+      _discount: Number(inv.discount ?? 0),
+      _notes: inv.notes ?? null,
+      _language: inv.language ?? lang,
+      _items: payload as any,
+    } as any);
+    if (error || !newId) return handleRpcError(error?.message ?? "");
     toast.success(t("saved"));
-    navigate({ to: "/invoices/$id", params: { id: nInv.id } });
+    navigate({ to: "/invoices/$id", params: { id: newId as string } });
   };
 
   return (
@@ -105,35 +119,64 @@ function InvoicesList() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filtered.map((i) => (
-                  <tr key={i.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{i.invoice_number}</td>
-                    <td className="px-4 py-3">{i.customer_name || "—"}</td>
-                    <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
-                    <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "SAR", lang)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <Link to="/invoices/$id" params={{ id: i.id }}><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></Link>
-                        <Button variant="ghost" size="icon" onClick={() => duplicate(i.id)}><Copy className="h-4 w-4" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>{t("confirm_delete")}</AlertDialogTitle>
-                              <AlertDialogDescription>{i.invoice_number}</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => remove(i.id)}>{t("confirm")}</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((i) => {
+                  const voided = i.status === "voided";
+                  return (
+                    <tr key={i.id} className={`hover:bg-muted/30 ${voided ? "opacity-60" : ""}`}>
+                      <td className="px-4 py-3 font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{i.invoice_number}</span>
+                          {voided && (
+                            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+                              {t("voided")}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">{i.customer_name || "—"}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
+                      <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "SAR", lang)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <Link to="/invoices/$id" params={{ id: i.id }}><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></Link>
+                          <Button variant="ghost" size="icon" onClick={() => duplicate(i.id)} title={t("duplicate")}><Copy className="h-4 w-4" /></Button>
+                          {!voided && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" title={t("void")}><Ban className="h-4 w-4 text-warning" /></Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t("void_invoice")}</AlertDialogTitle>
+                                  <AlertDialogDescription>{i.invoice_number} — {t("void_invoice_confirm")}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => voidInvoice(i.id)}>{t("confirm")}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" title={t("delete_invoice")}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{t("delete_invoice")}</AlertDialogTitle>
+                                <AlertDialogDescription>{i.invoice_number} — {t("delete_invoice_confirm")}</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteInvoice(i.id)}>{t("confirm")}</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
@@ -27,6 +27,11 @@ function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
+  const [adjustFor, setAdjustFor] = useState<Product | null>(null);
+  const [adjustAmt, setAdjustAmt] = useState("0");
+  const [adjustReason, setAdjustReason] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -36,11 +41,22 @@ function Products() {
   };
   useEffect(() => { load(); }, [user]);
 
-  const filtered = list.filter((p) => {
+  const filtered = useMemo(() => list.filter((p) => {
     const s = q.trim().toLowerCase();
     if (!s) return true;
     return p.name.toLowerCase().includes(s) || (p.serial_number ?? "").toLowerCase().includes(s);
-  });
+  }), [list, q]);
+
+  const allSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(filtered.map((p) => p.id)));
+  };
+  const toggleOne = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
 
   const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5" }); setOpen(true); };
   const openEdit = (p: Product) => {
@@ -64,7 +80,6 @@ function Products() {
       const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
       if (error) return toast.error(error.message);
     } else {
-      // qr_code = product id (set after insert)
       const { data, error } = await supabase.from("products").insert({ ...payload, user_id: user.id }).select("id").single();
       if (error) return toast.error(error.message);
       await supabase.from("products").update({ qr_code: data.id }).eq("id", data.id);
@@ -84,6 +99,41 @@ function Products() {
   const showQr = async (p: Product) => {
     const data = await QRCode.toDataURL(p.qr_code || p.id, { width: 320, margin: 2 });
     setQrPreview({ name: p.name, data });
+  };
+
+  const printLabels = async () => {
+    if (!user || selected.size === 0) return;
+    const targets = filtered.filter((p) => selected.has(p.id));
+    const out: { p: Product; data: string }[] = [];
+    for (const p of targets) {
+      const data = await QRCode.toDataURL(p.qr_code || p.id, { width: 200, margin: 1 });
+      out.push({ p, data });
+    }
+    setLabelData(out);
+    // Allow render then print
+    setTimeout(() => window.print(), 200);
+  };
+
+  const adjustStock = async () => {
+    if (!user || !adjustFor) return;
+    const amt = parseInt(adjustAmt || "0", 10);
+    if (!amt) return toast.error(t("required"));
+    if (!adjustReason.trim()) return toast.error(t("required"));
+    const newQty = adjustFor.stock_quantity + amt;
+    if (newQty < 0) return toast.error(t("not_enough_stock"));
+    const { error: e1 } = await supabase.from("products").update({ stock_quantity: newQty }).eq("id", adjustFor.id);
+    if (e1) return toast.error(e1.message);
+    await supabase.from("inventory_logs").insert({
+      user_id: user.id,
+      product_id: adjustFor.id,
+      change: amt,
+      reason: `manual: ${adjustReason}`,
+    });
+    toast.success(t("stock_adjusted"));
+    setAdjustFor(null);
+    setAdjustAmt("0");
+    setAdjustReason("");
+    load();
   };
 
   const exportCsv = () => {
@@ -124,12 +174,15 @@ function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 no-print">
         <h1 className="text-2xl font-bold tracking-tight">{t("products")}</h1>
         <div className="flex flex-wrap gap-2">
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
           <Button variant="outline" onClick={() => fileRef.current?.click()} className="gap-2"><Upload className="h-4 w-4" />{t("import_csv")}</Button>
           <Button variant="outline" onClick={exportCsv} className="gap-2"><Download className="h-4 w-4" />{t("export_csv")}</Button>
+          <Button variant="outline" disabled={selected.size === 0} onClick={printLabels} className="gap-2">
+            <Printer className="h-4 w-4" />{t("print_qr_labels")} {selected.size > 0 && `(${selected.size})`}
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("add_product")}</Button>
@@ -153,12 +206,12 @@ function Products() {
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative no-print">
         <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="overflow-hidden rounded-2xl border bg-card no-print">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_products")}</div>
         ) : (
@@ -166,6 +219,9 @@ function Products() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="px-3 py-3 w-10">
+                    <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label={t("select_all")} />
+                  </th>
                   <th className="px-4 py-3 text-start font-medium">{t("product_name")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("serial_number")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden md:table-cell">{t("color")}</th>
@@ -179,6 +235,9 @@ function Products() {
                   const low = p.stock_quantity <= p.low_stock_threshold;
                   return (
                     <tr key={p.id} className="hover:bg-muted/30">
+                      <td className="px-3 py-3">
+                        <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={p.name} />
+                      </td>
                       <td className="px-4 py-3 font-medium">{p.name}</td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
@@ -191,6 +250,9 @@ function Products() {
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => showQr(p)} title="QR"><QrCode className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setAdjustFor(p); setAdjustAmt("0"); setAdjustReason(""); }} title={t("adjust_stock")}>
+                            <Sliders className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -218,6 +280,7 @@ function Products() {
         )}
       </div>
 
+      {/* QR preview dialog */}
       <Dialog open={!!qrPreview} onOpenChange={(v) => !v && setQrPreview(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{qrPreview?.name}</DialogTitle></DialogHeader>
@@ -231,6 +294,44 @@ function Products() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Adjust stock dialog */}
+      <Dialog open={!!adjustFor} onOpenChange={(v) => !v && setAdjustFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t("adjust_stock")} — {adjustFor?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">{t("stock")}: {adjustFor?.stock_quantity}</div>
+            <div>
+              <Label>{t("adjust_stock_amount")}</Label>
+              <Input type="number" value={adjustAmt} onChange={(e) => setAdjustAmt(e.target.value)} placeholder="+5 / -2" />
+            </div>
+            <div>
+              <Label>{t("adjust_stock_reason")}</Label>
+              <Input value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAdjustFor(null)}>{t("cancel")}</Button>
+            <Button onClick={adjustStock}>{t("save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print sheet — only visible when printing */}
+      {labelData && (
+        <div className="print-only fixed inset-0 z-50 bg-white p-6 text-black">
+          <div className="grid grid-cols-3 gap-3">
+            {labelData.map(({ p, data }) => (
+              <div key={p.id} className="flex flex-col items-center justify-center rounded border border-gray-300 p-3 text-center" style={{ minHeight: "3.4cm" }}>
+                <img src={data} alt="qr" className="h-20 w-20" />
+                <div className="mt-1 text-[11px] font-bold leading-tight line-clamp-2">{p.name}</div>
+                <div className="text-[9px] text-gray-600">{p.serial_number || ""}{p.color ? ` · ${p.color}` : ""}</div>
+                <div className="text-[10px] font-semibold">{fmtMoney(Number(p.price), "SAR", lang)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
