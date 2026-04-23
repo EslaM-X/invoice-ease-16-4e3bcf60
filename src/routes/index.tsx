@@ -42,13 +42,9 @@ function Landing() {
           <span className="h-1.5 w-1.5 rounded-full bg-success" />
           {lang === "ar" ? "إنشاء فاتورة في أقل من ٣٠ ثانية" : "Create an invoice in under 30 seconds"}
         </div>
-        <h1 className="text-balance text-5xl font-semibold tracking-tight sm:text-7xl">
-          Shteinheim
-          <br />
-          {lang === "ar" ? "فواتير ومخزون" : "Invoicing & inventory,"}
-          <br />
+        <h1 className="text-balance text-6xl font-semibold tracking-tight sm:text-8xl">
           <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
-            {lang === "ar" ? "بأناقة لا مثيل لها." : "beautifully simple."}
+            Shteinheim
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">{t("hero_subtitle")}</p>
