@@ -54,6 +54,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [productSearch, setProductSearch] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
 
@@ -74,7 +75,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   useEffect(() => {
     if (mode !== "new" || !draftKey || draftLoaded.current) return;
     draftLoaded.current = true;
-    if (initial) return; // don't overwrite an explicit initial
+    if (initial) return;
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
@@ -84,6 +85,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           setCustomerId(d.customerId || "");
           setDiscount(d.discount || 0);
           setNotes(d.notes || "");
+          setDraftRecovered({ savedAt: d.savedAt || new Date().toISOString() });
         }
       }
     } catch {}
@@ -93,7 +95,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     if (mode !== "new" || !draftKey) return;
     const id = setTimeout(() => {
       if (items.length || customerId || notes) {
-        localStorage.setItem(draftKey, JSON.stringify({ customerId, items, discount, notes }));
+        localStorage.setItem(draftKey, JSON.stringify({ customerId, items, discount, notes, savedAt: new Date().toISOString() }));
       }
     }, 500);
     return () => clearTimeout(id);
