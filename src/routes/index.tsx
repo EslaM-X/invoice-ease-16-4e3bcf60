@@ -37,18 +37,32 @@ function Landing() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-5xl px-6 pt-24 pb-24 text-center">
-        <div className="mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
+      <section className="mx-auto max-w-5xl px-6 pt-16 pb-20 text-center sm:pt-24 sm:pb-24">
+        <div
+          className="animate-hero-up mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur sm:mb-8"
+          style={{ animationDelay: "0ms" }}
+        >
           <span className="h-1.5 w-1.5 rounded-full bg-success" />
           {lang === "ar" ? "إنشاء فاتورة في أقل من ٣٠ ثانية" : "Create an invoice in under 30 seconds"}
         </div>
-        <h1 className="text-balance text-6xl font-semibold tracking-tight sm:text-8xl">
-          <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
+        <h1 className="text-balance text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl md:text-8xl lg:text-[8.5rem]">
+          <span
+            className="animate-hero-title inline-block bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent"
+            style={{ animationDelay: "120ms" }}
+          >
             Shteinheim
           </span>
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">{t("hero_subtitle")}</p>
-        <div className="mt-10 flex items-center justify-center gap-3">
+        <p
+          className="animate-hero-up mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg"
+          style={{ animationDelay: "320ms" }}
+        >
+          {t("hero_subtitle")}
+        </p>
+        <div
+          className="animate-hero-up mt-8 flex items-center justify-center gap-3 sm:mt-10"
+          style={{ animationDelay: "460ms" }}
+        >
           <Link to="/auth">
             <Button size="lg" className="gap-2 rounded-full px-7 shadow-glow">
               {t("signup")} <Arrow className="h-4 w-4" />
@@ -56,14 +70,18 @@ function Landing() {
           </Link>
         </div>
 
-        <div className="mx-auto mt-24 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto mt-20 grid max-w-4xl gap-3 sm:mt-24 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { Icon: FileText, label: lang === "ar" ? "فواتير ذكية" : "Smart invoices" },
             { Icon: ScanLine, label: lang === "ar" ? "مسح QR" : "QR scanning" },
             { Icon: Boxes, label: lang === "ar" ? "مخزون فوري" : "Live inventory" },
             { Icon: BarChart3, label: lang === "ar" ? "تقارير" : "Reports" },
-          ].map(({ Icon, label }) => (
-            <div key={label} className="group rounded-2xl border border-border/60 bg-card/60 p-5 text-start backdrop-blur transition hover:border-border hover:shadow-md">
+          ].map(({ Icon, label }, i) => (
+            <div
+              key={label}
+              className="animate-hero-up group rounded-2xl border border-border/60 bg-card/60 p-5 text-start backdrop-blur transition hover:border-border hover:shadow-md"
+              style={{ animationDelay: `${600 + i * 90}ms` }}
+            >
               <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent">
                 <Icon className="h-4 w-4 text-primary" />
               </div>
