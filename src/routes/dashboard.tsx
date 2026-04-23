@@ -54,7 +54,7 @@ function Dashboard() {
   }, [user]);
 
   const cards = [
-    { label: t("total_sales"), value: fmtMoney(stats.sales, "SAR", lang), Icon: TrendingUp, accent: "text-success" },
+    { label: t("total_sales"), value: fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, accent: "text-success" },
     { label: t("total_invoices"), value: stats.invoices, Icon: FileText, accent: "text-primary" },
     { label: t("total_customers"), value: stats.customers, Icon: Users, accent: "text-primary" },
     { label: t("total_products"), value: stats.products, Icon: Package, accent: "text-primary" },
@@ -112,7 +112,7 @@ function Dashboard() {
                     <div className="text-sm font-medium">{r.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "SAR", lang)}</div>
+                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
                 </Link>
               ))}
             </div>
@@ -130,7 +130,7 @@ function Dashboard() {
                     <div className="text-sm font-medium">{p.name}</div>
                     <div className="text-xs text-muted-foreground">× {p.qty}</div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(p.total, "SAR", lang)}</div>
+                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(p.total, "EGP", lang)}</div>
                 </div>
               ))}
             </div>
