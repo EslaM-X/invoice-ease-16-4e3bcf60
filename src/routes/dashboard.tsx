@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
-import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus } from "lucide-react";
+import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus, ScanLine } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
@@ -27,10 +27,10 @@ function Dashboard() {
     if (!user) return;
     (async () => {
       const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-        supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").eq("user_id", user.id).neq("status", "voided").order("created_at", { ascending: false }).limit(50),
         supabase.from("customers").select("*", { count: "exact", head: true }).eq("user_id", user.id),
         supabase.from("products").select("id, name, stock_quantity, low_stock_threshold").eq("user_id", user.id),
-        supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(user_id)").eq("invoices.user_id", user.id),
+        supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(user_id, status)").eq("invoices.user_id", user.id).neq("invoices.status", "voided"),
       ]);
       const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
       const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
@@ -67,9 +67,14 @@ function Dashboard() {
           <h1 className="text-3xl font-semibold tracking-tight">{t("dashboard")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
         </div>
-        <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 shadow-glow">
-          <Plus className="h-4 w-4" /> {t("new_invoice")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => navigate({ to: "/invoices/new", search: { scan: true } })} className="gap-2 rounded-full px-5">
+            <ScanLine className="h-4 w-4" /> {t("scan_and_sell")}
+          </Button>
+          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 shadow-glow">
+            <Plus className="h-4 w-4" /> {t("new_invoice")}
+          </Button>
+        </div>
       </div>
 
       {stats.lowStock > 0 && (
