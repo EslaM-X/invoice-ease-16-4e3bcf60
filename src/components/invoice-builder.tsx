@@ -52,6 +52,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
   const [items, setItems] = useState<BuilderItem[]>(initial?.items ?? []);
   const [discount, setDiscount] = useState<number>(initial?.discount ?? 0);
+  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [scanning, setScanning] = useState(false);
   const [continuous, setContinuous] = useState(true);
@@ -59,6 +61,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
+  const [savingCustomer, setSavingCustomer] = useState(false);
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
 
