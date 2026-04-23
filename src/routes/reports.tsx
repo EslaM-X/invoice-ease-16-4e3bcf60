@@ -77,7 +77,7 @@ function Reports() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="text-sm text-muted-foreground">{t("total_sales")}</div>
-          <div className="mt-1 text-2xl font-bold">{fmtMoney(totalSales, "SAR", lang)}</div>
+          <div className="mt-1 text-2xl font-bold">{fmtMoney(totalSales, "EGP", lang)}</div>
         </div>
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="text-sm text-muted-foreground">{t("total_invoices")}</div>
@@ -102,7 +102,7 @@ function Reports() {
                   <td className="px-4 py-3 font-medium">{i.invoice_number}</td>
                   <td className="px-4 py-3 text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
                   <td className="px-4 py-3">{i.customer_name || "—"}</td>
-                  <td className="px-4 py-3 text-end font-semibold">{fmtMoney(Number(i.total), "SAR", lang)}</td>
+                  <td className="px-4 py-3 text-end font-semibold">{fmtMoney(Number(i.total), "EGP", lang)}</td>
                 </tr>
               ))}
               {list.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">{t("no_data")}</td></tr>}

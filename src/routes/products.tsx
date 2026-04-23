@@ -241,7 +241,7 @@ function Products() {
                       <td className="px-4 py-3 font-medium">{p.name}</td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
-                      <td className="px-4 py-3">{fmtMoney(Number(p.price), "SAR", lang)}</td>
+                      <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
                           {p.stock_quantity}
@@ -326,7 +326,7 @@ function Products() {
                 <img src={data} alt="qr" className="h-20 w-20" />
                 <div className="mt-1 text-[11px] font-bold leading-tight line-clamp-2">{p.name}</div>
                 <div className="text-[9px] text-gray-600">{p.serial_number || ""}{p.color ? ` · ${p.color}` : ""}</div>
-                <div className="text-[10px] font-semibold">{fmtMoney(Number(p.price), "SAR", lang)}</div>
+                <div className="text-[10px] font-semibold">{fmtMoney(Number(p.price), "EGP", lang)}</div>
               </div>
             ))}
           </div>

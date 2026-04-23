@@ -6,11 +6,12 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft, Languages, Pencil, Ban } from "lucide-react";
-import { fmtDate, fmtMoney } from "@/lib/utils-money";
+import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
 import { getSettings } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import steinheimLogo from "@/assets/steinheim-logo.png";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
@@ -99,9 +100,15 @@ function InvoiceView() {
         <div className="px-10 pt-10 pb-8">
           <header className="flex items-start justify-between gap-4 pb-8">
             <div className="flex items-center gap-3">
-              {logoUrl ? <img src={logoUrl} alt="Logo" className="h-14 w-14 rounded-2xl object-contain" /> : <div className="h-14 w-14 rounded-2xl gradient-primary shadow-glow" />}
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-16 w-16 rounded-2xl object-contain" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black p-2">
+                  <img src={steinheimLogo} alt="Steinheim" className="h-full w-full object-contain" />
+                </div>
+              )}
               <div>
-                <div className="text-base font-semibold tracking-tight">{settings?.company_name || t("company_name")}</div>
+                <div className="text-base font-semibold tracking-tight">{settings?.company_name || "Steinheim"}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{settings?.company_address}</div>
                 <div className="text-xs text-muted-foreground">{settings?.company_phone} {settings?.company_email ? `· ${settings.company_email}` : ""}</div>
               </div>
@@ -109,7 +116,7 @@ function InvoiceView() {
             <div className="text-end">
               <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{isAr ? "فاتورة" : "Invoice"}</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{inv.invoice_number}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{fmtDate(inv.created_at, lang)}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{fmtDateTime(inv.created_at, lang)}</div>
             </div>
           </header>
 
@@ -141,8 +148,8 @@ function InvoiceView() {
                     <td className="py-3 text-muted-foreground">{it.serial_number || "—"}</td>
                     <td className="py-3 text-muted-foreground">{it.color || "—"}</td>
                     <td className="py-3 text-end tabular-nums">{it.quantity}</td>
-                    <td className="py-3 text-end tabular-nums">{fmtMoney(Number(it.unit_price), settings?.currency || "SAR", lang)}</td>
-                    <td className="py-3 text-end font-semibold tabular-nums">{fmtMoney(Number(it.line_total), settings?.currency || "SAR", lang)}</td>
+                    <td className="py-3 text-end tabular-nums">{fmtMoney(Number(it.unit_price), settings?.currency || "EGP", lang)}</td>
+                    <td className="py-3 text-end font-semibold tabular-nums">{fmtMoney(Number(it.line_total), settings?.currency || "EGP", lang)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -150,11 +157,11 @@ function InvoiceView() {
           </section>
 
           <section className="mt-6 ms-auto w-full max-w-xs space-y-1.5 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "SAR", lang)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "SAR", lang)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
             <div className="mt-2 flex justify-between border-t border-border/60 pt-3 text-lg font-semibold tracking-tight">
               <span>{t("total")}</span>
-              <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "SAR", lang)}</span>
+              <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "EGP", lang)}</span>
             </div>
           </section>
 
