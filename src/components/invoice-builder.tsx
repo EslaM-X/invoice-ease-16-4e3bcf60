@@ -393,7 +393,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                       </div>
                     </div>
                     <div className="mt-2 text-end text-sm font-semibold">
-                      {fmtMoney(it.quantity * it.unit_price - it.discount, "SAR", lang)}
+                      {fmtMoney(it.quantity * it.unit_price - it.discount, "EGP", lang)}
                     </div>
                   </div>
                 ))}
@@ -412,7 +412,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("subtotal")}</span>
-                <span>{fmtMoney(subtotal, "SAR", lang)}</span>
+                <span>{fmtMoney(subtotal, "EGP", lang)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">{t("discount")}</span>
@@ -426,7 +426,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
               </div>
               <div className="border-t pt-2 flex justify-between text-lg font-bold">
                 <span>{t("total")}</span>
-                <span>{fmtMoney(total, "SAR", lang)}</span>
+                <span>{fmtMoney(total, "EGP", lang)}</span>
               </div>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">
@@ -458,7 +458,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                     {p.serial_number || ""} {p.color ? `· ${p.color}` : ""} · {t("stock")}: {p.stock_quantity}
                   </div>
                 </div>
-                <div className="font-semibold">{fmtMoney(Number(p.price), "SAR", lang)}</div>
+                <div className="font-semibold">{fmtMoney(Number(p.price), "EGP", lang)}</div>
               </button>
             ))}
             {filteredProducts.length === 0 && (

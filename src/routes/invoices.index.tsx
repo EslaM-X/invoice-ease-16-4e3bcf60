@@ -135,7 +135,7 @@ function InvoicesList() {
                       </td>
                       <td className="px-4 py-3">{i.customer_name || "—"}</td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
-                      <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "SAR", lang)}</td>
+                      <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "EGP", lang)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <Link to="/invoices/$id" params={{ id: i.id }}><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></Link>
