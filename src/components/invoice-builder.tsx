@@ -301,6 +301,28 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         </Button>
       </div>
 
+      {draftRecovered && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <div>
+            <span className="font-semibold">{t("draft_recovered")}</span>
+            <span className="ms-2 text-muted-foreground tabular-nums">
+              {new Date(draftRecovered.savedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (draftKey) localStorage.removeItem(draftKey);
+              setItems([]); setCustomerId(""); setDiscount(0); setNotes("");
+              setDraftRecovered(null);
+            }}
+          >
+            {t("discard_draft")}
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
