@@ -43,6 +43,8 @@ function Landing() {
           {lang === "ar" ? "إنشاء فاتورة في أقل من ٣٠ ثانية" : "Create an invoice in under 30 seconds"}
         </div>
         <h1 className="text-balance text-5xl font-semibold tracking-tight sm:text-7xl">
+          Shteinheim
+          <br />
           {lang === "ar" ? "فواتير ومخزون" : "Invoicing & inventory,"}
           <br />
           <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
