@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, ScanLine, X } from "lucide-react";
 import { toast } from "sonner";
 import type { Customer, Product } from "@/lib/data";
-import { nextInvoiceNumber } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import { QrScanner } from "@/components/qr-scanner";
 
@@ -100,15 +99,39 @@ function NewInvoice() {
     setProductSearch("");
   };
 
-  const handleScan = (text: string) => {
-    const p = products.find((pr) => pr.qr_code === text || pr.id === text || pr.serial_number === text);
-    if (p) {
-      addProduct(p);
-      setScanning(false);
-      toast.success(p.name);
+  const handleScan = async (text: string) => {
+    const raw = (text ?? "").trim();
+    // Accept either a raw UUID or a JSON payload like {"product_id":"..."}
+    let productId: string | null = null;
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRe.test(raw)) {
+      productId = raw;
     } else {
-      toast.error(t("no_data"));
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.product_id === "string" && uuidRe.test(parsed.product_id)) {
+          productId = parsed.product_id;
+        }
+      } catch {}
     }
+    if (!productId) {
+      toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+      return;
+    }
+    // Strict: always read fresh from DB
+    const { data: p, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .eq("user_id", user!.id)
+      .maybeSingle();
+    if (error || !p) {
+      toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+      return;
+    }
+    addProduct(p as Product);
+    setScanning(false);
+    toast.success(p.name);
   };
 
   const updateItem = (idx: number, patch: Partial<Item>) => {
@@ -130,63 +153,46 @@ function NewInvoice() {
   const save = async () => {
     if (!user) return;
     if (items.length === 0) return toast.error(t("no_items"));
-    // stock check
-    for (const it of items) {
-      if (it.product_id) {
-        const p = products.find((x) => x.id === it.product_id);
-        if (p && it.quantity > p.stock_quantity) {
-          return toast.error(`${t("not_enough_stock")}: ${p.name}`);
-        }
-      }
-    }
-    const number = await nextInvoiceNumber(user.id);
-    const { data: inv, error } = await supabase.from("invoices").insert({
-      user_id: user.id,
-      invoice_number: number,
-      customer_id: customer?.id ?? null,
-      customer_name: customer?.name ?? null,
-      customer_phone: customer?.phone ?? null,
-      customer_address: customer?.address ?? null,
-      subtotal, discount, total,
-      notes: notes || null,
-      language: lang,
-      status: "completed",
-    }).select("id").single();
-    if (error || !inv) return toast.error(error?.message ?? t("error_occurred"));
 
-    const itemsPayload = items.map((it) => ({
-      invoice_id: inv.id,
+    // All business logic runs server-side via RPC (atomic, row-locking, server price snapshot)
+    const payload = items.map((it) => ({
       product_id: it.product_id,
       product_name: it.product_name,
       serial_number: it.serial_number || null,
       color: it.color || null,
       quantity: it.quantity,
-      unit_price: it.unit_price,
+      unit_price: it.unit_price, // only used for free-form items; ignored for linked products
       discount: it.discount,
-      line_total: it.quantity * it.unit_price - it.discount,
     }));
-    const { error: e2 } = await supabase.from("invoice_items").insert(itemsPayload);
-    if (e2) return toast.error(e2.message);
 
-    // decrement stock + log
-    for (const it of items) {
-      if (!it.product_id) continue;
-      const p = products.find((x) => x.id === it.product_id);
-      if (!p) continue;
-      const newStock = Math.max(0, p.stock_quantity - it.quantity);
-      await supabase.from("products").update({ stock_quantity: newStock }).eq("id", p.id);
-      await supabase.from("inventory_logs").insert({
-        user_id: user.id,
-        product_id: p.id,
-        change: -it.quantity,
-        reason: `invoice ${number}`,
-        invoice_id: inv.id,
-      });
+    const { data: invoiceId, error } = await supabase.rpc("create_invoice", {
+      _customer_id: customer?.id ?? null,
+      _discount: discount,
+      _notes: notes || null,
+      _language: lang,
+      _items: payload as any,
+    });
+
+    if (error || !invoiceId) {
+      const msg = error?.message ?? "";
+      if (msg.includes("OUT_OF_STOCK")) {
+        const name = msg.split("OUT_OF_STOCK:")[1]?.split("\n")[0]?.trim() ?? "";
+        toast.error(`${t("not_enough_stock")}${name ? `: ${name}` : ""}`);
+      } else if (msg.includes("INVALID_PRODUCT")) {
+        toast.error(lang === "ar" ? "منتج غير صالح" : "Invalid product");
+      } else if (msg.includes("INVALID_CUSTOMER")) {
+        toast.error(lang === "ar" ? "عميل غير صالح" : "Invalid customer");
+      } else if (msg.includes("NO_ITEMS")) {
+        toast.error(t("no_items"));
+      } else {
+        toast.error(lang === "ar" ? "فشل إنشاء الفاتورة" : "Failed to create invoice");
+      }
+      return;
     }
 
     localStorage.removeItem(DRAFT_KEY);
     toast.success(t("invoice_saved"));
-    navigate({ to: "/invoices/$id", params: { id: inv.id } });
+    navigate({ to: "/invoices/$id", params: { id: invoiceId as string } });
   };
 
   return (
