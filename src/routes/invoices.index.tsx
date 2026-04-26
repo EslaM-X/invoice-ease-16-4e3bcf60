@@ -186,10 +186,22 @@ function InvoicesList() {
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
                       <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "EGP", lang)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <Link to="/invoices/$id" params={{ id: i.id }}><Button variant="ghost" size="icon" title={t("view")}><Eye className="h-4 w-4" /></Button></Link>
+                        <div className="flex justify-end gap-1.5">
+                          <Link to="/invoices/$id" params={{ id: i.id }}>
+                            <Button variant="ghost" size="icon" title={t("view")}><Eye className="h-4 w-4" /></Button>
+                          </Link>
                           {!voided && (
-                            <Link to="/invoices/$id/edit" params={{ id: i.id }}><Button variant="ghost" size="icon" title={t("edit")}><Pencil className="h-4 w-4" /></Button></Link>
+                            <Link to="/invoices/$id/edit" params={{ id: i.id }}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 rounded-full border-primary/40 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                                title={t("edit")}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">{t("edit")}</span>
+                              </Button>
+                            </Link>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => duplicate(i.id)} title={t("duplicate")}><Copy className="h-4 w-4" /></Button>
                           {!voided && (
