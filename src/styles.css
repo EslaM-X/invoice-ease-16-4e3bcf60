@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Amiri:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -44,8 +44,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Cairo", sans-serif;
   --font-display: "Cormorant Garamond", "Playfair Display", Georgia, "Times New Roman", serif;
-  --font-arabic: "SF Arabic", "Cairo", -apple-system, system-ui, sans-serif;
-  --font-arabic-display: "Amiri", "Scheherazade New", "SF Arabic", "Cairo", serif;
+  --font-arabic: "Cairo", "SF Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-arabic-display: "Cairo", "Amiri", "SF Arabic", "Segoe UI", Tahoma, serif;
 }
 
 :root {
@@ -154,12 +154,22 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "cv11", "ss01", "ss03";
     letter-spacing: -0.01em;
   }
-  [dir="rtl"] body { font-family: var(--font-arabic); letter-spacing: 0; }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; font-weight: 600; }
-  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4 { font-family: var(--font-arabic); letter-spacing: 0; }
+  /* RTL: force a proper Arabic-shaping font on every element so letters connect */
+  [dir="rtl"], [dir="rtl"] * {
+    font-family: var(--font-arabic) !important;
+    letter-spacing: 0 !important;
+  }
+  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4 {
+    font-family: var(--font-arabic-display) !important;
+    font-weight: 700;
+  }
+  /* Opt-in: keep Latin display font for brand wordmarks even in RTL pages */
+  [dir="rtl"] .font-latin, [dir="rtl"] .font-latin * {
+    font-family: var(--font-display) !important;
+  }
 }
 
 @layer utilities {

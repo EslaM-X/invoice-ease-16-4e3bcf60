@@ -47,7 +47,7 @@ function Landing() {
         </div>
         <h1 className="text-balance text-5xl leading-[1.05] tracking-tight sm:text-7xl md:text-8xl lg:text-[8.5rem]">
           <span
-            className="animate-hero-title font-display inline-block bg-clip-text text-transparent"
+            className="animate-hero-title font-display font-latin inline-block bg-clip-text text-transparent"
             style={{
               animationDelay: "120ms",
               backgroundImage: "linear-gradient(135deg, var(--foreground) 0%, var(--brand-gold-deep) 60%, var(--brand-gold) 100%)",
