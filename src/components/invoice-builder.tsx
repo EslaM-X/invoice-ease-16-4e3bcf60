@@ -269,14 +269,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
 
   const subtotal = items.reduce((s, it) => s + it.quantity * it.unit_price - it.discount, 0);
+  // Service fee total stays OUTSIDE the discount base — discount never reduces it.
+  const serviceFeeTotal = items.reduce(
+    (s, it) => s + (isServiceFee(it) ? it.quantity * it.unit_price - it.discount : 0),
+    0,
+  );
+  const discountableBase = Math.max(0, subtotal - serviceFeeTotal);
 
-  // Keep global discount EGP in sync when in percent mode
+  // Keep global discount EGP in sync when in percent mode (based on discountable items only)
   useEffect(() => {
     if (discountMode === "percent") {
       const v = Math.max(0, Math.min(100, discountPercent || 0));
-      setDiscount(+((subtotal * v) / 100).toFixed(2));
+      setDiscount(+((discountableBase * v) / 100).toFixed(2));
     }
-  }, [discountMode, discountPercent, subtotal]);
+  }, [discountMode, discountPercent, discountableBase]);
 
   // Recompute item EGP discount when qty / unit price change while in percent mode
   useEffect(() => {
@@ -298,7 +304,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.map((i) => `${i.quantity}-${i.unit_price}`).join("|")]);
 
-  const total = Math.max(0, subtotal - discount);
+  // Cap discount so it never eats into the protected service fee
+  const effectiveDiscount = Math.min(discount, discountableBase);
+  const total = Math.max(0, subtotal - effectiveDiscount);
 
   // Paid / remaining computed from total
   const paidAmount = paidMode === "auto"
@@ -396,7 +404,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         const { data, error } = await supabase.rpc("update_invoice", {
           _invoice_id: invoiceId,
           _customer_id: customer?.id ?? null,
-          _discount: discount,
+          _discount: effectiveDiscount,
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
@@ -411,7 +419,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       } else {
         const { data: invoiceIdRet, error } = await supabase.rpc("create_invoice", {
           _customer_id: customer?.id ?? null,
-          _discount: discount,
+          _discount: effectiveDiscount,
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
@@ -669,7 +677,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                     type="button"
                     onClick={() => {
                       if (discountMode === "amount") {
-                        const pct = subtotal > 0 ? +((discount / subtotal) * 100).toFixed(2) : 0;
+                        const pct = discountableBase > 0 ? +((discount / discountableBase) * 100).toFixed(2) : 0;
                         setDiscountPercent(Math.min(100, pct));
                         setDiscountMode("percent");
                       } else {
