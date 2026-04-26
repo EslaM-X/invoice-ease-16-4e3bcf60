@@ -185,14 +185,25 @@ function InvoiceView() {
                   <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي بعد الخصم" : "Total after Discount"}</td>
                   <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
                 </tr>
-                <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "المبلغ المسدد (50%)" : "Paid Amount (50%)"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {(Number(inv.total) * 0.5).toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "المبلغ المتبقي (50%)" : "Remaining Amount (50%)"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {(Number(inv.total) * 0.5).toFixed(2)}</td>
-                </tr>
+                {(() => {
+                  const totalNum = Number(inv.total);
+                  const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+                  const remainingNum = +(totalNum - paidNum).toFixed(2);
+                  const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;
+                  const remainingPct = totalNum > 0 ? 100 - paidPct : 0;
+                  return (
+                    <>
+                      <tr>
+                        <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? `المبلغ المسدد (${paidPct}%)` : `Paid Amount (${paidPct}%)`}</td>
+                        <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {paidNum.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? `المبلغ المتبقي (${remainingPct}%)` : `Remaining Amount (${remainingPct}%)`}</td>
+                        <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {remainingNum.toFixed(2)}</td>
+                      </tr>
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </section>
