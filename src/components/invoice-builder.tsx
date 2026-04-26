@@ -392,12 +392,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 w-full max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
         </h1>
-        <Button onClick={save} disabled={saving} className="gap-2 shadow-glow">
+        <Button onClick={save} disabled={saving} className="gap-2 shadow-glow w-full sm:w-auto">
           {t("save_invoice")}
         </Button>
       </div>
