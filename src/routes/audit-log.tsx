@@ -286,7 +286,8 @@ function AuditLog() {
 
     return (
       <div className="overflow-hidden rounded-lg border border-border/60 bg-muted/30">
-        <table className="w-full text-xs">
+        <div className="overflow-x-auto">
+        <table className="w-full text-xs min-w-[420px]">
           <thead className="bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-start font-semibold">{lang === "ar" ? "الحقل" : "Field"}</th>
