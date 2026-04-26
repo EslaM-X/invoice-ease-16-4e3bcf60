@@ -313,6 +313,7 @@ function AuditLog() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     );
   };
