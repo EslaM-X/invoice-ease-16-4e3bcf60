@@ -124,6 +124,9 @@ function InvoiceView() {
                 </div>
               )}
               <div className="mt-1 text-xs text-muted-foreground">{fmtDateTime(inv.created_at, lang)}</div>
+              {inv.created_by_email && (
+                <div className="mt-1 text-[10px] text-muted-foreground">{isAr ? "أنشأها" : "by"}: {inv.created_by_email}</div>
+              )}
             </div>
           </header>
 

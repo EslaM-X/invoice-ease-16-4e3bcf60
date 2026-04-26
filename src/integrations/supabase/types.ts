@@ -14,38 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      company_members: {
+        Row: {
+          added_at: string
+          email: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          email: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
           created_at: string
+          created_by: string | null
+          created_by_email: string | null
           id: string
           name: string
           phone: string | null
           updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
           user_id: string
         }
         Insert: {
           address?: string | null
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           id?: string
           name: string
           phone?: string | null
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           user_id: string
         }
         Update: {
           address?: string | null
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           id?: string
           name?: string
           phone?: string | null
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           user_id?: string
         }
         Relationships: []
       }
       inventory_logs: {
         Row: {
+          actor_email: string | null
+          actor_id: string | null
           change: number
           created_at: string
           id: string
@@ -55,6 +120,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
           change: number
           created_at?: string
           id?: string
@@ -64,6 +131,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          actor_email?: string | null
+          actor_id?: string | null
           change?: number
           created_at?: string
           id?: string
@@ -184,6 +253,8 @@ export type Database = {
       invoices: {
         Row: {
           created_at: string
+          created_by: string | null
+          created_by_email: string | null
           customer_address: string | null
           customer_id: string | null
           customer_name: string | null
@@ -198,10 +269,14 @@ export type Database = {
           subtotal: number
           total: number
           updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           customer_address?: string | null
           customer_id?: string | null
           customer_name?: string | null
@@ -216,10 +291,14 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           customer_address?: string | null
           customer_id?: string | null
           customer_name?: string | null
@@ -234,6 +313,8 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           user_id?: string
         }
         Relationships: [
@@ -250,7 +331,10 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          created_by: string | null
+          created_by_email: string | null
           id: string
+          image_url: string | null
           low_stock_threshold: number
           name: string
           price: number
@@ -258,12 +342,17 @@ export type Database = {
           serial_number: string | null
           stock_quantity: number
           updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
           user_id: string
         }
         Insert: {
           color?: string | null
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           id?: string
+          image_url?: string | null
           low_stock_threshold?: number
           name: string
           price?: number
@@ -271,12 +360,17 @@ export type Database = {
           serial_number?: string | null
           stock_quantity?: number
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           user_id: string
         }
         Update: {
           color?: string | null
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           id?: string
+          image_url?: string | null
           low_stock_threshold?: number
           name?: string
           price?: number
@@ -284,6 +378,8 @@ export type Database = {
           serial_number?: string | null
           stock_quantity?: number
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           user_id?: string
         }
         Relationships: []
@@ -416,6 +512,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
       create_invoice: {
         Args: {
           _customer_id: string
@@ -434,6 +531,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_allowed_company_email: { Args: { _email: string }; Returns: boolean }
+      is_company_member: { Args: never; Returns: boolean }
       update_invoice: {
         Args: {
           _customer_id: string

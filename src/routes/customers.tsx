@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import type { Customer } from "@/lib/data";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { exportCustomersToExcel, exportCustomersToCSV, type CustomerRow } from "@/lib/invoice-export";
+import { useRealtimeTable } from "@/lib/realtime";
+import { AuthorBadge } from "@/components/author-badge";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
@@ -28,10 +30,11 @@ function Customers() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("customers").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
     setList((data ?? []) as Customer[]);
   };
   useEffect(() => { load(); }, [user]);
+  useRealtimeTable("customers", () => { load(); });
 
   const filtered = list.filter((c) => {
     const s = q.trim().toLowerCase();
@@ -138,7 +141,10 @@ function Customers() {
             <tbody className="divide-y">
               {filtered.map((c) => (
                 <tr key={c.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <div>{c.name}</div>
+                    <AuthorBadge email={c.created_by_email} label="created by" className="mt-0.5" />
+                  </td>
                   <td className="px-4 py-3">{c.phone || "—"}</td>
                   <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{c.address || "—"}</td>
                   <td className="px-4 py-3">

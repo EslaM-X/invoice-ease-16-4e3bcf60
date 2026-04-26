@@ -1,69 +1,87 @@
 
+# نظام Steinheim المشترك — مزامنة لحظية بين 3 حسابات
 
-# Showroom Accounting Workflow — Edit, Void & Bulk QR
+## الفكرة الأساسية
 
-Make the system fully usable for your in-showroom flow: scan → invoice → print → edit/void with automatic stock correction, all server-side and accurate.
+حالياً كل حساب يعمل في عزلة (RLS تفصل البيانات حسب `user_id`). المطلوب: الـ3 حسابات (`Cfo@`, `E.hesham@`, `K.elsharbatly@steinheim-eg.com`) يشاركون **نفس البيانات بالكامل** (منتجات، عملاء، فواتير، مخزون)، وأي تعديل من أي حساب يظهر فوراً عند الباقي مع اسم وإيميل من قام به — كل ذلك بدون تسجيل خروج أحد.
 
-## What you'll get
+---
 
-### 1. Edit an existing invoice (safely)
-- New page `/invoices/$id/edit` with the same builder UI as "New Invoice".
-- Save calls a new server RPC `update_invoice` that runs in **one atomic transaction**:
-  1. Locks the invoice and all related products (`FOR UPDATE`).
-  2. Restores stock from the **old** items (reverse the original sale).
-  3. Validates the **new** items against fresh stock.
-  4. If any item is out of stock → rollback completely, nothing changes.
-  5. Re-deducts stock for new items, replaces `invoice_items`, recalculates `subtotal`/`total` server-side, writes paired `inventory_logs` (`reason='edit-revert'` and `reason='edit-resale'`).
-- "Edit" button added on the invoice view page and in the invoices list.
+## ما سيُبنى
 
-### 2. Void / delete invoice with stock restoration
-- New RPC `void_invoice(_id)`:
-  - Locks the invoice + products, adds quantities back to `products.stock_quantity`.
-  - Inserts `inventory_logs` rows with `reason='void <invoice_number>'`.
-  - Marks invoice `status='voided'` (keeps the record permanently — your data history stays intact) **and** offers a hard-delete variant `delete_invoice` that does the same restore then removes the row.
-- Invoices list: replace raw `DELETE` with confirm dialog → calls `void_invoice` (default) or `delete_invoice` (with extra confirmation).
-- Voided invoices show a "VOIDED" badge and are excluded from sales totals on the dashboard/reports.
+### 1. إنشاء "مساحة عمل الشركة" (Company Workspace)
+- جدول جديد `company_members` يحدد أن الإيميلات الثلاثة أعضاء في نفس الشركة.
+- الحسابات الحالية الموجودة في قاعدة البيانات تُربط تلقائياً، وأي تسجيل دخول جديد لأحد هذه الإيميلات يُضاف تلقائياً عبر trigger.
+- البيانات القديمة (الموجودة الآن تحت `user_id` معين) تبقى مرئية للجميع بعد الترقية.
 
-### 3. Duplicate invoice — now safe
-- Rewrite the existing `duplicate` action to call `create_invoice` RPC with the original line items. This guarantees stock validation, fresh prices, and a new invoice number.
+### 2. تحديث صلاحيات قاعدة البيانات (RLS)
+كل جدول حالياً فيه شرط `auth.uid() = user_id`. سيُستبدل بـ:
+> "هل المستخدم الحالي عضو في نفس الشركة التي يملكها صاحب السطر؟"
+عبر دالة `is_company_member(_user_id)` بصلاحية `SECURITY DEFINER` (لتجنب recursion).
+يطبق على: `customers`, `products`, `invoices`, `invoice_items`, `inventory_logs`, `invoice_events`, `settings`, `user_counters`.
 
-### 4. Faster scan-to-invoice flow (showroom speed)
-- **Continuous scan mode** in the QR dialog: after a successful scan, item is added and the camera stays open with a small toast — keep scanning the next item without reopening.
-- **Auto-open scanner** when arriving at `/invoices/new` from a new "Scan & Sell" button on the dashboard.
-- **Duplicate scan handling**: scanning the same product increments quantity instead of adding a duplicate line.
-- **Audible beep** on successful scan (short Web Audio tone, no asset needed).
-- Keyboard shortcut `S` to open scanner, `Enter` to save invoice.
+### 3. تتبع "من قام بالعملية" (Audit Trail)
+- إضافة عمود `created_by` (uuid) و`created_by_email` (text) لجداول: `customers`, `products`, `invoices`, `inventory_logs`.
+- تحديث دوال `create_invoice` / `update_invoice` / `void_invoice` / `delete_invoice` لتسجيل `auth.uid()` وإيميله في `invoice_events` و`inventory_logs`.
+- في الواجهة: عرض شارة صغيرة بجانب كل عنصر/فاتورة "أنشأها: email — منذ X" + سجل أحداث كامل في صفحة الفاتورة.
 
-### 5. Bulk QR printing for the showroom
-- On `/products`, add **"Print QR Labels"** button:
-  - Select multiple products (checkboxes) or "select all".
-  - Opens a print-optimized A4 sheet with a grid of labels (3 columns × 8 rows) — each label shows: QR (product UUID), product name, serial, color, price.
-  - Browser print → stick on the items in the showroom.
+### 4. مزامنة لحظية (Realtime) — صامتة وفورية
+تفعيل `supabase_realtime` على الجداول الخمسة الرئيسية، وفي الواجهة الاشتراك بقناة واحدة لكل صفحة:
+- صفحة المنتجات → تحديث القائمة فور أي insert/update/delete من أي حساب.
+- صفحة العملاء، الفواتير، المخزون، Dashboard → نفس المنطق.
+- إشعار toast خفيف وصامت: "تمت إضافة منتج بواسطة E.hesham@…" (يمكن إيقافه من الإعدادات).
+- لا يحتاج المستخدم الـ refresh أو تسجيل الخروج.
 
-### 6. Inventory adjustment log
-- Add an "Adjust stock" action on each product (manual +/- with reason). Writes to `inventory_logs` with `reason='manual: <text>'` so every stock change is auditable.
+### 5. صور المنتجات (Product Images)
+- bucket تخزين جديد عام للقراءة `product-images`.
+- إضافة عمود `image_url` على جدول `products`.
+- في نموذج إضافة/تعديل منتج: زر رفع صورة + معاينة + حذف.
+- في جدول المنتجات: thumbnail بجانب الاسم.
+- في صفحة الفاتورة وعرضها: ظهور الصورة بجانب اسم المنتج.
+- الصور محفوظة دائماً في قاعدة البيانات ومتاحة للحسابات الثلاثة.
 
-## Technical details
+### 6. حماية البيانات من الفقد
+- منع الحذف النهائي للفواتير بشكل افتراضي (الإبقاء على "إبطال/Void" فقط).
+- إضافة Soft-delete (`deleted_at`) للعملاء والمنتجات بدلاً من الحذف الفعلي — مع زر "أرشيف" لاستعادتها.
+- جدول `audit_log` عام يسجل كل عملية حساسة (إنشاء/تعديل/حذف) مع المستخدم والوقت والـ payload — لن يُمسح أبداً.
 
-**New migration** (`update_invoice` + `void_invoice` + `delete_invoice` RPCs):
-- All `SECURITY DEFINER`, `SET search_path = public`, validate `auth.uid() = invoices.user_id`.
-- Use `FOR UPDATE` on products to prevent races (already proven by the 100-concurrent test).
-- Add column `invoices.status` value `'voided'` (already free-text, no schema change needed) and an index on `(user_id, status, created_at)` for faster reports filtering.
+### 7. جلسات ثابتة (لا تسجيل خروج تلقائي)
+- إعدادات Supabase Auth: تمديد JWT expiry وتفعيل refresh token rotation (مفعل مسبقاً).
+- التأكد من `persistSession: true` (مفعل) — لا حاجة لتسجيل دخول متكرر.
 
-**Files changed**:
-- `supabase/migrations/<new>.sql` — three new RPCs + index.
-- `src/routes/invoices.$id.edit.tsx` — new edit page (reuses builder form).
-- `src/routes/invoices.new.tsx` — extract builder into shared `<InvoiceBuilder>` component used by both new + edit.
-- `src/routes/invoices.$id.tsx` — add Edit + Void buttons; show VOIDED badge.
-- `src/routes/invoices.index.tsx` — call RPC for delete/void; rewrite `duplicate` to use `create_invoice`; show status badges.
-- `src/routes/products.tsx` — multi-select + "Print QR Labels" + "Adjust stock" dialog.
-- `src/components/qr-scanner.tsx` — continuous mode, beep, dedupe.
-- `src/routes/dashboard.tsx` — exclude `status='voided'` from totals; add "Scan & Sell" CTA.
-- `src/routes/reports.tsx` — exclude voided from sales aggregates.
-- `src/lib/i18n.tsx` — Arabic + English strings for new labels (Edit, Void, Voided, Adjust stock, Print labels, Continuous scan, etc.).
+---
 
-## Out of scope (ask if you want them)
-- Offline mode (PWA / IndexedDB queue).
-- Barcode (1D) support — only QR for now.
-- Multi-user roles (cashier vs admin).
+## الواجهات الجديدة/المحدّثة
 
+| الصفحة | التغيير |
+|--------|---------|
+| Products | عمود صورة + رفع صورة في النموذج + شارة "أضافها: …" + مزامنة لحظية |
+| Customers | شارة "أضافه: …" + مزامنة لحظية |
+| Invoices list | شارة "أنشأها: …" + مزامنة لحظية |
+| Invoice detail | جدول أحداث كامل (من فعل ماذا ومتى) |
+| Inventory Audit | عمود "بواسطة" |
+| Dashboard | تحديث لحظي للأرقام + إشعار صامت بالأحداث الأخيرة |
+| Settings | مفتاح تشغيل/إيقاف صوت الإشعارات اللحظية |
+
+---
+
+## الخطوات التقنية (مرجع داخلي)
+
+1. **Migration #1** — `company_members` table + seed للإيميلات الـ3 + trigger على `auth.users`.
+2. **Migration #2** — دالة `is_company_member(uuid)` SECURITY DEFINER + استبدال جميع RLS policies على الجداول الـ8.
+3. **Migration #3** — أعمدة `created_by`, `created_by_email` + جدول `audit_log` + soft-delete columns.
+4. **Migration #4** — تحديث دوال `create_invoice` / `update_invoice` / `void_invoice` / `delete_invoice` لتسجيل هوية المنفذ.
+5. **Migration #5** — `image_url` على products + storage bucket + RLS policies للـ bucket + تفعيل realtime على الجداول.
+6. **Frontend** — Hook موحّد `useRealtimeTable(table, onChange)` يُستخدم في كل صفحة list.
+7. **Frontend** — مكوّن `<AuthorBadge userId email />` لعرض من فعل ماذا.
+8. **Frontend** — مكوّن `<ProductImageUpload />` يرفع للـ bucket ويرجع URL.
+9. **Frontend** — تحديث Products/Customers/Invoices لإظهار الصور والشارات.
+10. **Frontend** — اختياري: SoundManager خفيف للإشعارات الصامتة.
+
+---
+
+## ملاحظات وموافقات مطلوبة
+
+- سأعتمد على إيميلات الحسابات كما زوّدتها (Cfo, E.hesham, K.elsharbatly @steinheim-eg.com). أي حساب ثالث يسجل دخول بإيميل خارج هذه القائمة سيرى بياناته الخاصة فقط (لن يدخل مساحة الشركة).
+- البيانات الموجودة حالياً في الحسابات الـ3 (إن كانت متفرقة) ستندمج في مساحة واحدة بعد الترقية. إن أردت دمج بيانات حساب معين فقط أخبرني.
+- سيظل بإمكان الحسابات حذف الفواتير، لكن سيُسجَّل من حذف ومتى في `audit_log` ولا يمكن استرجاع المحذوف من الواجهة (يبقى أثره فقط).

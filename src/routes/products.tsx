@@ -9,12 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
+import { useRealtimeTable } from "@/lib/realtime";
+import { AuthorBadge } from "@/components/author-badge";
+import { ProductImageUpload } from "@/components/product-image-upload";
 
 export const Route = createFileRoute("/products")({ component: () => <AppShell><Products /></AppShell> });
 
@@ -25,7 +28,7 @@ function Products() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
@@ -36,10 +39,13 @@ function Products() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("products").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
     setList((data ?? []) as Product[]);
   };
   useEffect(() => { load(); }, [user]);
+
+  // Realtime sync — refresh when any team member changes products
+  useRealtimeTable("products", () => { load(); });
 
   const filtered = useMemo(() => list.filter((p) => {
     const s = q.trim().toLowerCase();
@@ -58,10 +64,10 @@ function Products() {
     setSelected(next);
   };
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" }); setOpen(true); };
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold) });
+    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "" });
     setOpen(true);
   };
 
@@ -75,6 +81,7 @@ function Products() {
       price: Number(form.price) || 0,
       stock_quantity: parseInt(form.stock_quantity || "0", 10),
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
+      image_url: form.image_url || null,
     };
     if (editing) {
       const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
@@ -190,6 +197,10 @@ function Products() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Label>Image</Label>
+                  <ProductImageUpload value={form.image_url || null} onChange={(url) => setForm({ ...form, image_url: url ?? "" })} />
+                </div>
                 <div className="col-span-2"><Label>{t("product_name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div><Label>{t("serial_number")}</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
@@ -238,7 +249,21 @@ function Products() {
                       <td className="px-3 py-3">
                         <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={p.name} />
                       </td>
-                      <td className="px-4 py-3 font-medium">{p.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4 text-muted-foreground/40" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium">{p.name}</div>
+                            <AuthorBadge email={p.created_by_email} label="created by" className="mt-0.5" />
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
                       <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
