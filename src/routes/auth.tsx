@@ -89,7 +89,7 @@ function AuthPage() {
         <div className="mb-8 text-center">
           <img src={brandLogo} alt="Steinheim" className="mx-auto mb-3 h-20 w-auto select-none" draggable={false} />
           <div className="mx-auto h-px w-24 bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
-          <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.4em] text-[oklch(0.78_0.11_82)]">
+          <p className="font-latin mt-4 text-[11px] font-medium uppercase tracking-[0.4em] text-[oklch(0.78_0.11_82)]">
             Invoice Suite
           </p>
           <p className="mt-2 text-sm text-white/60">{t("hero_subtitle")}</p>
