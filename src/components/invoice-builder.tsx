@@ -525,6 +525,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
+                    {isServiceFee(it) ? (
+                      <div className="mt-2 flex items-center justify-end text-sm font-semibold">
+                        {fmtMoney(250, "EGP", lang)}
+                      </div>
+                    ) : (
+                      <>
                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <div>
                         <Label className="text-xs">{t("serial_number")}</Label>
@@ -606,6 +612,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                     <div className="mt-2 text-end text-sm font-semibold">
                       {fmtMoney(it.quantity * it.unit_price - it.discount, "EGP", lang)}
                     </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
