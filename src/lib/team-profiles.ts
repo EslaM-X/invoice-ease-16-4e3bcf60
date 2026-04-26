@@ -73,36 +73,59 @@ export async function getOrCreateMyProfile(userId: string, email: string | null)
     .eq("user_id", userId)
     .maybeSingle();
   if (existing) return existing;
-  const { data: created } = await supabase
+
+  const displayName = email?.split("@")[0] ?? null;
+  const { data: created, error } = await supabase
     .from("profiles")
-    .insert({ user_id: userId, email, display_name: email?.split("@")[0] ?? null })
+    .insert({ user_id: userId, email, display_name: displayName })
     .select()
     .maybeSingle();
+  if (error?.code === "23505") {
+    const { data: racedExisting } = await supabase
+      .from("profiles")
+      .select("user_id, email, display_name, avatar_url")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return racedExisting;
+  }
+  if (error) throw error;
   return created;
 }
 
 export async function updateMyAvatar(userId: string, avatar_url: string | null) {
-  // Ensure profile row exists, then update. Using upsert avoids silent no-op
-  // when the auto-created profile row hasn't been inserted yet.
-  const { data: existing } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("profiles")
-    .select("user_id, email")
+    .update({ avatar_url })
     .eq("user_id", userId)
+    .select("user_id")
     .maybeSingle();
+  if (updateError) throw updateError;
+  if (updated) {
+    await refresh();
+    return;
+  }
 
-  if (!existing) {
-    const { data: userResp } = await supabase.auth.getUser();
-    const email = userResp.user?.email ?? null;
-    const { error: insErr } = await supabase
-      .from("profiles")
-      .insert({ user_id: userId, email, display_name: email?.split("@")[0] ?? null, avatar_url });
-    if (insErr) throw insErr;
-  } else {
-    const { error: updErr } = await supabase
+  const { data: userResp } = await supabase.auth.getUser();
+  const email = userResp.user?.email ?? null;
+  const displayName =
+    userResp.user?.user_metadata?.full_name ??
+    userResp.user?.user_metadata?.name ??
+    email?.split("@")[0] ??
+    null;
+
+  const { error: insertError } = await supabase
+    .from("profiles")
+    .insert({ user_id: userId, email, display_name: displayName, avatar_url });
+
+  if (insertError?.code === "23505") {
+    const { error: retryError } = await supabase
       .from("profiles")
       .update({ avatar_url })
       .eq("user_id", userId);
-    if (updErr) throw updErr;
+    if (retryError) throw retryError;
+  } else if (insertError) {
+    throw insertError;
   }
+
   await refresh();
 }
