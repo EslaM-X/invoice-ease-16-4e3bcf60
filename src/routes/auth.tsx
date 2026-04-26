@@ -160,7 +160,18 @@ function AuthPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-white/80">{t("password")}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-white/80">{t("password")}</Label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                    className="text-xs text-[oklch(0.78_0.11_82)] hover:underline"
+                  >
+                    {lang === "ar" ? "نسيت كلمة السر؟" : "Forgot password?"}
+                  </button>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
