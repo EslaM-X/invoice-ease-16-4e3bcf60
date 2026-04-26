@@ -426,7 +426,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("customer")}</Label>
             <div className="mt-1.5 flex gap-2">
               <select
