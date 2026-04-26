@@ -98,11 +98,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <div className="hidden lg:block">{Sidebar}</div>
+      <div className="hidden lg:block no-print">{Sidebar}</div>
 
       {/* Mobile drawer */}
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden no-print">
           <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 start-0 z-10">{Sidebar}</div>
         </div>
