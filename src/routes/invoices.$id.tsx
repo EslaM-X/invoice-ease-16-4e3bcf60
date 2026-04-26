@@ -112,8 +112,11 @@ function InvoiceView() {
               <div>السجل التجاري: <span className="font-semibold">68689</span></div>
               <div>البطاقة الضريبية: <span className="font-semibold">450374114</span></div>
             </div>
-            <div className="absolute top-0 right-0 text-[11px] text-black ltr-nums">
-              {new Date(inv.created_at).toLocaleDateString("en-GB")}
+            <div className="absolute top-0 right-0 text-[11px] text-black ltr-nums text-right leading-tight">
+              <div>{new Date().toLocaleString("en-GB", { hour12: false })}</div>
+              {(inv.created_by_email || user?.email) && (
+                <div className="text-[10px] text-gray-700">{inv.created_by_email || user?.email}</div>
+              )}
             </div>
             <img
               src={logoUrl || steinheimLogo}
@@ -126,9 +129,23 @@ function InvoiceView() {
             {isAr ? "فاتورة تجارية" : "Commercial Invoice"} <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
           </div>
 
-          <div className="mt-6 text-[14px] text-black" dir={isAr ? "rtl" : "ltr"}>
-            {isAr ? "صادرة إلى: " : "Issued to: "}
-            <span className="font-medium">{inv.customer_name || "—"}</span>
+          <div className="mt-6 text-[13px] text-black space-y-0.5" dir={isAr ? "rtl" : "ltr"}>
+            <div>
+              {isAr ? "العميل: " : "Customer: "}
+              <span className="font-semibold">{inv.customer_name || "—"}</span>
+            </div>
+            {inv.customer_phone && (
+              <div>
+                {isAr ? "الهاتف: " : "Phone: "}
+                <span className="ltr-nums font-medium">{inv.customer_phone}</span>
+              </div>
+            )}
+            {inv.customer_address && (
+              <div>
+                {isAr ? "العنوان: " : "Address: "}
+                <span className="font-medium">{inv.customer_address}</span>
+              </div>
+            )}
           </div>
 
           <section className="mt-5">
@@ -136,32 +153,35 @@ function InvoiceView() {
               <thead>
                 <tr>
                   <th className="border border-gray-400 px-2 py-2 text-center font-normal">{isAr ? "وصف الصنف" : "Item Description"}</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[14%]">{isAr ? "الكمية" : "Quantity"}</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[18%]">{isAr ? "السعر" : "Price"}</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[20%]">{isAr ? "الإجمالي" : "Total Price"}</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[12%]">{isAr ? "الكمية" : "Qty"}</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[18%]">{isAr ? "سعر الوحدة" : "Unit Price"}</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[18%]">{isAr ? "الإجمالي" : "Total"}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it) => (
                   <tr key={it.id}>
-                    <td className="border border-gray-400 px-2 py-3 text-center align-middle">
-                      <div>{it.product_name}</div>
-                      {it.serial_number && <div className="text-[12px]">{it.serial_number}</div>}
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle">
+                      <div className="font-medium">{it.product_name}</div>
+                      <div className="mt-0.5 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[11px] text-gray-700">
+                        {it.serial_number && <span className="ltr-nums">SN: {it.serial_number}</span>}
+                        {it.color && <span>{isAr ? "اللون" : "Color"}: {it.color}</span>}
+                      </div>
                     </td>
-                    <td className="border border-gray-400 px-2 py-3 text-center align-middle ltr-nums">{it.quantity}</td>
-                    <td className="border border-gray-400 px-2 py-3 text-center align-middle ltr-nums">{Number(it.unit_price).toFixed(2)}$</td>
-                    <td className="border border-gray-400 px-2 py-3 text-center align-middle ltr-nums">{Number(it.line_total).toFixed(2)}$</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">{it.quantity}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">E£ {Number(it.unit_price).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">E£ {Number(it.line_total).toFixed(2)}</td>
                   </tr>
                 ))}
                 {Number(inv.discount) > 0 && (
                   <tr>
                     <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">-{Number(inv.discount).toFixed(2)}$</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- E£ {Number(inv.discount).toFixed(2)}</td>
                   </tr>
                 )}
                 <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الإجمالي" : "Total"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center font-medium ltr-nums">{Number(inv.total).toFixed(2)} $</td>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">E£ {Number(inv.total).toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
@@ -171,7 +191,6 @@ function InvoiceView() {
             <div>
               <div>{isAr ? "شروط الدفع:" : "Payment Terms:"}</div>
               <ul className="mt-1 ms-6 list-disc">
-                <li>{isAr ? "عينات مجانية." : "Free of Charge Samples."}</li>
                 <li>{isAr ? "الأصناف غير خاضعة لضريبة القيمة المضافة." : "Items are not subject to VAT."}</li>
               </ul>
             </div>
@@ -197,7 +216,7 @@ function InvoiceView() {
             <div>{isAr ? "تامر عبد العليم" : "Tamer Abdel-Alim"}</div>
           </div>
 
-          <div className="mt-6 text-center text-[11px] text-muted-foreground" dir={isAr ? "rtl" : "ltr"}>
+          <div className="mt-6 text-center text-[11px]" dir={isAr ? "rtl" : "ltr"}>
             {isAr ? "شكراً لتعاملكم معنا" : "Thank you for your business"}
           </div>
 

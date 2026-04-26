@@ -277,6 +277,8 @@ html, body {
   /* Hide the entire app shell */
   body * { visibility: hidden !important; }
   .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+  /* Hide Lovable edit badge and any external floating widgets when printing */
+  #lovable-badge, [data-lovable-badge], a[href*="lovable.dev"], a[href*="lovable.app"] { display: none !important; visibility: hidden !important; }
 
   /* Show ONLY the invoice */
   .print-area, .print-area * { visibility: visible !important; }
