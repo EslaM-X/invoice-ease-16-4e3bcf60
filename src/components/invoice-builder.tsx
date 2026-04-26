@@ -52,7 +52,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
-  const [items, setItems] = useState<BuilderItem[]>(initial?.items ?? []);
+  const defaultFeeItem = (): BuilderItem => ({
+    product_id: null,
+    product_name: "رسوم خدمة / Service Fee",
+    serial_number: "",
+    color: "",
+    quantity: 1,
+    unit_price: 250,
+    discount: 0,
+    discount_mode: "amount",
+    discount_percent: undefined,
+  });
+  const [items, setItems] = useState<BuilderItem[]>(
+    initial?.items ?? (mode === "new" ? [defaultFeeItem()] : []),
+  );
   const [discount, setDiscount] = useState<number>(initial?.discount ?? 0);
   const [discountMode, setDiscountMode] = useState<"amount" | "percent">("percent");
   const [discountPercent, setDiscountPercent] = useState<number>(0);
