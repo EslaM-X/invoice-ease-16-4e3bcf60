@@ -40,17 +40,26 @@ function EditInvoice() {
         .select("*")
         .eq("invoice_id", id);
       if (inv) {
-        setInitial({
-          customerId: inv.customer_id ?? "",
-          items: (items ?? []).map((it: any) => ({
+        const LEGACY = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
+        const mapped = (items ?? []).map((it: any) => {
+          const isFee = !it.product_id && (LEGACY.includes(it.product_name) || it.product_name === "رسوم شحن") && Number(it.unit_price) === 250;
+          return {
             product_id: it.product_id,
-            product_name: it.product_name,
+            product_name: isFee ? "رسوم شحن" : it.product_name,
             serial_number: it.serial_number ?? "",
             color: it.color ?? "",
             quantity: it.quantity,
             unit_price: Number(it.unit_price),
             discount: Number(it.discount),
-          })),
+            __isFee: isFee,
+          } as any;
+        });
+        // Move service fee to the end so it always appears as the last line
+        const nonFee = mapped.filter((m: any) => !m.__isFee).map(({ __isFee, ...r }: any) => r);
+        const feeItems = mapped.filter((m: any) => m.__isFee).map(({ __isFee, ...r }: any) => r);
+        setInitial({
+          customerId: inv.customer_id ?? "",
+          items: [...nonFee, ...feeItems],
           discount: Number(inv.discount ?? 0),
           notes: inv.notes ?? "",
           paid_amount: (inv as any).paid_amount != null ? Number((inv as any).paid_amount) : null,
