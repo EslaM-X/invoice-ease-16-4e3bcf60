@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun, FileText } from "lucide-react";
+import { Languages, Moon, Sun } from "lucide-react";
+import brandLogo from "@/assets/steinheim-logo.png";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
@@ -71,23 +72,27 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-subtle flex items-center justify-center p-4">
-      <div className="absolute top-4 end-4 flex gap-2 no-print">
-        <Button variant="ghost" size="icon" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
+    <div className="relative min-h-screen overflow-hidden bg-[oklch(0.1_0.004_60)] text-[oklch(0.97_0.008_82)] flex items-center justify-center p-4">
+      {/* Decorative gold mesh */}
+      <div className="pointer-events-none absolute inset-0 opacity-60"
+        style={{ backgroundImage: "radial-gradient(at 15% 10%, oklch(0.78 0.11 82 / 0.18) 0px, transparent 50%), radial-gradient(at 85% 80%, oklch(0.62 0.13 75 / 0.14) 0px, transparent 50%)" }} />
+      <div className="absolute top-4 end-4 z-10 flex gap-2 no-print">
+        <Button variant="ghost" size="icon" className="text-[oklch(0.97_0.008_82)] hover:bg-white/10" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
           <Languages className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={toggle} aria-label="theme">
+        <Button variant="ghost" size="icon" className="text-[oklch(0.97_0.008_82)] hover:bg-white/10" onClick={toggle} aria-label="theme">
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-glow">
-            <FileText className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("app_name")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("hero_subtitle")}</p>
+          <img src={brandLogo} alt="Steinheim" className="mx-auto mb-3 h-20 w-auto select-none" draggable={false} />
+          <div className="mx-auto h-px w-24 bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
+          <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.4em] text-[oklch(0.78_0.11_82)]">
+            Invoice Suite
+          </p>
+          <p className="mt-2 text-sm text-white/60">{t("hero_subtitle")}</p>
         </div>
 
         <div className="rounded-2xl border bg-card p-6 shadow-elegant">
