@@ -227,7 +227,7 @@ function Products() {
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_products")}</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-3 py-3 w-10">
