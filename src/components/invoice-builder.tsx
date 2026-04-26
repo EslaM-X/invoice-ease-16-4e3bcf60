@@ -53,7 +53,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
   const [items, setItems] = useState<BuilderItem[]>(initial?.items ?? []);
   const [discount, setDiscount] = useState<number>(initial?.discount ?? 0);
-  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
+  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("percent");
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [scanning, setScanning] = useState(false);
