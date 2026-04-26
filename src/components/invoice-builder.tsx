@@ -669,6 +669,56 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                  <span>{t("total")}</span>
                  <span className="max-w-full break-words text-start sm:text-end">{fmtMoney(total, "EGP", lang)}</span>
               </div>
+
+              {/* Paid / Remaining */}
+              <div className="border-t pt-2 space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? "المبلغ المسدد" : "Paid Amount"}
+                  </span>
+                  <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
+                    {paidMode === "custom" ? (
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min={0}
+                        max={total}
+                        value={paidCustom === 0 ? "" : paidCustom}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPaidCustom(v === "" ? 0 : Number(v) || 0);
+                        }}
+                        className="min-w-0 flex-1 text-end sm:w-28 sm:flex-none"
+                      />
+                    ) : (
+                      <span className="text-end font-semibold tabular-nums">{fmtMoney(paidAmount, "EGP", lang)}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (paidMode === "auto") {
+                          setPaidCustom(+(total * 0.5).toFixed(2));
+                          setPaidMode("custom");
+                        } else {
+                          setPaidMode("auto");
+                        }
+                      }}
+                      className="text-[10px] font-semibold rounded border px-1.5 py-1 hover:bg-muted"
+                      title={paidMode === "auto" ? (lang === "ar" ? "تخصيص" : "Custom") : (lang === "ar" ? "50% تلقائي" : "50% auto")}
+                    >
+                      {paidMode === "auto" ? "50%" : "EGP"}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? "المبلغ المتبقي" : "Remaining Amount"}
+                  </span>
+                  <span className="font-semibold tabular-nums">{fmtMoney(remainingAmount, "EGP", lang)}</span>
+                </div>
+              </div>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">
               {t("save_invoice")}
