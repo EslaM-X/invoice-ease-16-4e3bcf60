@@ -45,12 +45,15 @@ function Landing() {
           <span className="h-1.5 w-1.5 rounded-full bg-success" />
           {lang === "ar" ? "إنشاء فاتورة في أقل من ٣٠ ثانية" : "Create an invoice in under 30 seconds"}
         </div>
-        <h1 className="text-balance text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl md:text-8xl lg:text-[8.5rem]">
+        <h1 className="text-balance text-5xl leading-[1.05] tracking-tight sm:text-7xl md:text-8xl lg:text-[8.5rem]">
           <span
-            className="animate-hero-title inline-block bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent"
-            style={{ animationDelay: "120ms" }}
+            className="animate-hero-title font-display inline-block bg-clip-text text-transparent"
+            style={{
+              animationDelay: "120ms",
+              backgroundImage: "linear-gradient(135deg, var(--foreground) 0%, var(--brand-gold-deep) 60%, var(--brand-gold) 100%)",
+            }}
           >
-            Shteinheim
+            Steinheim
           </span>
         </h1>
         <p
