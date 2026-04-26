@@ -164,6 +164,7 @@
 
 @layer utilities {
   .gradient-primary { background: var(--gradient-primary); }
+  .gradient-gold { background: var(--gradient-gold); }
   .gradient-subtle { background: var(--gradient-subtle); }
   .gradient-mesh { background-image: var(--gradient-mesh); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
@@ -173,8 +174,26 @@
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
+  .glass-dark {
+    background: color-mix(in oklab, var(--brand-ink) 80%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
   .text-balance { text-wrap: balance; }
   .hairline { border-color: color-mix(in oklab, var(--foreground) 10%, transparent); }
+  .text-gold { color: var(--brand-gold); }
+  .border-gold { border-color: color-mix(in oklab, var(--brand-gold) 50%, transparent); }
+  .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+  /* Subtle gold underline like the wave under the logo */
+  .brand-underline {
+    position: relative;
+  }
+  .brand-underline::after {
+    content: "";
+    position: absolute; left: 10%; right: 10%; bottom: -6px; height: 6px;
+    background: radial-gradient(ellipse at center, var(--brand-gold) 0%, transparent 70%);
+    opacity: 0.7;
+  }
 
   @keyframes hero-fade-up {
     from { opacity: 0; transform: translateY(16px); }
