@@ -188,20 +188,24 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
         return next;
       }
-      return [
-        ...prev,
-        {
-          product_id: p.id,
-          product_name: p.name,
-          serial_number: p.serial_number ?? "",
-          color: p.color ?? "",
-          quantity: 1,
-          unit_price: Number(p.price),
-          discount: 0,
-          discount_mode: "percent",
-          discount_percent: 0,
-        },
-      ];
+      const newItem: BuilderItem = {
+        product_id: p.id,
+        product_name: p.name,
+        serial_number: p.serial_number ?? "",
+        color: p.color ?? "",
+        quantity: 1,
+        unit_price: Number(p.price),
+        discount: 0,
+        discount_mode: "percent",
+        discount_percent: 0,
+      };
+      const feeIdx = prev.findIndex(isServiceFee);
+      if (feeIdx >= 0) {
+        const next = prev.slice();
+        next.splice(feeIdx, 0, newItem);
+        return next;
+      }
+      return [...prev, newItem];
     });
     setShowPicker(false);
     setProductSearch("");
