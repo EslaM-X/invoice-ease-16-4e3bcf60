@@ -175,6 +175,44 @@
   }
 }
 
+/* === PWA / mobile-app polish === */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+  .pt-safe { padding-top: max(env(safe-area-inset-top), 0px); }
+}
+
+/* === Smooth page transitions === */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-transition { animation: page-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Premium hover/press micro-interactions */
+.tap-scale { transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+.tap-scale:active { transform: scale(0.97); }
+
+/* GPU-friendly elevation on hover */
+.lift {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lift:hover { transform: translateY(-2px); box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.18); }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition, .tap-scale, .lift { animation: none !important; transition: none !important; }
+}
+
 
 /* Print styles for invoices */
 .print-only { display: none; }
