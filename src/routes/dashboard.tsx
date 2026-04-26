@@ -9,6 +9,7 @@ import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus, ScanLine } f
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useRealtimeTable } from "@/lib/realtime";
+import { ActivityFeed } from "@/components/activity-feed";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
