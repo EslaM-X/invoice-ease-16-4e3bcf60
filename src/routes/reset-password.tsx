@@ -20,6 +20,8 @@ function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const [show1, setShow1] = useState(false);
+  const [show2, setShow2] = useState(false);
 
   useEffect(() => {
     // Supabase puts the recovery session into the URL hash and sets the session automatically.
