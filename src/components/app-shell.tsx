@@ -41,16 +41,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const Sidebar = (
-    <aside className="flex h-full w-60 flex-col border-e border-border/60 bg-sidebar">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shadow-glow">
-          <FileText className="h-4 w-4 text-primary-foreground" />
+    <aside className="flex h-full w-64 flex-col border-e border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <div className="flex flex-col items-center gap-2 px-5 pb-4 pt-6">
+        <img
+          src={brandLogo}
+          alt="Steinheim"
+          className="h-14 w-auto select-none object-contain"
+          draggable={false}
+        />
+        <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-sidebar-primary">
+          Invoice Suite
         </div>
-        <div className="text-sm font-semibold tracking-tight text-sidebar-foreground">{t("app_name")}</div>
       </div>
-      <nav className="flex-1 space-y-0.5 px-3">
+      <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-sidebar-primary/40 to-transparent" />
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
         <Link to="/invoices/new" onClick={() => setOpen(false)}
-          className="mb-3 flex items-center justify-center gap-2 rounded-xl gradient-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-[0.98]">
+          className="mb-3 flex items-center justify-center gap-2 rounded-lg gradient-gold px-3 py-2.5 text-sm font-semibold text-[oklch(0.12_0.005_60)] shadow-glow transition active:scale-[0.98]">
           <Plus className="h-4 w-4" /> {t("new_invoice")}
         </Link>
         {items.map((it) => {
@@ -61,18 +67,28 @@ export function AppShell({ children }: { children: ReactNode }) {
               key={it.to}
               to={it.to}
               onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
-              <Icon className="h-4 w-4" /> {t(it.key)}
+              {active && (
+                <span className="absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-sidebar-primary" />
+              )}
+              <Icon className={`h-4 w-4 ${active ? "text-sidebar-primary" : ""}`} /> {t(it.key)}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t border-border/60 p-3">
-        <div className="mb-2 truncate px-2 text-xs text-muted-foreground">{user.email}</div>
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => signOut()}>
+      <div className="border-t border-sidebar-border p-3">
+        <div className="mb-2 truncate px-2 text-xs text-sidebar-foreground/60">{user.email}</div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          onClick={() => signOut()}
+        >
           <LogOut className="me-2 h-4 w-4" /> {t("logout")}
         </Button>
       </div>
