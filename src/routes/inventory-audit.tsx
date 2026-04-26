@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtDateTime } from "@/lib/utils-money";
 import { Boxes, TrendingUp, TrendingDown, Wrench } from "lucide-react";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/inventory-audit")({
   component: () => (
@@ -56,22 +57,22 @@ function InventoryAudit() {
   const [direction, setDirection] = useState<"all" | "in" | "out" | "manual">("all");
   const [opType, setOpType] = useState<"all" | "sale" | "void" | "edit" | "manual">("all");
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      setLoading(true);
-      let q = supabase.from("inventory_logs").select("*").order("created_at", { ascending: false });
-      if (from) q = q.gte("created_at", from);
-      if (to) q = q.lte("created_at", to + "T23:59:59");
-      const [lg, pr] = await Promise.all([
-        q,
-        supabase.from("products").select("id, name, serial_number, stock_quantity, low_stock_threshold").order("name"),
-      ]);
-      setLogs((lg.data ?? []) as LogRow[]);
-      setProducts((pr.data ?? []) as ProductRow[]);
-      setLoading(false);
-    })();
-  }, [user, from, to]);
+  const load = async () => {
+    setLoading(true);
+    let q = supabase.from("inventory_logs").select("*").order("created_at", { ascending: false });
+    if (from) q = q.gte("created_at", from);
+    if (to) q = q.lte("created_at", to + "T23:59:59");
+    const [lg, pr] = await Promise.all([
+      q,
+      supabase.from("products").select("id, name, serial_number, stock_quantity, low_stock_threshold").order("name"),
+    ]);
+    setLogs((lg.data ?? []) as LogRow[]);
+    setProducts((pr.data ?? []) as ProductRow[]);
+    setLoading(false);
+  };
+  useEffect(() => { if (user) load(); }, [user, from, to]);
+  useRealtimeTable("inventory_logs", () => { if (user) load(); });
+  useRealtimeTable("products", () => { if (user) load(); });
 
   const productMap = useMemo(() => {
     const m = new Map<string, ProductRow>();

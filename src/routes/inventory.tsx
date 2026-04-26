@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import type { Product } from "@/lib/data";
 import { AlertTriangle, Boxes, TrendingDown, TrendingUp } from "lucide-react";
 import { fmtDate } from "@/lib/utils-money";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/inventory")({ component: () => <AppShell><Inventory /></AppShell> });
 
@@ -16,15 +17,15 @@ function Inventory() {
   const [products, setProducts] = useState<Product[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data: p } = await supabase.from("products").select("*").order("name");
-      setProducts((p ?? []) as Product[]);
-      const { data: l } = await supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30);
-      setLogs(l ?? []);
-    })();
-  }, [user]);
+  const load = async () => {
+    const { data: p } = await supabase.from("products").select("*").order("name");
+    setProducts((p ?? []) as Product[]);
+    const { data: l } = await supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30);
+    setLogs(l ?? []);
+  };
+  useEffect(() => { if (user) load(); }, [user]);
+  useRealtimeTable("products", () => { if (user) load(); });
+  useRealtimeTable("inventory_logs", () => { if (user) load(); });
 
   const lowStock = products.filter((p) => p.stock_quantity <= p.low_stock_threshold);
   const totalUnits = products.reduce((s, p) => s + p.stock_quantity, 0);
