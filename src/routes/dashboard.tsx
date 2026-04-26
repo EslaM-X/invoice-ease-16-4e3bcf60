@@ -27,10 +27,10 @@ function Dashboard() {
     if (!user) return;
     (async () => {
       const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-        supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").eq("user_id", user.id).neq("status", "voided").order("created_at", { ascending: false }).limit(50),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-        supabase.from("products").select("id, name, stock_quantity, low_stock_threshold").eq("user_id", user.id),
-        supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(user_id, status)").eq("invoices.user_id", user.id).neq("invoices.status", "voided"),
+        supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").neq("status", "voided").order("created_at", { ascending: false }).limit(50),
+        supabase.from("customers").select("*", { count: "exact", head: true }),
+        supabase.from("products").select("id, name, stock_quantity, low_stock_threshold"),
+        supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
       ]);
       const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
       const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;

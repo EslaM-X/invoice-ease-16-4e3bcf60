@@ -19,9 +19,9 @@ function Inventory() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: p } = await supabase.from("products").select("*").eq("user_id", user.id).order("name");
+      const { data: p } = await supabase.from("products").select("*").order("name");
       setProducts((p ?? []) as Product[]);
-      const { data: l } = await supabase.from("inventory_logs").select("*, products(name)").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30);
+      const { data: l } = await supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30);
       setLogs(l ?? []);
     })();
   }, [user]);
