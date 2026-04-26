@@ -173,15 +173,25 @@ function InvoiceView() {
                     <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.line_total).toFixed(2)}</td>
                   </tr>
                 ))}
-                {Number(inv.discount) > 0 && (
-                  <tr>
-                    <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
-                  </tr>
-                )}
                 <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "إجمالي السعر" : "Subtotal"}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {Number(inv.subtotal).toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي بعد الخصم" : "Total after Discount"}</td>
                   <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "المبلغ المسدد (50%)" : "Paid Amount (50%)"}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {(Number(inv.total) * 0.5).toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "المبلغ المتبقي (50%)" : "Remaining Amount (50%)"}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {(Number(inv.total) * 0.5).toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
@@ -191,13 +201,14 @@ function InvoiceView() {
             <div>
               <div>{isAr ? "شروط الدفع:" : "Payment Terms:"}</div>
               <ul className="mt-1 ms-6 list-disc">
-                <li>{isAr ? "الأصناف غير خاضعة لضريبة القيمة المضافة." : "Items are not subject to VAT."}</li>
+                <li>{isAr ? "50% عند التعاقد" : "50% upon contract"}</li>
+                <li>{isAr ? "50% عند التسليم" : "50% upon delivery"}</li>
               </ul>
             </div>
             <div>
               <div>{isAr ? "شروط التسليم:" : "Delivery Terms:"}</div>
               <ul className="mt-1 ms-6 list-disc">
-                <li>{isAr ? "تسليم فوري." : "Immediate Delivery."}</li>
+                <li>{isAr ? "21 يوم من تاريخ الفاتورة" : "21 days from invoice date"}</li>
               </ul>
             </div>
             {inv.notes && (
