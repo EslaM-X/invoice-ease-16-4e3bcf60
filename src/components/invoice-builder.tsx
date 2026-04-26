@@ -581,11 +581,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
          <aside className="min-w-0 space-y-3">
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("subtotal")}</span>
-                <span>{fmtMoney(subtotal, "EGP", lang)}</span>
-              </div>
+              <div className="space-y-2 text-sm">
+               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                 <span className="text-muted-foreground">{t("subtotal")}</span>
+                 <span className="max-w-full break-words text-start sm:text-end">{fmtMoney(subtotal, "EGP", lang)}</span>
+               </div>
                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-muted-foreground">{t("discount")}</span>
                  <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
@@ -641,9 +641,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                   = {fmtMoney(discount, "EGP", lang)}
                 </div>
               )}
-              <div className="border-t pt-2 flex justify-between text-lg font-bold">
-                <span>{t("total")}</span>
-                <span>{fmtMoney(total, "EGP", lang)}</span>
+               <div className="flex flex-col gap-1 border-t pt-2 text-lg font-bold sm:flex-row sm:items-center sm:justify-between">
+                 <span>{t("total")}</span>
+                 <span className="max-w-full break-words text-start sm:text-end">{fmtMoney(total, "EGP", lang)}</span>
               </div>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">
