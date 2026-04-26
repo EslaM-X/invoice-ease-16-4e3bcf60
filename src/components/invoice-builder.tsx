@@ -533,23 +533,33 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                             {it.discount_mode === "percent" ? "%" : "EGP"}
                           </button>
                         </div>
-                        {it.discount_mode === "percent" ? (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            max={100}
-                            value={it.discount_percent ?? 0}
-                            onChange={(e) => setItemDiscountPercent(idx, Number(e.target.value) || 0)}
-                          />
-                        ) : (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={it.discount}
-                            onChange={(e) => updateItem(idx, { discount: Number(e.target.value) || 0, discount_mode: "amount", discount_percent: undefined })}
-                          />
-                        )}
+                         {it.discount_mode === "percent" ? (
+                           <Input
+                             type="number"
+                             inputMode="decimal"
+                             step="0.01"
+                             min={0}
+                             max={100}
+                             value={!it.discount_percent ? "" : it.discount_percent}
+                             onFocus={(e) => e.target.select()}
+                             onChange={(e) => {
+                               const v = e.target.value;
+                               setItemDiscountPercent(idx, v === "" ? 0 : Number(v) || 0);
+                             }}
+                           />
+                         ) : (
+                           <Input
+                             type="number"
+                             inputMode="decimal"
+                             step="0.01"
+                             value={it.discount === 0 ? "" : it.discount}
+                             onFocus={(e) => e.target.select()}
+                             onChange={(e) => {
+                               const v = e.target.value;
+                               updateItem(idx, { discount: v === "" ? 0 : Number(v) || 0, discount_mode: "amount", discount_percent: undefined });
+                             }}
+                           />
+                         )}
                       </div>
                     </div>
                     <div className="mt-2 text-end text-sm font-semibold">
