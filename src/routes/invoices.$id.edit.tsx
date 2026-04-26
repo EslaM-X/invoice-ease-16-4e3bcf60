@@ -53,6 +53,7 @@ function EditInvoice() {
           })),
           discount: Number(inv.discount ?? 0),
           notes: inv.notes ?? "",
+          paid_amount: (inv as any).paid_amount != null ? Number((inv as any).paid_amount) : null,
         });
       }
       setLoading(false);
