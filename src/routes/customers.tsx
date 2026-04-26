@@ -129,7 +129,8 @@ function Customers() {
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_customers")}</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-muted/50 text-start">
               <tr>
                 <th className="px-4 py-3 text-start font-medium">{t("name")}</th>
