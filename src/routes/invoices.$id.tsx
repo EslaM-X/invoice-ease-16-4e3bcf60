@@ -219,6 +219,12 @@ function InvoiceView() {
           </section>
 
           <section className="mt-6 text-[13px] text-black space-y-3" dir={isAr ? "rtl" : "ltr"}>
+            <div>
+              <div>{isAr ? "شروط التسليم:" : "Delivery Terms:"}</div>
+              <ul className="mt-1 ms-6 list-disc">
+                <li>{isAr ? "21 يوم من تاريخ الفاتورة" : "21 days from invoice date"}</li>
+              </ul>
+            </div>
             {inv.notes && (
               <div>
                 <div>{isAr ? "ملاحظات:" : "Notes:"}</div>
