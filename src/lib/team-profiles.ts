@@ -82,6 +82,27 @@ export async function getOrCreateMyProfile(userId: string, email: string | null)
 }
 
 export async function updateMyAvatar(userId: string, avatar_url: string | null) {
-  await supabase.from("profiles").update({ avatar_url }).eq("user_id", userId);
+  // Ensure profile row exists, then update. Using upsert avoids silent no-op
+  // when the auto-created profile row hasn't been inserted yet.
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("user_id, email")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!existing) {
+    const { data: userResp } = await supabase.auth.getUser();
+    const email = userResp.user?.email ?? null;
+    const { error: insErr } = await supabase
+      .from("profiles")
+      .insert({ user_id: userId, email, display_name: email?.split("@")[0] ?? null, avatar_url });
+    if (insErr) throw insErr;
+  } else {
+    const { error: updErr } = await supabase
+      .from("profiles")
+      .update({ avatar_url })
+      .eq("user_id", userId);
+    if (updErr) throw updErr;
+  }
   await refresh();
 }
