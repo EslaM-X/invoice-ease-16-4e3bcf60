@@ -385,6 +385,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
+          _paid_amount: paidMode === "custom" ? paidAmount : null,
         } as any);
         if (error || !data) {
           handleRpcError(error?.message ?? "");
@@ -399,6 +400,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
+          _paid_amount: paidMode === "custom" ? paidAmount : null,
         } as any);
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
