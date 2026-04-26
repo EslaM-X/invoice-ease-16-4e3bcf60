@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
+import brandLogo from "@/assets/steinheim-logo.png";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
