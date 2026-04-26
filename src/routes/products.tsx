@@ -197,6 +197,10 @@ function Products() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Label>Image</Label>
+                  <ProductImageUpload value={form.image_url || null} onChange={(url) => setForm({ ...form, image_url: url ?? "" })} />
+                </div>
                 <div className="col-span-2"><Label>{t("product_name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div><Label>{t("serial_number")}</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
@@ -245,7 +249,21 @@ function Products() {
                       <td className="px-3 py-3">
                         <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={p.name} />
                       </td>
-                      <td className="px-4 py-3 font-medium">{p.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4 text-muted-foreground/40" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium">{p.name}</div>
+                            <AuthorBadge email={p.created_by_email} label="created by" className="mt-0.5" />
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
                       <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
