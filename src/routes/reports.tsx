@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { Download, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/reports")({ component: () => <AppShell><Reports /></AppShell> });
 
