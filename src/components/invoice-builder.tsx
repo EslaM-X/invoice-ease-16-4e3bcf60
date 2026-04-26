@@ -204,7 +204,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       .from("products")
       .select("*")
       .eq("id", productId)
-      .eq("user_id", user!.id)
       .maybeSingle();
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
