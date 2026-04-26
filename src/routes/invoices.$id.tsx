@@ -105,7 +105,7 @@ function InvoiceView() {
             </span>
           </div>
         )}
-        <div className="invoice-page flex flex-col px-8 pt-8 pb-6 sm:px-12 sm:pt-10" dir="ltr">
+        <div className="invoice-page flex flex-col px-8 pt-8 pb-2 sm:px-12 sm:pt-10" dir="ltr">
           {/* Header: date top-right, logo center, registry top-left */}
           <header className="relative flex flex-col items-center pb-2">
             <div className="absolute top-0 left-0 text-[11px] leading-tight text-black ltr-nums" style={{ direction: "ltr" }}>
