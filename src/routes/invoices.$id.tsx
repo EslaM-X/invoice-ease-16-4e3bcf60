@@ -216,11 +216,11 @@ function InvoiceView() {
             <div>{isAr ? "تامر عبد العليم" : "Tamer Abdel-Alim"}</div>
           </div>
 
-          <div className="mt-6 text-center text-[11px]" dir={isAr ? "rtl" : "ltr"}>
+          <div className="mt-6 text-center text-[11px] text-black" dir={isAr ? "rtl" : "ltr"}>
             {isAr ? "شكراً لتعاملكم معنا" : "Thank you for your business"}
           </div>
 
-          <footer className="mt-4 border-t border-gray-300 pt-2 text-center text-[10.5px] leading-relaxed text-black" dir="ltr">
+          <footer className="mt-2 border-t border-gray-300 pt-2 text-center text-[10.5px] leading-relaxed text-black" dir="ltr">
             <div>403 - Fourth Floor - Unit 238 - 5th Settlement Urban Center - Cairo – Egypt</div>
             <div>Tel: (+20) 12 23998124 / Email: inquiries@steinheim-eg.com / Web Site: www.steinheim-eg.com</div>
           </footer>
