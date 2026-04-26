@@ -44,8 +44,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Cairo", sans-serif;
   --font-display: "Cormorant Garamond", "Playfair Display", Georgia, "Times New Roman", serif;
-  --font-arabic: "SF Arabic", "Cairo", -apple-system, system-ui, sans-serif;
-  --font-arabic-display: "Amiri", "Scheherazade New", "SF Arabic", "Cairo", serif;
+  --font-arabic: "Cairo", "SF Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-arabic-display: "Cairo", "Amiri", "SF Arabic", "Segoe UI", Tahoma, serif;
 }
 
 :root {
