@@ -580,7 +580,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         </div>
 
         <aside className="space-y-3">
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("subtotal")}</span>
