@@ -1,22 +1,39 @@
 import { User } from "lucide-react";
+import { useTeamProfiles } from "@/lib/team-profiles";
 
 type Props = {
   email?: string | null;
   label?: string;
   className?: string;
+  size?: "xs" | "sm";
 };
 
-/** Compact badge showing who created/edited a record. */
-export function AuthorBadge({ email, label, className = "" }: Props) {
+/** Compact badge showing who created/edited a record, with avatar. */
+export function AuthorBadge({ email, label, className = "", size = "xs" }: Props) {
+  const team = useTeamProfiles();
   if (!email) return null;
-  const short = email.split("@")[0];
+  const profile = team.byEmail(email);
+  const short = profile?.display_name || email.split("@")[0];
+  const dim = size === "sm" ? "h-5 w-5" : "h-4 w-4";
+  const text = size === "sm" ? "text-xs" : "text-[10px]";
+
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground ${text} ${className}`}
       title={`${label ?? ""}${label ? " · " : ""}${email}`}
     >
-      <User className="h-2.5 w-2.5" />
-      {short}
+      {profile?.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt=""
+          className={`${dim} rounded-full object-cover`}
+        />
+      ) : (
+        <span className={`flex ${dim} items-center justify-center rounded-full bg-primary/15 text-primary`}>
+          <User className="h-2.5 w-2.5" />
+        </span>
+      )}
+      <span className="truncate">{short}</span>
     </span>
   );
 }
