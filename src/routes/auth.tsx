@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun } from "lucide-react";
+import { Languages, Moon, Sun, Eye, EyeOff } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo.png";
 import { toast } from "sonner";
 import { useEffect } from "react";
@@ -28,6 +28,7 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
   const handleForgot = async (e: FormEvent) => {
@@ -172,15 +173,25 @@ function AuthPage() {
                   </button>
                 )}
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={6}
+                  required
+                  className="border-white/15 bg-white/5 pe-10 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/60 hover:text-white"
+                  aria-label={showPassword ? (lang === "ar" ? "إخفاء" : "Hide") : (lang === "ar" ? "إظهار" : "Show")}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button
               type="submit"
