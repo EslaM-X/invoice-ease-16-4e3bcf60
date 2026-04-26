@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtDateTime } from "@/lib/utils-money";
 import { Boxes, TrendingUp, TrendingDown, Wrench } from "lucide-react";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/inventory-audit")({
   component: () => (
