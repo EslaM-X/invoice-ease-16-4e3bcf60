@@ -175,6 +175,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           quantity: 1,
           unit_price: Number(p.price),
           discount: 0,
+          discount_mode: "percent",
+          discount_percent: 0,
         },
       ];
     });
