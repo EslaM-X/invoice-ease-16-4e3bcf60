@@ -142,6 +142,8 @@ function Dashboard() {
           )}
         </div>
       </div>
+
+      <ActivityFeed limit={10} />
     </div>
   );
 }
