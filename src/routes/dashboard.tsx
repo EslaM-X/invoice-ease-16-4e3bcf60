@@ -24,35 +24,38 @@ function Dashboard() {
   const [top, setTop] = useState<any[]>([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-        supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").neq("status", "voided").order("created_at", { ascending: false }).limit(50),
-        supabase.from("customers").select("*", { count: "exact", head: true }),
-        supabase.from("products").select("id, name, stock_quantity, low_stock_threshold"),
-        supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
-      ]);
-      const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
-      const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
-      setStats({
-        sales,
-        invoices: invs?.length ?? 0,
-        customers: cust ?? 0,
-        products: prods?.length ?? 0,
-        lowStock,
-      });
-      setRecent((invs ?? []).slice(0, 5));
-      const map = new Map<string, { name: string; qty: number; total: number }>();
-      (items ?? []).forEach((it: any) => {
-        const prev = map.get(it.product_name) ?? { name: it.product_name, qty: 0, total: 0 };
-        prev.qty += Number(it.quantity ?? 0);
-        prev.total += Number(it.line_total ?? 0);
-        map.set(it.product_name, prev);
-      });
-      setTop([...map.values()].sort((a, b) => b.total - a.total).slice(0, 5));
-    })();
-  }, [user]);
+  const load = async () => {
+    const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
+      supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").neq("status", "voided").order("created_at", { ascending: false }).limit(50),
+      supabase.from("customers").select("*", { count: "exact", head: true }),
+      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold"),
+      supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
+    ]);
+    const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
+    const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
+    setStats({
+      sales,
+      invoices: invs?.length ?? 0,
+      customers: cust ?? 0,
+      products: prods?.length ?? 0,
+      lowStock,
+    });
+    setRecent((invs ?? []).slice(0, 5));
+    const map = new Map<string, { name: string; qty: number; total: number }>();
+    (items ?? []).forEach((it: any) => {
+      const prev = map.get(it.product_name) ?? { name: it.product_name, qty: 0, total: 0 };
+      prev.qty += Number(it.quantity ?? 0);
+      prev.total += Number(it.line_total ?? 0);
+      map.set(it.product_name, prev);
+    });
+    setTop([...map.values()].sort((a, b) => b.total - a.total).slice(0, 5));
+  };
+
+  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
+  useRealtimeTable("invoices", () => { if (user) load(); });
+  useRealtimeTable("invoice_items", () => { if (user) load(); });
+  useRealtimeTable("products", () => { if (user) load(); });
+  useRealtimeTable("customers", () => { if (user) load(); });
 
   const cards = [
     { label: t("total_sales"), value: fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, accent: "text-success" },
