@@ -212,6 +212,53 @@ function AuthPage() {
           </p>
         </div>
       </div>
+
+      {forgotOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setForgotOpen(false)}>
+          <form
+            onSubmit={handleForgot}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.005_60)] p-6 text-[oklch(0.97_0.008_82)] shadow-elegant"
+          >
+            <h2 className="text-lg font-semibold">
+              {lang === "ar" ? "إعادة تعيين كلمة السر" : "Reset password"}
+            </h2>
+            <p className="text-sm text-white/60">
+              {lang === "ar"
+                ? "أدخل بريدك وسنرسل لك رابطاً لإعادة تعيين كلمة السر."
+                : "Enter your email and we'll send you a reset link."}
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="forgot-email" className="text-white/80">{t("email")}</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                required
+                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => setForgotOpen(false)}
+              >
+                {t("cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={busy}
+                className="flex-1 bg-[oklch(0.78_0.11_82)] text-[oklch(0.12_0.005_60)] hover:bg-[oklch(0.84_0.1_82)]"
+              >
+                {lang === "ar" ? "إرسال" : "Send"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
