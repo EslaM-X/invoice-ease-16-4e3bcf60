@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
@@ -27,6 +28,11 @@ import { Route as InvoicesIdEditRouteImport } from './routes/invoices.$id.edit'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/inventory-audit': typeof InventoryAuditRoute
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/invoices/$id': typeof InvoicesIdRouteWithChildren
   '/invoices/new': typeof InvoicesNewRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/inventory-audit': typeof InventoryAuditRoute
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/invoices/$id': typeof InvoicesIdRouteWithChildren
   '/invoices/new': typeof InvoicesNewRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/inventory-audit': typeof InventoryAuditRoute
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/invoices/$id': typeof InvoicesIdRouteWithChildren
   '/invoices/new': typeof InvoicesNewRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/inventory-audit'
     | '/products'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/invoices/$id'
     | '/invoices/new'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/inventory-audit'
     | '/products'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/invoices/$id'
     | '/invoices/new'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/inventory-audit'
     | '/products'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/invoices/$id'
     | '/invoices/new'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   InventoryAuditRoute: typeof InventoryAuditRoute
   ProductsRoute: typeof ProductsRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   InvoicesIdRoute: typeof InvoicesIdRouteWithChildren
   InvoicesNewRoute: typeof InvoicesNewRoute
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryAuditRoute: InventoryAuditRoute,
   ProductsRoute: ProductsRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   InvoicesIdRoute: InvoicesIdRouteWithChildren,
   InvoicesNewRoute: InvoicesNewRoute,
