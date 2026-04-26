@@ -125,8 +125,8 @@ function InvoiceView() {
             />
           </header>
 
-          <div className="mt-4 text-center text-[15px] text-black" dir={isAr ? "rtl" : "ltr"}>
-            {isAr ? "فاتورة تجارية" : "Commercial Invoice"} <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
+          <div className="mt-4 text-center text-[15px] text-black" dir="ltr">
+            Invoice <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
           </div>
 
           <div className="mt-6 text-[13px] text-black space-y-0.5" dir={isAr ? "rtl" : "ltr"}>
@@ -159,20 +159,30 @@ function InvoiceView() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id}>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle">
-                      <div className="font-medium">{it.product_name}</div>
-                      <div className="mt-0.5 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[11px] text-gray-700">
-                        {it.serial_number && <span className="ltr-nums">SN: {it.serial_number}</span>}
-                        {it.color && <span>{isAr ? "اللون" : "Color"}: {it.color}</span>}
-                      </div>
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">{it.quantity}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.unit_price).toFixed(2)}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.line_total).toFixed(2)}</td>
-                  </tr>
-                ))}
+                {(() => {
+                  const LEGACY = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
+                  const isFee = (it: any) =>
+                    !it.product_id &&
+                    (LEGACY.includes(it.product_name) || it.product_name === "رسوم شحن") &&
+                    Number(it.unit_price) === 250;
+                  const nonFee = items.filter((it) => !isFee(it));
+                  const feeItems = items.filter((it) => isFee(it));
+                  const ordered = [...nonFee, ...feeItems];
+                  return ordered.map((it) => (
+                    <tr key={it.id}>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle">
+                        <div className="font-medium">{isFee(it) ? "رسوم شحن" : it.product_name}</div>
+                        <div className="mt-0.5 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[11px] text-gray-700">
+                          {it.serial_number && <span className="ltr-nums">SN: {it.serial_number}</span>}
+                          {it.color && <span>{isAr ? "اللون" : "Color"}: {it.color}</span>}
+                        </div>
+                      </td>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">{it.quantity}</td>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.unit_price).toFixed(2)}</td>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.line_total).toFixed(2)}</td>
+                    </tr>
+                  ));
+                })()}
                 <tr>
                   <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "إجمالي السعر" : "Subtotal"}</td>
                   <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {Number(inv.subtotal).toFixed(2)}</td>
@@ -209,19 +219,6 @@ function InvoiceView() {
           </section>
 
           <section className="mt-6 text-[13px] text-black space-y-3" dir={isAr ? "rtl" : "ltr"}>
-            <div>
-              <div>{isAr ? "شروط الدفع:" : "Payment Terms:"}</div>
-              <ul className="mt-1 ms-6 list-disc">
-                <li>{isAr ? "50% عند التعاقد" : "50% upon contract"}</li>
-                <li>{isAr ? "50% عند التسليم" : "50% upon delivery"}</li>
-              </ul>
-            </div>
-            <div>
-              <div>{isAr ? "شروط التسليم:" : "Delivery Terms:"}</div>
-              <ul className="mt-1 ms-6 list-disc">
-                <li>{isAr ? "21 يوم من تاريخ الفاتورة" : "21 days from invoice date"}</li>
-              </ul>
-            </div>
             {inv.notes && (
               <div>
                 <div>{isAr ? "ملاحظات:" : "Notes:"}</div>

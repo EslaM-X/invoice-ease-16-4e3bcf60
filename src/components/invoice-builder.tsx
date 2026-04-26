@@ -52,8 +52,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
-  const SERVICE_FEE_NAME = "رسوم خدمة / Service Fee";
-  const isServiceFee = (it: BuilderItem) => it.product_id === null && it.product_name === SERVICE_FEE_NAME && Number(it.unit_price) === 250;
+  const SERVICE_FEE_NAME = "رسوم شحن";
+  const LEGACY_FEE_NAMES = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
+  const isServiceFee = (it: BuilderItem) =>
+    it.product_id === null &&
+    (it.product_name === SERVICE_FEE_NAME || LEGACY_FEE_NAMES.includes(it.product_name)) &&
+    Number(it.unit_price) === 250;
   const defaultFeeItem = (): BuilderItem => ({
     product_id: null,
     product_name: SERVICE_FEE_NAME,
@@ -184,20 +188,24 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
         return next;
       }
-      return [
-        ...prev,
-        {
-          product_id: p.id,
-          product_name: p.name,
-          serial_number: p.serial_number ?? "",
-          color: p.color ?? "",
-          quantity: 1,
-          unit_price: Number(p.price),
-          discount: 0,
-          discount_mode: "percent",
-          discount_percent: 0,
-        },
-      ];
+      const newItem: BuilderItem = {
+        product_id: p.id,
+        product_name: p.name,
+        serial_number: p.serial_number ?? "",
+        color: p.color ?? "",
+        quantity: 1,
+        unit_price: Number(p.price),
+        discount: 0,
+        discount_mode: "percent",
+        discount_percent: 0,
+      };
+      const feeIdx = prev.findIndex(isServiceFee);
+      if (feeIdx >= 0) {
+        const next = prev.slice();
+        next.splice(feeIdx, 0, newItem);
+        return next;
+      }
+      return [...prev, newItem];
     });
     setShowPicker(false);
     setProductSearch("");
