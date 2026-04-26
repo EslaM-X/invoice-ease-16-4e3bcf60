@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun } from "lucide-react";
+import { Languages, Moon, Sun, Eye, EyeOff } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo.png";
 import { toast } from "sonner";
 import { useEffect } from "react";
