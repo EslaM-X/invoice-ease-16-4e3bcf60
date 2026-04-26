@@ -486,7 +486,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                       <div>
                         <Label className="text-xs">{t("serial_number")}</Label>
                         <Input value={it.serial_number} onChange={(e) => updateItem(idx, { serial_number: e.target.value })} />
