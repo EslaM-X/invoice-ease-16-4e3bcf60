@@ -677,7 +677,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                     type="button"
                     onClick={() => {
                       if (discountMode === "amount") {
-                        const pct = subtotal > 0 ? +((discount / subtotal) * 100).toFixed(2) : 0;
+                        const pct = discountableBase > 0 ? +((discount / discountableBase) * 100).toFixed(2) : 0;
                         setDiscountPercent(Math.min(100, pct));
                         setDiscountMode("percent");
                       } else {
