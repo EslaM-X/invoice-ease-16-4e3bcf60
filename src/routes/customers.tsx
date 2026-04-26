@@ -172,6 +172,7 @@ function Customers() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
