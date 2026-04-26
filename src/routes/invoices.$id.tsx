@@ -99,108 +99,112 @@ function InvoiceView() {
 
       <div className="print-area mx-auto max-w-3xl overflow-hidden rounded-3xl border border-border/60 bg-card shadow-elegant relative" dir={dir}>
         {isVoided && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
             <span className="rotate-[-20deg] rounded-lg border-4 border-destructive px-8 py-2 text-5xl font-black tracking-widest text-destructive opacity-30">
               {isAr ? "ملغاة" : "VOIDED"}
             </span>
           </div>
         )}
-        <div className="px-10 pt-10 pb-8">
-          <header className="flex items-start justify-between gap-6 pb-8">
-            <div className="flex items-center gap-4 min-w-0">
-              <img
-                src={logoUrl || steinheimLogo}
-                alt={settings?.company_name || "Steinheim"}
-                className="h-16 w-auto max-w-[180px] object-contain shrink-0"
-              />
-              <div className="min-w-0">
-                <div className="text-base font-semibold tracking-tight truncate">{settings?.company_name || "Steinheim"}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground truncate">{settings?.company_address}</div>
-                <div className="text-xs text-muted-foreground truncate">{settings?.company_phone} {settings?.company_email ? `· ${settings.company_email}` : ""}</div>
-              </div>
+        <div className="invoice-page flex flex-col px-8 pt-8 pb-6 sm:px-12 sm:pt-10" dir="ltr">
+          {/* Header: date top-right, logo center, registry top-left */}
+          <header className="relative flex flex-col items-center pb-2">
+            <div className="absolute top-0 left-0 text-[11px] leading-tight text-black ltr-nums" style={{ direction: "ltr" }}>
+              <div>السجل التجاري: <span className="font-semibold">68689</span></div>
+              <div>البطاقة الضريبية: <span className="font-semibold">450374114</span></div>
             </div>
-            <div className="text-end">
-              <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{isAr ? "فاتورة" : "Invoice"}</div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{inv.invoice_number}</div>
-              {inv.receipt_number != null && (
-                <div className="mt-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
-                  {t("receipt_no")}: <span className="font-semibold text-foreground">#{inv.receipt_number}</span>
-                </div>
-              )}
-              <div className="mt-1 text-xs text-muted-foreground">{fmtDateTime(inv.created_at, lang)}</div>
-              {inv.created_by_email && (
-                <div className="mt-1 text-[10px] text-muted-foreground">{isAr ? "أنشأها" : "by"}: {inv.created_by_email}</div>
-              )}
+            <div className="absolute top-0 right-0 text-[11px] text-black ltr-nums">
+              {new Date(inv.created_at).toLocaleDateString("en-GB")}
             </div>
+            <img
+              src={logoUrl || steinheimLogo}
+              alt="Steinheim"
+              className="invoice-logo h-24 w-auto object-contain"
+            />
           </header>
 
-          <div className="h-px bg-border/60" />
+          <div className="mt-4 text-center text-[15px] text-black" dir={isAr ? "rtl" : "ltr"}>
+            {isAr ? "فاتورة تجارية" : "Commercial Invoice"} <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
+          </div>
 
-          <section className="mt-6">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("bill_to")}</div>
-            <div className="mt-1.5 text-base font-semibold tracking-tight">{inv.customer_name || "—"}</div>
-            <div className="text-sm text-muted-foreground">{inv.customer_phone}</div>
-            <div className="text-sm text-muted-foreground">{inv.customer_address}</div>
-          </section>
+          <div className="mt-6 text-[14px] text-black" dir={isAr ? "rtl" : "ltr"}>
+            {isAr ? "صادرة إلى: " : "Issued to: "}
+            <span className="font-medium">{inv.customer_name || "—"}</span>
+          </div>
 
-          <section className="mt-8">
-            <table className="w-full text-sm">
+          <section className="mt-5">
+            <table className="w-full border-collapse text-[13px] text-black" dir={isAr ? "rtl" : "ltr"}>
               <thead>
-                <tr className="border-b border-border/60 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  <th className="pb-2.5 text-start font-semibold">{isAr ? "المنتج" : "Item"}</th>
-                  <th className="pb-2.5 text-start font-semibold">{t("serial_number")}</th>
-                  <th className="pb-2.5 text-start font-semibold">{t("color")}</th>
-                  <th className="pb-2.5 text-end font-semibold">{t("quantity")}</th>
-                  <th className="pb-2.5 text-end font-semibold">{t("unit_price")}</th>
-                  <th className="pb-2.5 text-end font-semibold">{t("line_total")}</th>
+                <tr>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal">{isAr ? "وصف الصنف" : "Item Description"}</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[14%]">{isAr ? "الكمية" : "Quantity"}</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[18%]">{isAr ? "السعر" : "Price"}</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center font-normal w-[20%]">{isAr ? "الإجمالي" : "Total Price"}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/40">
+              <tbody>
                 {items.map((it) => (
                   <tr key={it.id}>
-                    <td className="py-3 font-medium">{it.product_name}</td>
-                    <td className="py-3 text-muted-foreground">{it.serial_number || "—"}</td>
-                    <td className="py-3 text-muted-foreground">{it.color || "—"}</td>
-                    <td className="py-3 text-end tabular-nums">{it.quantity}</td>
-                    <td className="py-3 text-end tabular-nums">{fmtMoney(Number(it.unit_price), settings?.currency || "EGP", lang)}</td>
-                    <td className="py-3 text-end font-semibold tabular-nums">{fmtMoney(Number(it.line_total), settings?.currency || "EGP", lang)}</td>
+                    <td className="border border-gray-400 px-2 py-3 text-center align-middle">
+                      <div>{it.product_name}</div>
+                      {it.serial_number && <div className="text-[12px]">{it.serial_number}</div>}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-3 text-center align-middle ltr-nums">{it.quantity}</td>
+                    <td className="border border-gray-400 px-2 py-3 text-center align-middle ltr-nums">{Number(it.unit_price).toFixed(2)}$</td>
+                    <td className="border border-gray-400 px-2 py-3 text-center align-middle ltr-nums">{Number(it.line_total).toFixed(2)}$</td>
                   </tr>
                 ))}
+                {Number(inv.discount) > 0 && (
+                  <tr>
+                    <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">-{Number(inv.discount).toFixed(2)}$</td>
+                  </tr>
+                )}
+                <tr>
+                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الإجمالي" : "Total"}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center font-medium ltr-nums">{Number(inv.total).toFixed(2)} $</td>
+                </tr>
               </tbody>
             </table>
           </section>
 
-          <section className="mt-6 ms-auto w-full max-w-xs space-y-1.5 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
-            <div className="mt-2 flex justify-between border-t border-border/60 pt-3 text-lg font-semibold tracking-tight">
-              <span>{t("total")}</span>
-              <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "EGP", lang)}</span>
+          <section className="mt-6 text-[13px] text-black space-y-3" dir={isAr ? "rtl" : "ltr"}>
+            <div>
+              <div>{isAr ? "شروط الدفع:" : "Payment Terms:"}</div>
+              <ul className="mt-1 ms-6 list-disc">
+                <li>{isAr ? "عينات مجانية." : "Free of Charge Samples."}</li>
+                <li>{isAr ? "الأصناف غير خاضعة لضريبة القيمة المضافة." : "Items are not subject to VAT."}</li>
+              </ul>
             </div>
+            <div>
+              <div>{isAr ? "شروط التسليم:" : "Delivery Terms:"}</div>
+              <ul className="mt-1 ms-6 list-disc">
+                <li>{isAr ? "تسليم فوري." : "Immediate Delivery."}</li>
+              </ul>
+            </div>
+            {inv.notes && (
+              <div>
+                <div>{isAr ? "ملاحظات:" : "Notes:"}</div>
+                <p className="mt-1 whitespace-pre-wrap">{inv.notes}</p>
+              </div>
+            )}
           </section>
 
-          {inv.notes && (
-            <section className="mt-8 rounded-2xl bg-muted/40 p-4 text-sm">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notes")}</div>
-              <p className="mt-1.5 whitespace-pre-wrap">{inv.notes}</p>
-            </section>
-          )}
+          {/* Spacer pushes signature + footer to bottom of page */}
+          <div className="grow min-h-[40px]" />
 
-          <footer className="mt-8 grid gap-4 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:grid-cols-2">
-            {settings?.payment_terms && <div><div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">{t("payment_terms")}</div>{settings.payment_terms}</div>}
-            {settings?.delivery_terms && <div><div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">{t("delivery_terms")}</div>{settings.delivery_terms}</div>}
+          <div className="mt-8 text-[13px] text-black" dir="ltr">
+            <div className="font-semibold">{isAr ? "مدير الحسابات" : "Chief Financial Officer"}</div>
+            <div>{isAr ? "تامر عبد العليم" : "Tamer Abdel-Alim"}</div>
+          </div>
+
+          <div className="mt-6 text-center text-[11px] text-muted-foreground" dir={isAr ? "rtl" : "ltr"}>
+            {isAr ? "شكراً لتعاملكم معنا" : "Thank you for your business"}
+          </div>
+
+          <footer className="mt-4 border-t border-gray-300 pt-2 text-center text-[10.5px] leading-relaxed text-black" dir="ltr">
+            <div>403 - Fourth Floor - Unit 238 - 5th Settlement Urban Center - Cairo – Egypt</div>
+            <div>Tel: (+20) 12 23998124 / Email: inquiries@steinheim-eg.com / Web Site: www.steinheim-eg.com</div>
           </footer>
-
-          {(settings?.social_facebook || settings?.social_instagram || settings?.social_twitter || settings?.social_website) && (
-            <div className="mt-5 flex flex-wrap gap-4 border-t border-border/60 pt-4 text-xs text-muted-foreground">
-              {settings?.social_website && <span>🌐 {settings.social_website}</span>}
-              {settings?.social_facebook && <span>📘 {settings.social_facebook}</span>}
-              {settings?.social_instagram && <span>📸 {settings.social_instagram}</span>}
-              {settings?.social_twitter && <span>𝕏 {settings.social_twitter}</span>}
-            </div>
-          )}
-
-          <div className="mt-8 text-center text-xs font-medium tracking-wide text-muted-foreground">{t("thank_you")}</div>
         </div>
       </div>
 
