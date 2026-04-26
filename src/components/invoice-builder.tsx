@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import type { Customer, Product } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import { QrScanner } from "@/components/qr-scanner";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export type BuilderItem = {
   product_id: string | null;
