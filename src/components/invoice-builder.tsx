@@ -285,6 +285,24 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
   const total = Math.max(0, subtotal - discount);
 
+  // Paid / remaining computed from total
+  const paidAmount = paidMode === "auto"
+    ? +(total * 0.5).toFixed(2)
+    : Math.max(0, Math.min(total, +(paidCustom || 0).toFixed(2)));
+  const remainingAmount = +(total - paidAmount).toFixed(2);
+
+  // Initialize paid mode/value from existing invoice on edit
+  useEffect(() => {
+    if (initial?.paid_amount != null) {
+      const p = Number(initial.paid_amount);
+      // If it equals exactly 50% of current snapshot, treat as auto. Otherwise custom.
+      // We don't know original total here reliably, so default to custom when explicit value present.
+      setPaidMode("custom");
+      setPaidCustom(p);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveNewCustomer = async () => {
     if (!user || savingCustomer) return;
     const name = newCustomer.name.trim();
