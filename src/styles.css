@@ -259,6 +259,9 @@ html, body {
 }
 
 
+/* Force Latin digits and LTR direction for numeric spans */
+.ltr-nums { direction: ltr; unicode-bidi: embed; font-variant-numeric: tabular-nums; font-feature-settings: "lnum"; }
+
 /* Print styles for invoices */
 .print-only { display: none; }
 @media print {
