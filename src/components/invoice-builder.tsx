@@ -53,7 +53,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
   const [items, setItems] = useState<BuilderItem[]>(initial?.items ?? []);
   const [discount, setDiscount] = useState<number>(initial?.discount ?? 0);
-  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
+  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("percent");
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [scanning, setScanning] = useState(false);
@@ -175,6 +175,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           quantity: 1,
           unit_price: Number(p.price),
           discount: 0,
+          discount_mode: "percent",
+          discount_percent: 0,
         },
       ];
     });
@@ -390,12 +392,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 w-full max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
         </h1>
-        <Button onClick={save} disabled={saving} className="gap-2 shadow-glow">
+        <Button onClick={save} disabled={saving} className="gap-2 shadow-glow w-full sm:w-auto">
           {t("save_invoice")}
         </Button>
       </div>
@@ -424,7 +426,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("customer")}</Label>
             <div className="mt-1.5 flex gap-2">
               <select
@@ -457,15 +459,15 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             )}
           </div>
 
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-semibold">{t("products")}</h3>
-              <div className="flex gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => setScanning(true)}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={() => setScanning(true)}>
                   <ScanLine className="h-4 w-4" />
                   {t("scan_qr")}
                 </Button>
-                <Button className="gap-2" onClick={() => setShowPicker(true)}>
+                <Button className="gap-2 flex-1 sm:flex-none" onClick={() => setShowPicker(true)}>
                   <Plus className="h-4 w-4" />
                   {t("add_item")}
                 </Button>
@@ -484,7 +486,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                       <div>
                         <Label className="text-xs">{t("serial_number")}</Label>
                         <Input value={it.serial_number} onChange={(e) => updateItem(idx, { serial_number: e.target.value })} />
@@ -571,14 +573,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             )}
           </div>
 
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1.5" />
           </div>
         </div>
 
         <aside className="space-y-3">
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("subtotal")}</span>
