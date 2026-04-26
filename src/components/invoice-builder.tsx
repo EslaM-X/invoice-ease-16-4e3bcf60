@@ -493,24 +493,34 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         <Label className="text-xs">{t("color")}</Label>
                         <Input value={it.color} onChange={(e) => updateItem(idx, { color: e.target.value })} />
                       </div>
-                      <div>
-                        <Label className="text-xs">{t("quantity")}</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={it.quantity}
-                          onChange={(e) => updateItem(idx, { quantity: Math.max(1, parseInt(e.target.value || "1", 10)) })}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">{t("unit_price")}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={it.unit_price}
-                          onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) || 0 })}
-                        />
-                      </div>
+                       <div>
+                         <Label className="text-xs">{t("quantity")}</Label>
+                         <Input
+                           type="number"
+                           inputMode="numeric"
+                           min={1}
+                           value={it.quantity === 0 ? "" : it.quantity}
+                           onFocus={(e) => e.target.select()}
+                           onChange={(e) => {
+                             const v = e.target.value;
+                             updateItem(idx, { quantity: v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1) });
+                           }}
+                         />
+                       </div>
+                       <div>
+                         <Label className="text-xs">{t("unit_price")}</Label>
+                         <Input
+                           type="number"
+                           inputMode="decimal"
+                           step="0.01"
+                           value={it.unit_price === 0 ? "" : it.unit_price}
+                           onFocus={(e) => e.target.select()}
+                           onChange={(e) => {
+                             const v = e.target.value;
+                             updateItem(idx, { unit_price: v === "" ? 0 : Number(v) || 0 });
+                           }}
+                         />
+                       </div>
                       <div>
                         <div className="flex items-center justify-between">
                           <Label className="text-xs">{t("discount")}</Label>
