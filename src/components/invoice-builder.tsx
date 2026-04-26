@@ -404,7 +404,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         const { data, error } = await supabase.rpc("update_invoice", {
           _invoice_id: invoiceId,
           _customer_id: customer?.id ?? null,
-          _discount: discount,
+          _discount: effectiveDiscount,
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
