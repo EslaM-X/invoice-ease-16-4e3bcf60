@@ -68,18 +68,21 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
 
-  // Load customers/products
+  // Load customers/products (RLS handles company-wide visibility)
+  const loadLists = async () => {
+    const [{ data: c }, { data: p }] = await Promise.all([
+      supabase.from("customers").select("*").order("name"),
+      supabase.from("products").select("*").order("name"),
+    ]);
+    setCustomers((c ?? []) as Customer[]);
+    setProducts((p ?? []) as Product[]);
+  };
   useEffect(() => {
     if (!user) return;
-    (async () => {
-      const [{ data: c }, { data: p }] = await Promise.all([
-        supabase.from("customers").select("*").eq("user_id", user.id).order("name"),
-        supabase.from("products").select("*").eq("user_id", user.id).order("name"),
-      ]);
-      setCustomers((c ?? []) as Customer[]);
-      setProducts((p ?? []) as Product[]);
-    })();
+    loadLists();
   }, [user]);
+  useRealtimeTable("customers", () => { loadLists(); });
+  useRealtimeTable("products", () => { loadLists(); });
 
   // Hydrate draft only in new mode
   useEffect(() => {
