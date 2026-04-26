@@ -125,8 +125,8 @@ function InvoiceView() {
             />
           </header>
 
-          <div className="mt-4 text-center text-[15px] text-black" dir={isAr ? "rtl" : "ltr"}>
-            {isAr ? "فاتورة تجارية" : "Commercial Invoice"} <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
+          <div className="mt-4 text-center text-[15px] text-black" dir="ltr">
+            Invoice <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
           </div>
 
           <div className="mt-6 text-[13px] text-black space-y-0.5" dir={isAr ? "rtl" : "ltr"}>
