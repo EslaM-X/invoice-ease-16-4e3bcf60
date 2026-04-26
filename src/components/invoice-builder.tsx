@@ -493,24 +493,34 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         <Label className="text-xs">{t("color")}</Label>
                         <Input value={it.color} onChange={(e) => updateItem(idx, { color: e.target.value })} />
                       </div>
-                      <div>
-                        <Label className="text-xs">{t("quantity")}</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={it.quantity}
-                          onChange={(e) => updateItem(idx, { quantity: Math.max(1, parseInt(e.target.value || "1", 10)) })}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">{t("unit_price")}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={it.unit_price}
-                          onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) || 0 })}
-                        />
-                      </div>
+                       <div>
+                         <Label className="text-xs">{t("quantity")}</Label>
+                         <Input
+                           type="number"
+                           inputMode="numeric"
+                           min={1}
+                           value={it.quantity === 0 ? "" : it.quantity}
+                           onFocus={(e) => e.target.select()}
+                           onChange={(e) => {
+                             const v = e.target.value;
+                             updateItem(idx, { quantity: v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1) });
+                           }}
+                         />
+                       </div>
+                       <div>
+                         <Label className="text-xs">{t("unit_price")}</Label>
+                         <Input
+                           type="number"
+                           inputMode="decimal"
+                           step="0.01"
+                           value={it.unit_price === 0 ? "" : it.unit_price}
+                           onFocus={(e) => e.target.select()}
+                           onChange={(e) => {
+                             const v = e.target.value;
+                             updateItem(idx, { unit_price: v === "" ? 0 : Number(v) || 0 });
+                           }}
+                         />
+                       </div>
                       <div>
                         <div className="flex items-center justify-between">
                           <Label className="text-xs">{t("discount")}</Label>
@@ -523,23 +533,33 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                             {it.discount_mode === "percent" ? "%" : "EGP"}
                           </button>
                         </div>
-                        {it.discount_mode === "percent" ? (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            max={100}
-                            value={it.discount_percent ?? 0}
-                            onChange={(e) => setItemDiscountPercent(idx, Number(e.target.value) || 0)}
-                          />
-                        ) : (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={it.discount}
-                            onChange={(e) => updateItem(idx, { discount: Number(e.target.value) || 0, discount_mode: "amount", discount_percent: undefined })}
-                          />
-                        )}
+                         {it.discount_mode === "percent" ? (
+                           <Input
+                             type="number"
+                             inputMode="decimal"
+                             step="0.01"
+                             min={0}
+                             max={100}
+                             value={!it.discount_percent ? "" : it.discount_percent}
+                             onFocus={(e) => e.target.select()}
+                             onChange={(e) => {
+                               const v = e.target.value;
+                               setItemDiscountPercent(idx, v === "" ? 0 : Number(v) || 0);
+                             }}
+                           />
+                         ) : (
+                           <Input
+                             type="number"
+                             inputMode="decimal"
+                             step="0.01"
+                             value={it.discount === 0 ? "" : it.discount}
+                             onFocus={(e) => e.target.select()}
+                             onChange={(e) => {
+                               const v = e.target.value;
+                               updateItem(idx, { discount: v === "" ? 0 : Number(v) || 0, discount_mode: "amount", discount_percent: undefined });
+                             }}
+                           />
+                         )}
                       </div>
                     </div>
                     <div className="mt-2 text-end text-sm font-semibold">
@@ -570,19 +590,29 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                   {discountMode === "percent" ? (
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min={0}
                       max={100}
-                      value={discountPercent}
-                      onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
+                      value={discountPercent === 0 ? "" : discountPercent}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDiscountPercent(v === "" ? 0 : Number(v) || 0);
+                      }}
                       className="w-24 text-end"
                     />
                   ) : (
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
-                      value={discount}
-                      onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                      value={discount === 0 ? "" : discount}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDiscount(v === "" ? 0 : Number(v) || 0);
+                      }}
                       className="w-24 text-end"
                     />
                   )}
