@@ -269,14 +269,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
 
   const subtotal = items.reduce((s, it) => s + it.quantity * it.unit_price - it.discount, 0);
+  // Service fee total stays OUTSIDE the discount base — discount never reduces it.
+  const serviceFeeTotal = items.reduce(
+    (s, it) => s + (isServiceFee(it) ? it.quantity * it.unit_price - it.discount : 0),
+    0,
+  );
+  const discountableBase = Math.max(0, subtotal - serviceFeeTotal);
 
-  // Keep global discount EGP in sync when in percent mode
+  // Keep global discount EGP in sync when in percent mode (based on discountable items only)
   useEffect(() => {
     if (discountMode === "percent") {
       const v = Math.max(0, Math.min(100, discountPercent || 0));
-      setDiscount(+((subtotal * v) / 100).toFixed(2));
+      setDiscount(+((discountableBase * v) / 100).toFixed(2));
     }
-  }, [discountMode, discountPercent, subtotal]);
+  }, [discountMode, discountPercent, discountableBase]);
 
   // Recompute item EGP discount when qty / unit price change while in percent mode
   useEffect(() => {
