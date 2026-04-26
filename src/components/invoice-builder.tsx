@@ -424,15 +424,15 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-5">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
+        <div className="min-w-0 space-y-4 sm:space-y-5 lg:col-span-2">
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("customer")}</Label>
-            <div className="mt-1.5 flex gap-2">
+            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
               <select
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
               >
                 <option value="">— {t("select_customer")} —</option>
                 {customers.map((c) => (
@@ -442,7 +442,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                   </option>
                 ))}
               </select>
-              <Button type="button" variant="outline" className="gap-1 shrink-0" onClick={() => setShowNewCustomer(true)}>
+              <Button type="button" variant="outline" className="w-full gap-1 sm:w-auto sm:shrink-0" onClick={() => setShowNewCustomer(true)}>
                 <Plus className="h-4 w-4" />
                 {t("new_customer")}
               </Button>
@@ -479,14 +479,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             ) : (
               <div className="space-y-3">
                 {items.map((it, idx) => (
-                  <div key={idx} className="rounded-xl border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-medium">{it.product_name}</div>
+                    <div key={idx} className="rounded-xl border p-3">
+                     <div className="flex items-start justify-between gap-2">
+                       <div className="min-w-0 flex-1 text-sm font-medium break-words">{it.product_name}</div>
                       <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <div>
                         <Label className="text-xs">{t("serial_number")}</Label>
                         <Input value={it.serial_number} onChange={(e) => updateItem(idx, { serial_number: e.target.value })} />
@@ -579,16 +579,16 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           </div>
         </div>
 
-        <aside className="space-y-3">
+         <aside className="min-w-0 space-y-3">
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("subtotal")}</span>
                 <span>{fmtMoney(subtotal, "EGP", lang)}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
+               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-muted-foreground">{t("discount")}</span>
-                <div className="flex items-center gap-1">
+                 <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
                   {discountMode === "percent" ? (
                     <Input
                       type="number"
@@ -602,7 +602,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         const v = e.target.value;
                         setDiscountPercent(v === "" ? 0 : Number(v) || 0);
                       }}
-                      className="w-24 text-end"
+                       className="min-w-0 flex-1 text-end sm:w-24 sm:flex-none"
                     />
                   ) : (
                     <Input
@@ -615,7 +615,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         const v = e.target.value;
                         setDiscount(v === "" ? 0 : Number(v) || 0);
                       }}
-                      className="w-24 text-end"
+                       className="min-w-0 flex-1 text-end sm:w-24 sm:flex-none"
                     />
                   )}
                   <button
