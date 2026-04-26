@@ -169,19 +169,19 @@ function InvoiceView() {
                       </div>
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">{it.quantity}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">E£ {Number(it.unit_price).toFixed(2)}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">E£ {Number(it.line_total).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.unit_price).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.line_total).toFixed(2)}</td>
                   </tr>
                 ))}
                 {Number(inv.discount) > 0 && (
                   <tr>
                     <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- E£ {Number(inv.discount).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
                   </tr>
                 )}
                 <tr>
                   <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">E£ {Number(inv.total).toFixed(2)}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
