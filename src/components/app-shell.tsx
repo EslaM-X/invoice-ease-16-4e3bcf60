@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="h-14 w-auto select-none object-contain"
           draggable={false}
         />
-        <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-sidebar-primary">
+        <div className="font-latin text-[10px] font-medium uppercase tracking-[0.32em] text-sidebar-primary">
           Invoice Suite
         </div>
       </div>
