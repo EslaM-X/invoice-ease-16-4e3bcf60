@@ -52,9 +52,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
+  const SERVICE_FEE_NAME = "رسوم خدمة / Service Fee";
+  const isServiceFee = (it: BuilderItem) => it.product_id === null && it.product_name === SERVICE_FEE_NAME && Number(it.unit_price) === 250;
   const defaultFeeItem = (): BuilderItem => ({
     product_id: null,
-    product_name: "رسوم خدمة / Service Fee",
+    product_name: SERVICE_FEE_NAME,
     serial_number: "",
     color: "",
     quantity: 1,
