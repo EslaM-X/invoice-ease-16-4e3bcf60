@@ -37,6 +37,7 @@ type Props = {
     items: BuilderItem[];
     discount: number;
     notes: string;
+    paid_amount?: number | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
@@ -56,6 +57,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [discountMode, setDiscountMode] = useState<"amount" | "percent">("percent");
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
+  // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
+  const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
+  const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
   const [scanning, setScanning] = useState(false);
   const [continuous, setContinuous] = useState(true);
   const [productSearch, setProductSearch] = useState("");
@@ -281,6 +285,24 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
   const total = Math.max(0, subtotal - discount);
 
+  // Paid / remaining computed from total
+  const paidAmount = paidMode === "auto"
+    ? +(total * 0.5).toFixed(2)
+    : Math.max(0, Math.min(total, +(paidCustom || 0).toFixed(2)));
+  const remainingAmount = +(total - paidAmount).toFixed(2);
+
+  // Initialize paid mode/value from existing invoice on edit
+  useEffect(() => {
+    if (initial?.paid_amount != null) {
+      const p = Number(initial.paid_amount);
+      // If it equals exactly 50% of current snapshot, treat as auto. Otherwise custom.
+      // We don't know original total here reliably, so default to custom when explicit value present.
+      setPaidMode("custom");
+      setPaidCustom(p);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveNewCustomer = async () => {
     if (!user || savingCustomer) return;
     const name = newCustomer.name.trim();
@@ -363,6 +385,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
+          _paid_amount: paidMode === "custom" ? paidAmount : null,
         } as any);
         if (error || !data) {
           handleRpcError(error?.message ?? "");
@@ -377,6 +400,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
+          _paid_amount: paidMode === "custom" ? paidAmount : null,
         } as any);
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
@@ -644,6 +668,56 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                <div className="flex flex-col gap-1 border-t pt-2 text-lg font-bold sm:flex-row sm:items-center sm:justify-between">
                  <span>{t("total")}</span>
                  <span className="max-w-full break-words text-start sm:text-end">{fmtMoney(total, "EGP", lang)}</span>
+              </div>
+
+              {/* Paid / Remaining */}
+              <div className="border-t pt-2 space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? "المبلغ المسدد" : "Paid Amount"}
+                  </span>
+                  <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
+                    {paidMode === "custom" ? (
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min={0}
+                        max={total}
+                        value={paidCustom === 0 ? "" : paidCustom}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPaidCustom(v === "" ? 0 : Number(v) || 0);
+                        }}
+                        className="min-w-0 flex-1 text-end sm:w-28 sm:flex-none"
+                      />
+                    ) : (
+                      <span className="text-end font-semibold tabular-nums">{fmtMoney(paidAmount, "EGP", lang)}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (paidMode === "auto") {
+                          setPaidCustom(+(total * 0.5).toFixed(2));
+                          setPaidMode("custom");
+                        } else {
+                          setPaidMode("auto");
+                        }
+                      }}
+                      className="text-[10px] font-semibold rounded border px-1.5 py-1 hover:bg-muted"
+                      title={paidMode === "auto" ? (lang === "ar" ? "تخصيص" : "Custom") : (lang === "ar" ? "50% تلقائي" : "50% auto")}
+                    >
+                      {paidMode === "auto" ? "50%" : "EGP"}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? "المبلغ المتبقي" : "Remaining Amount"}
+                  </span>
+                  <span className="font-semibold tabular-nums">{fmtMoney(remainingAmount, "EGP", lang)}</span>
+                </div>
               </div>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">

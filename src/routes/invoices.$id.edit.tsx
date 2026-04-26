@@ -23,6 +23,7 @@ function EditInvoice() {
     items: BuilderItem[];
     discount: number;
     notes: string;
+    paid_amount?: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +53,7 @@ function EditInvoice() {
           })),
           discount: Number(inv.discount ?? 0),
           notes: inv.notes ?? "",
+          paid_amount: (inv as any).paid_amount != null ? Number((inv as any).paid_amount) : null,
         });
       }
       setLoading(false);
