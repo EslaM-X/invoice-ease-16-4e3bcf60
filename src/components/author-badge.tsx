@@ -26,10 +26,10 @@ export function AuthorBadge({ email, label, className = "", size = "xs" }: Props
         <img
           src={profile.avatar_url}
           alt=""
-          className={`${dim} rounded-full object-cover`}
+          className={`${dim} rounded-full object-cover no-print`}
         />
       ) : (
-        <span className={`flex ${dim} items-center justify-center rounded-full bg-primary/15 text-primary`}>
+        <span className={`flex ${dim} items-center justify-center rounded-full bg-primary/15 text-primary no-print`}>
           <User className="h-2.5 w-2.5" />
         </span>
       )}
