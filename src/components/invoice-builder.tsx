@@ -573,7 +573,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             )}
           </div>
 
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1.5" />
           </div>
