@@ -590,19 +590,29 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                   {discountMode === "percent" ? (
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min={0}
                       max={100}
-                      value={discountPercent}
-                      onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
+                      value={discountPercent === 0 ? "" : discountPercent}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDiscountPercent(v === "" ? 0 : Number(v) || 0);
+                      }}
                       className="w-24 text-end"
                     />
                   ) : (
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
-                      value={discount}
-                      onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                      value={discount === 0 ? "" : discount}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDiscount(v === "" ? 0 : Number(v) || 0);
+                      }}
                       className="w-24 text-end"
                     />
                   )}
