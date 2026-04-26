@@ -9,6 +9,7 @@ import {
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck
 } from "lucide-react";
 import { useState } from "react";
+import { PageTransition } from "@/components/page-transition";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
@@ -91,19 +92,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/40 glass px-4 no-print">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(!open)}>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/40 glass px-4 pt-safe no-print">
+          <Button variant="ghost" size="icon" className="lg:hidden tap-scale" onClick={() => setOpen(!open)}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
           <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
+          <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
             <Languages className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle} aria-label="theme">
+          <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={toggle} aria-label="theme">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 pb-safe sm:px-6 lg:px-8">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
     </div>
   );
