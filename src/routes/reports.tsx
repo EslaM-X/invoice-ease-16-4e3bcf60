@@ -23,7 +23,7 @@ function Reports() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("customers").select("id,name").eq("user_id", user.id).then(({ data }) => setCustomers(data ?? []));
+    supabase.from("customers").select("id,name").then(({ data }) => setCustomers(data ?? []));
   }, [user]);
 
   useEffect(() => {
