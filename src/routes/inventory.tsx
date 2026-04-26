@@ -78,7 +78,7 @@ function Inventory() {
           <div className="py-8 text-center text-sm text-muted-foreground">{t("no_data")}</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-3 py-2 text-start font-medium">{t("date")}</th>
