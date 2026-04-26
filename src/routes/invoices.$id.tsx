@@ -44,6 +44,9 @@ function InvoiceView() {
   };
 
   useEffect(() => { load(); }, [id, user]);
+  useRealtimeTable("invoices", (p) => { if (p.new?.id === id || p.old?.id === id) load(); }, [id]);
+  useRealtimeTable("invoice_items", (p) => { if (p.new?.invoice_id === id || p.old?.invoice_id === id) load(); }, [id]);
+  useRealtimeTable("invoice_events", (p) => { if (p.new?.invoice_id === id) load(); }, [id]);
 
   const voidIt = async () => {
     const { error } = await supabase.rpc("void_invoice", { _invoice_id: id } as any);
