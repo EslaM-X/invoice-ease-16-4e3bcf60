@@ -459,15 +459,15 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             )}
           </div>
 
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-semibold">{t("products")}</h3>
-              <div className="flex gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => setScanning(true)}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={() => setScanning(true)}>
                   <ScanLine className="h-4 w-4" />
                   {t("scan_qr")}
                 </Button>
-                <Button className="gap-2" onClick={() => setShowPicker(true)}>
+                <Button className="gap-2 flex-1 sm:flex-none" onClick={() => setShowPicker(true)}>
                   <Plus className="h-4 w-4" />
                   {t("add_item")}
                 </Button>
