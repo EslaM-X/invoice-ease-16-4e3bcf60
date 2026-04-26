@@ -105,7 +105,7 @@ function InvoiceView() {
             </span>
           </div>
         )}
-        <div className="invoice-page flex flex-col px-8 pt-8 pb-6 sm:px-12 sm:pt-10" dir="ltr">
+        <div className="invoice-page flex flex-col px-8 pt-8 pb-2 sm:px-12 sm:pt-10" dir="ltr">
           {/* Header: date top-right, logo center, registry top-left */}
           <header className="relative flex flex-col items-center pb-2">
             <div className="absolute top-0 left-0 text-[11px] leading-tight text-black ltr-nums" style={{ direction: "ltr" }}>
@@ -169,19 +169,19 @@ function InvoiceView() {
                       </div>
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">{it.quantity}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">E£ {Number(it.unit_price).toFixed(2)}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">E£ {Number(it.line_total).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.unit_price).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums">EGP {Number(it.line_total).toFixed(2)}</td>
                   </tr>
                 ))}
                 {Number(inv.discount) > 0 && (
                   <tr>
                     <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- E£ {Number(inv.discount).toFixed(2)}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
                   </tr>
                 )}
                 <tr>
                   <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">E£ {Number(inv.total).toFixed(2)}</td>
+                  <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
