@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { exportInvoicesToCSV, exportInvoicesToExcel, exportInvoicesBatchPDF, type InvoiceRow } from "@/lib/invoice-export";
+import { useRealtimeTable } from "@/lib/realtime";
+import { AuthorBadge } from "@/components/author-badge";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
@@ -26,13 +28,14 @@ function InvoicesList() {
 
   const load = async () => {
     if (!user) return;
-    let query = supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    let query = supabase.from("invoices").select("*").order("created_at", { ascending: false });
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", to + "T23:59:59");
     const { data } = await query;
     setList(data ?? []);
   };
   useEffect(() => { load(); }, [user, from, to]);
+  useRealtimeTable("invoices", () => { load(); });
 
   const filtered = list.filter((i) => {
     const s = q.trim().toLowerCase();
@@ -176,7 +179,10 @@ function InvoicesList() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">{i.customer_name || "—"}</td>
+                      <td className="px-4 py-3">
+                        <div>{i.customer_name || "—"}</div>
+                        <AuthorBadge email={i.created_by_email} label="created by" className="mt-0.5" />
+                      </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
                       <td className="px-4 py-3 font-semibold">{fmtMoney(Number(i.total), "EGP", lang)}</td>
                       <td className="px-4 py-3">
