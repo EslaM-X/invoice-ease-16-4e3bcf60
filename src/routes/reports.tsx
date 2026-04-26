@@ -29,7 +29,7 @@ function Reports() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      let q = supabase.from("invoices").select("*").eq("user_id", user.id).neq("status", "voided").order("created_at", { ascending: false });
+      let q = supabase.from("invoices").select("*").neq("status", "voided").order("created_at", { ascending: false });
       if (from) q = q.gte("created_at", from);
       if (to) q = q.lte("created_at", to + "T23:59:59");
       if (customerId) q = q.eq("customer_id", customerId);
