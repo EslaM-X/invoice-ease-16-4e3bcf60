@@ -52,9 +52,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
+  const SERVICE_FEE_NAME = "رسوم خدمة / Service Fee";
+  const isServiceFee = (it: BuilderItem) => it.product_id === null && it.product_name === SERVICE_FEE_NAME && Number(it.unit_price) === 250;
   const defaultFeeItem = (): BuilderItem => ({
     product_id: null,
-    product_name: "رسوم خدمة / Service Fee",
+    product_name: SERVICE_FEE_NAME,
     serial_number: "",
     color: "",
     quantity: 1,
@@ -523,6 +525,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
+                    {isServiceFee(it) ? (
+                      <div className="mt-2 flex items-center justify-end text-sm font-semibold">
+                        {fmtMoney(250, "EGP", lang)}
+                      </div>
+                    ) : (
+                      <>
                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <div>
                         <Label className="text-xs">{t("serial_number")}</Label>
@@ -604,6 +612,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                     <div className="mt-2 text-end text-sm font-semibold">
                       {fmtMoney(it.quantity * it.unit_price - it.discount, "EGP", lang)}
                     </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
