@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo.png";
 
 export const Route = createFileRoute("/reset-password")({
