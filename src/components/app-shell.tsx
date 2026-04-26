@@ -113,6 +113,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" className="lg:hidden tap-scale" onClick={() => setOpen(!open)}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
+          <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
+            <span className="rounded-md bg-[oklch(0.11_0.004_60)] px-2 py-1">
+              <img src={brandLogo} alt="Steinheim" className="h-5 w-auto" />
+            </span>
+          </Link>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
             <Languages className="h-4 w-4" />
