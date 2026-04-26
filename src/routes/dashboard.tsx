@@ -8,6 +8,7 @@ import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus, ScanLine } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
