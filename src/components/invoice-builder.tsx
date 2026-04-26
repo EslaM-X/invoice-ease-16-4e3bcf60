@@ -37,6 +37,7 @@ type Props = {
     items: BuilderItem[];
     discount: number;
     notes: string;
+    paid_amount?: number | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
