@@ -27,17 +27,19 @@ function Reports() {
     supabase.from("customers").select("id,name").then(({ data }) => setCustomers(data ?? []));
   }, [user]);
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      let q = supabase.from("invoices").select("*").neq("status", "voided").order("created_at", { ascending: false });
-      if (from) q = q.gte("created_at", from);
-      if (to) q = q.lte("created_at", to + "T23:59:59");
-      if (customerId) q = q.eq("customer_id", customerId);
-      const { data } = await q;
-      setList(data ?? []);
-    })();
-  }, [user, from, to, customerId]);
+  const loadInvoices = async () => {
+    let q = supabase.from("invoices").select("*").neq("status", "voided").order("created_at", { ascending: false });
+    if (from) q = q.gte("created_at", from);
+    if (to) q = q.lte("created_at", to + "T23:59:59");
+    if (customerId) q = q.eq("customer_id", customerId);
+    const { data } = await q;
+    setList(data ?? []);
+  };
+  useEffect(() => { if (user) loadInvoices(); }, [user, from, to, customerId]);
+  useRealtimeTable("invoices", () => { if (user) loadInvoices(); });
+  useRealtimeTable("customers", () => {
+    if (user) supabase.from("customers").select("id,name").then(({ data }) => setCustomers(data ?? []));
+  });
 
   const totalSales = list.reduce((s, i) => s + Number(i.total ?? 0), 0);
 
