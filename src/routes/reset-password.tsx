@@ -107,16 +107,25 @@ function ResetPasswordPage() {
               <Label htmlFor="pw2" className="text-white/80">
                 {lang === "ar" ? "تأكيد كلمة السر" : "Confirm password"}
               </Label>
-              <Input
-                id="pw2"
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                minLength={6}
-                required
-                disabled={!ready}
-                className="border-white/15 bg-white/5 text-white focus-visible:ring-[oklch(0.78_0.11_82)]"
-              />
+              <div className="relative">
+                <Input
+                  id="pw2"
+                  type={show2 ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  minLength={6}
+                  required
+                  disabled={!ready}
+                  className="border-white/15 bg-white/5 pe-10 text-white focus-visible:ring-[oklch(0.78_0.11_82)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShow2((v) => !v)}
+                  className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/60 hover:text-white"
+                >
+                  {show2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button
               type="submit"
