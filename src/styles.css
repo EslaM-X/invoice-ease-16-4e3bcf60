@@ -300,14 +300,19 @@ html, body {
     box-shadow: none !important;
     text-shadow: none !important;
   }
-  .print-area img {
+  .print-area img.invoice-logo {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    max-height: 80px;
-    width: auto;
+    height: 96px !important;
+    max-height: 96px !important;
+    width: auto !important;
     object-fit: contain;
     visibility: visible !important;
   }
+  .print-area .invoice-page {
+    min-height: calc(297mm - 24mm) !important;
+  }
+  .ltr-nums { direction: ltr !important; unicode-bidi: embed; }
   .print-only, .print-only * { visibility: visible !important; }
   .print-only { display: block !important; }
   @page { margin: 12mm; size: A4; }
