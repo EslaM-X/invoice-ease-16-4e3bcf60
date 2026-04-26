@@ -419,7 +419,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       } else {
         const { data: invoiceIdRet, error } = await supabase.rpc("create_invoice", {
           _customer_id: customer?.id ?? null,
-          _discount: discount,
+          _discount: effectiveDiscount,
           _notes: notes || null,
           _language: lang,
           _items: payload as any,
