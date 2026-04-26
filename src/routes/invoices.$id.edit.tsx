@@ -33,7 +33,6 @@ function EditInvoice() {
         .from("invoices")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
         .maybeSingle();
       const { data: items } = await supabase
         .from("invoice_items")
