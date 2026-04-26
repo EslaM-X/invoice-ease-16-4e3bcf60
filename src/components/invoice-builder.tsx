@@ -304,7 +304,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.map((i) => `${i.quantity}-${i.unit_price}`).join("|")]);
 
-  const total = Math.max(0, subtotal - discount);
+  // Cap discount so it never eats into the protected service fee
+  const effectiveDiscount = Math.min(discount, discountableBase);
+  const total = Math.max(0, subtotal - effectiveDiscount);
 
   // Paid / remaining computed from total
   const paidAmount = paidMode === "auto"
