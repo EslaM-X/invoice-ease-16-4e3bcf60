@@ -82,7 +82,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
   const [scanning, setScanning] = useState(false);
-  const [continuous, setContinuous] = useState(true);
+  const [continuous, setContinuous] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
