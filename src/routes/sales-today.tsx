@@ -23,6 +23,8 @@ import {
   RotateCcw,
   Trash2,
   Pencil,
+  ClipboardList,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -108,6 +110,7 @@ function SalesToday() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [poOpen, setPoOpen] = useState(false);
 
   // Debounce realtime reloads to avoid thrashing under bursts of changes
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -204,6 +207,59 @@ function SalesToday() {
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pageRows = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  // Purchase Order rows: only items actually sold (positive net), sorted by urgency
+  const poRows = useMemo(() => {
+    return rows
+      .filter((r) => r.sold_qty > 0)
+      .map((r) => {
+        const deficit = Math.max(0, r.low_stock_threshold - r.current_stock);
+        // Suggested reorder = today's sold qty + deficit to refill safety stock
+        const suggested = r.sold_qty + deficit;
+        return { ...r, deficit, suggested };
+      })
+      .sort((a, b) => {
+        // urgency: out of stock first, then below min, then by sold qty
+        const aUrg = a.current_stock <= 0 ? 2 : a.current_stock <= a.low_stock_threshold ? 1 : 0;
+        const bUrg = b.current_stock <= 0 ? 2 : b.current_stock <= b.low_stock_threshold ? 1 : 0;
+        if (aUrg !== bUrg) return bUrg - aUrg;
+        return b.sold_qty - a.sold_qty;
+      });
+  }, [rows]);
+
+  const poTotals = useMemo(() => {
+    return poRows.reduce(
+      (acc, r) => {
+        acc.units += r.sold_qty;
+        acc.suggested += r.suggested;
+        acc.distinct += 1;
+        return acc;
+      },
+      { units: 0, suggested: 0, distinct: 0 }
+    );
+  }, [poRows]);
+
+  const exportPurchaseOrderCSV = () => {
+    const headers = [
+      "product_name","serial_number","color","unit_price_egp",
+      "sold_today_qty","current_stock","low_stock_threshold","stock_deficit","suggested_order_qty",
+    ];
+    const lines = poRows.map((r) =>
+      [
+        r.name, r.serial_number ?? "", r.color ?? "",
+        r.price.toFixed(2), r.sold_qty, r.current_stock, r.low_stock_threshold, r.deficit, r.suggested,
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    );
+    const csv = "\uFEFF" + headers.join(",") + "\n" + lines.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `purchase-order-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -302,9 +358,20 @@ function SalesToday() {
             <Download className="me-1.5 h-4 w-4" />
             {lang === "ar" ? "ملخص CSV" : "Summary CSV"}
           </Button>
-          <Button size="sm" onClick={exportMovementsCSV} disabled={rows.length === 0}>
+          <Button size="sm" variant="outline" onClick={exportMovementsCSV} disabled={rows.length === 0}>
             <Download className="me-1.5 h-4 w-4" />
             {lang === "ar" ? "كل الحركات CSV" : "All movements CSV"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setPoOpen(true)}
+            disabled={poRows.length === 0}
+            className="bg-gradient-to-r from-primary to-primary/80 shadow-md"
+          >
+            <ClipboardList className="me-1.5 h-4 w-4" />
+            {lang === "ar"
+              ? `إجمالي المباع (${poTotals.distinct})`
+              : `Total Sold (${poTotals.distinct})`}
           </Button>
         </div>
       </div>
@@ -484,6 +551,160 @@ function SalesToday() {
           ? "ملاحظة: «صافي» = البيع − الإرجاع. أي إلغاء/حذف/تعديل لفاتورة أو تصحيح يدوي يظهر داخل تفاصيل المنتج بسببه واسم من قام به."
           : "Note: «Net» = sales − refunds. Every void/delete/edit and manual adjustment is shown inside product details with its reason and actor."}
       </p>
+
+      {poOpen && (
+        <PurchaseOrderModal
+          rows={poRows}
+          totals={poTotals}
+          date={date}
+          lang={lang}
+          onClose={() => setPoOpen(false)}
+          onExport={exportPurchaseOrderCSV}
+        />
+      )}
+    </div>
+  );
+}
+
+function PurchaseOrderModal({
+  rows, totals, date, lang, onClose, onExport,
+}: {
+  rows: (Aggregated & { deficit: number; suggested: number })[];
+  totals: { units: number; suggested: number; distinct: number };
+  date: string;
+  lang: "ar" | "en";
+  onClose: () => void;
+  onExport: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b bg-gradient-to-r from-primary/10 to-transparent px-6 py-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-bold">
+              <ClipboardList className="h-5 w-5 text-primary" />
+              {lang === "ar" ? "إجمالي المنتجات المباعة — طلبية شراء مقترحة" : "Total Sold — Suggested Purchase Order"}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {lang === "ar"
+                ? `بتاريخ ${fmtDate(date, lang)} — مرتبة حسب الأولوية (نفد، منخفض، الأكثر مبيعاً).`
+                : `For ${fmtDate(date, lang)} — sorted by priority (out, low, top sellers).`}
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid gap-3 border-b bg-muted/30 px-6 py-4 sm:grid-cols-3">
+          <div className="rounded-xl border bg-card p-3">
+            <div className="text-xs text-muted-foreground">{lang === "ar" ? "أنواع منتجات" : "Distinct items"}</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{totals.distinct}</div>
+          </div>
+          <div className="rounded-xl border bg-card p-3">
+            <div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المباع (وحدات)" : "Total sold (units)"}</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums text-primary">{totals.units}</div>
+          </div>
+          <div className="rounded-xl border bg-card p-3">
+            <div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي مقترح للطلب" : "Suggested order total"}</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums text-success">{totals.suggested}</div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto px-6 py-4">
+          {rows.length === 0 ? (
+            <div className="py-16 text-center text-sm text-muted-foreground">
+              {lang === "ar" ? "لا توجد منتجات مباعة في هذا اليوم." : "No products sold on this date."}
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {rows.map((r) => {
+                const out = r.current_stock <= 0;
+                const low = !out && r.current_stock <= r.low_stock_threshold;
+                return (
+                  <div
+                    key={r.product_id}
+                    className={`flex gap-3 rounded-xl border p-3 ${
+                      out ? "border-destructive/40 bg-destructive/5"
+                        : low ? "border-warning/50 bg-warning/5"
+                        : "bg-card"
+                    }`}
+                  >
+                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border bg-muted">
+                      {r.image_url ? (
+                        <img src={r.image_url} alt={r.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <Package className="h-full w-full p-3 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold">{r.name}</div>
+                          <div className="font-mono text-[11px] text-muted-foreground">{r.serial_number ?? "—"}</div>
+                        </div>
+                        {out && <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
+                        {low && <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-bold text-warning-foreground">{lang === "ar" ? "منخفض" : "LOW"}</span>}
+                      </div>
+
+                      {r.color && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                          <span
+                            className="inline-block h-4 w-4 rounded-full border-2 border-background ring-1 ring-border shadow-sm"
+                            style={{ background: r.color }}
+                            aria-hidden
+                          />
+                          <span className="text-muted-foreground">{r.color}</span>
+                        </div>
+                      )}
+
+                      <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+                        <div className="rounded-md bg-primary/10 px-1.5 py-1">
+                          <div className="text-[10px] text-muted-foreground">{lang === "ar" ? "اتباع" : "Sold"}</div>
+                          <div className="text-base font-bold tabular-nums text-primary">{r.sold_qty}</div>
+                        </div>
+                        <div className="rounded-md bg-muted px-1.5 py-1">
+                          <div className="text-[10px] text-muted-foreground">{lang === "ar" ? "متبقي" : "Stock"}</div>
+                          <div className={`text-base font-bold tabular-nums ${out ? "text-destructive" : low ? "text-warning-foreground" : ""}`}>
+                            {r.current_stock}
+                          </div>
+                        </div>
+                        <div className="rounded-md bg-success/15 px-1.5 py-1">
+                          <div className="text-[10px] text-muted-foreground">{lang === "ar" ? "اطلب" : "Order"}</div>
+                          <div className="text-base font-bold tabular-nums text-success">{r.suggested}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t bg-muted/20 px-6 py-3">
+          <p className="text-[11px] text-muted-foreground">
+            {lang === "ar"
+              ? "الكمية المقترحة = المباع اليوم + (الحد الأدنى − المخزون الحالي إن وُجد)."
+              : "Suggested = sold today + (min threshold − current stock, if any)."}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              {lang === "ar" ? "إغلاق" : "Close"}
+            </Button>
+            <Button size="sm" onClick={onExport} disabled={rows.length === 0}>
+              <Download className="me-1.5 h-4 w-4" />
+              {lang === "ar" ? "تحميل طلبية CSV" : "Download PO CSV"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
