@@ -65,14 +65,35 @@ function EditInvoice() {
           discount: Number(inv.discount ?? 0),
           notes: inv.notes ?? "",
           paid_amount: (inv as any).paid_amount != null ? Number((inv as any).paid_amount) : null,
-        });
-      }
-      setLoading(false);
-    })();
+      });
+    } else {
+      setInitial(null);
+    }
+    setLoading(false);
   }, [id, user]);
 
-  if (loading) return <div className="text-muted-foreground">{t("loading")}</div>;
+  useEffect(() => {
+    load();
+  }, [load, reloadKey]);
+
+  // Re-fetch latest data whenever the tab regains focus / becomes visible
+  useEffect(() => {
+    const onFocus = () => setReloadKey((k) => k + 1);
+    const onVisible = () => { if (document.visibilityState === "visible") setReloadKey((k) => k + 1); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  // Realtime: refresh if anyone edits this invoice from another session
+  useRealtimeTable("invoices", (p) => { if (p.new?.id === id || p.old?.id === id) setReloadKey((k) => k + 1); }, [id]);
+  useRealtimeTable("invoice_items", (p) => { if (p.new?.invoice_id === id || p.old?.invoice_id === id) setReloadKey((k) => k + 1); }, [id]);
+
+  if (loading && !initial) return <div className="text-muted-foreground">{t("loading")}</div>;
   if (!initial) return <div className="text-muted-foreground">{t("error_occurred")}</div>;
 
-  return <InvoiceBuilder mode="edit" invoiceId={id} initial={initial} />;
+  return <InvoiceBuilder key={reloadKey} mode="edit" invoiceId={id} initial={initial} />;
 }
