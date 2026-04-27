@@ -18,18 +18,30 @@ function Inventory() {
   const [logs, setLogs] = useState<any[]>([]);
 
   const load = async () => {
-    const { data: p } = await supabase.from("products").select("*").order("name");
+    // Fetch products + latest inventory_logs in parallel. products.stock_quantity is the
+    // authoritative reconciled value (every inventory_log mutates it inside the same SQL
+    // transaction), so price × stock_quantity equals the true current stock value.
+    const [{ data: p }, { data: l }] = await Promise.all([
+      supabase.from("products").select("*").order("name"),
+      supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30),
+    ]);
     setProducts((p ?? []) as Product[]);
-    const { data: l } = await supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30);
     setLogs(l ?? []);
   };
   useEffect(() => { if (user) load(); }, [user]);
   useRealtimeTable("products", () => { if (user) load(); });
   useRealtimeTable("inventory_logs", () => { if (user) load(); });
+  useRealtimeTable("invoices", () => { if (user) load(); });
+  useRealtimeTable("invoice_items", () => { if (user) load(); });
 
   const lowStock = products.filter((p) => p.stock_quantity <= p.low_stock_threshold);
   const totalUnits = products.reduce((s, p) => s + p.stock_quantity, 0);
-  const totalStockValue = products.reduce((s, p) => s + Number(p.price ?? 0) * Number(p.stock_quantity ?? 0), 0);
+  const valued = products
+    .map((p) => ({ ...p, value: Number(p.price ?? 0) * Number(p.stock_quantity ?? 0) }))
+    .sort((a, b) => b.value - a.value);
+  const totalStockValue = valued.reduce((s, p) => s + p.value, 0);
+  const topValued = valued.filter((p) => p.value > 0).slice(0, 8);
+
 
   return (
     <div className="space-y-6">
@@ -67,6 +79,40 @@ function Inventory() {
           <div className="mt-2 text-2xl font-bold">{products.length}</div>
         </div>
       </div>
+
+      {topValued.length > 0 && (
+        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-semibold">{lang === "ar" ? "أعلى المنتجات قيمة في المخزون" : "Top Valued Products in Stock"}</h3>
+            <span className="text-xs text-muted-foreground">{lang === "ar" ? "السعر × الكمية" : "Price × Qty"}</span>
+          </div>
+          <div className="space-y-2">
+            {topValued.map((p) => {
+              const pct = totalStockValue > 0 ? (p.value / totalStockValue) * 100 : 0;
+              return (
+                <div key={p.id} className="rounded-lg border bg-background/50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">
+                        {fmtMoney(Number(p.price ?? 0), "EGP", lang)} × {p.stock_quantity}
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="text-sm font-bold tabular-nums text-primary">{fmtMoney(p.value, "EGP", lang)}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       {lowStock.length > 0 && (
         <div className="rounded-2xl border border-warning/40 bg-warning/10 p-5">
