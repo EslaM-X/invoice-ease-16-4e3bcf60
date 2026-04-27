@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
+import { LowStockAlerts } from "@/components/low-stock-alerts";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
