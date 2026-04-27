@@ -208,6 +208,59 @@ function SalesToday() {
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pageRows = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
+  // Purchase Order rows: only items actually sold (positive net), sorted by urgency
+  const poRows = useMemo(() => {
+    return rows
+      .filter((r) => r.sold_qty > 0)
+      .map((r) => {
+        const deficit = Math.max(0, r.low_stock_threshold - r.current_stock);
+        // Suggested reorder = today's sold qty + deficit to refill safety stock
+        const suggested = r.sold_qty + deficit;
+        return { ...r, deficit, suggested };
+      })
+      .sort((a, b) => {
+        // urgency: out of stock first, then below min, then by sold qty
+        const aUrg = a.current_stock <= 0 ? 2 : a.current_stock <= a.low_stock_threshold ? 1 : 0;
+        const bUrg = b.current_stock <= 0 ? 2 : b.current_stock <= b.low_stock_threshold ? 1 : 0;
+        if (aUrg !== bUrg) return bUrg - aUrg;
+        return b.sold_qty - a.sold_qty;
+      });
+  }, [rows]);
+
+  const poTotals = useMemo(() => {
+    return poRows.reduce(
+      (acc, r) => {
+        acc.units += r.sold_qty;
+        acc.suggested += r.suggested;
+        acc.distinct += 1;
+        return acc;
+      },
+      { units: 0, suggested: 0, distinct: 0 }
+    );
+  }, [poRows]);
+
+  const exportPurchaseOrderCSV = () => {
+    const headers = [
+      "product_name","serial_number","color","unit_price_egp",
+      "sold_today_qty","current_stock","low_stock_threshold","stock_deficit","suggested_order_qty",
+    ];
+    const lines = poRows.map((r) =>
+      [
+        r.name, r.serial_number ?? "", r.color ?? "",
+        r.price.toFixed(2), r.sold_qty, r.current_stock, r.low_stock_threshold, r.deficit, r.suggested,
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    );
+    const csv = "\uFEFF" + headers.join(",") + "\n" + lines.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `purchase-order-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
