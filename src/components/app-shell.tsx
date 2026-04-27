@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
+import { LowStockAlerts } from "@/components/low-stock-alerts";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
@@ -119,6 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <div className="flex-1" />
+          <LowStockAlerts />
           <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
             <Languages className="h-4 w-4" />
           </Button>
