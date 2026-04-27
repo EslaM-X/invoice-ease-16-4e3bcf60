@@ -124,18 +124,26 @@ function Products() {
   const adjustStock = async () => {
     if (!user || !adjustFor) return;
     const amt = parseInt(adjustAmt || "0", 10);
-    if (!amt) return toast.error(t("required"));
-    if (!adjustReason.trim()) return toast.error(t("required"));
-    const newQty = adjustFor.stock_quantity + amt;
-    if (newQty < 0) return toast.error(t("not_enough_stock"));
-    const { error: e1 } = await supabase.from("products").update({ stock_quantity: newQty }).eq("id", adjustFor.id);
-    if (e1) return toast.error(e1.message);
-    await supabase.from("inventory_logs").insert({
-      user_id: user.id,
-      product_id: adjustFor.id,
-      change: amt,
-      reason: `manual: ${adjustReason}`,
+    if (!amt) return toast.error(lang === "ar" ? "أدخل قيمة غير صفرية" : "Enter non-zero amount");
+    const reason = adjustReason.trim();
+    if (reason.length < 3) {
+      return toast.error(lang === "ar" ? "السبب مطلوب (3 أحرف على الأقل)" : "Reason required (min 3 chars)");
+    }
+    const { error } = await supabase.rpc("adjust_stock", {
+      _product_id: adjustFor.id,
+      _change: amt,
+      _reason: reason,
     });
+    if (error) {
+      const msg = error.message || "";
+      if (msg.includes("WOULD_GO_NEGATIVE")) {
+        return toast.error(lang === "ar" ? "الكمية ستصبح سالبة" : "Stock would go negative");
+      }
+      if (msg.includes("REASON_REQUIRED")) {
+        return toast.error(lang === "ar" ? "السبب مطلوب" : "Reason required");
+      }
+      return toast.error(msg);
+    }
     toast.success(t("stock_adjusted"));
     setAdjustFor(null);
     setAdjustAmt("0");
@@ -325,16 +333,42 @@ function Products() {
         <DialogContent>
           <DialogHeader><DialogTitle>{t("adjust_stock")} — {adjustFor?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">{t("stock")}: {adjustFor?.stock_quantity}</div>
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs">
+              <div className="mb-1 font-semibold">
+                {lang === "ar" ? "المخزون الحالي" : "Current stock"}: <span className="text-base">{adjustFor?.stock_quantity}</span>
+              </div>
+              <div className="text-muted-foreground">
+                {lang === "ar"
+                  ? "استخدم + لإضافة كمية و − لخصم. يتم تسجيل العملية في سجل المخزون باسمك والسبب لضمان التتبع الدقيق."
+                  : "Use + to add and − to subtract. The action is logged with your name and reason for accurate tracking."}
+              </div>
+            </div>
             <div>
               <Label>{t("adjust_stock_amount")}</Label>
               <Input type="number" value={adjustAmt} onChange={(e) => setAdjustAmt(e.target.value)} placeholder="+5 / -2" />
+              {adjustAmt && parseInt(adjustAmt, 10) !== 0 && adjustFor && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {lang === "ar" ? "المخزون بعد التصحيح: " : "Stock after: "}
+                  <span className="font-bold">{adjustFor.stock_quantity + (parseInt(adjustAmt, 10) || 0)}</span>
+                </div>
+              )}
             </div>
             <div>
-              <Label>{t("adjust_stock_reason")}</Label>
-              <Input value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} />
+              <Label>
+                {t("adjust_stock_reason")} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder={lang === "ar" ? "مثال: جرد فعلي / تالف / إرجاع مورد" : "e.g. physical count / damaged / supplier return"}
+                maxLength={500}
+              />
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                {lang === "ar" ? "إجباري — 3 أحرف على الأقل" : "Required — at least 3 characters"}
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAdjustFor(null)}>{t("cancel")}</Button>
             <Button onClick={adjustStock}>{t("save")}</Button>

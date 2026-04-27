@@ -536,6 +536,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_stock: {
+        Args: { _change: number; _product_id: string; _reason: string }
+        Returns: string
+      }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
       create_invoice: {
         Args: {
