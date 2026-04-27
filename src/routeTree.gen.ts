@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SalesTodayRouteImport } from './routes/sales-today'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -28,6 +29,11 @@ import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesTodayRoute = SalesTodayRouteImport.update({
+  id: '/sales-today',
+  path: '/sales-today',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-today': typeof SalesTodayRoute
   '/settings': typeof SettingsRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-today': typeof SalesTodayRoute
   '/settings': typeof SettingsRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-today': typeof SalesTodayRoute
   '/settings': typeof SettingsRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/reset-password'
+    | '/sales-today'
     | '/settings'
     | '/invoices/$id'
     | '/invoices/new'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/reset-password'
+    | '/sales-today'
     | '/settings'
     | '/invoices/$id'
     | '/invoices/new'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/reset-password'
+    | '/sales-today'
     | '/settings'
     | '/invoices/$id'
     | '/invoices/new'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SalesTodayRoute: typeof SalesTodayRoute
   SettingsRoute: typeof SettingsRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
   InvoicesNewRoute: typeof InvoicesNewRoute
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-today': {
+      id: '/sales-today'
+      path: '/sales-today'
+      fullPath: '/sales-today'
+      preLoaderRoute: typeof SalesTodayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -346,6 +366,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SalesTodayRoute: SalesTodayRoute,
   SettingsRoute: SettingsRoute,
   InvoicesIdRoute: InvoicesIdRoute,
   InvoicesNewRoute: InvoicesNewRoute,
