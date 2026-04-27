@@ -23,6 +23,8 @@ import {
   RotateCcw,
   Trash2,
   Pencil,
+  ClipboardList,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
