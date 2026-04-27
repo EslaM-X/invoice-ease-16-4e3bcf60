@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
-import brandLogo from "@/assets/steinheim-logo.png";
+import brandLogo from "@/assets/steinheim-logo-white.png";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
@@ -64,7 +64,7 @@ function ResetPasswordPage() {
     <div className="relative min-h-screen overflow-hidden bg-[oklch(0.1_0.004_60)] text-[oklch(0.97_0.008_82)] flex items-center justify-center p-4">
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 text-center">
-          <img src={brandLogo} alt="Steinheim" className="mx-auto mb-3 h-20 w-auto select-none" draggable={false} />
+          <img src={brandLogo} alt="Steinheim" className="mx-auto mb-4 h-28 w-auto select-none object-contain drop-shadow-[0_8px_28px_oklch(0.78_0.11_82_/_0.35)]" draggable={false} />
           <p className="font-latin mt-4 text-[11px] font-medium uppercase tracking-[0.4em] text-[oklch(0.78_0.11_82)]">
             Invoice Suite
           </p>

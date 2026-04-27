@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
-import brandLogo from "@/assets/steinheim-logo.png";
+import brandLogo from "@/assets/steinheim-logo-white.png";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <img
           src={brandLogo}
           alt="Steinheim"
-          className="h-14 w-auto select-none object-contain"
+          className="h-20 w-auto select-none object-contain drop-shadow-[0_6px_20px_oklch(0.78_0.11_82_/_0.3)]"
           draggable={false}
         />
         <div className="font-latin text-[10px] font-medium uppercase tracking-[0.32em] text-sidebar-primary">
@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
           <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
             <span className="rounded-md bg-[oklch(0.11_0.004_60)] px-2 py-1">
-              <img src={brandLogo} alt="Steinheim" className="h-5 w-auto" />
+              <img src={brandLogo} alt="Steinheim" className="h-6 w-auto object-contain" />
             </span>
           </Link>
           <div className="flex-1" />
