@@ -358,9 +358,20 @@ function SalesToday() {
             <Download className="me-1.5 h-4 w-4" />
             {lang === "ar" ? "ملخص CSV" : "Summary CSV"}
           </Button>
-          <Button size="sm" onClick={exportMovementsCSV} disabled={rows.length === 0}>
+          <Button size="sm" variant="outline" onClick={exportMovementsCSV} disabled={rows.length === 0}>
             <Download className="me-1.5 h-4 w-4" />
             {lang === "ar" ? "كل الحركات CSV" : "All movements CSV"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setPoOpen(true)}
+            disabled={poRows.length === 0}
+            className="bg-gradient-to-r from-primary to-primary/80 shadow-md"
+          >
+            <ClipboardList className="me-1.5 h-4 w-4" />
+            {lang === "ar"
+              ? `إجمالي المباع (${poTotals.distinct})`
+              : `Total Sold (${poTotals.distinct})`}
           </Button>
         </div>
       </div>
