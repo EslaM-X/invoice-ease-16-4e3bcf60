@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
-  Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck
+  Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
