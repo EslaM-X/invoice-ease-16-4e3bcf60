@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { InvoiceBuilder, type BuilderItem } from "@/components/invoice-builder";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/invoices_/$id/edit")({
   component: () => (
@@ -26,20 +27,21 @@ function EditInvoice() {
     paid_amount?: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      const { data: inv } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      const { data: items } = await supabase
-        .from("invoice_items")
-        .select("*")
-        .eq("invoice_id", id);
-      if (inv) {
+    setLoading(true);
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    const { data: items } = await supabase
+      .from("invoice_items")
+      .select("*")
+      .eq("invoice_id", id);
+    if (inv) {
         const LEGACY = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
         const mapped = (items ?? []).map((it: any) => {
           const isFee = !it.product_id && (LEGACY.includes(it.product_name) || it.product_name === "رسوم شحن") && Number(it.unit_price) === 250;
