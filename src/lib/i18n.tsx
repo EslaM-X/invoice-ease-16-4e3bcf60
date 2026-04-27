@@ -359,6 +359,7 @@ const en: Dict = {
   backup_full_desc: "Download all your data (customers, products, invoices, items, inventory logs, events) at once.",
   download_backup: "Download backup",
   inventory_audit: "Inventory Audit",
+  sales_today: "Today's Sales",
   audit_log: "Audit Log",
   audit_log_desc: "All system actions with the user who performed them.",
   details: "Details",
