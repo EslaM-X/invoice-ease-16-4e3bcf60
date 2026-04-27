@@ -518,6 +518,19 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-semibold">{t("products")}</h3>
               <div className="flex flex-wrap gap-2">
+                {!items.some(isServiceFee) && (
+                  <Button
+                    variant="outline"
+                    className="gap-2 flex-1 sm:flex-none border-primary/40 text-primary hover:bg-primary/10"
+                    onClick={() =>
+                      setItems((prev) => (prev.some(isServiceFee) ? prev : [...prev, defaultFeeItem()]))
+                    }
+                    title={lang === "ar" ? "إعادة رسوم الشحن (250 ج.م)" : "Restore shipping fee (EGP 250)"}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {lang === "ar" ? "إعادة رسوم الشحن" : "Restore shipping fee"}
+                  </Button>
+                )}
                 <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={() => setScanning(true)}>
                   <ScanLine className="h-4 w-4" />
                   {t("scan_qr")}
