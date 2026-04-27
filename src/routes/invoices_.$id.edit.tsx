@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { InvoiceBuilder, type BuilderItem } from "@/components/invoice-builder";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/invoices_/$id/edit")({
   component: () => (
@@ -26,20 +27,21 @@ function EditInvoice() {
     paid_amount?: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      const { data: inv } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      const { data: items } = await supabase
-        .from("invoice_items")
-        .select("*")
-        .eq("invoice_id", id);
-      if (inv) {
+    setLoading(true);
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    const { data: items } = await supabase
+      .from("invoice_items")
+      .select("*")
+      .eq("invoice_id", id);
+    if (inv) {
         const LEGACY = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
         const mapped = (items ?? []).map((it: any) => {
           const isFee = !it.product_id && (LEGACY.includes(it.product_name) || it.product_name === "رسوم شحن") && Number(it.unit_price) === 250;
@@ -63,14 +65,35 @@ function EditInvoice() {
           discount: Number(inv.discount ?? 0),
           notes: inv.notes ?? "",
           paid_amount: (inv as any).paid_amount != null ? Number((inv as any).paid_amount) : null,
-        });
-      }
-      setLoading(false);
-    })();
+      });
+    } else {
+      setInitial(null);
+    }
+    setLoading(false);
   }, [id, user]);
 
-  if (loading) return <div className="text-muted-foreground">{t("loading")}</div>;
+  useEffect(() => {
+    load();
+  }, [load, reloadKey]);
+
+  // Re-fetch latest data whenever the tab regains focus / becomes visible
+  useEffect(() => {
+    const onFocus = () => setReloadKey((k) => k + 1);
+    const onVisible = () => { if (document.visibilityState === "visible") setReloadKey((k) => k + 1); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  // Realtime: refresh if anyone edits this invoice from another session
+  useRealtimeTable("invoices", (p) => { if (p.new?.id === id || p.old?.id === id) setReloadKey((k) => k + 1); }, [id]);
+  useRealtimeTable("invoice_items", (p) => { if (p.new?.invoice_id === id || p.old?.invoice_id === id) setReloadKey((k) => k + 1); }, [id]);
+
+  if (loading && !initial) return <div className="text-muted-foreground">{t("loading")}</div>;
   if (!initial) return <div className="text-muted-foreground">{t("error_occurred")}</div>;
 
-  return <InvoiceBuilder mode="edit" invoiceId={id} initial={initial} />;
+  return <InvoiceBuilder key={reloadKey} mode="edit" invoiceId={id} initial={initial} />;
 }
