@@ -30,6 +30,7 @@ function EditInvoice() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [snapshotKey, setSnapshotKey] = useState(0);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -42,7 +43,8 @@ function EditInvoice() {
     const { data: items } = await supabase
       .from("invoice_items")
       .select("*")
-      .eq("invoice_id", id);
+      .eq("invoice_id", id)
+      .order("created_at", { ascending: true });
 
     if (!inv) {
       setInitial(null);
@@ -82,6 +84,7 @@ function EditInvoice() {
       notes: inv.notes ?? "",
       paid_amount: invAny.paid_amount != null ? Number(invAny.paid_amount) : null,
     });
+    setSnapshotKey((k) => k + 1);
     setLoading(false);
   }, [id, user]);
 
@@ -120,5 +123,5 @@ function EditInvoice() {
   if (loading && !initial) return <div className="text-muted-foreground">{t("loading")}</div>;
   if (!initial) return <div className="text-muted-foreground">{t("error_occurred")}</div>;
 
-  return <InvoiceBuilder key={reloadKey} mode="edit" invoiceId={id} initial={initial} />;
+  return <InvoiceBuilder key={`${id}-${snapshotKey}`} mode="edit" invoiceId={id} initial={initial} />;
 }
