@@ -124,18 +124,26 @@ function Products() {
   const adjustStock = async () => {
     if (!user || !adjustFor) return;
     const amt = parseInt(adjustAmt || "0", 10);
-    if (!amt) return toast.error(t("required"));
-    if (!adjustReason.trim()) return toast.error(t("required"));
-    const newQty = adjustFor.stock_quantity + amt;
-    if (newQty < 0) return toast.error(t("not_enough_stock"));
-    const { error: e1 } = await supabase.from("products").update({ stock_quantity: newQty }).eq("id", adjustFor.id);
-    if (e1) return toast.error(e1.message);
-    await supabase.from("inventory_logs").insert({
-      user_id: user.id,
-      product_id: adjustFor.id,
-      change: amt,
-      reason: `manual: ${adjustReason}`,
+    if (!amt) return toast.error(lang === "ar" ? "أدخل قيمة غير صفرية" : "Enter non-zero amount");
+    const reason = adjustReason.trim();
+    if (reason.length < 3) {
+      return toast.error(lang === "ar" ? "السبب مطلوب (3 أحرف على الأقل)" : "Reason required (min 3 chars)");
+    }
+    const { error } = await supabase.rpc("adjust_stock", {
+      _product_id: adjustFor.id,
+      _change: amt,
+      _reason: reason,
     });
+    if (error) {
+      const msg = error.message || "";
+      if (msg.includes("WOULD_GO_NEGATIVE")) {
+        return toast.error(lang === "ar" ? "الكمية ستصبح سالبة" : "Stock would go negative");
+      }
+      if (msg.includes("REASON_REQUIRED")) {
+        return toast.error(lang === "ar" ? "السبب مطلوب" : "Reason required");
+      }
+      return toast.error(msg);
+    }
     toast.success(t("stock_adjusted"));
     setAdjustFor(null);
     setAdjustAmt("0");
