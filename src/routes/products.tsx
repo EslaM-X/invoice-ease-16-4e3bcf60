@@ -333,16 +333,42 @@ function Products() {
         <DialogContent>
           <DialogHeader><DialogTitle>{t("adjust_stock")} — {adjustFor?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">{t("stock")}: {adjustFor?.stock_quantity}</div>
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs">
+              <div className="mb-1 font-semibold">
+                {lang === "ar" ? "المخزون الحالي" : "Current stock"}: <span className="text-base">{adjustFor?.stock_quantity}</span>
+              </div>
+              <div className="text-muted-foreground">
+                {lang === "ar"
+                  ? "استخدم + لإضافة كمية و − لخصم. يتم تسجيل العملية في سجل المخزون باسمك والسبب لضمان التتبع الدقيق."
+                  : "Use + to add and − to subtract. The action is logged with your name and reason for accurate tracking."}
+              </div>
+            </div>
             <div>
               <Label>{t("adjust_stock_amount")}</Label>
               <Input type="number" value={adjustAmt} onChange={(e) => setAdjustAmt(e.target.value)} placeholder="+5 / -2" />
+              {adjustAmt && parseInt(adjustAmt, 10) !== 0 && adjustFor && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {lang === "ar" ? "المخزون بعد التصحيح: " : "Stock after: "}
+                  <span className="font-bold">{adjustFor.stock_quantity + (parseInt(adjustAmt, 10) || 0)}</span>
+                </div>
+              )}
             </div>
             <div>
-              <Label>{t("adjust_stock_reason")}</Label>
-              <Input value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} />
+              <Label>
+                {t("adjust_stock_reason")} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder={lang === "ar" ? "مثال: جرد فعلي / تالف / إرجاع مورد" : "e.g. physical count / damaged / supplier return"}
+                maxLength={500}
+              />
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                {lang === "ar" ? "إجباري — 3 أحرف على الأقل" : "Required — at least 3 characters"}
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAdjustFor(null)}>{t("cancel")}</Button>
             <Button onClick={adjustStock}>{t("save")}</Button>
