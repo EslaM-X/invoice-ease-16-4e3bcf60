@@ -47,6 +47,24 @@ export type Database = {
         }
         Relationships: []
       }
+      company_counters: {
+        Row: {
+          id: string
+          receipt_seq: number
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          receipt_seq?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          receipt_seq?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_members: {
         Row: {
           added_at: string
