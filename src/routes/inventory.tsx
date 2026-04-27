@@ -18,18 +18,30 @@ function Inventory() {
   const [logs, setLogs] = useState<any[]>([]);
 
   const load = async () => {
-    const { data: p } = await supabase.from("products").select("*").order("name");
+    // Fetch products + latest inventory_logs in parallel. products.stock_quantity is the
+    // authoritative reconciled value (every inventory_log mutates it inside the same SQL
+    // transaction), so price × stock_quantity equals the true current stock value.
+    const [{ data: p }, { data: l }] = await Promise.all([
+      supabase.from("products").select("*").order("name"),
+      supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30),
+    ]);
     setProducts((p ?? []) as Product[]);
-    const { data: l } = await supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30);
     setLogs(l ?? []);
   };
   useEffect(() => { if (user) load(); }, [user]);
   useRealtimeTable("products", () => { if (user) load(); });
   useRealtimeTable("inventory_logs", () => { if (user) load(); });
+  useRealtimeTable("invoices", () => { if (user) load(); });
+  useRealtimeTable("invoice_items", () => { if (user) load(); });
 
   const lowStock = products.filter((p) => p.stock_quantity <= p.low_stock_threshold);
   const totalUnits = products.reduce((s, p) => s + p.stock_quantity, 0);
-  const totalStockValue = products.reduce((s, p) => s + Number(p.price ?? 0) * Number(p.stock_quantity ?? 0), 0);
+  const valued = products
+    .map((p) => ({ ...p, value: Number(p.price ?? 0) * Number(p.stock_quantity ?? 0) }))
+    .sort((a, b) => b.value - a.value);
+  const totalStockValue = valued.reduce((s, p) => s + p.value, 0);
+  const topValued = valued.filter((p) => p.value > 0).slice(0, 8);
+
 
   return (
     <div className="space-y-6">
