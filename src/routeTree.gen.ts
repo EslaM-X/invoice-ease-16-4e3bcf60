@@ -23,7 +23,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
 import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
-import { Route as InvoicesIdEditRouteImport } from './routes/invoices.$id.edit'
+import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -96,9 +96,9 @@ const InvoicesIdRoute = InvoicesIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => InvoicesIdRoute,
+  id: '/invoices_/$id/edit',
+  path: '/invoices/$id/edit',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -113,7 +113,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
-  '/invoices/$id': typeof InvoicesIdRouteWithChildren
+  '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
@@ -130,7 +130,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
-  '/invoices/$id': typeof InvoicesIdRouteWithChildren
+  '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices': typeof InvoicesIndexRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
@@ -148,10 +148,10 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
-  '/invoices/$id': typeof InvoicesIdRouteWithChildren
+  '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices/': typeof InvoicesIndexRoute
-  '/invoices/$id/edit': typeof InvoicesIdEditRoute
+  '/invoices_/$id/edit': typeof InvoicesIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -204,7 +204,7 @@ export interface FileRouteTypes {
     | '/invoices/$id'
     | '/invoices/new'
     | '/invoices/'
-    | '/invoices/$id/edit'
+    | '/invoices_/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -219,9 +219,10 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
-  InvoicesIdRoute: typeof InvoicesIdRouteWithChildren
+  InvoicesIdRoute: typeof InvoicesIdRoute
   InvoicesNewRoute: typeof InvoicesNewRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
+  InvoicesIdEditRoute: typeof InvoicesIdEditRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -324,27 +325,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvoicesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/$id/edit': {
-      id: '/invoices/$id/edit'
-      path: '/edit'
+    '/invoices_/$id/edit': {
+      id: '/invoices_/$id/edit'
+      path: '/invoices/$id/edit'
       fullPath: '/invoices/$id/edit'
       preLoaderRoute: typeof InvoicesIdEditRouteImport
-      parentRoute: typeof InvoicesIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface InvoicesIdRouteChildren {
-  InvoicesIdEditRoute: typeof InvoicesIdEditRoute
-}
-
-const InvoicesIdRouteChildren: InvoicesIdRouteChildren = {
-  InvoicesIdEditRoute: InvoicesIdEditRoute,
-}
-
-const InvoicesIdRouteWithChildren = InvoicesIdRoute._addFileChildren(
-  InvoicesIdRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -358,9 +347,10 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
-  InvoicesIdRoute: InvoicesIdRouteWithChildren,
+  InvoicesIdRoute: InvoicesIdRoute,
   InvoicesNewRoute: InvoicesNewRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
+  InvoicesIdEditRoute: InvoicesIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

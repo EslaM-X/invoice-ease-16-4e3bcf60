@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
-export const Route = createFileRoute("/invoices/$id/edit")({
+export const Route = createFileRoute("/invoices_/$id/edit")({
   component: () => (
     <AppShell>
       <EditInvoice />
