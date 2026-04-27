@@ -29,12 +29,22 @@ function Inventory() {
 
   const lowStock = products.filter((p) => p.stock_quantity <= p.low_stock_threshold);
   const totalUnits = products.reduce((s, p) => s + p.stock_quantity, 0);
+  const totalStockValue = products.reduce((s, p) => s + Number(p.price ?? 0) * Number(p.stock_quantity ?? 0), 0);
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">{t("inventory")}</h1>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "إجمالي قيمة المخزون" : "Total Stock Value"}</div>
+            <Wallet className="h-4 w-4 text-primary" />
+          </div>
+          <div className="mt-2 text-2xl font-bold tabular-nums text-primary">{fmtMoney(totalStockValue, "EGP", lang)}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{lang === "ar" ? "السعر × الكمية لكل المنتجات" : "Price × Qty for all products"}</div>
+        </div>
+
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">{t("in_stock")}</div>
