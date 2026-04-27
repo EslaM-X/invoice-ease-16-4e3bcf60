@@ -110,6 +110,7 @@ function SalesToday() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [poOpen, setPoOpen] = useState(false);
 
   // Debounce realtime reloads to avoid thrashing under bursts of changes
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
