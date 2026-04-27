@@ -15,6 +15,8 @@ export const Route = createFileRoute("/invoices_/$id/edit")({
   ),
 });
 
+const LEGACY_FEE = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
+
 function EditInvoice() {
   const { id } = Route.useParams();
   const { user } = useAuth();
@@ -41,34 +43,45 @@ function EditInvoice() {
       .from("invoice_items")
       .select("*")
       .eq("invoice_id", id);
-    if (inv) {
-        const LEGACY = ["رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"];
-        const mapped = (items ?? []).map((it: any) => {
-          const isFee = !it.product_id && (LEGACY.includes(it.product_name) || it.product_name === "رسوم شحن") && Number(it.unit_price) === 250;
-          return {
-            product_id: it.product_id,
-            product_name: isFee ? "رسوم شحن" : it.product_name,
-            serial_number: it.serial_number ?? "",
-            color: it.color ?? "",
-            quantity: it.quantity,
-            unit_price: Number(it.unit_price),
-            discount: Number(it.discount),
-            __isFee: isFee,
-          } as any;
-        });
-        // Move service fee to the end so it always appears as the last line
-        const nonFee = mapped.filter((m: any) => !m.__isFee).map(({ __isFee, ...r }: any) => r);
-        const feeItems = mapped.filter((m: any) => m.__isFee).map(({ __isFee, ...r }: any) => r);
-        setInitial({
-          customerId: inv.customer_id ?? "",
-          items: [...nonFee, ...feeItems],
-          discount: Number(inv.discount ?? 0),
-          notes: inv.notes ?? "",
-          paid_amount: (inv as any).paid_amount != null ? Number((inv as any).paid_amount) : null,
-      });
-    } else {
+
+    if (!inv) {
       setInitial(null);
+      setLoading(false);
+      return;
     }
+
+    const mapped = (items ?? []).map((it: any) => {
+      const isFee =
+        !it.product_id &&
+        (LEGACY_FEE.includes(it.product_name) || it.product_name === "رسوم شحن") &&
+        Number(it.unit_price) === 250;
+      return {
+        product_id: it.product_id,
+        product_name: isFee ? "رسوم شحن" : it.product_name,
+        serial_number: it.serial_number ?? "",
+        color: it.color ?? "",
+        quantity: it.quantity,
+        unit_price: Number(it.unit_price),
+        discount: Number(it.discount),
+        __isFee: isFee,
+      };
+    });
+
+    const nonFee = mapped
+      .filter((m: any) => !m.__isFee)
+      .map(({ __isFee, ...r }: any) => r);
+    const feeItems = mapped
+      .filter((m: any) => m.__isFee)
+      .map(({ __isFee, ...r }: any) => r);
+
+    const invAny = inv as any;
+    setInitial({
+      customerId: inv.customer_id ?? "",
+      items: [...nonFee, ...feeItems],
+      discount: Number(inv.discount ?? 0),
+      notes: inv.notes ?? "",
+      paid_amount: invAny.paid_amount != null ? Number(invAny.paid_amount) : null,
+    });
     setLoading(false);
   }, [id, user]);
 
@@ -76,10 +89,11 @@ function EditInvoice() {
     load();
   }, [load, reloadKey]);
 
-  // Re-fetch latest data whenever the tab regains focus / becomes visible
   useEffect(() => {
     const onFocus = () => setReloadKey((k) => k + 1);
-    const onVisible = () => { if (document.visibilityState === "visible") setReloadKey((k) => k + 1); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setReloadKey((k) => k + 1);
+    };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -88,9 +102,20 @@ function EditInvoice() {
     };
   }, []);
 
-  // Realtime: refresh if anyone edits this invoice from another session
-  useRealtimeTable("invoices", (p) => { if (p.new?.id === id || p.old?.id === id) setReloadKey((k) => k + 1); }, [id]);
-  useRealtimeTable("invoice_items", (p) => { if (p.new?.invoice_id === id || p.old?.invoice_id === id) setReloadKey((k) => k + 1); }, [id]);
+  useRealtimeTable(
+    "invoices",
+    (p) => {
+      if (p.new?.id === id || p.old?.id === id) setReloadKey((k) => k + 1);
+    },
+    [id],
+  );
+  useRealtimeTable(
+    "invoice_items",
+    (p) => {
+      if (p.new?.invoice_id === id || p.old?.invoice_id === id) setReloadKey((k) => k + 1);
+    },
+    [id],
+  );
 
   if (loading && !initial) return <div className="text-muted-foreground">{t("loading")}</div>;
   if (!initial) return <div className="text-muted-foreground">{t("error_occurred")}</div>;
