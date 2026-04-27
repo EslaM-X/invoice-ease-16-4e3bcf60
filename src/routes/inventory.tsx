@@ -80,6 +80,40 @@ function Inventory() {
         </div>
       </div>
 
+      {topValued.length > 0 && (
+        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-semibold">{lang === "ar" ? "أعلى المنتجات قيمة في المخزون" : "Top Valued Products in Stock"}</h3>
+            <span className="text-xs text-muted-foreground">{lang === "ar" ? "السعر × الكمية" : "Price × Qty"}</span>
+          </div>
+          <div className="space-y-2">
+            {topValued.map((p) => {
+              const pct = totalStockValue > 0 ? (p.value / totalStockValue) * 100 : 0;
+              return (
+                <div key={p.id} className="rounded-lg border bg-background/50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">
+                        {fmtMoney(Number(p.price ?? 0), "EGP", lang)} × {p.stock_quantity}
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="text-sm font-bold tabular-nums text-primary">{fmtMoney(p.value, "EGP", lang)}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+
       {lowStock.length > 0 && (
         <div className="rounded-2xl border border-warning/40 bg-warning/10 p-5">
           <div className="mb-3 flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{t("stock_low_alert")}</div>
