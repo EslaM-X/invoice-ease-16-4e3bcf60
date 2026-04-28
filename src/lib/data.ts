@@ -9,9 +9,13 @@ export type Product = {
   id: string; user_id: string; name: string; serial_number: string | null; color: string | null;
   price: number; stock_quantity: number; low_stock_threshold: number; qr_code: string | null;
   image_url?: string | null;
+  collection?: string | null;
   created_at: string; updated_at: string;
   created_by_email?: string | null; updated_by_email?: string | null;
 };
+
+export const COLLECTIONS = ["JOY", "UP", "ART", "QUATRO"] as const;
+export type Collection = (typeof COLLECTIONS)[number];
 export type Invoice = {
   id: string; user_id: string; invoice_number: string;
   customer_id: string | null; customer_name: string | null; customer_phone: string | null; customer_address: string | null;
