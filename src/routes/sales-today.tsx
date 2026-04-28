@@ -659,22 +659,22 @@ function PurchaseOrderModal({
           </div>
         </div>
 
-        <div className="grid gap-3 border-b bg-muted/30 px-6 py-4 sm:grid-cols-3">
-          <div className="rounded-xl border bg-card p-3">
-            <div className="text-xs text-muted-foreground">{lang === "ar" ? "أنواع منتجات" : "Distinct items"}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums">{totals.distinct}</div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 border-b bg-muted/30 px-3 sm:px-6 py-3 sm:py-4">
+          <div className="rounded-xl border bg-card p-2 sm:p-3">
+            <div className="text-[10px] sm:text-xs text-muted-foreground">{lang === "ar" ? "أنواع منتجات" : "Distinct items"}</div>
+            <div className="mt-1 text-lg sm:text-2xl font-bold tabular-nums">{totals.distinct}</div>
           </div>
-          <div className="rounded-xl border bg-card p-3">
-            <div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المباع (وحدات)" : "Total sold (units)"}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-primary">{totals.units}</div>
+          <div className="rounded-xl border bg-card p-2 sm:p-3">
+            <div className="text-[10px] sm:text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المباع (وحدات)" : "Total sold (units)"}</div>
+            <div className="mt-1 text-lg sm:text-2xl font-bold tabular-nums text-primary">{totals.units}</div>
           </div>
-          <div className="rounded-xl border bg-card p-3">
-            <div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي مقترح للطلب" : "Suggested order total"}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-success">{totals.suggested}</div>
+          <div className="rounded-xl border bg-card p-2 sm:p-3">
+            <div className="text-[10px] sm:text-xs text-muted-foreground">{lang === "ar" ? "إجمالي مقترح للطلب" : "Suggested order total"}</div>
+            <div className="mt-1 text-lg sm:text-2xl font-bold tabular-nums text-success">{totals.suggested}</div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto px-6 py-4">
+        <div className="flex-1 overflow-auto overscroll-contain px-3 sm:px-6 py-3 sm:py-4">
           {rows.length === 0 ? (
             <div className="py-16 text-center text-sm text-muted-foreground">
               {lang === "ar" ? "لا توجد منتجات مباعة في هذا اليوم." : "No products sold on this date."}
