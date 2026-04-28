@@ -438,6 +438,98 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_events: {
+        Row: {
+          color: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          serial_number: string | null
+          session_id: string
+          status: string
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          serial_number?: string | null
+          session_id: string
+          status?: string
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          serial_number?: string | null
+          session_id?: string
+          status?: string
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          invoice_id: string | null
+          mode: string
+          pair_code: string
+          paired_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invoice_id?: string | null
+          mode?: string
+          pair_code: string
+          paired_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invoice_id?: string | null
+          mode?: string
+          pair_code?: string
+          paired_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           company_address: string | null
@@ -565,6 +657,7 @@ export type Database = {
       }
       is_allowed_company_email: { Args: { _email: string }; Returns: boolean }
       is_company_member: { Args: never; Returns: boolean }
+      pair_scan_session: { Args: { _pair_code: string }; Returns: string }
       update_invoice: {
         Args: {
           _customer_id: string
