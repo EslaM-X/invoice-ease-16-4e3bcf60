@@ -137,7 +137,7 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Smartphone className="h-4.5 w-4.5" />
+            <Smartphone className="h-4 w-4" />
           </div>
           <div>
             <div className="text-sm font-semibold">{t("mobile_scanner")}</div>

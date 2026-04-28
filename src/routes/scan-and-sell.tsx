@@ -274,7 +274,7 @@ function ScanAndSellPage() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-success/15 text-success">
-                  <Check className="h-4.5 w-4.5" />
+                  <Check className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">{t("mobile_paired")}</div>
