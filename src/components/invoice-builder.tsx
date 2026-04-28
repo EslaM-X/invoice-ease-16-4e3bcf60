@@ -213,8 +213,26 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       }
       return [...prev, newItem];
     });
-    setShowPicker(false);
-    setProductSearch("");
+  };
+
+  /** Apply a scan event coming from a paired mobile device. */
+  const handleMobileScanEvent = async (ev: ScanEvent): Promise<boolean> => {
+    if (!ev.product_id) return false;
+    // Look up the latest product (price/stock may have changed)
+    const fromCache = products.find((p) => p.id === ev.product_id);
+    let product: Product | null = (fromCache as Product) ?? null;
+    if (!product) {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", ev.product_id)
+        .maybeSingle();
+      product = (data as Product) ?? null;
+    }
+    if (!product) return false;
+    beep();
+    addProduct(product);
+    return true;
   };
 
   const handleScan = async (text: string) => {
