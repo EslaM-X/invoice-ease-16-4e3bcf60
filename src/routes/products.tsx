@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
+import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
@@ -26,9 +27,10 @@ function Products() {
   const { t, lang } = useI18n();
   const [list, setList] = useState<Product[]>([]);
   const [q, setQ] = useState("");
+  const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
@@ -48,10 +50,32 @@ function Products() {
   useRealtimeTable("products", () => { load(); });
 
   const filtered = useMemo(() => list.filter((p) => {
+    if (collectionFilter) {
+      if (collectionFilter === "__none__") {
+        if (p.collection) return false;
+      } else if (p.collection !== collectionFilter) {
+        return false;
+      }
+    }
     const s = q.trim().toLowerCase();
     if (!s) return true;
-    return p.name.toLowerCase().includes(s) || (p.serial_number ?? "").toLowerCase().includes(s);
-  }), [list, q]);
+    return (
+      p.name.toLowerCase().includes(s) ||
+      (p.serial_number ?? "").toLowerCase().includes(s) ||
+      (p.color ?? "").toLowerCase().includes(s) ||
+      (p.collection ?? "").toLowerCase().includes(s)
+    );
+  }), [list, q, collectionFilter]);
+
+  const collectionCounts = useMemo(() => {
+    const counts: Record<string, number> = { __all__: list.length, __none__: 0 };
+    for (const c of COLLECTIONS) counts[c] = 0;
+    for (const p of list) {
+      if (p.collection && counts[p.collection] !== undefined) counts[p.collection]++;
+      else if (!p.collection) counts.__none__++;
+    }
+    return counts;
+  }, [list]);
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
   const toggleAll = () => {
@@ -64,10 +88,10 @@ function Products() {
     setSelected(next);
   };
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "" }); setOpen(true); };
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "" });
+    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "" });
     setOpen(true);
   };
 
@@ -82,6 +106,7 @@ function Products() {
       stock_quantity: parseInt(form.stock_quantity || "0", 10),
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
       image_url: form.image_url || null,
+      collection: form.collection ? form.collection.toUpperCase() : null,
     };
     if (editing) {
       const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
