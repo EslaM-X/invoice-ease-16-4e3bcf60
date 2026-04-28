@@ -809,29 +809,104 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       </div>
 
       <Dialog open={showPicker} onOpenChange={setShowPicker}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] flex flex-col gap-3 p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{t("select_product")}</DialogTitle>
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span>{t("select_product")}</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {filteredProducts.length} / {products.length}
+              </span>
+            </DialogTitle>
           </DialogHeader>
-          <Input placeholder={t("search")} value={productSearch} onChange={(e) => setProductSearch(e.target.value)} autoFocus />
-          <div className="max-h-80 overflow-y-auto divide-y">
-            {filteredProducts.map((p) => (
+
+          <Input
+            placeholder={t("search") + " — " + (lang === "ar" ? "اسم / تسلسلي / لون / كولكشن" : "name / serial / color / collection")}
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            autoFocus
+          />
+
+          <div className="flex flex-wrap gap-1.5 -mt-1">
+            <button
+              type="button"
+              onClick={() => setPickerCollection("")}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${pickerCollection === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {t("all_collections")} ({collectionCounts.__all__})
+            </button>
+            {COLLECTIONS.map((c) => (
               <button
-                key={p.id}
-                onClick={() => addProduct(p)}
-                className="flex w-full items-center justify-between py-2 text-start hover:bg-muted/50 rounded px-2"
+                key={c}
+                type="button"
+                onClick={() => setPickerCollection(c)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${pickerCollection === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
               >
-                <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {p.serial_number || ""} {p.color ? `· ${p.color}` : ""} · {t("stock")}: {p.stock_quantity}
-                  </div>
-                </div>
-                <div className="font-semibold">{fmtMoney(Number(p.price), "EGP", lang)}</div>
+                {c} ({collectionCounts[c] ?? 0})
               </button>
             ))}
-            {filteredProducts.length === 0 && (
-              <div className="py-8 text-center text-sm text-muted-foreground">{t("no_products")}</div>
+            {collectionCounts.__none__ > 0 && (
+              <button
+                type="button"
+                onClick={() => setPickerCollection("__none__")}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${pickerCollection === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {t("no_collection")} ({collectionCounts.__none__})
+              </button>
+            )}
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border bg-card">
+            {filteredProducts.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">{t("no_products")}</div>
+            ) : (
+              <ul className="divide-y">
+                {filteredProducts.map((p) => {
+                  const out = p.stock_quantity <= 0;
+                  const low = !out && p.stock_quantity <= p.low_stock_threshold;
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => addProduct(p)}
+                        disabled={out}
+                        className="flex w-full items-center gap-3 px-2.5 py-2 text-start hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
+                          {p.image_url ? (
+                            <img src={p.image_url} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-muted-foreground/40 text-[10px]">
+                              {p.collection ?? "—"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium truncate">{p.name}</span>
+                            {p.collection && (
+                              <span className="rounded border bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">{p.collection}</span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                            {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
+                            {p.color && (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: p.color }} aria-hidden />
+                                {p.color}
+                              </span>
+                            )}
+                            <span>{t("stock")}: <span className={out ? "text-destructive font-bold" : low ? "text-warning-foreground font-bold" : ""}>{p.stock_quantity}</span></span>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 text-end">
+                          <div className="font-semibold tabular-nums text-sm">{fmtMoney(Number(p.price), "EGP", lang)}</div>
+                          {out && <span className="text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
         </DialogContent>
