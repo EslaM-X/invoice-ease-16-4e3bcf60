@@ -60,6 +60,24 @@ function InvoiceView() {
   const isAr = lang === "ar";
   const isVoided = inv.status === "voided";
 
+  // Use the invoice/receipt number as the default PDF filename.
+  const safeName = (s: string) => String(s || "invoice").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").trim();
+  const pdfFilename = `Steinheim-Invoice-${safeName(String(inv.receipt_number ?? inv.invoice_number))}`;
+
+  // Browsers (Chrome, Edge, Safari, Firefox) use document.title as the default
+  // "Save as PDF" filename. We set it before printing then restore it.
+  const printInvoice = () => {
+    const original = document.title;
+    document.title = pdfFilename;
+    const restore = () => {
+      document.title = original;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    setTimeout(restore, 60_000); // safety net
+    setTimeout(() => window.print(), 50);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
@@ -93,7 +111,7 @@ function InvoiceView() {
             </>
           )}
           <Button variant="outline" className="gap-2 rounded-full" onClick={() => setPreviewOpen(true)}><Eye className="h-4 w-4" />{t("print_preview")}</Button>
-          <Button onClick={() => window.print()} className="gap-2 rounded-full px-5 shadow-glow"><Printer className="h-4 w-4" />{t("print")} / PDF</Button>
+          <Button onClick={printInvoice} className="gap-2 rounded-full px-5 shadow-glow"><Printer className="h-4 w-4" />{t("print")} / PDF</Button>
         </div>
       </div>
 
@@ -262,7 +280,7 @@ function InvoiceView() {
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
                   <Languages className="h-3.5 w-3.5" />{lang === "ar" ? "EN" : "ع"}
                 </Button>
-                <Button size="sm" className="gap-1.5" onClick={() => { setPreviewOpen(false); setTimeout(() => window.print(), 100); }}>
+                <Button size="sm" className="gap-1.5" onClick={() => { setPreviewOpen(false); setTimeout(printInvoice, 100); }}>
                   <Printer className="h-3.5 w-3.5" />{t("print")}
                 </Button>
               </div>
