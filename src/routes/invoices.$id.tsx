@@ -60,6 +60,24 @@ function InvoiceView() {
   const isAr = lang === "ar";
   const isVoided = inv.status === "voided";
 
+  // Use the invoice/receipt number as the default PDF filename.
+  const safeName = (s: string) => String(s || "invoice").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").trim();
+  const pdfFilename = `Steinheim-Invoice-${safeName(String(inv.receipt_number ?? inv.invoice_number))}`;
+
+  // Browsers (Chrome, Edge, Safari, Firefox) use document.title as the default
+  // "Save as PDF" filename. We set it before printing then restore it.
+  const printInvoice = () => {
+    const original = document.title;
+    document.title = pdfFilename;
+    const restore = () => {
+      document.title = original;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    setTimeout(restore, 60_000); // safety net
+    setTimeout(() => window.print(), 50);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
