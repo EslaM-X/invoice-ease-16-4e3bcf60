@@ -85,6 +85,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [scanning, setScanning] = useState(false);
   const [continuous, setContinuous] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [pickerCollection, setPickerCollection] = useState<string>("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
@@ -370,11 +371,33 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
   const filteredProducts = useMemo(() => {
     const s = productSearch.trim().toLowerCase();
-    if (!s) return products.slice(0, 50);
-    return products
-      .filter((p) => p.name.toLowerCase().includes(s) || (p.serial_number ?? "").toLowerCase().includes(s))
-      .slice(0, 50);
-  }, [products, productSearch]);
+    let arr = products;
+    if (pickerCollection) {
+      if (pickerCollection === "__none__") arr = arr.filter((p) => !p.collection);
+      else arr = arr.filter((p) => (p.collection ?? "").toUpperCase() === pickerCollection);
+    }
+    if (s) {
+      arr = arr.filter(
+        (p) =>
+          p.name.toLowerCase().includes(s) ||
+          (p.serial_number ?? "").toLowerCase().includes(s) ||
+          (p.color ?? "").toLowerCase().includes(s) ||
+          (p.collection ?? "").toLowerCase().includes(s),
+      );
+    }
+    return arr;
+  }, [products, productSearch, pickerCollection]);
+
+  const collectionCounts = useMemo(() => {
+    const counts: Record<string, number> = { __all__: products.length, __none__: 0 };
+    for (const c of COLLECTIONS) counts[c] = 0;
+    for (const p of products) {
+      const cc = (p.collection ?? "").toUpperCase();
+      if (cc && counts[cc] !== undefined) counts[cc]++;
+      else if (!p.collection) counts.__none__++;
+    }
+    return counts;
+  }, [products]);
 
   const handleRpcError = (msg: string) => {
     if (msg.includes("OUT_OF_STOCK")) {
