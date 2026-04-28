@@ -274,17 +274,18 @@ html, body {
     height: auto !important;
     overflow: visible !important;
   }
-  /* Hide everything except the invoice using display, so the invoice
-     flows naturally across as many pages as needed (no clipping). */
-  body > *:not(.print-area) { display: none !important; }
-  .no-print, .no-print * { display: none !important; }
+  /* Hide the entire app shell, then re-show the invoice subtree */
+  body * { visibility: hidden !important; }
+  .no-print, .no-print * { display: none !important; visibility: hidden !important; }
   /* Hide Lovable edit badge and any external floating widgets when printing */
-  #lovable-badge, [data-lovable-badge], a[href*="lovable.dev"], a[href*="lovable.app"] { display: none !important; }
+  #lovable-badge, [data-lovable-badge], a[href*="lovable.dev"], a[href*="lovable.app"] { display: none !important; visibility: hidden !important; }
 
-  /* Print-area uses normal flow so multi-page invoices render fully */
+  /* Show ONLY the invoice */
+  .print-area, .print-area * { visibility: visible !important; }
+  /* Use static positioning so multi-page content paginates naturally
+     (absolute-positioned elements often clip after the first page). */
   .print-area {
     position: static !important;
-    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -298,13 +299,14 @@ html, body {
     height: auto !important;
     min-height: 0 !important;
   }
+  /* Ensure all ancestors don't clip the print area */
+  html, body, body * { overflow: visible !important; }
   .print-area * {
     background: transparent !important;
     color: #000000 !important;
     border-color: #d4d4d4 !important;
     box-shadow: none !important;
     text-shadow: none !important;
-    overflow: visible !important;
   }
   .print-area img.invoice-logo {
     -webkit-print-color-adjust: exact;
@@ -313,17 +315,16 @@ html, body {
     max-height: 96px !important;
     width: auto !important;
     object-fit: contain;
+    visibility: visible !important;
   }
   /* Allow the invoice page to grow as needed; no rigid single-page height */
   .print-area .invoice-page {
     min-height: 0 !important;
     height: auto !important;
-    display: block !important;
-    padding: 8mm 10mm !important;
+    padding: 6mm 8mm !important;
   }
 
-  /* Multi-page table handling: repeat header on each page,
-     keep rows intact, never clip the table body. */
+  /* Multi-page table: repeat thead, never split rows mid-cell */
   .print-area table { page-break-inside: auto; break-inside: auto; }
   .print-area thead { display: table-header-group; }
   .print-area tfoot { display: table-footer-group; }
@@ -331,13 +332,12 @@ html, body {
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  /* Keep header (logo + invoice meta) on the first page only;
-     allow content sections to flow */
   .print-area header { page-break-after: avoid; break-after: avoid; }
   .print-area footer { page-break-before: avoid; break-before: avoid; }
 
   .ltr-nums { direction: ltr !important; unicode-bidi: embed; }
-  .print-only, .print-only * { display: block !important; }
+  .print-only, .print-only * { visibility: visible !important; }
+  .print-only { display: block !important; }
   @page { margin: 10mm; size: A4; }
 }
 
