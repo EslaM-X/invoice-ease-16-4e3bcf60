@@ -280,7 +280,7 @@ function InvoiceView() {
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
                   <Languages className="h-3.5 w-3.5" />{lang === "ar" ? "EN" : "ع"}
                 </Button>
-                <Button size="sm" className="gap-1.5" onClick={() => { setPreviewOpen(false); setTimeout(() => window.print(), 100); }}>
+                <Button size="sm" className="gap-1.5" onClick={() => { setPreviewOpen(false); setTimeout(printInvoice, 100); }}>
                   <Printer className="h-3.5 w-3.5" />{t("print")}
                 </Button>
               </div>
