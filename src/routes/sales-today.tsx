@@ -580,12 +580,19 @@ function PurchaseOrderModal({
   onClose: () => void;
   onExport: () => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const toLocalISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const today = toLocalISO(new Date());
   const isToday = date === today;
   const shiftDay = (delta: number) => {
-    const d = new Date(date + "T00:00:00");
-    d.setDate(d.getDate() + delta);
-    const next = d.toISOString().slice(0, 10);
+    const [y, m, d] = date.split("-").map(Number);
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+    dt.setDate(dt.getDate() + delta);
+    const next = toLocalISO(dt);
     if (next > today) return;
     onDateChange(next);
   };
