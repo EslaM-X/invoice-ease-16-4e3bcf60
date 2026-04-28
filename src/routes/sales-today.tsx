@@ -557,6 +557,8 @@ function SalesToday() {
           rows={poRows}
           totals={poTotals}
           date={date}
+          onDateChange={setDate}
+          loading={loading}
           lang={lang}
           onClose={() => setPoOpen(false)}
           onExport={exportPurchaseOrderCSV}
@@ -567,39 +569,81 @@ function SalesToday() {
 }
 
 function PurchaseOrderModal({
-  rows, totals, date, lang, onClose, onExport,
+  rows, totals, date, onDateChange, loading, lang, onClose, onExport,
 }: {
   rows: (Aggregated & { deficit: number; suggested: number })[];
   totals: { units: number; suggested: number; distinct: number };
   date: string;
+  onDateChange: (d: string) => void;
+  loading: boolean;
   lang: "ar" | "en";
   onClose: () => void;
   onExport: () => void;
 }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const isToday = date === today;
+  const shiftDay = (delta: number) => {
+    const d = new Date(date + "T00:00:00");
+    d.setDate(d.getDate() + delta);
+    const next = d.toISOString().slice(0, 10);
+    if (next > today) return;
+    onDateChange(next);
+  };
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+        className="flex max-h-[95vh] sm:max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b bg-gradient-to-r from-primary/10 to-transparent px-6 py-4">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-bold">
-              <ClipboardList className="h-5 w-5 text-primary" />
-              {lang === "ar" ? "إجمالي المنتجات المباعة — طلبية شراء مقترحة" : "Total Sold — Suggested Purchase Order"}
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {lang === "ar"
-                ? `بتاريخ ${fmtDate(date, lang)} — مرتبة حسب الأولوية (نفد، منخفض، الأكثر مبيعاً).`
-                : `For ${fmtDate(date, lang)} — sorted by priority (out, low, top sellers).`}
-            </p>
+        <div className="flex flex-col gap-3 border-b bg-gradient-to-r from-primary/10 to-transparent px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-2 text-base sm:text-xl font-bold">
+                <ClipboardList className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="truncate">{lang === "ar" ? "إجمالي المنتجات المباعة — طلبية شراء مقترحة" : "Total Sold — Suggested Purchase Order"}</span>
+              </h2>
+              <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground">
+                {lang === "ar"
+                  ? "كل السجلات محفوظة لأي يوم — اختر تاريخاً لمراجعته أو لإنشاء طلبية مفقودة."
+                  : "All records are kept for every day — pick a date to review or build a missed PO."}
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close" className="flex-shrink-0">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => shiftDay(-1)} className="gap-1">
+              <ChevronRight className="h-4 w-4 rtl:hidden" />
+              <ChevronLeft className="h-4 w-4 ltr:hidden" />
+              <span className="hidden sm:inline">{lang === "ar" ? "اليوم السابق" : "Prev day"}</span>
+            </Button>
+            <div className="relative">
+              <CalendarIcon className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="date"
+                value={date}
+                max={today}
+                onChange={(e) => onDateChange(e.target.value)}
+                className="ps-8 w-40 h-9"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => shiftDay(1)} disabled={isToday} className="gap-1">
+              <span className="hidden sm:inline">{lang === "ar" ? "اليوم التالي" : "Next day"}</span>
+              <ChevronLeft className="h-4 w-4 rtl:hidden" />
+              <ChevronRight className="h-4 w-4 ltr:hidden" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onDateChange(today)} disabled={isToday}>
+              {lang === "ar" ? "اليوم" : "Today"}
+            </Button>
+            <span className="ms-auto text-[11px] text-muted-foreground">
+              {fmtDate(date, lang)} {loading && `• ${lang === "ar" ? "جاري التحميل..." : "Loading..."}`}
+            </span>
+          </div>
         </div>
 
         <div className="grid gap-3 border-b bg-muted/30 px-6 py-4 sm:grid-cols-3">
