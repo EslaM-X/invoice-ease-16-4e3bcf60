@@ -137,7 +137,7 @@ function SalesToday() {
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false })
-      .limit(2000);
+      .limit(10000);
     if (error) toast.error(error.message);
     setLogs((data ?? []) as unknown as LogRow[]);
     setLoading(false);
