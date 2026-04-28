@@ -15,6 +15,8 @@ import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import { QrScanner } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
+import { DesktopPairWidget } from "@/components/desktop-pair-widget";
+import type { ScanEvent } from "@/lib/scan-link";
 
 export type BuilderItem = {
   product_id: string | null;
@@ -211,8 +213,26 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       }
       return [...prev, newItem];
     });
-    setShowPicker(false);
-    setProductSearch("");
+  };
+
+  /** Apply a scan event coming from a paired mobile device. */
+  const handleMobileScanEvent = async (ev: ScanEvent): Promise<boolean> => {
+    if (!ev.product_id) return false;
+    // Look up the latest product (price/stock may have changed)
+    const fromCache = products.find((p) => p.id === ev.product_id);
+    let product: Product | null = (fromCache as Product) ?? null;
+    if (!product) {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", ev.product_id)
+        .maybeSingle();
+      product = (data as Product) ?? null;
+    }
+    if (!product) return false;
+    beep();
+    addProduct(product);
+    return true;
   };
 
   const handleScan = async (text: string) => {
@@ -482,6 +502,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           {t("save_invoice")}
         </Button>
       </div>
+
+      <DesktopPairWidget
+        mode={mode}
+        invoiceId={invoiceId ?? null}
+        onScanEvent={handleMobileScanEvent}
+      />
 
       {draftRecovered && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
