@@ -180,6 +180,7 @@ function Products() {
     const rows = list.map((p) => ({
       name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "",
       price: p.price, stock_quantity: p.stock_quantity, low_stock_threshold: p.low_stock_threshold,
+      collection: p.collection ?? "",
     }));
     const csv = Papa.unparse(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -193,15 +194,20 @@ function Products() {
       header: true,
       skipEmptyLines: true,
       complete: async (res) => {
-        const rows = (res.data as any[]).map((r) => ({
-          user_id: user.id,
-          name: String(r.name ?? "").trim(),
-          serial_number: r.serial_number ? String(r.serial_number) : null,
-          color: r.color ? String(r.color) : null,
-          price: Number(r.price) || 0,
-          stock_quantity: parseInt(r.stock_quantity ?? "0", 10) || 0,
-          low_stock_threshold: parseInt(r.low_stock_threshold ?? "5", 10) || 5,
-        })).filter((r) => r.name);
+        const rows = (res.data as any[]).map((r) => {
+          const collRaw = String(r.collection ?? "").trim().toUpperCase();
+          const collection = (COLLECTIONS as readonly string[]).includes(collRaw) ? collRaw : null;
+          return {
+            user_id: user.id,
+            name: String(r.name ?? "").trim(),
+            serial_number: r.serial_number ? String(r.serial_number) : null,
+            color: r.color ? String(r.color) : null,
+            price: Number(r.price) || 0,
+            stock_quantity: parseInt(r.stock_quantity ?? "0", 10) || 0,
+            low_stock_threshold: parseInt(r.low_stock_threshold ?? "5", 10) || 5,
+            collection,
+          };
+        }).filter((r) => r.name);
         if (!rows.length) return toast.error(t("no_data"));
         const { data, error } = await supabase.from("products").insert(rows).select("id");
         if (error) return toast.error(error.message);
