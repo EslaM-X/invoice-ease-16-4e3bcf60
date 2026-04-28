@@ -745,13 +745,13 @@ function PurchaseOrderModal({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t bg-muted/20 px-6 py-3">
-          <p className="text-[11px] text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t bg-muted/20 px-3 sm:px-6 py-3">
+          <p className="text-[11px] text-muted-foreground order-2 sm:order-1">
             {lang === "ar"
               ? "الكمية المقترحة = المباع اليوم + (الحد الأدنى − المخزون الحالي إن وُجد)."
               : "Suggested = sold today + (min threshold − current stock, if any)."}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 order-1 sm:order-2 justify-end">
             <Button variant="outline" size="sm" onClick={onClose}>
               {lang === "ar" ? "إغلاق" : "Close"}
             </Button>
