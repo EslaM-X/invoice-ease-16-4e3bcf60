@@ -245,7 +245,20 @@ function Products() {
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
                 <div><Label>{t("price")}</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
-                <div className="col-span-2"><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                <div><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                <div>
+                  <Label>{t("collection")}</Label>
+                  <select
+                    value={form.collection}
+                    onChange={(e) => setForm({ ...form, collection: e.target.value })}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm h-9"
+                  >
+                    <option value="">— {t("no_collection")} —</option>
+                    {COLLECTIONS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
@@ -256,9 +269,36 @@ function Products() {
         </div>
       </div>
 
-      <div className="relative no-print">
-        <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
+      <div className="flex flex-col gap-3 no-print sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search") + " — " + (lang === "ar" ? "اسم / تسلسلي / لون / كولكشن" : "name / serial / color / collection")} className="ps-9" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setCollectionFilter("")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+          >
+            {t("all_collections")} ({collectionCounts.__all__})
+          </button>
+          {COLLECTIONS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCollectionFilter(c)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {c} ({collectionCounts[c] ?? 0})
+            </button>
+          ))}
+          {collectionCounts.__none__ > 0 && (
+            <button
+              onClick={() => setCollectionFilter("__none__")}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {t("no_collection")} ({collectionCounts.__none__})
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border bg-card no-print">
