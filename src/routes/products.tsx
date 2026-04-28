@@ -315,6 +315,7 @@ function Products() {
                   <th className="px-4 py-3 text-start font-medium">{t("product_name")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("serial_number")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden md:table-cell">{t("color")}</th>
+                  <th className="px-4 py-3 text-start font-medium hidden lg:table-cell">{t("collection")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("price")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("stock")}</th>
                   <th className="px-4 py-3" />
@@ -345,6 +346,13 @@ function Products() {
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        {p.collection ? (
+                          <span className="inline-flex rounded-md border bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{p.collection}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
