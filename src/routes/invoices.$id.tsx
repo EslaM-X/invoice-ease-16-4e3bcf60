@@ -64,18 +64,51 @@ function InvoiceView() {
   const safeName = (s: string) => String(s || "invoice").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").trim();
   const pdfFilename = `Steinheim-Invoice-${safeName(String(inv.receipt_number ?? inv.invoice_number))}`;
 
-  // Browsers (Chrome, Edge, Safari, Firefox) use document.title as the default
-  // "Save as PDF" filename. We set it before printing then restore it.
+  // Browsers use document.title as the default "Save as PDF" filename.
+  // We aggressively pin the title before printing — TanStack Router's
+  // <HeadContent /> and the Lovable preview wrapper both try to overwrite it,
+  // so we use a MutationObserver to keep it locked until the dialog closes.
   const printInvoice = () => {
     const original = document.title;
-    document.title = pdfFilename;
+    const target = pdfFilename;
+
+    // Remove any extra <title> tags (HeadContent may inject duplicates)
+    const titles = Array.from(document.head.querySelectorAll("title"));
+    titles.slice(1).forEach((n) => n.remove());
+
+    let titleEl = document.head.querySelector("title");
+    if (!titleEl) {
+      titleEl = document.createElement("title");
+      document.head.appendChild(titleEl);
+    }
+    titleEl.textContent = target;
+    document.title = target;
+
+    // Lock the title — re-apply if anything tries to change it
+    const observer = new MutationObserver(() => {
+      if (document.title !== target) document.title = target;
+      const t = document.head.querySelector("title");
+      if (t && t.textContent !== target) t.textContent = target;
+    });
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    const interval = window.setInterval(() => {
+      if (document.title !== target) document.title = target;
+    }, 50);
+
+    let restored = false;
     const restore = () => {
-      document.title = original;
+      if (restored) return;
+      restored = true;
+      observer.disconnect();
+      window.clearInterval(interval);
       window.removeEventListener("afterprint", restore);
+      // Small delay so the browser's "save" finishes capturing the title
+      setTimeout(() => { document.title = original; }, 1000);
     };
     window.addEventListener("afterprint", restore);
-    setTimeout(restore, 60_000); // safety net
-    setTimeout(() => window.print(), 50);
+    setTimeout(restore, 120_000); // safety net
+
+    setTimeout(() => window.print(), 100);
   };
 
   return (
