@@ -190,6 +190,10 @@ const ar: Dict = {
   op_edit: "تعديل فاتورة",
   op_manual: "تسوية يدوية",
   product: "المنتج",
+  collection: "الكولكشن",
+  all_collections: "كل الكولكشنات",
+  filter_by_collection: "تصفية بالكولكشن",
+  no_collection: "بدون كولكشن",
 };
 
 const en: Dict = {
@@ -378,6 +382,10 @@ const en: Dict = {
   op_edit: "Edit invoice",
   op_manual: "Manual",
   product: "Product",
+  collection: "Collection",
+  all_collections: "All collections",
+  filter_by_collection: "Filter by collection",
+  no_collection: "No collection",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };
