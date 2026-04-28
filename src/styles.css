@@ -274,7 +274,7 @@ html, body {
     height: auto !important;
     overflow: visible !important;
   }
-  /* Hide the entire app shell */
+  /* Hide the entire app shell, then re-show the invoice subtree */
   body * { visibility: hidden !important; }
   .no-print, .no-print * { display: none !important; visibility: hidden !important; }
   /* Hide Lovable edit badge and any external floating widgets when printing */
@@ -282,22 +282,25 @@ html, body {
 
   /* Show ONLY the invoice */
   .print-area, .print-area * { visibility: visible !important; }
+  /* Use static positioning so multi-page content paginates naturally
+     (absolute-positioned elements often clip after the first page). */
   .print-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    right: 0 !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 16px !important;
+    padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
     overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
+  /* Ensure all ancestors don't clip the print area */
+  html, body, body * { overflow: visible !important; }
   .print-area * {
     background: transparent !important;
     color: #000000 !important;
@@ -314,12 +317,27 @@ html, body {
     object-fit: contain;
     visibility: visible !important;
   }
+  /* Allow the invoice page to grow as needed; no rigid single-page height */
   .print-area .invoice-page {
-    min-height: calc(297mm - 24mm) !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 6mm 8mm !important;
   }
+
+  /* Multi-page table: repeat thead, never split rows mid-cell */
+  .print-area table { page-break-inside: auto; break-inside: auto; }
+  .print-area thead { display: table-header-group; }
+  .print-area tfoot { display: table-footer-group; }
+  .print-area tr, .print-area td, .print-area th {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .print-area header { page-break-after: avoid; break-after: avoid; }
+  .print-area footer { page-break-before: avoid; break-before: avoid; }
+
   .ltr-nums { direction: ltr !important; unicode-bidi: embed; }
   .print-only, .print-only * { visibility: visible !important; }
   .print-only { display: block !important; }
-  @page { margin: 12mm; size: A4; }
+  @page { margin: 10mm; size: A4; }
 }
 
