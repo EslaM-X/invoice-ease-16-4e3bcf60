@@ -350,6 +350,7 @@ export type Database = {
       }
       products: {
         Row: {
+          collection: string | null
           color: string | null
           created_at: string
           created_by: string | null
@@ -368,6 +369,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          collection?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -386,6 +388,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          collection?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
