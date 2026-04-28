@@ -488,7 +488,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           <div>
             <span className="font-semibold">{t("draft_recovered")}</span>
             <span className="ms-2 text-muted-foreground tabular-nums">
-              {new Date(draftRecovered.savedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}
+              {new Date(draftRecovered.savedAt).toLocaleString((lang === "ar" ? "ar-EG" : "en-GB") + "-u-nu-latn")}
             </span>
           </div>
           <Button

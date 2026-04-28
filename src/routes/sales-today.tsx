@@ -771,8 +771,8 @@ function MovementsTable({ movements, lang }: { movements: LogRow[]; lang: "ar" |
           {sorted.map((m) => {
             const { kind, cleanReason } = classifyReason(m.reason);
             const meta = kindMeta(kind, lang);
-            const time = new Date(m.created_at).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
-              hour: "2-digit", minute: "2-digit", second: "2-digit",
+            const time = new Date(m.created_at).toLocaleTimeString((lang === "ar" ? "ar-EG" : "en-US") + "-u-nu-latn", {
+              hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
             });
             return (
               <tr key={m.id}>
