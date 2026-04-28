@@ -73,7 +73,18 @@ function Dashboard() {
           <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => navigate({ to: "/invoices/new", search: { scan: true } })} className="gap-2 rounded-full px-5">
+          <Button
+            variant="outline"
+            onClick={() => {
+              // On phones (small screens), open the linked-mobile-scanner page so the
+              // user can pair to a desktop invoice. On larger screens keep the legacy
+              // local "scan to a new invoice" flow.
+              const isPhone = typeof window !== "undefined" && window.innerWidth < 768;
+              if (isPhone) navigate({ to: "/scan-and-sell" });
+              else navigate({ to: "/invoices/new", search: { scan: true } });
+            }}
+            className="gap-2 rounded-full px-5"
+          >
             <ScanLine className="h-4 w-4" /> {t("scan_and_sell")}
           </Button>
           <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 shadow-glow">
