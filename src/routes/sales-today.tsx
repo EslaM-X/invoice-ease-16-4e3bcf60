@@ -105,7 +105,13 @@ const PAGE_SIZE = 25;
 function SalesToday() {
   const { user } = useAuth();
   const { lang } = useI18n();
-  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState<string>(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  });
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -131,7 +137,7 @@ function SalesToday() {
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false })
-      .limit(2000);
+      .limit(10000);
     if (error) toast.error(error.message);
     setLogs((data ?? []) as unknown as LogRow[]);
     setLoading(false);
@@ -580,12 +586,19 @@ function PurchaseOrderModal({
   onClose: () => void;
   onExport: () => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const toLocalISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const today = toLocalISO(new Date());
   const isToday = date === today;
   const shiftDay = (delta: number) => {
-    const d = new Date(date + "T00:00:00");
-    d.setDate(d.getDate() + delta);
-    const next = d.toISOString().slice(0, 10);
+    const [y, m, d] = date.split("-").map(Number);
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+    dt.setDate(dt.getDate() + delta);
+    const next = toLocalISO(dt);
     if (next > today) return;
     onDateChange(next);
   };
