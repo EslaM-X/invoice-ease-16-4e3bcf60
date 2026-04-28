@@ -15,6 +15,8 @@ import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import { QrScanner } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
+import { DesktopPairWidget } from "@/components/desktop-pair-widget";
+import type { ScanEvent } from "@/lib/scan-link";
 
 export type BuilderItem = {
   product_id: string | null;
