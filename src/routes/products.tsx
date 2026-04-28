@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
+import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
@@ -26,9 +27,10 @@ function Products() {
   const { t, lang } = useI18n();
   const [list, setList] = useState<Product[]>([]);
   const [q, setQ] = useState("");
+  const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
@@ -48,10 +50,32 @@ function Products() {
   useRealtimeTable("products", () => { load(); });
 
   const filtered = useMemo(() => list.filter((p) => {
+    if (collectionFilter) {
+      if (collectionFilter === "__none__") {
+        if (p.collection) return false;
+      } else if (p.collection !== collectionFilter) {
+        return false;
+      }
+    }
     const s = q.trim().toLowerCase();
     if (!s) return true;
-    return p.name.toLowerCase().includes(s) || (p.serial_number ?? "").toLowerCase().includes(s);
-  }), [list, q]);
+    return (
+      p.name.toLowerCase().includes(s) ||
+      (p.serial_number ?? "").toLowerCase().includes(s) ||
+      (p.color ?? "").toLowerCase().includes(s) ||
+      (p.collection ?? "").toLowerCase().includes(s)
+    );
+  }), [list, q, collectionFilter]);
+
+  const collectionCounts = useMemo(() => {
+    const counts: Record<string, number> = { __all__: list.length, __none__: 0 };
+    for (const c of COLLECTIONS) counts[c] = 0;
+    for (const p of list) {
+      if (p.collection && counts[p.collection] !== undefined) counts[p.collection]++;
+      else if (!p.collection) counts.__none__++;
+    }
+    return counts;
+  }, [list]);
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
   const toggleAll = () => {
@@ -64,10 +88,10 @@ function Products() {
     setSelected(next);
   };
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "" }); setOpen(true); };
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "" });
+    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "" });
     setOpen(true);
   };
 
@@ -82,6 +106,7 @@ function Products() {
       stock_quantity: parseInt(form.stock_quantity || "0", 10),
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
       image_url: form.image_url || null,
+      collection: form.collection ? form.collection.toUpperCase() : null,
     };
     if (editing) {
       const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
@@ -155,6 +180,7 @@ function Products() {
     const rows = list.map((p) => ({
       name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "",
       price: p.price, stock_quantity: p.stock_quantity, low_stock_threshold: p.low_stock_threshold,
+      collection: p.collection ?? "",
     }));
     const csv = Papa.unparse(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -168,15 +194,20 @@ function Products() {
       header: true,
       skipEmptyLines: true,
       complete: async (res) => {
-        const rows = (res.data as any[]).map((r) => ({
-          user_id: user.id,
-          name: String(r.name ?? "").trim(),
-          serial_number: r.serial_number ? String(r.serial_number) : null,
-          color: r.color ? String(r.color) : null,
-          price: Number(r.price) || 0,
-          stock_quantity: parseInt(r.stock_quantity ?? "0", 10) || 0,
-          low_stock_threshold: parseInt(r.low_stock_threshold ?? "5", 10) || 5,
-        })).filter((r) => r.name);
+        const rows = (res.data as any[]).map((r) => {
+          const collRaw = String(r.collection ?? "").trim().toUpperCase();
+          const collection = (COLLECTIONS as readonly string[]).includes(collRaw) ? collRaw : null;
+          return {
+            user_id: user.id,
+            name: String(r.name ?? "").trim(),
+            serial_number: r.serial_number ? String(r.serial_number) : null,
+            color: r.color ? String(r.color) : null,
+            price: Number(r.price) || 0,
+            stock_quantity: parseInt(r.stock_quantity ?? "0", 10) || 0,
+            low_stock_threshold: parseInt(r.low_stock_threshold ?? "5", 10) || 5,
+            collection,
+          };
+        }).filter((r) => r.name);
         if (!rows.length) return toast.error(t("no_data"));
         const { data, error } = await supabase.from("products").insert(rows).select("id");
         if (error) return toast.error(error.message);
@@ -214,7 +245,20 @@ function Products() {
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
                 <div><Label>{t("price")}</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
-                <div className="col-span-2"><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                <div><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                <div>
+                  <Label>{t("collection")}</Label>
+                  <select
+                    value={form.collection}
+                    onChange={(e) => setForm({ ...form, collection: e.target.value })}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm h-9"
+                  >
+                    <option value="">— {t("no_collection")} —</option>
+                    {COLLECTIONS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
@@ -225,9 +269,36 @@ function Products() {
         </div>
       </div>
 
-      <div className="relative no-print">
-        <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
+      <div className="flex flex-col gap-3 no-print sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search") + " — " + (lang === "ar" ? "اسم / تسلسلي / لون / كولكشن" : "name / serial / color / collection")} className="ps-9" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setCollectionFilter("")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+          >
+            {t("all_collections")} ({collectionCounts.__all__})
+          </button>
+          {COLLECTIONS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCollectionFilter(c)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {c} ({collectionCounts[c] ?? 0})
+            </button>
+          ))}
+          {collectionCounts.__none__ > 0 && (
+            <button
+              onClick={() => setCollectionFilter("__none__")}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {t("no_collection")} ({collectionCounts.__none__})
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border bg-card no-print">
@@ -244,6 +315,7 @@ function Products() {
                   <th className="px-4 py-3 text-start font-medium">{t("product_name")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("serial_number")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden md:table-cell">{t("color")}</th>
+                  <th className="px-4 py-3 text-start font-medium hidden lg:table-cell">{t("collection")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("price")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("stock")}</th>
                   <th className="px-4 py-3" />
@@ -274,6 +346,13 @@ function Products() {
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        {p.collection ? (
+                          <span className="inline-flex rounded-md border bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{p.collection}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
