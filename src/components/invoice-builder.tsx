@@ -509,7 +509,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         onScanEvent={handleMobileScanEvent}
       />
 
-
+      {draftRecovered && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <div>
             <span className="font-semibold">{t("draft_recovered")}</span>
