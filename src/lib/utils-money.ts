@@ -1,6 +1,12 @@
+// Numbers are ALWAYS shown in Latin (English) digits across the app,
+// even when the UI language is Arabic. Only month/weekday names follow `lang`.
+// We force `numberingSystem: "latn"` everywhere to guarantee 0-9 digits.
+
 export function fmtMoney(n: number, currency = "EGP", lang: "ar" | "en" = "ar") {
   try {
-    return new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-EG", {
+    // Use Arabic locale for currency word/placement when lang=ar, but force Latin digits.
+    const locale = (lang === "ar" ? "ar-EG" : "en-EG") + "-u-nu-latn";
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
       maximumFractionDigits: 2,
@@ -10,23 +16,26 @@ export function fmtMoney(n: number, currency = "EGP", lang: "ar" | "en" = "ar") 
   }
 }
 
-export function fmtNumber(n: number, lang: "ar" | "en" = "ar") {
-  return new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-US").format(n || 0);
+export function fmtNumber(n: number, _lang: "ar" | "en" = "ar") {
+  // Always Latin digits, regardless of UI language.
+  return new Intl.NumberFormat("en-US").format(n || 0);
 }
 
 export function fmtDate(d: string | Date, lang: "ar" | "en" = "ar") {
   const date = typeof d === "string" ? new Date(d) : d;
-  return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", {
+  const locale = (lang === "ar" ? "ar-EG" : "en-GB") + "-u-nu-latn";
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
   }).format(date);
 }
 
-/** Full date + weekday + precise time (HH:mm:ss) */
+/** Full date + weekday + precise time (HH:mm:ss) — Latin digits always */
 export function fmtDateTime(d: string | Date, lang: "ar" | "en" = "ar") {
   const date = typeof d === "string" ? new Date(d) : d;
-  return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", {
+  const locale = (lang === "ar" ? "ar-EG" : "en-GB") + "-u-nu-latn";
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     year: "numeric",
     month: "long",
