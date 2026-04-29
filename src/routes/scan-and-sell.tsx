@@ -14,8 +14,9 @@ import {
   pushScanEvent,
   type ScanSession,
 } from "@/lib/scan-link";
+import { enqueueScan, flushQueue, queueLength } from "@/lib/scan-buffer";
 import { toast } from "sonner";
-import { Smartphone, ScanLine, Unlink, Check } from "lucide-react";
+import { Smartphone, ScanLine, Unlink, Check, WifiOff, CloudUpload } from "lucide-react";
 
 export const Route = createFileRoute("/scan-and-sell")({
   component: () => (
