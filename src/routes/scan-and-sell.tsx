@@ -213,23 +213,48 @@ function ScanAndSellPage() {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
     }
-    try {
-      await pushScanEvent({
-        sessionId: session.id,
-        userId: user.id,
-        product: {
-          id: p.id,
-          name: p.name,
-          price: Number(p.price ?? 0),
-          serial_number: p.serial_number,
-          color: p.color,
-        },
+    const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+    const queueIt = () => {
+      enqueueScan({
+        session_id: session.id,
+        user_id: user.id,
+        product_id: p.id,
+        product_name: p.name,
+        serial_number: p.serial_number ?? null,
+        color: p.color ?? null,
+        unit_price: Number(p.price ?? 0),
+        quantity: 1,
       });
+      refreshPending();
       beep();
       setLastAdded(p.name);
-      toast.success(`✓ ${p.name}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Error");
+      toast.warning(`✓ ${p.name} — ${t("offline_queued")}`);
+    };
+
+    if (isOffline) {
+      queueIt();
+    } else {
+      try {
+        await pushScanEvent({
+          sessionId: session.id,
+          userId: user.id,
+          product: {
+            id: p.id,
+            name: p.name,
+            price: Number(p.price ?? 0),
+            serial_number: p.serial_number,
+            color: p.color,
+          },
+        });
+        beep();
+        setLastAdded(p.name);
+        toast.success(`✓ ${p.name}`);
+        // Opportunistic: if anything was queued before, flush now
+        if (queueLength(user.id) > 0) tryFlush(true);
+      } catch (e: any) {
+        // Treat any push failure as a transient network problem and queue.
+        queueIt();
+      }
     }
     if (!continuous) setScanning(false);
   };
