@@ -186,7 +186,39 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     } catch {}
   };
 
-  const addProduct = (p: Product) => {
+  /** Stock already pre-allocated to this invoice on first load (edit mode). */
+  const initialQtyByProduct = useMemo(() => {
+    const m = new Map<string, number>();
+    if (mode === "edit" && initial?.items) {
+      for (const it of initial.items) {
+        if (it.product_id) m.set(it.product_id, (m.get(it.product_id) ?? 0) + (it.quantity || 0));
+      }
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  /** Returns how many MORE units of this product can still be added. */
+  const remainingFor = (productId: string): number => {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return 0;
+    const allocatedNow = items
+      .filter((it) => it.product_id === productId)
+      .reduce((s, it) => s + (it.quantity || 0), 0);
+    const baseline = initialQtyByProduct.get(productId) ?? 0;
+    return Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
+  };
+
+  /** Try to add 1 unit of a product. Returns true if added, false if blocked by stock. */
+  const addProduct = (p: Product): boolean => {
+    const remaining = remainingFor(p.id);
+    if (remaining <= 0) {
+      const msg = remaining === 0
+        ? t("out_of_stock_now")
+        : t("insufficient_stock_remaining").replace("{n}", String(remaining));
+      toast.error(`${p.name} — ${msg}`);
+      return false;
+    }
     setItems((prev) => {
       const idx = prev.findIndex((it) => it.product_id === p.id);
       if (idx >= 0) {
@@ -213,6 +245,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       }
       return [...prev, newItem];
     });
+    return true;
   };
 
   /** Apply a scan event coming from a paired mobile device. */
