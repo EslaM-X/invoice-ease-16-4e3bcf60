@@ -263,9 +263,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       product = (data as Product) ?? null;
     }
     if (!product) return false;
-    beep();
-    addProduct(product);
-    return true;
+    const ok = addProduct(product);
+    if (ok) beep();
+    return ok;
   };
 
   const handleScan = async (text: string) => {
@@ -295,9 +295,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
     }
-    beep();
-    addProduct(p as Product);
-    toast.success(p.name);
+    const ok = addProduct(p as Product);
+    if (ok) {
+      beep();
+      toast.success(p.name);
+    }
     if (!continuous) setScanning(false);
   };
 
