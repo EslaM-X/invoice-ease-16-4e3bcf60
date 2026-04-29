@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Smartphone, X, QrCode, Check } from "lucide-react";
+import { Smartphone, X, QrCode, Check, History, RotateCcw, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -27,10 +27,13 @@ type Props = {
 
 export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [session, setSession] = useState<ScanSession | null>(null);
   const [showQr, setShowQr] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [history, setHistory] = useState<ScanEvent[]>([]);
+  const [showHistory, setShowHistory] = useState(true);
   const sessionRef = useRef<ScanSession | null>(null);
   const handlerRef = useRef(onScanEvent);
   handlerRef.current = onScanEvent;
@@ -52,6 +55,10 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
       });
       setSession(s);
       sessionRef.current = s;
+      setDismissed(false);
+      seen.current.clear();
+      // Load any prior events for this fresh session (none normally) — just init list
+      setHistory([]);
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to start pairing");
     } finally {
@@ -64,21 +71,22 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
     if (s) await closeScanSession(s.id).catch(() => {});
     setSession(null);
     sessionRef.current = null;
-    seen.current.clear();
+    setDismissed(true);
+    // Keep history visible so the user can review past scans even after closing
   };
 
   // Auto-start on mount
   useEffect(() => {
+    if (!user) return;
     start();
     return () => {
-      // close session when widget unmounts
       const s = sessionRef.current;
       if (s) closeScanSession(s.id).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // Realtime subscriptions: session status + incoming scan events
+  // Realtime subscriptions: session status + scan events (INSERT + UPDATE)
   useEffect(() => {
     if (!session) return;
     const ch = supabase
@@ -94,7 +102,7 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
         (payload: any) => {
           const next = payload.new as ScanSession;
           setSession((prev) => (prev ? { ...prev, ...next } : next));
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -106,6 +114,7 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
         },
         async (payload: any) => {
           const ev = payload.new as ScanEvent;
+          setHistory((prev) => (prev.find((x) => x.id === ev.id) ? prev : [ev, ...prev].slice(0, 50)));
           if (seen.current.has(ev.id)) return;
           seen.current.add(ev.id);
           try {
@@ -119,7 +128,20 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
           } catch (e: any) {
             await markEventFailed(ev.id, e?.message ?? "error");
           }
-        }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "scan_events",
+          filter: `session_id=eq.${session.id}`,
+        },
+        (payload: any) => {
+          const ev = payload.new as ScanEvent;
+          setHistory((prev) => prev.map((x) => (x.id === ev.id ? ev : x)));
+        },
       )
       .subscribe();
 
@@ -151,9 +173,21 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
               {showQr ? t("hide_qr") : t("show_qr")}
             </Button>
           )}
-          {session && (
+          {session ? (
             <Button variant="ghost" size="icon" onClick={stop} title={t("stop_pairing")}>
               <X className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={start}
+              disabled={creating}
+              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+              title={t("restore_qr_hint")}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              {t("restore_qr")}
             </Button>
           )}
         </div>
@@ -194,6 +228,86 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
           </div>
         </div>
       )}
+
+      {!session && dismissed && (
+        <div className="mt-3 rounded-xl border-2 border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+          {t("restore_qr_hint")}
+        </div>
+      )}
+
+      {/* Scan history */}
+      <div className="mt-4 border-t pt-3">
+        <button
+          type="button"
+          onClick={() => setShowHistory((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        >
+          <span className="flex items-center gap-1.5">
+            <History className="h-3.5 w-3.5" />
+            {t("scan_history")}
+            {history.length > 0 && (
+              <span className="ms-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                {history.length}
+              </span>
+            )}
+          </span>
+          <span className="text-[10px]">{showHistory ? "▾" : "▸"}</span>
+        </button>
+
+        {showHistory && (
+          <div className="mt-2 max-h-48 overflow-y-auto">
+            {history.length === 0 ? (
+              <div className="py-3 text-center text-xs text-muted-foreground">
+                {t("no_scans_yet")}
+              </div>
+            ) : (
+              <ul className="space-y-1.5">
+                {history.map((ev) => {
+                  const time = new Date(ev.created_at).toLocaleTimeString(
+                    (lang === "ar" ? "ar-EG" : "en-GB") + "-u-nu-latn",
+                    { hour: "2-digit", minute: "2-digit", second: "2-digit" },
+                  );
+                  const statusBadge =
+                    ev.status === "applied" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-1.5 py-0.5 text-[10px] font-semibold text-success">
+                        <Check className="h-3 w-3" />
+                        {t("scan_status_applied")}
+                      </span>
+                    ) : ev.status === "failed" ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive"
+                        title={ev.error_message ?? ""}
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                        {t("scan_status_failed")}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+                        <Clock className="h-3 w-3" />
+                        {t("scan_status_pending")}
+                      </span>
+                    );
+                  return (
+                    <li
+                      key={ev.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border bg-background/60 px-2.5 py-1.5 text-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{ev.product_name}</div>
+                        <div className="text-[10px] text-muted-foreground tabular-nums" dir="ltr">
+                          {time}
+                          {ev.serial_number ? ` · ${ev.serial_number}` : ""}
+                        </div>
+                      </div>
+                      {statusBadge}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

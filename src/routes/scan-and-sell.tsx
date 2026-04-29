@@ -14,8 +14,9 @@ import {
   pushScanEvent,
   type ScanSession,
 } from "@/lib/scan-link";
+import { enqueueScan, flushQueue, queueLength } from "@/lib/scan-buffer";
 import { toast } from "sonner";
-import { Smartphone, ScanLine, Unlink, Check } from "lucide-react";
+import { Smartphone, ScanLine, Unlink, Check, WifiOff, CloudUpload } from "lucide-react";
 
 export const Route = createFileRoute("/scan-and-sell")({
   component: () => (
@@ -35,8 +36,57 @@ function ScanAndSellPage() {
   const [scanning, setScanning] = useState(false);
   const [continuous, setContinuous] = useState(true);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [pending, setPending] = useState<number>(0);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
+
+  // Refresh pending count from localStorage
+  const refreshPending = () => {
+    if (!user) return;
+    setPending(queueLength(user.id));
+  };
+
+  // Try to flush queued scans to Supabase
+  const tryFlush = async (silent = false) => {
+    if (!user) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      refreshPending();
+      return;
+    }
+    const before = queueLength(user.id);
+    if (before === 0) {
+      refreshPending();
+      return;
+    }
+    const flushed = await flushQueue(user.id);
+    refreshPending();
+    if (flushed > 0 && !silent) {
+      toast.success(t("offline_flushed").replace("{n}", String(flushed)));
+    }
+  };
+
+  // Online / offline listeners + periodic flush safety net
+  useEffect(() => {
+    if (!user) return;
+    refreshPending();
+    const goOnline = () => {
+      setOnline(true);
+      tryFlush(false);
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    const interval = window.setInterval(() => tryFlush(true), 8000);
+    // Initial flush attempt on mount
+    tryFlush(true);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+      window.clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Watch session status (auto-unpair if desktop closes session)
   useEffect(() => {
@@ -163,23 +213,48 @@ function ScanAndSellPage() {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
     }
-    try {
-      await pushScanEvent({
-        sessionId: session.id,
-        userId: user.id,
-        product: {
-          id: p.id,
-          name: p.name,
-          price: Number(p.price ?? 0),
-          serial_number: p.serial_number,
-          color: p.color,
-        },
+    const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+    const queueIt = () => {
+      enqueueScan({
+        session_id: session.id,
+        user_id: user.id,
+        product_id: p.id,
+        product_name: p.name,
+        serial_number: p.serial_number ?? null,
+        color: p.color ?? null,
+        unit_price: Number(p.price ?? 0),
+        quantity: 1,
       });
+      refreshPending();
       beep();
       setLastAdded(p.name);
-      toast.success(`✓ ${p.name}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Error");
+      toast.warning(`✓ ${p.name} — ${t("offline_queued")}`);
+    };
+
+    if (isOffline) {
+      queueIt();
+    } else {
+      try {
+        await pushScanEvent({
+          sessionId: session.id,
+          userId: user.id,
+          product: {
+            id: p.id,
+            name: p.name,
+            price: Number(p.price ?? 0),
+            serial_number: p.serial_number,
+            color: p.color,
+          },
+        });
+        beep();
+        setLastAdded(p.name);
+        toast.success(`✓ ${p.name}`);
+        // Opportunistic: if anything was queued before, flush now
+        if (queueLength(user.id) > 0) tryFlush(true);
+      } catch (e: any) {
+        // Treat any push failure as a transient network problem and queue.
+        queueIt();
+      }
     }
     if (!continuous) setScanning(false);
   };
@@ -289,6 +364,28 @@ function ScanAndSellPage() {
               </Button>
             </div>
           </div>
+
+          {(!online || pending > 0) && (
+            <div
+              className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+                !online ? "border-warning/40 bg-warning/10 text-warning" : "border-primary/30 bg-primary/5 text-primary"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-medium">
+                {!online ? <WifiOff className="h-3.5 w-3.5" /> : <CloudUpload className="h-3.5 w-3.5" />}
+                {!online
+                  ? lang === "ar"
+                    ? "لا يوجد اتصال — المسح يُحفظ محلياً"
+                    : "Offline — scans saved locally"
+                  : t("pending_scans").replace("{n}", String(pending))}
+              </div>
+              {pending > 0 && online && (
+                <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs" onClick={() => tryFlush(false)}>
+                  {lang === "ar" ? "إرسال الآن" : "Sync now"}
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="rounded-2xl border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
