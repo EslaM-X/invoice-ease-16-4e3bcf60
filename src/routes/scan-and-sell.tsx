@@ -36,8 +36,57 @@ function ScanAndSellPage() {
   const [scanning, setScanning] = useState(false);
   const [continuous, setContinuous] = useState(true);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [pending, setPending] = useState<number>(0);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
+
+  // Refresh pending count from localStorage
+  const refreshPending = () => {
+    if (!user) return;
+    setPending(queueLength(user.id));
+  };
+
+  // Try to flush queued scans to Supabase
+  const tryFlush = async (silent = false) => {
+    if (!user) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      refreshPending();
+      return;
+    }
+    const before = queueLength(user.id);
+    if (before === 0) {
+      refreshPending();
+      return;
+    }
+    const flushed = await flushQueue(user.id);
+    refreshPending();
+    if (flushed > 0 && !silent) {
+      toast.success(t("offline_flushed").replace("{n}", String(flushed)));
+    }
+  };
+
+  // Online / offline listeners + periodic flush safety net
+  useEffect(() => {
+    if (!user) return;
+    refreshPending();
+    const goOnline = () => {
+      setOnline(true);
+      tryFlush(false);
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    const interval = window.setInterval(() => tryFlush(true), 8000);
+    // Initial flush attempt on mount
+    tryFlush(true);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+      window.clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Watch session status (auto-unpair if desktop closes session)
   useEffect(() => {
