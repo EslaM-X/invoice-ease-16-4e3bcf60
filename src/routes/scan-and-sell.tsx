@@ -365,6 +365,28 @@ function ScanAndSellPage() {
             </div>
           </div>
 
+          {(!online || pending > 0) && (
+            <div
+              className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+                !online ? "border-warning/40 bg-warning/10 text-warning" : "border-primary/30 bg-primary/5 text-primary"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-medium">
+                {!online ? <WifiOff className="h-3.5 w-3.5" /> : <CloudUpload className="h-3.5 w-3.5" />}
+                {!online
+                  ? lang === "ar"
+                    ? "لا يوجد اتصال — المسح يُحفظ محلياً"
+                    : "Offline — scans saved locally"
+                  : t("pending_scans").replace("{n}", String(pending))}
+              </div>
+              {pending > 0 && online && (
+                <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs" onClick={() => tryFlush(false)}>
+                  {lang === "ar" ? "إرسال الآن" : "Sync now"}
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="rounded-2xl border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm">
