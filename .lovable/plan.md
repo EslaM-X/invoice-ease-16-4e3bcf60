@@ -1,87 +1,111 @@
+# ربط Zoho Books بالتطبيق — صفحة منتجات لحظية
 
-# نظام Steinheim المشترك — مزامنة لحظية بين 3 حسابات
+## نظرة عامة
 
-## الفكرة الأساسية
+إنشاء صفحة جديدة `/zoho-inventory` داخل التطبيق تعرض كل المنتجات الموجودة في حساب Zoho Books الخاص بالمصنع/المورد، مع تحديث لحظي للصور والكميات والأسعار وأي إضافة/حذف/زيادة/نقصان — بدون أن تؤثر على المخزون الداخلي للتطبيق (يبقى منفصل تمامًا).
 
-حالياً كل حساب يعمل في عزلة (RLS تفصل البيانات حسب `user_id`). المطلوب: الـ3 حسابات (`Cfo@`, `E.hesham@`, `K.elsharbatly@steinheim-eg.com`) يشاركون **نفس البيانات بالكامل** (منتجات، عملاء، فواتير، مخزون)، وأي تعديل من أي حساب يظهر فوراً عند الباقي مع اسم وإيميل من قام به — كل ذلك بدون تسجيل خروج أحد.
+## كيف يعمل الربط مع Zoho
 
----
+Zoho Books يوفر REST API رسمي:
+- `GET /api/v3/items` — قائمة كل الأصناف (المنتجات) مع `name`, `sku`, `rate`, `stock_on_hand`, `image_document_id`, إلخ.
+- `GET /api/v3/items/{item_id}` — تفاصيل صنف واحد.
+- `GET /api/v3/items/{item_id}/image` — صورة الصنف.
+- المصادقة: OAuth 2.0 — يحتاج `client_id`, `client_secret`, `refresh_token`, و `organization_id` للمصنع.
 
-## ما سيُبنى
+**مهم:** Zoho **لا يدعم Webhooks للمخزون** بشكل عام في خطة Books الأساسية. لذلك "اللحظي" يتحقق عبر **polling ذكي كل 15-30 ثانية** من السيرفر + بث التغييرات للمستخدم عبر Supabase Realtime. هذا هو المعيار الصناعي المتبع مع Zoho.
 
-### 1. إنشاء "مساحة عمل الشركة" (Company Workspace)
-- جدول جديد `company_members` يحدد أن الإيميلات الثلاثة أعضاء في نفس الشركة.
-- الحسابات الحالية الموجودة في قاعدة البيانات تُربط تلقائياً، وأي تسجيل دخول جديد لأحد هذه الإيميلات يُضاف تلقائياً عبر trigger.
-- البيانات القديمة (الموجودة الآن تحت `user_id` معين) تبقى مرئية للجميع بعد الترقية.
+## التصميم التقني
 
-### 2. تحديث صلاحيات قاعدة البيانات (RLS)
-كل جدول حالياً فيه شرط `auth.uid() = user_id`. سيُستبدل بـ:
-> "هل المستخدم الحالي عضو في نفس الشركة التي يملكها صاحب السطر؟"
-عبر دالة `is_company_member(_user_id)` بصلاحية `SECURITY DEFINER` (لتجنب recursion).
-يطبق على: `customers`, `products`, `invoices`, `invoice_items`, `inventory_logs`, `invoice_events`, `settings`, `user_counters`.
+### 1. الأسرار (Secrets)
+يطلب من المستخدم إدخال:
+- `ZOHO_CLIENT_ID`
+- `ZOHO_CLIENT_SECRET`
+- `ZOHO_REFRESH_TOKEN`
+- `ZOHO_ORGANIZATION_ID`
+- `ZOHO_REGION` (مثلاً `com`, `eu`, `sa`) — لتحديد دومين API الصحيح
 
-### 3. تتبع "من قام بالعملية" (Audit Trail)
-- إضافة عمود `created_by` (uuid) و`created_by_email` (text) لجداول: `customers`, `products`, `invoices`, `inventory_logs`.
-- تحديث دوال `create_invoice` / `update_invoice` / `void_invoice` / `delete_invoice` لتسجيل `auth.uid()` وإيميله في `invoice_events` و`inventory_logs`.
-- في الواجهة: عرض شارة صغيرة بجانب كل عنصر/فاتورة "أنشأها: email — منذ X" + سجل أحداث كامل في صفحة الفاتورة.
+تعليمات الحصول عليها سأشرحها خطوة بخطوة في الشات قبل طلب الأسرار.
 
-### 4. مزامنة لحظية (Realtime) — صامتة وفورية
-تفعيل `supabase_realtime` على الجداول الخمسة الرئيسية، وفي الواجهة الاشتراك بقناة واحدة لكل صفحة:
-- صفحة المنتجات → تحديث القائمة فور أي insert/update/delete من أي حساب.
-- صفحة العملاء، الفواتير، المخزون، Dashboard → نفس المنطق.
-- إشعار toast خفيف وصامت: "تمت إضافة منتج بواسطة E.hesham@…" (يمكن إيقافه من الإعدادات).
-- لا يحتاج المستخدم الـ refresh أو تسجيل الخروج.
+### 2. قاعدة البيانات
+جدول جديد `zoho_items` (cache + مصدر للـRealtime):
+```
+- item_id (text, PK)            — من Zoho
+- name, sku, description, unit
+- rate (numeric)                — السعر
+- stock_on_hand (numeric)
+- available_stock (numeric)
+- image_url (text)              — مخزّنة في Supabase Storage
+- status (text)                 — active/inactive
+- raw (jsonb)                   — كل البيانات من Zoho للعرض الكامل
+- last_synced_at, updated_at
+```
++ جدول `zoho_sync_state` لتتبع آخر مزامنة وأي أخطاء.
 
-### 5. صور المنتجات (Product Images)
-- bucket تخزين جديد عام للقراءة `product-images`.
-- إضافة عمود `image_url` على جدول `products`.
-- في نموذج إضافة/تعديل منتج: زر رفع صورة + معاينة + حذف.
-- في جدول المنتجات: thumbnail بجانب الاسم.
-- في صفحة الفاتورة وعرضها: ظهور الصورة بجانب اسم المنتج.
-- الصور محفوظة دائماً في قاعدة البيانات ومتاحة للحسابات الثلاثة.
+RLS: قراءة فقط لأعضاء الشركة (`is_company_member()`). لا أحد يكتب من الواجهة — السيرفر فقط.
 
-### 6. حماية البيانات من الفقد
-- منع الحذف النهائي للفواتير بشكل افتراضي (الإبقاء على "إبطال/Void" فقط).
-- إضافة Soft-delete (`deleted_at`) للعملاء والمنتجات بدلاً من الحذف الفعلي — مع زر "أرشيف" لاستعادتها.
-- جدول `audit_log` عام يسجل كل عملية حساسة (إنشاء/تعديل/حذف) مع المستخدم والوقت والـ payload — لن يُمسح أبداً.
+تفعيل Realtime على `zoho_items` لبث أي INSERT/UPDATE/DELETE فورًا لكل الحسابات الأربعة.
 
-### 7. جلسات ثابتة (لا تسجيل خروج تلقائي)
-- إعدادات Supabase Auth: تمديد JWT expiry وتفعيل refresh token rotation (مفعل مسبقاً).
-- التأكد من `persistSession: true` (مفعل) — لا حاجة لتسجيل دخول متكرر.
+### 3. السيرفر — Server Function للمزامنة
+`src/server/zoho.functions.ts`:
+- `syncZohoItems()` — يجلب refresh→access token، يستدعي `/items` بصفحات (pagination)، يقارن مع `zoho_items`، ثم:
+  - INSERT للأصناف الجديدة
+  - UPDATE للمتغير منها (سعر/مخزون/صورة)
+  - DELETE (أو `status=inactive`) للمحذوف من Zoho
+  - يرفع الصور الجديدة إلى Supabase Storage في bucket `zoho-images` (عام)
+- `getZohoItemDetails(itemId)` — للتفاصيل الكاملة عند الضغط على منتج
 
----
+### 4. المزامنة الدورية (cron)
+Endpoint عام محمي بسر: `src/routes/api/public/zoho-sync.ts`
+- يُستدعى كل 30 ثانية بواسطة pg_cron (Supabase) عبر `net.http_post`
+- يتحقق من header `x-cron-secret`
+- يستدعي `syncZohoItems()`
 
-## الواجهات الجديدة/المحدّثة
+هذا يضمن التحديث اللحظي بدون أي تدخل من المستخدم وعلى كل الحسابات الأربعة.
 
-| الصفحة | التغيير |
-|--------|---------|
-| Products | عمود صورة + رفع صورة في النموذج + شارة "أضافها: …" + مزامنة لحظية |
-| Customers | شارة "أضافه: …" + مزامنة لحظية |
-| Invoices list | شارة "أنشأها: …" + مزامنة لحظية |
-| Invoice detail | جدول أحداث كامل (من فعل ماذا ومتى) |
-| Inventory Audit | عمود "بواسطة" |
-| Dashboard | تحديث لحظي للأرقام + إشعار صامت بالأحداث الأخيرة |
-| Settings | مفتاح تشغيل/إيقاف صوت الإشعارات اللحظية |
+### 5. الواجهة — `/zoho-inventory`
+صفحة جديدة في `src/routes/zoho-inventory.tsx`:
+- شبكة منتجات (Grid) مع صورة، اسم، SKU، السعر، المخزون المتاح
+- شارة لونية للمخزون: أخضر/أصفر/أحمر (نفد)
+- بحث + فلتر حسب الحالة + ترتيب
+- نافذة تفاصيل عند الضغط (كل بيانات Zoho)
+- مؤشر "آخر مزامنة منذ X ثانية" + زر "مزامنة الآن" يدوي
+- اشتراك `useRealtimeTable("zoho_items", ...)` — أي تغيير من المزامنة يظهر فورًا في الواجهات الأربعة
+- مؤشر "live" أخضر عند اتصال Realtime
 
----
+ترجمات AR/EN كاملة، RTL، نفس ستايل باقي التطبيق (cards, tabs, popovers).
 
-## الخطوات التقنية (مرجع داخلي)
+### 6. العنصر في الـSidebar
+إضافة بند جديد "منتجات Zoho / Zoho Inventory" بأيقونة `Boxes` أو `Cloud` في `app-shell.tsx`.
 
-1. **Migration #1** — `company_members` table + seed للإيميلات الـ3 + trigger على `auth.users`.
-2. **Migration #2** — دالة `is_company_member(uuid)` SECURITY DEFINER + استبدال جميع RLS policies على الجداول الـ8.
-3. **Migration #3** — أعمدة `created_by`, `created_by_email` + جدول `audit_log` + soft-delete columns.
-4. **Migration #4** — تحديث دوال `create_invoice` / `update_invoice` / `void_invoice` / `delete_invoice` لتسجيل هوية المنفذ.
-5. **Migration #5** — `image_url` على products + storage bucket + RLS policies للـ bucket + تفعيل realtime على الجداول.
-6. **Frontend** — Hook موحّد `useRealtimeTable(table, onChange)` يُستخدم في كل صفحة list.
-7. **Frontend** — مكوّن `<AuthorBadge userId email />` لعرض من فعل ماذا.
-8. **Frontend** — مكوّن `<ProductImageUpload />` يرفع للـ bucket ويرجع URL.
-9. **Frontend** — تحديث Products/Customers/Invoices لإظهار الصور والشارات.
-10. **Frontend** — اختياري: SoundManager خفيف للإشعارات الصامتة.
+## الملفات الجديدة/المعدلة
 
----
+**جديدة:**
+- `src/routes/zoho-inventory.tsx`
+- `src/routes/api/public/zoho-sync.ts`
+- `src/server/zoho.server.ts` (Zoho client + token refresh)
+- `src/server/zoho.functions.ts` (server functions)
+- `src/lib/zoho-types.ts`
+- migration: جدولا `zoho_items`, `zoho_sync_state` + RLS + Realtime + bucket تخزين الصور + cron job
 
-## ملاحظات وموافقات مطلوبة
+**معدلة:**
+- `src/components/app-shell.tsx` — بند جديد في القائمة
+- `src/lib/i18n.tsx` — مفاتيح الترجمة
+- `src/integrations/supabase/types.ts` — يتحدث تلقائيًا
 
-- سأعتمد على إيميلات الحسابات كما زوّدتها (Cfo, E.hesham, K.elsharbatly @steinheim-eg.com). أي حساب ثالث يسجل دخول بإيميل خارج هذه القائمة سيرى بياناته الخاصة فقط (لن يدخل مساحة الشركة).
-- البيانات الموجودة حالياً في الحسابات الـ3 (إن كانت متفرقة) ستندمج في مساحة واحدة بعد الترقية. إن أردت دمج بيانات حساب معين فقط أخبرني.
-- سيظل بإمكان الحسابات حذف الفواتير، لكن سيُسجَّل من حذف ومتى في `audit_log` ولا يمكن استرجاع المحذوف من الواجهة (يبقى أثره فقط).
+## الدقة وعدم الأخطاء
+
+- **مقارنة hash** لكل صنف لتجنب تحديثات وهمية
+- **رفع الصور بكسلًا واحدًا** فقط عند تغيّر `image_document_id`
+- **معالجة أخطاء Zoho rate limit** (HTTP 429) مع backoff
+- **Token refresh تلقائي** عند 401
+- **Transaction واحد** لكل دفعة مزامنة لضمان الاتساق
+- **سجل أخطاء** في `zoho_sync_state` لرؤية أي مشكلة فورًا
+- لا يتم حذف أي بيانات تاريخية — فقط `status=inactive` لو الصنف اتشال من Zoho
+
+## ما سأطلبه منك بعد الموافقة
+
+1. سأشرح طريقة الحصول على Zoho OAuth credentials (5 خطوات في Zoho Developer Console).
+2. سأطلب منك إدخال الـ4 أسرار + المنطقة + organization_id عبر أداة الأسرار الآمنة.
+3. ثم أنفذ كل شيء بالترتيب.
+
+هل توافق على المضي بهذا التصميم؟
