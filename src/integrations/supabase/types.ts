@@ -626,6 +626,141 @@ export type Database = {
         }
         Relationships: []
       }
+      zoho_items: {
+        Row: {
+          available_stock: number
+          color: string | null
+          created_at: string
+          deleted_from_zoho: boolean
+          description: string | null
+          hash: string | null
+          image_document_id: string | null
+          image_url: string | null
+          item_id: string
+          last_synced_at: string
+          name: string
+          rate_aed: number
+          rate_egp: number
+          raw: Json
+          serial_number: string | null
+          sku: string | null
+          status: string
+          stock_on_hand: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          available_stock?: number
+          color?: string | null
+          created_at?: string
+          deleted_from_zoho?: boolean
+          description?: string | null
+          hash?: string | null
+          image_document_id?: string | null
+          image_url?: string | null
+          item_id: string
+          last_synced_at?: string
+          name: string
+          rate_aed?: number
+          rate_egp?: number
+          raw?: Json
+          serial_number?: string | null
+          sku?: string | null
+          status?: string
+          stock_on_hand?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          available_stock?: number
+          color?: string | null
+          created_at?: string
+          deleted_from_zoho?: boolean
+          description?: string | null
+          hash?: string | null
+          image_document_id?: string | null
+          image_url?: string | null
+          item_id?: string
+          last_synced_at?: string
+          name?: string
+          rate_aed?: number
+          rate_egp?: number
+          raw?: Json
+          serial_number?: string | null
+          sku?: string | null
+          status?: string
+          stock_on_hand?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      zoho_settings: {
+        Row: {
+          aed_to_egp_rate: number
+          id: string
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
+        }
+        Insert: {
+          aed_to_egp_rate?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+        }
+        Update: {
+          aed_to_egp_rate?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+        }
+        Relationships: []
+      }
+      zoho_sync_state: {
+        Row: {
+          id: string
+          is_running: boolean
+          items_added: number
+          items_marked_deleted: number
+          items_synced: number
+          items_updated: number
+          last_error: string | null
+          last_error_at: string | null
+          last_run_at: string | null
+          last_success_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          is_running?: boolean
+          items_added?: number
+          items_marked_deleted?: number
+          items_synced?: number
+          items_updated?: number
+          last_error?: string | null
+          last_error_at?: string | null
+          last_run_at?: string | null
+          last_success_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          is_running?: boolean
+          items_added?: number
+          items_marked_deleted?: number
+          items_synced?: number
+          items_updated?: number
+          last_error?: string | null
+          last_error_at?: string | null
+          last_run_at?: string | null
+          last_success_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
