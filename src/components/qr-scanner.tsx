@@ -141,8 +141,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       const videoConstraints: MediaTrackConstraints | string = cameraId
         ? cameraId
         : (lowRes
-          ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
-          : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
+          ? { facingMode: facing, width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
+          : { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
 
       lastDecodeAtRef.current = performance.now();
       await sc.start(
