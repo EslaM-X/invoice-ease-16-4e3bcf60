@@ -495,6 +495,70 @@ function ScanAndSellPage() {
               </div>
             )}
           </div>
+
+          {history.length > 0 && (
+            <div className="rounded-2xl border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <History className="h-4 w-4 text-primary" />
+                  {lang === "ar" ? "آخر محاولات المسح" : "Recent scans"}
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {history.length}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setHistory([])}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-3 w-3" />
+                  {lang === "ar" ? "مسح" : "Clear"}
+                </button>
+              </div>
+              <ul className="space-y-1.5">
+                {history.map((h) => {
+                  const okStatus = h.status === "ok" || h.status === "queued";
+                  const tone =
+                    h.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" :
+                    h.status === "queued" ? "border-amber-500/30 bg-amber-500/5" :
+                    "border-destructive/30 bg-destructive/5";
+                  return (
+                    <li key={h.id} className={`flex items-start justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {okStatus
+                            ? <Check className="h-3 w-3 shrink-0 text-emerald-500" />
+                            : <AlertTriangle className="h-3 w-3 shrink-0 text-destructive" />}
+                          <span className="truncate font-medium">
+                            {h.productName ?? (lang === "ar" ? "—" : "—")}
+                          </span>
+                          <span className="ml-auto text-[10px] text-muted-foreground" dir="ltr">
+                            {new Date(h.at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <span dir="ltr" className="truncate">
+                            {h.productId ? `${h.productId.slice(0, 8)}…` : (h.raw.slice(0, 24) || "—")}
+                          </span>
+                          <span>·</span>
+                          <span className="truncate">{h.message}</span>
+                        </div>
+                      </div>
+                      {okStatus && h.productId && (
+                        <button
+                          onClick={() => reAddFromHistory(h)}
+                          className="flex shrink-0 items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20"
+                          title={lang === "ar" ? "إعادة الإضافة للفاتورة" : "Re-add to invoice"}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          {lang === "ar" ? "إضافة" : "Add"}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
