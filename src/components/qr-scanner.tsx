@@ -115,6 +115,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     attemptRef.current += 1;
     const startedAt = performance.now();
     try {
+      // Force the native browser permission prompt before loading the heavy lib.
+      await ensurePermission();
       const { Html5Qrcode } = await loadLib();
       if (!ref.current || !mountedRef.current) return;
 
