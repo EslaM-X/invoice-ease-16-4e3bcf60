@@ -16,17 +16,16 @@ function Inventory() {
   const { t, lang } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    // Fetch products + latest inventory_logs in parallel. products.stock_quantity is the
-    // authoritative reconciled value (every inventory_log mutates it inside the same SQL
-    // transaction), so price × stock_quantity equals the true current stock value.
     const [{ data: p }, { data: l }] = await Promise.all([
       supabase.from("products").select("*").order("name"),
       supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30),
     ]);
     setProducts((p ?? []) as Product[]);
     setLogs(l ?? []);
+    setLoading(false);
   };
   useEffect(() => { if (user) load(); }, [user]);
   useRealtimeTable("products", () => { if (user) load(); });
