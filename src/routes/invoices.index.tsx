@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { exportInvoicesToCSV, exportInvoicesToExcel, exportInvoicesBatchPDF, type InvoiceRow } from "@/lib/invoice-export";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
+import { TableSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
