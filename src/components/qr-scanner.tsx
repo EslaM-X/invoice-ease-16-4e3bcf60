@@ -230,7 +230,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       setTimeout(() => mountedRef.current && start(), delay);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScan, lowRes, getFps, online, cameraId]);
+  }, [onScan, lowRes, getFps, online, cameraId, facing]);
 
   // Enumerate cameras once we have permission
   useEffect(() => {
