@@ -15,6 +15,7 @@ import { getSettings, upsertSettings } from "@/lib/data";
 import { exportFullBackupExcel, exportFullBackupCSV } from "@/lib/backup-export";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AvatarUpload } from "@/components/avatar-upload";
+import { AppearanceSettings } from "@/components/appearance-settings";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
