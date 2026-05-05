@@ -198,11 +198,37 @@ function ScanAndSellPage() {
     if (now - last < 1500) return;
     recentScans.current.set(productId, now);
 
+    const fetchAndPush = async () => {
+      const t0 = performance.now();
+      const { product, error } = await fetchProductCached(productId);
+      setLastFetchMs(Math.round(performance.now() - t0));
+      return { product, error };
+    };
+
     const t0 = performance.now();
     const { product: p, error } = await fetchProductCached(productId);
     setLastFetchMs(Math.round(performance.now() - t0));
     if (error || !p) {
-      toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+      toast.error(
+        lang === "ar" ? "لم يتم العثور على المنتج" : "Product not found",
+        {
+          description: lang === "ar"
+            ? `المعرّف: ${productId.slice(0, 8)}…`
+            : `ID: ${productId.slice(0, 8)}…`,
+          action: {
+            label: lang === "ar" ? "إعادة المحاولة" : "Retry",
+            onClick: async () => {
+              const r = await fetchAndPush();
+              if (r.product) {
+                toast.success(`✓ ${r.product.name}`);
+              } else {
+                toast.error(lang === "ar" ? "فشل مجددًا" : "Failed again");
+              }
+            },
+          },
+          duration: 6000,
+        }
+      );
       return;
     }
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
