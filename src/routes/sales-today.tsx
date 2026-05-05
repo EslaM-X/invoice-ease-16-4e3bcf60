@@ -211,54 +211,67 @@ function SalesToday() {
   useRealtimeTable("products", () => debouncedLoad());
 
   const { rows, totals } = useMemo(() => {
-    const map = new Map<string, Aggregated>();
-
-    // 1) Source of truth: invoice_items of non-voided invoices for the day.
-    for (const it of items) {
-      const cur = map.get(it.product_id) ?? {
+    // SINGLE SOURCE OF TRUTH: computeSold (pure, unit-tested in sales-calc.test.ts).
+    // Reconstruct minimal invoice list from items (one entry per invoice number seen).
+    const invMap = new Map<string, CalcInvoice>();
+    const calcItems: CalcInvoiceItem[] = items.map((it) => {
+      const id = `${it.invoice_number}`; // synthetic id keyed by number (unique per day)
+      if (!invMap.has(id)) {
+        invMap.set(id, {
+          id,
+          invoice_number: it.invoice_number,
+          status: "completed", // items already came from non-voided invoices in load()
+          created_at: it.invoice_created_at,
+        });
+      }
+      return {
+        invoice_id: id,
         product_id: it.product_id,
-        name: it.product_name,
+        product_name: it.product_name,
         serial_number: it.serial_number,
         color: it.color,
-        price: it.unit_price,
-        current_stock: 0,
-        low_stock_threshold: 0,
-        image_url: null,
-        sold_qty: 0,
-        total_value: 0,
-        invoices: new Set<string>(),
-        last_at: it.invoice_created_at,
-        movements: [],
+        quantity: it.quantity,
+        unit_price: it.unit_price,
       };
-      cur.sold_qty += it.quantity;
-      cur.invoices.add(it.invoice_number);
-      if (it.invoice_created_at > cur.last_at) cur.last_at = it.invoice_created_at;
-      // Use latest unit price seen
-      if (it.unit_price) cur.price = it.unit_price;
-      map.set(it.product_id, cur);
-    }
+    });
 
-    // 2) Enrich with current product info + attach movements log for detail panel.
+    const sold = computeSold({
+      date,
+      invoices: Array.from(invMap.values()),
+      items: calcItems,
+    });
+
+    // Enrich with current product info + movements log for detail panel.
+    const productInfo = new Map<string, LogRow["products"]>();
+    const productMovements = new Map<string, LogRow[]>();
     for (const l of logs) {
       if (!l.products) continue;
-      const p = l.products;
-      const cur = map.get(p.id);
-      if (cur) {
-        cur.current_stock = p.stock_quantity;
-        cur.low_stock_threshold = p.low_stock_threshold;
-        cur.image_url = p.image_url;
-        if (!cur.price) cur.price = Number(p.price ?? 0);
-        cur.movements.push(l);
-        if (l.created_at > cur.last_at) cur.last_at = l.created_at;
-      }
-      // Note: products that ONLY appear in logs (no invoice_items today, e.g.
-      // deleted invoices) are intentionally NOT added — they were not sold today.
+      productInfo.set(l.products.id, l.products);
+      const arr = productMovements.get(l.products.id) ?? [];
+      arr.push(l);
+      productMovements.set(l.products.id, arr);
     }
 
-    const arr = Array.from(map.values())
-      .filter((r) => r.sold_qty > 0)
-      .map((r) => ({ ...r, total_value: r.sold_qty * r.price }))
-      .sort((a, b) => b.sold_qty - a.sold_qty);
+    const arr: Aggregated[] = sold.rows.map((r) => {
+      const p = productInfo.get(r.product_id);
+      const movements = productMovements.get(r.product_id) ?? [];
+      const lastFromMove = movements.reduce((acc, m) => (m.created_at > acc ? m.created_at : acc), "");
+      return {
+        product_id: r.product_id,
+        name: r.product_name,
+        serial_number: r.serial_number,
+        color: r.color,
+        price: r.unit_price || Number(p?.price ?? 0),
+        current_stock: p?.stock_quantity ?? 0,
+        low_stock_threshold: p?.low_stock_threshold ?? 0,
+        image_url: p?.image_url ?? null,
+        sold_qty: r.sold_qty,
+        total_value: r.total_value,
+        invoices: new Set(r.invoice_numbers),
+        last_at: lastFromMove || new Date().toISOString(),
+        movements,
+      };
+    });
 
     const t = arr.reduce(
       (acc, r) => {
@@ -270,7 +283,7 @@ function SalesToday() {
       { units: 0, value: 0, lowAfter: 0 }
     );
     return { rows: arr, totals: { ...t, distinct: arr.length } };
-  }, [logs, items]);
+  }, [logs, items, date]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pageRows = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
