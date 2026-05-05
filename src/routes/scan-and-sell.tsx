@@ -7,6 +7,8 @@ import { QrScanner } from "@/components/qr-scanner";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchProductCached } from "@/lib/product-cache";
+import { decodeProductQR } from "@/lib/qr-codec";
 import {
   closeScanSession,
   getSessionById,
@@ -173,42 +175,29 @@ function ScanAndSellPage() {
     if (!user || !session) return;
     const raw = (text ?? "").trim();
 
-    // Check if this is a pair-link QR (legacy: ignore if already paired)
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.kind === "scanlink") {
-        // Already paired — ignore pair QRs while scanning
-        return;
-      }
-    } catch {}
-
-    // Debounce duplicate scans within 1.5s
-    const now = Date.now();
-    const last = recentScans.current.get(raw) ?? 0;
-    if (now - last < 1500) return;
-    recentScans.current.set(raw, now);
-
-    let productId: string | null = null;
-    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRe.test(raw)) {
-      productId = raw;
-    } else {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed.product_id === "string" && uuidRe.test(parsed.product_id)) {
-          productId = parsed.product_id;
-        }
-      } catch {}
-    }
-    if (!productId) {
-      toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+    const decoded = decodeProductQR(raw);
+    if (!decoded.ok) {
+      if (decoded.reason === "scanlink") return; // ignore pair QR
+      // Debounce duplicate invalid scans
+      const now = Date.now();
+      const last = recentScans.current.get(raw) ?? 0;
+      if (now - last < 1500) return;
+      recentScans.current.set(raw, now);
+      const msg = decoded.reason === "checksum"
+        ? (lang === "ar" ? "رمز QR تالف (فحص فشل)" : "Corrupted QR (checksum failed)")
+        : (lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+      toast.error(msg);
       return;
     }
-    const { data: p, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("id", productId)
-      .maybeSingle();
+
+    const productId = decoded.productId;
+    // Debounce duplicate valid scans
+    const now = Date.now();
+    const last = recentScans.current.get(productId) ?? 0;
+    if (now - last < 1500) return;
+    recentScans.current.set(productId, now);
+
+    const { product: p, error } = await fetchProductCached(productId);
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;

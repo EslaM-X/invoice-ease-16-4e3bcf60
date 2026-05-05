@@ -16,6 +16,7 @@ import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
+import { encodeProductQR } from "@/lib/qr-codec";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
@@ -129,7 +130,9 @@ function Products() {
   };
 
   const showQr = async (p: Product) => {
-    const data = await QRCode.toDataURL(p.qr_code || p.id, { width: 320, margin: 2 });
+    // Use compact v1 payload (id + checksum) — smaller, more reliable
+    const payload = encodeProductQR(p.qr_code || p.id);
+    const data = await QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
     setQrPreview({ name: p.name, data });
   };
 
@@ -138,7 +141,8 @@ function Products() {
     const targets = filtered.filter((p) => selected.has(p.id));
     const out: { p: Product; data: string }[] = [];
     for (const p of targets) {
-      const data = await QRCode.toDataURL(p.qr_code || p.id, { width: 200, margin: 1 });
+      const payload = encodeProductQR(p.qr_code || p.id);
+      const data = await QRCode.toDataURL(payload, { width: 200, margin: 1, errorCorrectionLevel: "M" });
       out.push({ p, data });
     }
     setLabelData(out);
