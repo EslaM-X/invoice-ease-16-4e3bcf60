@@ -209,8 +209,72 @@ function AdminPage() {
             <RoleInfo name="call_center" desc="بيانات العملاء + المكالمات + التقييمات" />
           </div>
         </Card>
+
+        <BackupsSection />
       </div>
     </AppShell>
+  );
+}
+
+function BackupsSection() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("backups_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(15);
+    setLogs(data ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  return (
+    <Card className="p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-amber-600" />
+          <h2 className="text-lg font-semibold">النسخ الاحتياطية</h2>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={load}>تحديث</Button>
+          <BackupButton />
+        </div>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        يتم تشغيل النسخ تلقائياً كل يوم 03:00 صباحاً وتُحفظ في مساحة آمنة منفصلة (bucket "backups").
+      </p>
+      {loading ? (
+        <div className="flex h-20 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="py-6 text-center text-sm text-muted-foreground">لا توجد نسخ بعد — اضغط "نسخة احتياطية الآن"</div>
+      ) : (
+        <div className="space-y-1.5">
+          {logs.map((l) => (
+            <div key={l.id} className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className={l.status === "success" ? "text-emerald-500" : "text-destructive"}>
+                  {l.status === "success" ? "✅" : "❌"}
+                </span>
+                <span className="font-mono text-xs">{new Date(l.created_at).toLocaleString("ar-EG")}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+                <span>{l.tables_count} جدول</span>
+                <span>{l.rows_count} سجل</span>
+                <span>{(l.size_bytes / 1024).toFixed(1)} KB</span>
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{l.triggered_by}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
