@@ -198,7 +198,9 @@ function ScanAndSellPage() {
     if (now - last < 1500) return;
     recentScans.current.set(productId, now);
 
+    const t0 = performance.now();
     const { product: p, error } = await fetchProductCached(productId);
+    setLastFetchMs(Math.round(performance.now() - t0));
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
