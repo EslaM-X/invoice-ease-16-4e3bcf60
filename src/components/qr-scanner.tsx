@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database, AlertTriangle, Video } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database, AlertTriangle } from "lucide-react";
 import { getCacheSize, getLastCacheUpdate } from "@/lib/product-cache";
 
 type CamInfo = { id: string; label: string };
@@ -9,6 +9,11 @@ type Props = {
   onClose: () => void;
   /** Last network/fetch duration reported by parent (ms). Displayed in HUD. */
   lastFetchMs?: number | null;
+};
+
+type StartCandidate = {
+  label: string;
+  source: string | MediaTrackConstraints;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,13 +30,61 @@ function formatAgo(at: number): string {
 export async function requestCameraPermission(
   facingMode: "environment" | "user" = "environment",
 ): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return false;
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode },
-    audio: false,
-  });
-  stream.getTracks().forEach((track) => track.stop());
-  return true;
+  if (typeof navigator === "undefined") return false;
+  try {
+    const permissionApi = (navigator as Navigator & {
+      permissions?: { query: (descriptor: PermissionDescriptor) => Promise<PermissionStatus> };
+    }).permissions;
+    if (permissionApi?.query) {
+      const status = await permissionApi.query({ name: "camera" as PermissionName });
+      return status.state === "granted";
+    }
+  } catch {}
+  return !!navigator.mediaDevices?.getUserMedia;
+}
+
+function buildCameraCandidates(lowRes: boolean): StartCandidate[] {
+  const width = lowRes ? 640 : 1280;
+  const height = lowRes ? 480 : 720;
+  const frameRate = lowRes ? { ideal: 12, max: 18 } : { ideal: 18, max: 24 };
+
+  return [
+    {
+      label: "rear-exact",
+      source: {
+        facingMode: { exact: "environment" },
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate,
+      },
+    },
+    {
+      label: "rear-ideal",
+      source: {
+        facingMode: "environment",
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate,
+      },
+    },
+    {
+      label: "any-camera",
+      source: {
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate,
+      },
+    },
+  ];
+}
+
+function pickRearCamera(cameras: CamInfo[]): CamInfo | null {
+  const rearMatch = cameras.find((cam) =>
+    /back|rear|environment|world|traseira|trasera|arrière|后置|الخلف|خلف/i.test(cam.label),
+  );
+  if (rearMatch) return rearMatch;
+  if (cameras.length > 1) return cameras[cameras.length - 1] ?? null;
+  return cameras[0] ?? null;
 }
 
 /**
@@ -125,7 +178,6 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     attemptRef.current += 1;
     const startedAt = performance.now();
     try {
-      // Force the native browser permission prompt before loading the heavy lib.
       await ensurePermission();
       const { Html5Qrcode } = await loadLib();
       if (!ref.current || !mountedRef.current) return;
@@ -141,63 +193,91 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       const sc = new Html5Qrcode(id, { verbose: false });
       scannerRef.current = sc;
 
-      const videoConstraints: MediaTrackConstraints | string = cameraId
-        ? cameraId
-        : (lowRes
-          ? { facingMode: facing, width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
-          : { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
-
       lastDecodeAtRef.current = performance.now();
-      await sc.start(
-        videoConstraints as any,
-        {
-          fps: getFps(),
-          qrbox: (vw: number, vh: number) => {
-            const m = Math.min(vw, vh);
-            const size = Math.floor(m * 0.72);
-            return { width: size, height: size };
-          },
-          aspectRatio: 1.0,
-          disableFlip: false,
-          useBarCodeDetectorIfSupported: true,
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        } as any,
-        (text: string) => {
-          fpsTickRef.current.count += 1;
-          const nowPerf = performance.now();
-          const decodeMs = Math.round(nowPerf - lastDecodeAtRef.current);
-          lastDecodeAtRef.current = nowPerf;
-          setLastDecodeMs(decodeMs);
-
-          const now = Date.now();
-          // Cooldown: ignore if we already accepted the same code recently
-          if (lastScan.current.text === text && now - lastScan.current.at < COOLDOWN_MS) return;
-
-          // Stabilization: require multiple consecutive identical decodes within a small window
-          const stab = stabilizeRef.current;
-          if (stab.text === text && now - stab.firstAt < STABILIZE_WINDOW_MS) {
-            stab.count += 1;
-          } else {
-            stabilizeRef.current = { text, count: 1, firstAt: now };
-            return;
-          }
-          if (stab.count < STABILIZE_REQUIRED) return;
-          // Accepted — reset the stabilizer and record the scan
-          stabilizeRef.current = { text: "", count: 0, firstAt: 0 };
-          lastScan.current = { text, at: now };
-          setFlash(true);
-          setTimeout(() => setFlash(false), 200);
-          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-            try { (navigator as any).vibrate?.(50); } catch {}
-          }
-          onScan(text);
+      const scanConfig = {
+        fps: getFps(),
+        qrbox: (vw: number, vh: number) => {
+          const m = Math.min(vw, vh);
+          const size = Math.floor(m * 0.72);
+          return { width: size, height: size };
         },
-        () => { fpsTickRef.current.count += 1; }
-      );
+        aspectRatio: 1.0,
+        disableFlip: false,
+        useBarCodeDetectorIfSupported: false,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+      } as any;
+
+      const onDecode = (text: string) => {
+        fpsTickRef.current.count += 1;
+        const nowPerf = performance.now();
+        const decodeMs = Math.round(nowPerf - lastDecodeAtRef.current);
+        lastDecodeAtRef.current = nowPerf;
+        setLastDecodeMs(decodeMs);
+
+        const now = Date.now();
+        if (lastScan.current.text === text && now - lastScan.current.at < COOLDOWN_MS) return;
+
+        const stab = stabilizeRef.current;
+        if (stab.text === text && now - stab.firstAt < STABILIZE_WINDOW_MS) {
+          stab.count += 1;
+        } else {
+          stabilizeRef.current = { text, count: 1, firstAt: now };
+          return;
+        }
+        if (stab.count < STABILIZE_REQUIRED) return;
+
+        stabilizeRef.current = { text: "", count: 0, firstAt: 0 };
+        lastScan.current = { text, at: now };
+        setFlash(true);
+        setTimeout(() => setFlash(false), 200);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          try { (navigator as any).vibrate?.(50); } catch {}
+        }
+        onScan(text);
+      };
+
+      const onDecodeError = () => {
+        fpsTickRef.current.count += 1;
+      };
+
+      let started = false;
+      let lastError: any = null;
+      let activeScanner = sc;
+      const candidates: StartCandidate[] = [];
+
+      if (cameraId) {
+        candidates.push({ label: "saved-camera", source: cameraId });
+      } else {
+        const preferredRear = pickRearCamera(cameras);
+        if (preferredRear) candidates.push({ label: `rear-device:${preferredRear.label}`, source: preferredRear.id });
+        candidates.push(...buildCameraCandidates(lowRes));
+      }
+
+      for (const candidate of candidates) {
+        try {
+          console.info("[qr] starting with", candidate.label);
+          await activeScanner.start(candidate.source as any, scanConfig, onDecode, onDecodeError);
+          scannerRef.current = activeScanner;
+          started = true;
+          break;
+        } catch (candidateError: any) {
+          lastError = candidateError;
+          console.warn("[qr] candidate failed", candidate.label, candidateError);
+          try { await activeScanner.stop(); } catch {}
+          try { await activeScanner.clear(); } catch {}
+          if (!mountedRef.current) return;
+          activeScanner = new Html5Qrcode(id, { verbose: false });
+          scannerRef.current = activeScanner;
+        }
+      }
+
+      if (!started) throw lastError ?? new Error("تعذّر تشغيل الكاميرا");
 
       try {
-        const caps = (sc as any).getRunningTrackCapabilities?.();
+        const activeScanner = scannerRef.current;
+        const caps = activeScanner?.getRunningTrackCapabilities?.();
         if (caps && "torch" in caps) setTorchSupported(true);
+        else setTorchSupported(false);
       } catch {}
 
       if (mountedRef.current) {
@@ -235,14 +315,18 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onScan, lowRes, getFps, online, cameraId, facing]);
 
-  // Enumerate cameras once we have permission
+  // Enumerate cameras without triggering a separate camera session.
   useEffect(() => {
     (async () => {
       try {
-        const lib = await import("html5-qrcode");
-        const list = await lib.Html5Qrcode.getCameras();
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        const list = await navigator.mediaDevices.enumerateDevices();
         if (!mountedRef.current) return;
-        setCameras(list.map((c: any) => ({ id: c.id, label: c.label || "كاميرا" })));
+        setCameras(
+          list
+            .filter((device) => device.kind === "videoinput")
+            .map((device) => ({ id: device.deviceId, label: device.label || "كاميرا" })),
+        );
       } catch (e) {
         console.warn("[qr] enumerate failed", e);
       }
@@ -467,11 +551,13 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
           </div>
         )}
 
-        {!starting && !error && torchSupported && (
+        {!starting && !error && (
           <button
             onClick={toggleTorch}
+            disabled={!torchSupported}
             className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-black/80"
             aria-label="فلاش"
+            title={torchSupported ? (torchOn ? "إيقاف الفلاش" : "تشغيل الفلاش") : "الفلاش غير مدعوم على هذا الجهاز"}
           >
             {torchOn ? <Zap className="h-5 w-5 text-primary" /> : <ZapOff className="h-5 w-5" />}
           </button>
@@ -492,15 +578,14 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
-        {torchSupported && (
-          <button
-            onClick={toggleTorch}
-            className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent"
-          >
-            {torchOn ? <Zap className="h-3.5 w-3.5 text-primary" /> : <ZapOff className="h-3.5 w-3.5" />}
-            {torchOn ? "إيقاف الفلاش" : "تفعيل الفلاش"}
-          </button>
-        )}
+        <button
+          onClick={toggleTorch}
+          disabled={!torchSupported}
+          className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {torchOn ? <Zap className="h-3.5 w-3.5 text-primary" /> : <ZapOff className="h-3.5 w-3.5" />}
+          {torchSupported ? (torchOn ? "إيقاف الفلاش" : "تشغيل الفلاش") : "الفلاش غير مدعوم"}
+        </button>
         {!error && (
           <button
             onClick={() => setShowManual((v) => !v)}
