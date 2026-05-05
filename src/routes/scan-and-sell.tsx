@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QrScanner } from "@/components/qr-scanner";
+import { requestCameraPermission } from "@/components/qr-scanner";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +61,13 @@ function ScanAndSellPage() {
   const [history, setHistory] = useState<ScanLogEntry[]>([]);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
+
+  const openScanner = async () => {
+    try {
+      await requestCameraPermission("environment");
+    } catch {}
+    setScanning(true);
+  };
 
   const pushHistory = (entry: Omit<ScanLogEntry, "id" | "at">) => {
     setHistory((prev) => [
@@ -176,7 +184,7 @@ function ScanAndSellPage() {
       if (!s) throw new Error(t("pair_failed"));
       setSession(s);
       setCode("");
-      setScanning(true);
+      void openScanner();
       toast.success(t("paired_successfully"));
     } catch (e: any) {
       const msg = String(e?.message ?? "");
@@ -381,7 +389,7 @@ function ScanAndSellPage() {
               <QrScanner onScan={handlePairScan} onClose={() => setScanning(false)} />
             </>
           ) : (
-            <Button onClick={() => setScanning(true)} className="w-full gap-2" size="lg">
+            <Button onClick={() => void openScanner()} className="w-full gap-2" size="lg">
               <ScanLine className="h-4 w-4" />
               {t("scan_qr")}
             </Button>
@@ -474,7 +482,7 @@ function ScanAndSellPage() {
                 {t("continuous_scan")}
               </label>
               {!scanning && (
-                <Button size="sm" onClick={() => setScanning(true)} className="gap-1.5">
+                <Button size="sm" onClick={() => void openScanner()} className="gap-1.5">
                   <ScanLine className="h-3.5 w-3.5" />
                   {t("scan")}
                 </Button>
