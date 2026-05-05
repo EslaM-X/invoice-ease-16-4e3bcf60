@@ -60,12 +60,26 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
-    if (typeof navigator === "undefined") return 10;
+    if (typeof navigator === "undefined") return 15;
     const mem = (navigator as any).deviceMemory ?? 4;
     const cores = navigator.hardwareConcurrency ?? 4;
-    const target = mem <= 2 || cores <= 2 ? 8 : mem <= 4 ? 12 : 15;
-    return lowRes ? Math.min(target, 8) : target;
+    const target = mem <= 2 || cores <= 2 ? 12 : mem <= 4 ? 18 : 24;
+    return lowRes ? Math.min(target, 10) : target;
   }, [lowRes]);
+
+  /** Explicitly request camera permission first — needed in installed PWAs/Android WebView. */
+  const ensurePermission = async (): Promise<boolean> => {
+    try {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return true;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      // Release immediately — html5-qrcode opens its own stream.
+      stream.getTracks().forEach((t) => t.stop());
+      return true;
+    } catch (e: any) {
+      console.warn("[qr] permission probe failed", e);
+      throw e;
+    }
+  };
 
   const loadLib = async (retries = 3): Promise<any> => {
     for (let i = 0; i < retries; i++) {
