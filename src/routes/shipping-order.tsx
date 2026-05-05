@@ -304,6 +304,63 @@ function ShippingOrder() {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
     pdf.text(`Grand Total: ${grandTotal}`, pageW - margin, y + 10, { align: "right" });
+    y += 28;
+
+    // Per-collection summary page
+    pdf.addPage();
+    y = margin;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text("Per Collection Summary", margin, y);
+    y += 16;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`From ${from}  to  ${to}`, margin, y);
+    y += 16;
+
+    const cCol = { code: margin, name: margin + 130, color: pageW - margin - 200, qty: pageW - margin };
+    const drawColHeader = () => {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("Code", cCol.code, y);
+      pdf.text("Product", cCol.name, y);
+      pdf.text("Color", cCol.color, y);
+      pdf.text("Qty", cCol.qty, y, { align: "right" });
+      y += 4;
+      pdf.setDrawColor(180);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 12;
+      pdf.setFont("helvetica", "normal");
+    };
+
+    for (const cg of collectionGroups) {
+      ensureSpace(60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setFillColor(230, 240, 255);
+      pdf.rect(margin, y - 12, pageW - margin * 2, 18, "F");
+      pdf.text(`Collection: ${cg.collection}`, margin + 6, y);
+      y += 14;
+      drawColHeader();
+      for (const l of cg.lines) {
+        ensureSpace(20);
+        pdf.text(String(l.code).slice(0, 24), cCol.code, y);
+        pdf.text(String(l.product_name).slice(0, 50), cCol.name, y);
+        pdf.text(String(l.color ?? ""), cCol.color, y);
+        pdf.text(String(l.qty), cCol.qty, y, { align: "right" });
+        y += 16;
+      }
+      ensureSpace(20);
+      pdf.setDrawColor(120);
+      pdf.line(margin, y - 4, pageW - margin, y - 4);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Collection Total: ${cg.total}`, pageW - margin, y + 6, { align: "right" });
+      y += 22;
+    }
+    ensureSpace(30);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
 
     pdf.save(`shipping-order_${from}_to_${to}.pdf`);
     toast.success("تم تصدير PDF");
