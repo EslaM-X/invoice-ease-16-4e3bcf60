@@ -444,6 +444,21 @@ function SalesToday() {
           </Button>
           <Button
             size="sm"
+            variant="outline"
+            onClick={() => { load(); toast.success(lang === "ar" ? "تم إعادة الحساب من قاعدة البيانات" : "Recomputed from database"); }}
+            disabled={loading}
+          >
+            <RotateCcw className="me-1.5 h-4 w-4" />
+            {lang === "ar" ? "إعادة الحساب" : "Recompute"}
+          </Button>
+          <Link to="/sales-audit" search={{ date }}>
+            <Button size="sm" variant="outline">
+              <ShieldCheck className="me-1.5 h-4 w-4" />
+              {lang === "ar" ? "تدقيق ومطابقة" : "Audit & Reconcile"}
+            </Button>
+          </Link>
+          <Button
+            size="sm"
             onClick={() => setPoOpen(true)}
             disabled={poRows.length === 0}
             className="bg-gradient-to-r from-primary to-primary/80 shadow-md"
