@@ -452,9 +452,8 @@ function SalesToday() {
                     const out = r.current_stock <= 0;
                     const isExpanded = expanded.has(r.product_id);
                     return (
-                      <>
+                      <Fragment key={r.product_id}>
                         <tr
-                          key={r.product_id}
                           className="cursor-pointer hover:bg-muted/30"
                           onClick={() => toggleExpand(r.product_id)}
                         >
@@ -524,7 +523,7 @@ function SalesToday() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
