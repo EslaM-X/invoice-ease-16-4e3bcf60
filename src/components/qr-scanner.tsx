@@ -36,9 +36,9 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const fpsRef = useRef(0);
   // Debounce / stabilization: require N consecutive frames with the same decode within a window
   const stabilizeRef = useRef<{ text: string; count: number; firstAt: number }>({ text: "", count: 0, firstAt: 0 });
-  const STABILIZE_REQUIRED = 2; // 2 consecutive identical decodes
-  const STABILIZE_WINDOW_MS = 350;
-  const COOLDOWN_MS = 1500;
+  const STABILIZE_REQUIRED = 1; // accept on first decode (with cooldown for de-dupe)
+  const STABILIZE_WINDOW_MS = 250;
+  const COOLDOWN_MS = 900;
 
   const [starting, setStarting] = useState(true);
   const [error, setError] = useState<string | null>(null);
