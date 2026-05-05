@@ -17,6 +17,8 @@ import { QrScanner } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
 import { DesktopPairWidget } from "@/components/desktop-pair-widget";
 import type { ScanEvent } from "@/lib/scan-link";
+import { fetchProductCached, setCachedProduct } from "@/lib/product-cache";
+import { decodeProductQR } from "@/lib/qr-codec";
 
 export type BuilderItem = {
   product_id: string | null;
