@@ -280,9 +280,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     // Cache-first lookup
     const fromList = products.find((p) => p.id === decoded.productId);
     if (fromList) setCachedProduct(fromList);
+    const t0 = performance.now();
     const { product: p, error } = fromList
       ? { product: fromList as Product, error: null as any }
       : await fetchProductCached(decoded.productId);
+    setLastFetchMs(Math.round(performance.now() - t0));
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
