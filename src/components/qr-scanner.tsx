@@ -36,9 +36,9 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const fpsRef = useRef(0);
   // Debounce / stabilization: require N consecutive frames with the same decode within a window
   const stabilizeRef = useRef<{ text: string; count: number; firstAt: number }>({ text: "", count: 0, firstAt: 0 });
-  const STABILIZE_REQUIRED = 2; // 2 consecutive identical decodes
-  const STABILIZE_WINDOW_MS = 350;
-  const COOLDOWN_MS = 1500;
+  const STABILIZE_REQUIRED = 1; // accept on first decode (with cooldown for de-dupe)
+  const STABILIZE_WINDOW_MS = 250;
+  const COOLDOWN_MS = 900;
 
   const [starting, setStarting] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,12 +60,26 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
-    if (typeof navigator === "undefined") return 10;
+    if (typeof navigator === "undefined") return 15;
     const mem = (navigator as any).deviceMemory ?? 4;
     const cores = navigator.hardwareConcurrency ?? 4;
-    const target = mem <= 2 || cores <= 2 ? 8 : mem <= 4 ? 12 : 15;
-    return lowRes ? Math.min(target, 8) : target;
+    const target = mem <= 2 || cores <= 2 ? 12 : mem <= 4 ? 18 : 24;
+    return lowRes ? Math.min(target, 10) : target;
   }, [lowRes]);
+
+  /** Explicitly request camera permission first — needed in installed PWAs/Android WebView. */
+  const ensurePermission = async (): Promise<boolean> => {
+    try {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return true;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      // Release immediately — html5-qrcode opens its own stream.
+      stream.getTracks().forEach((t) => t.stop());
+      return true;
+    } catch (e: any) {
+      console.warn("[qr] permission probe failed", e);
+      throw e;
+    }
+  };
 
   const loadLib = async (retries = 3): Promise<any> => {
     for (let i = 0; i < retries; i++) {
@@ -101,6 +115,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     attemptRef.current += 1;
     const startedAt = performance.now();
     try {
+      // Force the native browser permission prompt before loading the heavy lib.
+      await ensurePermission();
       const { Html5Qrcode } = await loadLib();
       if (!ref.current || !mountedRef.current) return;
 
