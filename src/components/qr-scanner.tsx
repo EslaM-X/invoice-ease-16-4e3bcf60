@@ -357,6 +357,21 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
 
         {flash && <div className="pointer-events-none absolute inset-0 bg-emerald-400/30" />}
 
+        {failToast && !error && (
+          <div className="absolute left-1/2 top-3 z-10 -translate-x-1/2 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 rounded-full bg-destructive/90 px-3 py-1.5 text-[11px] text-white shadow-lg backdrop-blur">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>{failToast}</span>
+              <button
+                onClick={() => { attemptRef.current = 0; setFailToast(null); start(); }}
+                className="flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 hover:bg-white/30"
+              >
+                <RefreshCw className="h-3 w-3" /> إعادة
+              </button>
+            </div>
+          </div>
+        )}
+
         {starting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-white">
             <Loader2 className="h-6 w-6 animate-spin" />
