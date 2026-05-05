@@ -453,6 +453,33 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
+        {cameras.length > 1 && (
+          <label className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <Video className="h-3.5 w-3.5 text-primary" />
+              اختيار الكاميرا
+            </span>
+            <select
+              value={cameraId ?? ""}
+              onChange={(e) => setCameraId(e.target.value || null)}
+              className="max-w-[55%] truncate rounded-md border bg-background px-2 py-1 text-xs"
+            >
+              <option value="">تلقائي (خلفية)</option>
+              {cameras.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {torchSupported && (
+          <button
+            onClick={toggleTorch}
+            className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent"
+          >
+            {torchOn ? <Zap className="h-3.5 w-3.5 text-primary" /> : <ZapOff className="h-3.5 w-3.5" />}
+            {torchOn ? "إيقاف الفلاش" : "تفعيل الفلاش"}
+          </button>
+        )}
         {!error && (
           <button
             onClick={() => setShowManual((v) => !v)}
