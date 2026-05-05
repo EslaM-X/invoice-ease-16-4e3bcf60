@@ -61,7 +61,7 @@ function Reports() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{t("reports")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("reports")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2" onClick={() => window.print()}><Download className="h-4 w-4" />{t("export_pdf")}</Button>
           <Button className="gap-2" onClick={exportExcel}><FileSpreadsheet className="h-4 w-4" />{t("export_excel")}</Button>

@@ -113,7 +113,7 @@ function InvoicesList() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{t("invoices")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("invoices")}</h1>
         <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

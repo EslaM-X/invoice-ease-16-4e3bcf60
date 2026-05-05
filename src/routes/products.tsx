@@ -232,7 +232,7 @@ function Products() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
-        <h1 className="text-2xl font-bold tracking-tight">{t("products")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("products")}</h1>
         <div className="flex flex-wrap gap-2">
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
           <Button variant="outline" onClick={() => fileRef.current?.click()} className="gap-2"><Upload className="h-4 w-4" />{t("import_csv")}</Button>

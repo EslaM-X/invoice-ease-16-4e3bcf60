@@ -45,7 +45,7 @@ function Inventory() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">{t("inventory")}</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("inventory")}</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-5 shadow-sm">

@@ -83,7 +83,7 @@ function Customers() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{t("customers")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("customers")}</h1>
         <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
