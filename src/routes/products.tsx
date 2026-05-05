@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus } from "lucide-react";
+import { TableSkeleton } from "@/components/skeletons";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
@@ -28,6 +29,7 @@ function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
@@ -48,6 +50,7 @@ function Products() {
       return (data ?? []) as Product[];
     });
     setList(data);
+    setLoading(false);
     if (fromCache) {
       // Background revalidate already runs in cachedListFetch; refresh again on focus
     }
@@ -313,7 +316,9 @@ function Products() {
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card no-print">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <TableSkeleton rows={6} cols={6} />
+        ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_products")}</div>
         ) : (
           <div className="overflow-x-auto">

@@ -8,6 +8,7 @@ import type { Product } from "@/lib/data";
 import { AlertTriangle, Boxes, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { useRealtimeTable } from "@/lib/realtime";
+import { CardsSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/inventory")({ component: () => <AppShell><Inventory /></AppShell> });
 
@@ -16,17 +17,16 @@ function Inventory() {
   const { t, lang } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    // Fetch products + latest inventory_logs in parallel. products.stock_quantity is the
-    // authoritative reconciled value (every inventory_log mutates it inside the same SQL
-    // transaction), so price × stock_quantity equals the true current stock value.
     const [{ data: p }, { data: l }] = await Promise.all([
       supabase.from("products").select("*").order("name"),
       supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30),
     ]);
     setProducts((p ?? []) as Product[]);
     setLogs(l ?? []);
+    setLoading(false);
   };
   useEffect(() => { if (user) load(); }, [user]);
   useRealtimeTable("products", () => { if (user) load(); });
@@ -47,6 +47,7 @@ function Inventory() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("inventory")}</h1>
 
+      {loading ? <CardsSkeleton count={4} /> : (
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card-premium rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-5">
           <div className="flex items-center justify-between">
@@ -79,6 +80,7 @@ function Inventory() {
           <div className="mt-2 text-2xl font-bold">{products.length}</div>
         </div>
       </div>
+      )}
 
       {topValued.length > 0 && (
         <div className="card-premium rounded-2xl border bg-card p-5">

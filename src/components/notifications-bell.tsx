@@ -22,6 +22,7 @@ type Notification = {
 
 const TYPE_EMOJI: Record<string, string> = {
   invoice_created: "🧾",
+  invoice_updated: "✏️",
   call_logged: "📞",
   low_stock: "⚠️",
   backup: "💾",
@@ -70,6 +71,16 @@ export function NotificationsBell() {
       .update({ read_at: new Date().toISOString() })
       .in("id", ids);
     load();
+  };
+
+  const toggleRead = async (n: Notification, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await supabase
+      .from("notifications")
+      .update({ read_at: n.read_at ? null : new Date().toISOString() })
+      .eq("id", n.id);
+    setItems((prev) => prev.map((it) => it.id === n.id ? { ...it, read_at: n.read_at ? null : new Date().toISOString() } : it));
   };
 
   if (!user) return null;
@@ -130,6 +141,13 @@ export function NotificationsBell() {
                   {!n.read_at && (
                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
                   )}
+                  <button
+                    onClick={(e) => toggleRead(n, e)}
+                    className="ms-1 self-start rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                    title={n.read_at ? "اجعلها غير مقروءة" : "اجعلها مقروءة"}
+                  >
+                    {n.read_at ? "○" : "●"}
+                  </button>
                 </div>
               );
               return n.link ? (

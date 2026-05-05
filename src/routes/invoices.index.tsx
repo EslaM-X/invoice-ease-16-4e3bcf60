@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { exportInvoicesToCSV, exportInvoicesToExcel, exportInvoicesBatchPDF, type InvoiceRow } from "@/lib/invoice-export";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
+import { TableSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
@@ -21,6 +22,7 @@ function InvoicesList() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -33,6 +35,7 @@ function InvoicesList() {
     if (to) query = query.lte("created_at", to + "T23:59:59");
     const { data } = await query;
     setList(data ?? []);
+    setLoading(false);
   };
   useEffect(() => { load(); }, [user, from, to]);
   useRealtimeTable("invoices", () => { load(); });
@@ -147,7 +150,9 @@ function InvoicesList() {
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <TableSkeleton rows={6} cols={5} />
+        ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
         ) : (
           <div className="overflow-x-auto">

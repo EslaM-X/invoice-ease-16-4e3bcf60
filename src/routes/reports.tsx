@@ -44,18 +44,52 @@ function Reports() {
   const totalSales = list.reduce((s, i) => s + Number(i.total ?? 0), 0);
 
   const exportExcel = () => {
-    const rows = list.map((i) => ({
-      [t("invoice_number")]: i.invoice_number,
-      [t("date")]: fmtDate(i.created_at, lang),
-      [t("customer")]: i.customer_name ?? "",
-      [t("subtotal")]: Number(i.subtotal),
-      [t("discount")]: Number(i.discount),
-      [t("total")]: Number(i.total),
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const headers = [
+      "Invoice #", "Date", "Customer", "Phone", "Status",
+      "Subtotal (EGP)", "Discount (EGP)", "Total (EGP)", "Paid (EGP)", "Balance (EGP)",
+    ];
+    const rows = list.map((i) => [
+      i.invoice_number,
+      new Date(i.created_at).toISOString().slice(0, 10),
+      i.customer_name ?? "",
+      i.customer_phone ?? "",
+      i.status ?? "",
+      Number(i.subtotal ?? 0),
+      Number(i.discount ?? 0),
+      Number(i.total ?? 0),
+      Number(i.paid_amount ?? 0),
+      Number(i.total ?? 0) - Number(i.paid_amount ?? 0),
+    ]);
+    const totals = ["", "", "", "", "TOTAL",
+      rows.reduce((s, r) => s + (r[5] as number), 0),
+      rows.reduce((s, r) => s + (r[6] as number), 0),
+      rows.reduce((s, r) => s + (r[7] as number), 0),
+      rows.reduce((s, r) => s + (r[8] as number), 0),
+      rows.reduce((s, r) => s + (r[9] as number), 0),
+    ];
+    const aoa = [headers, ...rows, [], totals];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [
+      { wch: 18 }, { wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
+      { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+    ];
+    // number format for money columns
+    const moneyFmt = "#,##0.00";
+    for (let r = 1; r <= rows.length; r++) {
+      for (const col of [5, 6, 7, 8, 9]) {
+        const ref = XLSX.utils.encode_cell({ r, c: col });
+        if (ws[ref]) ws[ref].z = moneyFmt;
+      }
+      const dateRef = XLSX.utils.encode_cell({ r, c: 1 });
+      if (ws[dateRef]) ws[dateRef].z = "yyyy-mm-dd";
+    }
+    ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: headers.length - 1 } }) };
+    ws["!freeze"] = { xSplit: 0, ySplit: 1 } as any;
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Invoices");
-    XLSX.writeFile(wb, "invoices.xlsx");
+    const sheetName = `Invoices_${new Date().toISOString().slice(0, 10)}`;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+    const cust = customers.find((c) => c.id === customerId)?.name?.replace(/[^\w]+/g, "_") ?? "all";
+    XLSX.writeFile(wb, `invoices_${cust}_${from || "all"}_${to || "all"}.xlsx`);
   };
 
   return (
