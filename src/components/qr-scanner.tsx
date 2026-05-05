@@ -476,18 +476,41 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <Video className="h-3.5 w-3.5 text-primary" />
+            اتجاه الكاميرا
+          </span>
+          <div className="flex overflow-hidden rounded-md border">
+            <button
+              type="button"
+              onClick={() => { setFacing("environment"); setCameraId(null); localStorage.setItem("qr.facing", "environment"); localStorage.removeItem("qr.cameraId"); }}
+              className={`px-3 py-1 text-xs ${facing === "environment" && !cameraId ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            >خلفية</button>
+            <button
+              type="button"
+              onClick={() => { setFacing("user"); setCameraId(null); localStorage.setItem("qr.facing", "user"); localStorage.removeItem("qr.cameraId"); }}
+              className={`px-3 py-1 text-xs ${facing === "user" && !cameraId ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            >أمامية</button>
+          </div>
+        </div>
         {cameras.length > 1 && (
           <label className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2">
               <Video className="h-3.5 w-3.5 text-primary" />
-              اختيار الكاميرا
+              كاميرا محددة
             </span>
             <select
               value={cameraId ?? ""}
-              onChange={(e) => setCameraId(e.target.value || null)}
+              onChange={(e) => {
+                const v = e.target.value || null;
+                setCameraId(v);
+                if (v) localStorage.setItem("qr.cameraId", v);
+                else localStorage.removeItem("qr.cameraId");
+              }}
               className="max-w-[55%] truncate rounded-md border bg-background px-2 py-1 text-xs"
             >
-              <option value="">تلقائي (خلفية)</option>
+              <option value="">تلقائي ({facing === "user" ? "أمامية" : "خلفية"})</option>
               {cameras.map((c) => (
                 <option key={c.id} value={c.id}>{c.label}</option>
               ))}
