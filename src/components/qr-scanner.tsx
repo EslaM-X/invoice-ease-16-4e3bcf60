@@ -178,7 +178,6 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     attemptRef.current += 1;
     const startedAt = performance.now();
     try {
-      // Force the native browser permission prompt before loading the heavy lib.
       await ensurePermission();
       const { Html5Qrcode } = await loadLib();
       if (!ref.current || !mountedRef.current) return;
@@ -194,63 +193,89 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       const sc = new Html5Qrcode(id, { verbose: false });
       scannerRef.current = sc;
 
-      const videoConstraints: MediaTrackConstraints | string = cameraId
-        ? cameraId
-        : (lowRes
-          ? { facingMode: facing, width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
-          : { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
-
       lastDecodeAtRef.current = performance.now();
-      await sc.start(
-        videoConstraints as any,
-        {
-          fps: getFps(),
-          qrbox: (vw: number, vh: number) => {
-            const m = Math.min(vw, vh);
-            const size = Math.floor(m * 0.72);
-            return { width: size, height: size };
-          },
-          aspectRatio: 1.0,
-          disableFlip: false,
-          useBarCodeDetectorIfSupported: true,
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        } as any,
-        (text: string) => {
-          fpsTickRef.current.count += 1;
-          const nowPerf = performance.now();
-          const decodeMs = Math.round(nowPerf - lastDecodeAtRef.current);
-          lastDecodeAtRef.current = nowPerf;
-          setLastDecodeMs(decodeMs);
-
-          const now = Date.now();
-          // Cooldown: ignore if we already accepted the same code recently
-          if (lastScan.current.text === text && now - lastScan.current.at < COOLDOWN_MS) return;
-
-          // Stabilization: require multiple consecutive identical decodes within a small window
-          const stab = stabilizeRef.current;
-          if (stab.text === text && now - stab.firstAt < STABILIZE_WINDOW_MS) {
-            stab.count += 1;
-          } else {
-            stabilizeRef.current = { text, count: 1, firstAt: now };
-            return;
-          }
-          if (stab.count < STABILIZE_REQUIRED) return;
-          // Accepted — reset the stabilizer and record the scan
-          stabilizeRef.current = { text: "", count: 0, firstAt: 0 };
-          lastScan.current = { text, at: now };
-          setFlash(true);
-          setTimeout(() => setFlash(false), 200);
-          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-            try { (navigator as any).vibrate?.(50); } catch {}
-          }
-          onScan(text);
+      const scanConfig = {
+        fps: getFps(),
+        qrbox: (vw: number, vh: number) => {
+          const m = Math.min(vw, vh);
+          const size = Math.floor(m * 0.72);
+          return { width: size, height: size };
         },
-        () => { fpsTickRef.current.count += 1; }
-      );
+        aspectRatio: 1.0,
+        disableFlip: false,
+        useBarCodeDetectorIfSupported: false,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+      } as any;
+
+      const onDecode = (text: string) => {
+        fpsTickRef.current.count += 1;
+        const nowPerf = performance.now();
+        const decodeMs = Math.round(nowPerf - lastDecodeAtRef.current);
+        lastDecodeAtRef.current = nowPerf;
+        setLastDecodeMs(decodeMs);
+
+        const now = Date.now();
+        if (lastScan.current.text === text && now - lastScan.current.at < COOLDOWN_MS) return;
+
+        const stab = stabilizeRef.current;
+        if (stab.text === text && now - stab.firstAt < STABILIZE_WINDOW_MS) {
+          stab.count += 1;
+        } else {
+          stabilizeRef.current = { text, count: 1, firstAt: now };
+          return;
+        }
+        if (stab.count < STABILIZE_REQUIRED) return;
+
+        stabilizeRef.current = { text: "", count: 0, firstAt: 0 };
+        lastScan.current = { text, at: now };
+        setFlash(true);
+        setTimeout(() => setFlash(false), 200);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          try { (navigator as any).vibrate?.(50); } catch {}
+        }
+        onScan(text);
+      };
+
+      const onDecodeError = () => {
+        fpsTickRef.current.count += 1;
+      };
+
+      let started = false;
+      let lastError: any = null;
+      const candidates: StartCandidate[] = [];
+
+      if (cameraId) {
+        candidates.push({ label: "saved-camera", source: cameraId });
+      } else {
+        const preferredRear = pickRearCamera(cameras);
+        if (preferredRear) candidates.push({ label: `rear-device:${preferredRear.label}`, source: preferredRear.id });
+        candidates.push(...buildCameraCandidates(lowRes));
+      }
+
+      for (const candidate of candidates) {
+        try {
+          console.info("[qr] starting with", candidate.label);
+          await sc.start(candidate.source as any, scanConfig, onDecode, onDecodeError);
+          started = true;
+          break;
+        } catch (candidateError: any) {
+          lastError = candidateError;
+          console.warn("[qr] candidate failed", candidate.label, candidateError);
+          try { await sc.stop(); } catch {}
+          try { await sc.clear(); } catch {}
+          if (!mountedRef.current) return;
+          scannerRef.current = new Html5Qrcode(id, { verbose: false });
+        }
+      }
+
+      sc.clear = scannerRef.current.clear?.bind(scannerRef.current) ?? sc.clear?.bind(sc);
+      if (!started) throw lastError ?? new Error("تعذّر تشغيل الكاميرا");
 
       try {
-        const caps = (sc as any).getRunningTrackCapabilities?.();
+        const activeScanner = scannerRef.current;
+        const caps = activeScanner?.getRunningTrackCapabilities?.();
         if (caps && "torch" in caps) setTorchSupported(true);
+        else setTorchSupported(false);
       } catch {}
 
       if (mountedRef.current) {
