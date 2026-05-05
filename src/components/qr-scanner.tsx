@@ -186,6 +186,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       if (!mountedRef.current) return;
       const kind = classifyError(e);
       setErrorKind(kind);
+      setFailToast(e?.message ?? "فشل تشغيل الماسح");
+      window.setTimeout(() => mountedRef.current && setFailToast(null), 3500);
       // Permission denied → don't auto-retry, ask the user
       if (kind === "permission" || attemptRef.current >= 3) {
         setError(e?.message ?? "تعذّر تشغيل الكاميرا");
@@ -205,7 +207,21 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       setTimeout(() => mountedRef.current && start(), delay);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScan, lowRes, getFps, online]);
+  }, [onScan, lowRes, getFps, online, cameraId]);
+
+  // Enumerate cameras once we have permission
+  useEffect(() => {
+    (async () => {
+      try {
+        const lib = await import("html5-qrcode");
+        const list = await lib.Html5Qrcode.getCameras();
+        if (!mountedRef.current) return;
+        setCameras(list.map((c: any) => ({ id: c.id, label: c.label || "كاميرا" })));
+      } catch (e) {
+        console.warn("[qr] enumerate failed", e);
+      }
+    })();
+  }, [starting]);
 
   const toggleTorch = async () => {
     const sc = scannerRef.current;
