@@ -134,11 +134,15 @@ function ShippingOrder() {
     const dayMap = new Map<string, Map<string, Line>>();
     // collection -> key -> CollectionLine
     const colMap = new Map<string, Map<string, CollectionLine>>();
+    const FEE_NAMES = new Set(["رسوم شحن", "رسوم خدمة / Service Fee", "رسوم خدمة", "Service Fee"]);
     for (const it of items) {
       const inv = invMap.get(it.invoice_id);
       if (!inv) continue;
       const qty = Number(it.quantity) || 0;
       if (qty <= 0) continue;
+      // Exclude shipping/service fees from shipping order entirely
+      if (FEE_NAMES.has((it.product_name || "").trim())) continue;
+      if (!it.product_id && /شحن|shipping|service\s*fee/i.test(it.product_name || "")) continue;
       const p = it.product_id ? products.get(it.product_id) : undefined;
       const code = (p?.serial_number ?? it.serial_number ?? "—").toString();
       const color = p?.color ?? it.color ?? null;
