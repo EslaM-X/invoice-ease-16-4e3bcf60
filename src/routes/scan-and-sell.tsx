@@ -18,7 +18,23 @@ import {
 } from "@/lib/scan-link";
 import { enqueueScan, flushQueue, queueLength } from "@/lib/scan-buffer";
 import { toast } from "sonner";
-import { Smartphone, ScanLine, Unlink, Check, WifiOff, CloudUpload } from "lucide-react";
+import { z } from "zod";
+import { Smartphone, ScanLine, Unlink, Check, WifiOff, CloudUpload, History, RefreshCw, X, AlertTriangle } from "lucide-react";
+
+const ProductIdSchema = z.string().trim().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  "INVALID_UUID",
+);
+
+type ScanLogEntry = {
+  id: string;
+  at: number;
+  raw: string;
+  productId: string | null;
+  productName: string | null;
+  status: "ok" | "queued" | "not_found" | "invalid" | "checksum";
+  message: string;
+};
 
 export const Route = createFileRoute("/scan-and-sell")({
   component: () => (
