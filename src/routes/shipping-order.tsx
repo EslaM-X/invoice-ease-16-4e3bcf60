@@ -208,6 +208,26 @@ function ShippingOrder() {
     ws["!cols"] = [{ wch: 22 }, { wch: 38 }, { wch: 10 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Shipping Order");
+
+    // Per-collection summary sheet
+    const aoa2: any[][] = [];
+    aoa2.push(["ملخص حسب الكولكشن — Per Collection", "", "", ""]);
+    aoa2.push([`من ${from} إلى ${to}`, "", "", ""]);
+    aoa2.push([]);
+    for (const cg of collectionGroups) {
+      aoa2.push([`Collection: ${cg.collection}`, "", "", ""]);
+      aoa2.push(["Code", "Product", "Color", "Qty"]);
+      for (const l of cg.lines) {
+        aoa2.push([l.code, l.product_name, l.color ?? "", l.qty]);
+      }
+      aoa2.push(["", "إجمالي الكولكشن / Collection Total", "", cg.total]);
+      aoa2.push([]);
+    }
+    aoa2.push(["", "الإجمالي الكلي / Grand Total", "", collectionsGrandTotal]);
+    const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+    ws2["!cols"] = [{ wch: 22 }, { wch: 38 }, { wch: 16 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Per Collection");
+
     XLSX.writeFile(wb, `shipping-order_${from}_to_${to}.xlsx`);
     toast.success("تم تصدير Excel");
   };
