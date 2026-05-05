@@ -22,6 +22,7 @@ type Notification = {
 
 const TYPE_EMOJI: Record<string, string> = {
   invoice_created: "🧾",
+  invoice_updated: "✏️",
   call_logged: "📞",
   low_stock: "⚠️",
   backup: "💾",
