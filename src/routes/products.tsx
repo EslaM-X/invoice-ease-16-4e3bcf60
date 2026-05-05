@@ -16,6 +16,7 @@ import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
+import { encodeProductQR } from "@/lib/qr-codec";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
