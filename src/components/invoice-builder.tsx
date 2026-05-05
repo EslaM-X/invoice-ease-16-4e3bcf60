@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import type { Customer, Product } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
-import { QrScanner } from "@/components/qr-scanner";
+import { QrScanner, requestCameraPermission } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
 import { DesktopPairWidget } from "@/components/desktop-pair-widget";
 import type { ScanEvent } from "@/lib/scan-link";
@@ -100,6 +100,13 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
 
+  const openScanner = async () => {
+    try {
+      await requestCameraPermission("environment");
+    } catch {}
+    setScanning(true);
+  };
+
   // Load customers/products (RLS handles company-wide visibility)
   const loadLists = async () => {
     const [{ data: c }, { data: p }] = await Promise.all([
@@ -148,7 +155,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
 
   // Auto-open scanner
   useEffect(() => {
-    if (autoScan) setScanning(true);
+    if (autoScan) void openScanner();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoScan]);
 
   // Keyboard shortcut: S to scan, Ctrl/Cmd+Enter to save
@@ -158,7 +166,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
       if (!inField && (e.key === "s" || e.key === "S") && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        setScanning(true);
+        void openScanner();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
@@ -612,7 +620,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                     {lang === "ar" ? "إعادة رسوم الشحن" : "Restore shipping fee"}
                   </Button>
                 )}
-                <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={() => setScanning(true)}>
+                <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={() => void openScanner()}>
                   <ScanLine className="h-4 w-4" />
                   {t("scan_qr")}
                 </Button>
