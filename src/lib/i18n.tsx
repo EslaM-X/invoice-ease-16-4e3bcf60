@@ -202,6 +202,7 @@ const ar: Dict = {
   download_backup: "تنزيل النسخة الاحتياطية",
   inventory_audit: "تدقيق المخزون",
   sales_today: "مبيعات اليوم",
+  sales_range: "تقرير الفترة",
   audit_log: "سجل التدقيق",
   audit_log_desc: "كل العمليات في النظام مع المستخدم الذي نفذها.",
   details: "التفاصيل",
