@@ -79,7 +79,9 @@ function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold tracking-tight">{t("settings")}</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("settings")}</h1>
+
+      <AppearanceSettings />
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <h3 className="mb-4 font-semibold">{t("profile_photo")}</h3>
