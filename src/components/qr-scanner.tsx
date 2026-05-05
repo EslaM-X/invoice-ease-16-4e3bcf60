@@ -242,6 +242,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
 
       let started = false;
       let lastError: any = null;
+      let activeScanner = sc;
       const candidates: StartCandidate[] = [];
 
       if (cameraId) {
@@ -255,20 +256,21 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       for (const candidate of candidates) {
         try {
           console.info("[qr] starting with", candidate.label);
-          await sc.start(candidate.source as any, scanConfig, onDecode, onDecodeError);
+          await activeScanner.start(candidate.source as any, scanConfig, onDecode, onDecodeError);
+          scannerRef.current = activeScanner;
           started = true;
           break;
         } catch (candidateError: any) {
           lastError = candidateError;
           console.warn("[qr] candidate failed", candidate.label, candidateError);
-          try { await sc.stop(); } catch {}
-          try { await sc.clear(); } catch {}
+          try { await activeScanner.stop(); } catch {}
+          try { await activeScanner.clear(); } catch {}
           if (!mountedRef.current) return;
-          scannerRef.current = new Html5Qrcode(id, { verbose: false });
+          activeScanner = new Html5Qrcode(id, { verbose: false });
+          scannerRef.current = activeScanner;
         }
       }
 
-      sc.clear = scannerRef.current.clear?.bind(scannerRef.current) ?? sc.clear?.bind(sc);
       if (!started) throw lastError ?? new Error("تعذّر تشغيل الكاميرا");
 
       try {
@@ -313,14 +315,18 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onScan, lowRes, getFps, online, cameraId, facing]);
 
-  // Enumerate cameras once we have permission
+  // Enumerate cameras without triggering a separate camera session.
   useEffect(() => {
     (async () => {
       try {
-        const lib = await import("html5-qrcode");
-        const list = await lib.Html5Qrcode.getCameras();
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        const list = await navigator.mediaDevices.enumerateDevices();
         if (!mountedRef.current) return;
-        setCameras(list.map((c: any) => ({ id: c.id, label: c.label || "كاميرا" })));
+        setCameras(
+          list
+            .filter((device) => device.kind === "videoinput")
+            .map((device) => ({ id: device.deviceId, label: device.label || "كاميرا" })),
+        );
       } catch (e) {
         console.warn("[qr] enumerate failed", e);
       }
