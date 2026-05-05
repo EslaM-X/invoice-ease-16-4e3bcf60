@@ -113,12 +113,12 @@ function SalesToday() {
     return `${y}-${m}-${day}`;
   });
   const [logs, setLogs] = useState<LogRow[]>([]);
+  const [items, setItems] = useState<InvoiceItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [poOpen, setPoOpen] = useState(false);
 
-  // Debounce realtime reloads to avoid thrashing under bursts of changes
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoadingRef = useRef(false);
 
@@ -127,19 +127,52 @@ function SalesToday() {
     isLoadingRef.current = true;
     setLoading(true);
     const { start, end } = dateBoundsISO(date);
-    const { data, error } = await supabase
-      .from("inventory_logs")
-      .select(
-        "id,product_id,change,reason,invoice_id,actor_email,created_at," +
-          "products(id,name,serial_number,color,price,stock_quantity,low_stock_threshold,image_url)," +
-          "invoices(invoice_number,status)"
-      )
-      .gte("created_at", start)
-      .lt("created_at", end)
-      .order("created_at", { ascending: false })
-      .limit(10000);
-    if (error) toast.error(error.message);
-    setLogs((data ?? []) as unknown as LogRow[]);
+    const [logsRes, invRes] = await Promise.all([
+      supabase
+        .from("inventory_logs")
+        .select(
+          "id,product_id,change,reason,invoice_id,actor_email,created_at," +
+            "products(id,name,serial_number,color,price,stock_quantity,low_stock_threshold,image_url)," +
+            "invoices(invoice_number,status)"
+        )
+        .gte("created_at", start)
+        .lt("created_at", end)
+        .order("created_at", { ascending: false })
+        .limit(10000),
+      // Source of truth for "what was actually sold today": invoice_items of
+      // non-voided invoices created today. Immune to deleted/voided invoices
+      // and to edit-resale/edit-revert noise in inventory_logs.
+      supabase
+        .from("invoices")
+        .select(
+          "id,invoice_number,status,created_at," +
+            "invoice_items(id,product_id,product_name,serial_number,color,quantity,unit_price)"
+        )
+        .neq("status", "voided")
+        .gte("created_at", start)
+        .lt("created_at", end)
+        .limit(10000),
+    ]);
+    if (logsRes.error) toast.error(logsRes.error.message);
+    if (invRes.error) toast.error(invRes.error.message);
+    setLogs((logsRes.data ?? []) as unknown as LogRow[]);
+    const flat: InvoiceItemRow[] = [];
+    for (const inv of (invRes.data ?? []) as any[]) {
+      for (const it of inv.invoice_items ?? []) {
+        if (!it.product_id) continue;
+        flat.push({
+          product_id: it.product_id,
+          product_name: it.product_name,
+          serial_number: it.serial_number,
+          color: it.color,
+          quantity: Number(it.quantity ?? 0),
+          unit_price: Number(it.unit_price ?? 0),
+          invoice_number: inv.invoice_number,
+          invoice_created_at: inv.created_at,
+        });
+      }
+    }
+    setItems(flat);
     setLoading(false);
     isLoadingRef.current = false;
   };
@@ -159,13 +192,9 @@ function SalesToday() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, date]);
 
-  // Realtime — debounced. Only reload when changes are within the viewing day.
-  useRealtimeTable("inventory_logs", (payload) => {
-    const ts = (payload.new?.created_at ?? payload.old?.created_at) as string | undefined;
-    if (!ts) return debouncedLoad();
-    const { start, end } = dateBoundsISO(date);
-    if (ts >= start && ts < end) debouncedLoad();
-  });
+  useRealtimeTable("inventory_logs", () => debouncedLoad());
+  useRealtimeTable("invoices", () => debouncedLoad());
+  useRealtimeTable("invoice_items", () => debouncedLoad());
   useRealtimeTable("products", () => debouncedLoad());
 
   const { rows, totals } = useMemo(() => {
