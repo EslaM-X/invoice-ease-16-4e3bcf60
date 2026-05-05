@@ -142,7 +142,7 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
           <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("top_products")}</h3>
           {top.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
