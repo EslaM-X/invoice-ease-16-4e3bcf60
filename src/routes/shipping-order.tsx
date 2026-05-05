@@ -129,10 +129,11 @@ function ShippingOrder() {
   useRealtimeTable("invoices", () => load(), [from, to, user?.id]);
   useRealtimeTable("invoice_items", () => load(), [from, to, user?.id]);
 
-  const { groups, grandTotal } = useMemo(() => {
+  const { groups, grandTotal, collectionGroups, collectionsGrandTotal } = useMemo(() => {
     const invMap = new Map(invoices.map((i) => [i.id, i]));
-    // day -> code -> Line
     const dayMap = new Map<string, Map<string, Line>>();
+    // collection -> key -> CollectionLine
+    const colMap = new Map<string, Map<string, CollectionLine>>();
     for (const it of items) {
       const inv = invMap.get(it.invoice_id);
       if (!inv) continue;
@@ -140,18 +141,24 @@ function ShippingOrder() {
       if (qty <= 0) continue;
       const p = it.product_id ? products.get(it.product_id) : undefined;
       const code = (p?.serial_number ?? it.serial_number ?? "—").toString();
+      const color = p?.color ?? it.color ?? null;
+      const name = p?.name || it.product_name;
       const dk = dayKey(inv.created_at);
       let inner = dayMap.get(dk);
       if (!inner) { inner = new Map(); dayMap.set(dk, inner); }
-      const key = `${code}|${(p?.color ?? it.color) ?? ""}`;
-      const cur = inner.get(key) ?? {
-        code,
-        product_name: p?.name || it.product_name,
-        color: p?.color ?? it.color ?? null,
-        sold: 0,
-      };
+      const key = `${code}|${color ?? ""}`;
+      const cur = inner.get(key) ?? { code, product_name: name, color, sold: 0 };
       cur.sold += qty;
       inner.set(key, cur);
+
+      // collection aggregation across the whole range
+      const collection = (p?.collection ?? "—") || "—";
+      let cInner = colMap.get(collection);
+      if (!cInner) { cInner = new Map(); colMap.set(collection, cInner); }
+      const cKey = `${code}|${color ?? ""}|${name}`;
+      const cCur = cInner.get(cKey) ?? { code, product_name: name, color, collection, qty: 0 };
+      cCur.qty += qty;
+      cInner.set(cKey, cCur);
     }
     const groups: DayGroup[] = Array.from(dayMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -161,7 +168,24 @@ function ShippingOrder() {
         return { date, lines, totalSold };
       });
     const grandTotal = groups.reduce((s, g) => s + g.totalSold, 0);
-    return { groups, grandTotal };
+
+    const COLLECTION_ORDER = ["JOY", "UP", "ART", "QUATRO"];
+    const collectionGroups: CollectionGroup[] = Array.from(colMap.entries())
+      .map(([collection, m]) => {
+        const lines = Array.from(m.values()).sort((a, b) => a.code.localeCompare(b.code));
+        const total = lines.reduce((s, l) => s + l.qty, 0);
+        return { collection, lines, total };
+      })
+      .sort((a, b) => {
+        const ai = COLLECTION_ORDER.indexOf(a.collection);
+        const bi = COLLECTION_ORDER.indexOf(b.collection);
+        if (ai === -1 && bi === -1) return a.collection.localeCompare(b.collection);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+    const collectionsGrandTotal = collectionGroups.reduce((s, g) => s + g.total, 0);
+    return { groups, grandTotal, collectionGroups, collectionsGrandTotal };
   }, [invoices, items, products]);
 
   const exportXlsx = () => {
