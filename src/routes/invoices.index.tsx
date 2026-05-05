@@ -150,7 +150,9 @@ function InvoicesList() {
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <TableSkeleton rows={6} cols={5} />
+        ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
         ) : (
           <div className="overflow-x-auto">
