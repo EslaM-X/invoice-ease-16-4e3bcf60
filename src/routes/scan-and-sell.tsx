@@ -399,7 +399,7 @@ function ScanAndSellPage() {
             </div>
 
             {scanning ? (
-              <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />
+              <QrScanner onScan={handleScan} onClose={() => setScanning(false)} lastFetchMs={lastFetchMs} />
             ) : (
               <div className="rounded-xl border-2 border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
                 {lang === "ar" ? "اضغط مسح لبدء قراءة المنتجات" : "Press scan to start reading products"}
