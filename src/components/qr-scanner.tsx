@@ -55,6 +55,9 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [manualId, setManualId] = useState("");
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
+  const [cameras, setCameras] = useState<CamInfo[]>([]);
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
     if (typeof navigator === "undefined") return 10;
