@@ -991,7 +991,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             <input type="checkbox" checked={continuous} onChange={(e) => setContinuous(e.target.checked)} />
             <span>{t("continuous_scan")}</span>
           </label>
-          {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />}
+          {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} lastFetchMs={lastFetchMs} />}
         </DialogContent>
       </Dialog>
 
