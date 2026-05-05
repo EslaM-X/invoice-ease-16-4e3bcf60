@@ -19,6 +19,7 @@ import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as CallCenterRouteImport } from './routes/call-center'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditLogRouteImport } from './routes/audit-log'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -78,6 +79,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CallCenterRoute = CallCenterRouteImport.update({
+  id: '/call-center',
+  path: '/call-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
+  '/call-center': typeof CallCenterRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/inventory': typeof InventoryRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
+  '/call-center': typeof CallCenterRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/inventory': typeof InventoryRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
+  '/call-center': typeof CallCenterRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/inventory': typeof InventoryRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit-log'
     | '/auth'
+    | '/call-center'
     | '/customers'
     | '/dashboard'
     | '/inventory'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit-log'
     | '/auth'
+    | '/call-center'
     | '/customers'
     | '/dashboard'
     | '/inventory'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit-log'
     | '/auth'
+    | '/call-center'
     | '/customers'
     | '/dashboard'
     | '/inventory'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuditLogRoute: typeof AuditLogRoute
   AuthRoute: typeof AuthRoute
+  CallCenterRoute: typeof CallCenterRoute
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   InventoryRoute: typeof InventoryRoute
@@ -336,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/call-center': {
+      id: '/call-center'
+      path: '/call-center'
+      fullPath: '/call-center'
+      preLoaderRoute: typeof CallCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -400,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuditLogRoute: AuditLogRoute,
   AuthRoute: AuthRoute,
+  CallCenterRoute: CallCenterRoute,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   InventoryRoute: InventoryRoute,

@@ -47,6 +47,65 @@ export type Database = {
         }
         Relationships: []
       }
+      call_logs: {
+        Row: {
+          agent_email: string | null
+          agent_id: string
+          call_type: string
+          called_at: string
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          duration_seconds: number | null
+          id: string
+          notes: string | null
+          outcome: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_email?: string | null
+          agent_id: string
+          call_type?: string
+          called_at?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          duration_seconds?: number | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_email?: string | null
+          agent_id?: string
+          call_type?: string
+          called_at?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          duration_seconds?: number | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_counters: {
         Row: {
           id: string
@@ -82,6 +141,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      customer_ratings: {
+        Row: {
+          call_log_id: string | null
+          comment: string | null
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          id: string
+          rated_by: string
+          rated_by_email: string | null
+          rating: number
+        }
+        Insert: {
+          call_log_id?: string | null
+          comment?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          rated_by: string
+          rated_by_email?: string | null
+          rating: number
+        }
+        Update: {
+          call_log_id?: string | null
+          comment?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          rated_by?: string
+          rated_by_email?: string | null
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_ratings_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_ratings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customers: {
         Row: {
@@ -530,6 +640,47 @@ export type Database = {
         }
         Relationships: []
       }
+      service_reviews: {
+        Row: {
+          call_log_id: string | null
+          created_at: string
+          feedback: string | null
+          flags: string[] | null
+          id: string
+          quality_score: number | null
+          reviewer_email: string | null
+          reviewer_id: string
+        }
+        Insert: {
+          call_log_id?: string | null
+          created_at?: string
+          feedback?: string | null
+          flags?: string[] | null
+          id?: string
+          quality_score?: number | null
+          reviewer_email?: string | null
+          reviewer_id: string
+        }
+        Update: {
+          call_log_id?: string | null
+          created_at?: string
+          feedback?: string | null
+          flags?: string[] | null
+          id?: string
+          quality_score?: number | null
+          reviewer_email?: string | null
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_reviews_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           company_address: string | null
@@ -770,6 +921,7 @@ export type Database = {
         Args: { _change: number; _product_id: string; _reason: string }
         Returns: string
       }
+      can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
       create_invoice: {
         Args: {

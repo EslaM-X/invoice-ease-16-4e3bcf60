@@ -6,7 +6,8 @@ import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
-  Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart
+  Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
+  Phone,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -31,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang, setLang } = useI18n();
   const { theme, toggle } = useTheme();
-  const { isAdmin } = useRole();
+  const { isAdmin, isCallCenter } = useRole();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -54,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           draggable={false}
         />
         <div className="font-latin text-[10px] font-medium uppercase tracking-[0.32em] text-sidebar-primary">
-          Invoice Suite
+          Steinheim Suite
         </div>
       </div>
       <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-sidebar-primary/40 to-transparent" />
@@ -84,6 +85,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+        {isCallCenter && (
+          <Link
+            to="/call-center"
+            onClick={() => setOpen(false)}
+            className={`group relative mt-1 flex items-center gap-3 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-500/10 ${
+              location.pathname.startsWith("/call-center") ? "bg-purple-500/15" : ""
+            }`}
+          >
+            <Phone className="h-4 w-4" /> مركز الاتصال
+          </Link>
+        )}
         {isAdmin && (
           <Link
             to="/admin"
