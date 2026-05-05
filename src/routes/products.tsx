@@ -17,6 +17,7 @@ import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
 import { encodeProductQR } from "@/lib/qr-codec";
+import { cachedListFetch } from "@/lib/list-cache";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
@@ -42,8 +43,14 @@ function Products() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-    setList((data ?? []) as Product[]);
+    const { data, fromCache } = await cachedListFetch<Product>("products", async () => {
+      const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+      return (data ?? []) as Product[];
+    });
+    setList(data);
+    if (fromCache) {
+      // Background revalidate already runs in cachedListFetch; refresh again on focus
+    }
   };
   useEffect(() => { load(); }, [user]);
 
