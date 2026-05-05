@@ -63,6 +63,17 @@ type LogRow = {
   invoices: { invoice_number: string | null; status: string | null } | null;
 };
 
+type InvoiceItemRow = {
+  product_id: string;
+  product_name: string;
+  serial_number: string | null;
+  color: string | null;
+  quantity: number;
+  unit_price: number;
+  invoice_number: string;
+  invoice_created_at: string;
+};
+
 type Aggregated = {
   product_id: string;
   name: string;
