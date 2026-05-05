@@ -73,6 +73,16 @@ export function NotificationsBell() {
     load();
   };
 
+  const toggleRead = async (n: Notification, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await supabase
+      .from("notifications")
+      .update({ read_at: n.read_at ? null : new Date().toISOString() })
+      .eq("id", n.id);
+    setItems((prev) => prev.map((it) => it.id === n.id ? { ...it, read_at: n.read_at ? null : new Date().toISOString() } : it));
+  };
+
   if (!user) return null;
 
   return (
