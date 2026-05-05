@@ -137,7 +137,20 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
           setLastDecodeMs(decodeMs);
 
           const now = Date.now();
-          if (lastScan.current.text === text && now - lastScan.current.at < 1500) return;
+          // Cooldown: ignore if we already accepted the same code recently
+          if (lastScan.current.text === text && now - lastScan.current.at < COOLDOWN_MS) return;
+
+          // Stabilization: require multiple consecutive identical decodes within a small window
+          const stab = stabilizeRef.current;
+          if (stab.text === text && now - stab.firstAt < STABILIZE_WINDOW_MS) {
+            stab.count += 1;
+          } else {
+            stabilizeRef.current = { text, count: 1, firstAt: now };
+            return;
+          }
+          if (stab.count < STABILIZE_REQUIRED) return;
+          // Accepted — reset the stabilizer and record the scan
+          stabilizeRef.current = { text: "", count: 0, firstAt: 0 };
           lastScan.current = { text, at: now };
           setFlash(true);
           setTimeout(() => setFlash(false), 200);
