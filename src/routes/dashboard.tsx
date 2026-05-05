@@ -5,11 +5,12 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
-import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus, ScanLine } from "lucide-react";
+import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useRealtimeTable } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
+import { useHideNumbers } from "@/lib/use-hide-numbers";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -20,6 +21,7 @@ function DashboardPage() {
 function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
+  const { hidden, toggle, mask } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
   const [top, setTop] = useState<any[]>([]);
@@ -59,10 +61,10 @@ function Dashboard() {
   useRealtimeTable("customers", () => { if (user) load(); });
 
   const cards = [
-    { label: t("total_sales"), value: fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, accent: "text-success" },
-    { label: t("total_invoices"), value: stats.invoices, Icon: FileText, accent: "text-primary" },
-    { label: t("total_customers"), value: stats.customers, Icon: Users, accent: "text-primary" },
-    { label: t("total_products"), value: stats.products, Icon: Package, accent: "text-primary" },
+    { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, accent: "text-success", sensitive: true },
+    { label: t("total_invoices"), value: stats.invoices, Icon: FileText, accent: "text-primary", sensitive: false },
+    { label: t("total_customers"), value: stats.customers, Icon: Users, accent: "text-primary", sensitive: false },
+    { label: t("total_products"), value: stats.products, Icon: Package, accent: "text-primary", sensitive: false },
   ];
 
   return (
@@ -75,10 +77,16 @@ function Dashboard() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
+            size="icon"
+            onClick={toggle}
+            className="rounded-full"
+            title={hidden ? "إظهار الأرقام" : "إخفاء الأرقام"}
+          >
+            {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => {
-              // On phones (small screens), open the linked-mobile-scanner page so the
-              // user can pair to a desktop invoice. On larger screens keep the legacy
-              // local "scan to a new invoice" flow.
               const isPhone = typeof window !== "undefined" && window.innerWidth < 768;
               if (isPhone) navigate({ to: "/scan-and-sell" });
               else navigate({ to: "/invoices/new", search: { scan: true } });
