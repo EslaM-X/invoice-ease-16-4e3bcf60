@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge } from "lucide-react";
 
 type Props = { onScan: (text: string) => void; onClose: () => void };
 
 /**
- * QR Scanner v3 — optimized for weak networks & unstable conditions.
- * - Lazy-loads html5-qrcode with retry & timeout (works on flaky 2G/3G)
- * - Adaptive fps based on device performance
- * - Auto-retry on camera failures (up to 3 attempts with backoff)
- * - Torch/flashlight toggle for low-light scanning
- * - Resilient to tab visibility changes (pauses & resumes)
- * - Visual + haptic feedback, debounced duplicate detection
+ * QR Scanner v3.1 — optimized for weak networks & unstable conditions.
+ * - Lazy-loads html5-qrcode with retry + adaptive fps
+ * - Low-res mode toggle (320x240) for weak devices
+ * - Live status overlay: network, fps, retry countdown
+ * - Torch toggle, auto-pause on hidden tab, auto-retry on failure
  */
 export function QrScanner({ onScan, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -18,29 +16,35 @@ export function QrScanner({ onScan, onClose }: Props) {
   const lastScan = useRef<{ text: string; at: number }>({ text: "", at: 0 });
   const attemptRef = useRef(0);
   const mountedRef = useRef(true);
+  const fpsTickRef = useRef<{ count: number; ts: number }>({ count: 0, ts: Date.now() });
+
   const [starting, setStarting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [retryIn, setRetryIn] = useState(0);
+  const [lowRes, setLowRes] = useState(false);
+  const [fps, setFps] = useState(0);
+  const [online, setOnline] = useState<boolean>(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
 
-  // Adaptive fps: reduce on low-memory devices for stability over speed
-  const getFps = () => {
+  // Adaptive fps based on device perf (capped lower in low-res mode for stability)
+  const getFps = useCallback(() => {
     if (typeof navigator === "undefined") return 10;
     const mem = (navigator as any).deviceMemory ?? 4;
     const cores = navigator.hardwareConcurrency ?? 4;
-    if (mem <= 2 || cores <= 2) return 8;
-    if (mem <= 4) return 12;
-    return 15;
-  };
+    const target = mem <= 2 || cores <= 2 ? 8 : mem <= 4 ? 12 : 15;
+    return lowRes ? Math.min(target, 8) : target;
+  }, [lowRes]);
 
-  // Load library with retry for weak connections
+  // Library load with retry
   const loadLib = async (retries = 3): Promise<any> => {
     for (let i = 0; i < retries; i++) {
-      try {
-        return await import("html5-qrcode");
-      } catch (e) {
+      try { return await import("html5-qrcode"); }
+      catch (e) {
         if (i === retries - 1) throw e;
         await new Promise((r) => setTimeout(r, 800 * (i + 1)));
       }
@@ -50,12 +54,12 @@ export function QrScanner({ onScan, onClose }: Props) {
   const start = useCallback(async () => {
     setError(null);
     setStarting(true);
+    setRetryIn(0);
     attemptRef.current += 1;
     try {
       const { Html5Qrcode } = await loadLib();
       if (!ref.current || !mountedRef.current) return;
 
-      // Re-use existing scanner if any
       if (scannerRef.current) {
         try { await scannerRef.current.stop(); } catch {}
         try { scannerRef.current.clear(); } catch {}
@@ -67,8 +71,12 @@ export function QrScanner({ onScan, onClose }: Props) {
       const sc = new Html5Qrcode(id, { verbose: false });
       scannerRef.current = sc;
 
+      const videoConstraints: MediaTrackConstraints = lowRes
+        ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } }
+        : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } };
+
       await sc.start(
-        { facingMode: "environment" },
+        videoConstraints,
         {
           fps: getFps(),
           qrbox: (vw: number, vh: number) => {
@@ -78,11 +86,12 @@ export function QrScanner({ onScan, onClose }: Props) {
           },
           aspectRatio: 1.0,
           disableFlip: false,
-          // Use native BarcodeDetector when available (faster, lower CPU)
           useBarCodeDetectorIfSupported: true,
           experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         } as any,
         (text: string) => {
+          // Track frame-tick whenever the scan callback hits successful decode
+          fpsTickRef.current.count += 1;
           const now = Date.now();
           if (lastScan.current.text === text && now - lastScan.current.at < 1500) return;
           lastScan.current = { text, at: now };
@@ -93,10 +102,12 @@ export function QrScanner({ onScan, onClose }: Props) {
           }
           onScan(text);
         },
-        () => {}
+        () => {
+          // every scan attempt (success or not) — used as fps proxy
+          fpsTickRef.current.count += 1;
+        }
       );
 
-      // Torch detection
       try {
         const caps = (sc as any).getRunningTrackCapabilities?.();
         if (caps && "torch" in caps) setTorchSupported(true);
@@ -110,61 +121,86 @@ export function QrScanner({ onScan, onClose }: Props) {
     } catch (e: any) {
       console.error("[qr] start failed", e);
       if (!mountedRef.current) return;
-      // Auto-retry up to 3 times with backoff
       if (attemptRef.current < 3) {
         setRetrying(true);
-        setTimeout(() => mountedRef.current && start(), 1000 * attemptRef.current);
+        const delay = 1000 * attemptRef.current;
+        // countdown for UI
+        let remaining = Math.ceil(delay / 1000);
+        setRetryIn(remaining);
+        const tick = setInterval(() => {
+          remaining -= 1;
+          if (!mountedRef.current || remaining <= 0) { clearInterval(tick); setRetryIn(0); }
+          else setRetryIn(remaining);
+        }, 1000);
+        setTimeout(() => mountedRef.current && start(), delay);
       } else {
         setError(e?.message ?? "تعذّر تشغيل الكاميرا");
         setStarting(false);
         setRetrying(false);
       }
     }
-  }, [onScan]);
+  }, [onScan, lowRes, getFps]);
 
-  // Toggle torch
+  // Torch
   const toggleTorch = async () => {
     const sc = scannerRef.current;
     if (!sc) return;
     try {
       await sc.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
       setTorchOn((v) => !v);
-    } catch (e) {
-      console.warn("[qr] torch toggle failed", e);
-    }
+    } catch (e) { console.warn("[qr] torch toggle failed", e); }
   };
 
-  // Pause/resume on tab visibility (saves battery + avoids stalls)
+  // Visibility pause/resume
   useEffect(() => {
     const onVis = () => {
       const sc = scannerRef.current;
       if (!sc) return;
-      try {
-        if (document.hidden) sc.pause?.(true);
-        else sc.resume?.();
-      } catch {}
+      try { if (document.hidden) sc.pause?.(true); else sc.resume?.(); } catch {}
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
+  // Network listeners
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+  }, []);
+
+  // FPS sampler (1s window)
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const ref = fpsTickRef.current;
+      const now = Date.now();
+      const dt = (now - ref.ts) / 1000;
+      if (dt > 0) setFps(Math.round(ref.count / dt));
+      fpsTickRef.current = { count: 0, ts: now };
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Restart when lowRes toggles
   useEffect(() => {
     mountedRef.current = true;
     start();
     return () => {
       mountedRef.current = false;
       const sc = scannerRef.current;
-      if (sc) {
-        try { sc.stop().then(() => sc.clear()).catch(() => {}); } catch {}
-      }
+      if (sc) { try { sc.stop().then(() => sc.clear()).catch(() => {}); } catch {} }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lowRes]);
 
   return (
     <div className="space-y-3">
       <div className="relative overflow-hidden rounded-xl border border-border bg-black" style={{ minHeight: 320 }}>
         <div ref={ref} className="h-full w-full" />
+
+        {/* Aiming overlay */}
         {!starting && !error && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="relative h-56 w-56">
@@ -177,15 +213,34 @@ export function QrScanner({ onScan, onClose }: Props) {
             </div>
           </div>
         )}
+
+        {/* Top status bar */}
+        <div className="pointer-events-none absolute left-2 right-2 top-2 flex items-center justify-between gap-2 text-[11px] text-white">
+          <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
+            {online
+              ? <><Wifi className="h-3 w-3 text-emerald-400" /> <span>متصل</span></>
+              : <><WifiOff className="h-3 w-3 text-red-400" /> <span>غير متصل</span></>}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
+            <Gauge className="h-3 w-3 text-primary" />
+            <span>{starting ? "—" : `${fps} fps`}</span>
+            {lowRes && <span className="opacity-70">· low-res</span>}
+          </div>
+        </div>
+
         {flash && <div className="pointer-events-none absolute inset-0 bg-emerald-400/30" />}
+
         {starting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-white">
             <Loader2 className="h-6 w-6 animate-spin" />
             <span className="text-sm">
-              {retrying ? `إعادة المحاولة (${attemptRef.current}/3)...` : "جاري تشغيل الكاميرا..."}
+              {retrying
+                ? `إعادة المحاولة (${attemptRef.current}/3)${retryIn ? ` خلال ${retryIn}ث` : "..."}`
+                : "جاري تشغيل الكاميرا..."}
             </span>
           </div>
         )}
+
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-4 text-center text-white">
             <ScanLine className="h-8 w-8 text-destructive" />
@@ -199,16 +254,35 @@ export function QrScanner({ onScan, onClose }: Props) {
             </button>
           </div>
         )}
-        {/* Torch button */}
-        {!starting && !error && torchSupported && (
-          <button
-            onClick={toggleTorch}
-            className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-black/80"
-            aria-label="فلاش"
-          >
-            {torchOn ? <Zap className="h-5 w-5 text-primary" /> : <ZapOff className="h-5 w-5" />}
-          </button>
+
+        {/* Bottom-right action buttons */}
+        {!starting && !error && (
+          <div className="absolute bottom-3 right-3 flex flex-col gap-2">
+            {torchSupported && (
+              <button
+                onClick={toggleTorch}
+                className="rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-black/80"
+                aria-label="فلاش"
+              >
+                {torchOn ? <Zap className="h-5 w-5 text-primary" /> : <ZapOff className="h-5 w-5" />}
+              </button>
+            )}
+          </div>
         )}
+      </div>
+
+      {/* Settings row */}
+      <div className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-xs">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={lowRes}
+            onChange={(e) => setLowRes(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          <span>وضع منخفض الدقة (أكثر استقرارًا للأجهزة الضعيفة)</span>
+        </label>
+        <span className="text-muted-foreground">{lowRes ? "320×240" : "HD"}</span>
       </div>
 
       <button
