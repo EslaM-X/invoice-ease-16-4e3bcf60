@@ -48,7 +48,7 @@ function Inventory() {
       <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("inventory")}</h1>
 
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-5 shadow-sm">
+        <div className="card-premium rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-5">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "إجمالي قيمة المخزون" : "Total Stock Value"}</div>
             <Wallet className="h-4 w-4 text-primary" />
@@ -57,21 +57,21 @@ function Inventory() {
           <div className="mt-1 text-xs text-muted-foreground">{lang === "ar" ? "السعر × الكمية لكل المنتجات" : "Price × Qty for all products"}</div>
         </div>
 
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">{t("in_stock")}</div>
             <Boxes className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-2 text-2xl font-bold">{totalUnits}</div>
         </div>
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">{t("low_stock")}</div>
             <AlertTriangle className="h-4 w-4 text-warning-foreground" />
           </div>
           <div className="mt-2 text-2xl font-bold">{lowStock.length}</div>
         </div>
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">{t("total_products")}</div>
             <Boxes className="h-4 w-4 text-primary" />
@@ -81,7 +81,7 @@ function Inventory() {
       </div>
 
       {topValued.length > 0 && (
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-semibold">{lang === "ar" ? "أعلى المنتجات قيمة في المخزون" : "Top Valued Products in Stock"}</h3>
             <span className="text-xs text-muted-foreground">{lang === "ar" ? "السعر × الكمية" : "Price × Qty"}</span>
@@ -185,7 +185,7 @@ function Inventory() {
       )}
 
 
-      <div className="rounded-2xl border bg-card p-5 shadow-sm">
+      <div className="card-premium rounded-2xl border bg-card p-5">
         <h3 className="mb-4 font-semibold">{t("inventory_log")}</h3>
         {logs.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">{t("no_data")}</div>
