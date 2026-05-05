@@ -4,7 +4,6 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QrScanner } from "@/components/qr-scanner";
-import { requestCameraPermission } from "@/components/qr-scanner";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,9 +62,6 @@ function ScanAndSellPage() {
   const recentScans = useRef<Map<string, number>>(new Map());
 
   const openScanner = async () => {
-    try {
-      await requestCameraPermission("environment");
-    } catch {}
     setScanning(true);
   };
 
