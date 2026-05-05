@@ -13,7 +13,7 @@ async function runBackup(triggeredBy: string) {
   const dump: Record<string, any[]> = {};
   let totalRows = 0;
   for (const t of TABLES) {
-    const { data, error } = await supabaseAdmin.from(t).select("*");
+    const { data, error } = await (supabaseAdmin.from(t as any) as any).select("*");
     if (error) {
       dump[t] = [];
       continue;

@@ -19,6 +19,7 @@ import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
 import { Route as CallCenterRouteImport } from './routes/call-center'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditLogRouteImport } from './routes/audit-log'
@@ -28,6 +29,7 @@ import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
 import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
+import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -79,6 +81,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CallCenterReportsRoute = CallCenterReportsRouteImport.update({
+  id: '/call-center-reports',
+  path: '/call-center-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CallCenterRoute = CallCenterRouteImport.update({
   id: '/call-center',
   path: '/call-center',
@@ -124,6 +131,12 @@ const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
   path: '/invoices/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksDailyBackupRoute =
+  ApiPublicHooksDailyBackupRouteImport.update({
+    id: '/api/public/hooks/daily-backup',
+    path: '/api/public/hooks/daily-backup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/call-center': typeof CallCenterRoute
+  '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/inventory': typeof InventoryRoute
@@ -145,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
+  '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -152,6 +167,7 @@ export interface FileRoutesByTo {
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/call-center': typeof CallCenterRoute
+  '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/inventory': typeof InventoryRoute
@@ -166,6 +182,7 @@ export interface FileRoutesByTo {
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices': typeof InvoicesIndexRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
+  '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -174,6 +191,7 @@ export interface FileRoutesById {
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/call-center': typeof CallCenterRoute
+  '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/inventory': typeof InventoryRoute
@@ -188,6 +206,7 @@ export interface FileRoutesById {
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
+  '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -197,6 +216,7 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/auth'
     | '/call-center'
+    | '/call-center-reports'
     | '/customers'
     | '/dashboard'
     | '/inventory'
@@ -211,6 +231,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/invoices/'
     | '/invoices/$id/edit'
+    | '/api/public/hooks/daily-backup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -218,6 +239,7 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/auth'
     | '/call-center'
+    | '/call-center-reports'
     | '/customers'
     | '/dashboard'
     | '/inventory'
@@ -232,6 +254,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/invoices'
     | '/invoices/$id/edit'
+    | '/api/public/hooks/daily-backup'
   id:
     | '__root__'
     | '/'
@@ -239,6 +262,7 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/auth'
     | '/call-center'
+    | '/call-center-reports'
     | '/customers'
     | '/dashboard'
     | '/inventory'
@@ -253,6 +277,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/invoices/'
     | '/invoices_/$id/edit'
+    | '/api/public/hooks/daily-backup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -261,6 +286,7 @@ export interface RootRouteChildren {
   AuditLogRoute: typeof AuditLogRoute
   AuthRoute: typeof AuthRoute
   CallCenterRoute: typeof CallCenterRoute
+  CallCenterReportsRoute: typeof CallCenterReportsRoute
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   InventoryRoute: typeof InventoryRoute
@@ -275,6 +301,7 @@ export interface RootRouteChildren {
   InvoicesNewRoute: typeof InvoicesNewRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
+  ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -349,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/call-center-reports': {
+      id: '/call-center-reports'
+      path: '/call-center-reports'
+      fullPath: '/call-center-reports'
+      preLoaderRoute: typeof CallCenterReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/call-center': {
       id: '/call-center'
       path: '/call-center'
@@ -412,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvoicesIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/daily-backup': {
+      id: '/api/public/hooks/daily-backup'
+      path: '/api/public/hooks/daily-backup'
+      fullPath: '/api/public/hooks/daily-backup'
+      preLoaderRoute: typeof ApiPublicHooksDailyBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -421,6 +462,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditLogRoute: AuditLogRoute,
   AuthRoute: AuthRoute,
   CallCenterRoute: CallCenterRoute,
+  CallCenterReportsRoute: CallCenterReportsRoute,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   InventoryRoute: InventoryRoute,
@@ -435,6 +477,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesNewRoute: InvoicesNewRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
   InvoicesIdEditRoute: InvoicesIdEditRoute,
+  ApiPublicHooksDailyBackupRoute: ApiPublicHooksDailyBackupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
