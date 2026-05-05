@@ -56,7 +56,14 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
   const [cameras, setCameras] = useState<CamInfo[]>([]);
-  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [cameraId, setCameraId] = useState<string | null>(() => {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem("qr.cameraId") || null;
+  });
+  const [facing, setFacing] = useState<"environment" | "user">(() => {
+    if (typeof localStorage === "undefined") return "environment";
+    return (localStorage.getItem("qr.facing") as any) || "environment";
+  });
   const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
