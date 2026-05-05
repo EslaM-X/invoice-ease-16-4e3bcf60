@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database, AlertTriangle, Video } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database, AlertTriangle } from "lucide-react";
 import { getCacheSize, getLastCacheUpdate } from "@/lib/product-cache";
 
 type CamInfo = { id: string; label: string };
@@ -9,6 +9,11 @@ type Props = {
   onClose: () => void;
   /** Last network/fetch duration reported by parent (ms). Displayed in HUD. */
   lastFetchMs?: number | null;
+};
+
+type StartCandidate = {
+  label: string;
+  source: string | MediaTrackConstraints;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,13 +30,61 @@ function formatAgo(at: number): string {
 export async function requestCameraPermission(
   facingMode: "environment" | "user" = "environment",
 ): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return false;
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode },
-    audio: false,
-  });
-  stream.getTracks().forEach((track) => track.stop());
-  return true;
+  if (typeof navigator === "undefined") return false;
+  try {
+    const permissionApi = (navigator as Navigator & {
+      permissions?: { query: (descriptor: PermissionDescriptor) => Promise<PermissionStatus> };
+    }).permissions;
+    if (permissionApi?.query) {
+      const status = await permissionApi.query({ name: "camera" as PermissionName });
+      return status.state === "granted";
+    }
+  } catch {}
+  return !!navigator.mediaDevices?.getUserMedia;
+}
+
+function buildCameraCandidates(lowRes: boolean): StartCandidate[] {
+  const width = lowRes ? 640 : 1280;
+  const height = lowRes ? 480 : 720;
+  const frameRate = lowRes ? { ideal: 12, max: 18 } : { ideal: 18, max: 24 };
+
+  return [
+    {
+      label: "rear-exact",
+      source: {
+        facingMode: { exact: "environment" },
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate,
+      },
+    },
+    {
+      label: "rear-ideal",
+      source: {
+        facingMode: "environment",
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate,
+      },
+    },
+    {
+      label: "any-camera",
+      source: {
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate,
+      },
+    },
+  ];
+}
+
+function pickRearCamera(cameras: CamInfo[]): CamInfo | null {
+  const rearMatch = cameras.find((cam) =>
+    /back|rear|environment|world|traseira|trasera|arrière|后置|الخلف|خلف/i.test(cam.label),
+  );
+  if (rearMatch) return rearMatch;
+  if (cameras.length > 1) return cameras[cameras.length - 1] ?? null;
+  return cameras[0] ?? null;
 }
 
 /**
