@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
-import { computeSold, dayWindow as calcDayWindow, type CalcInvoice, type CalcInvoiceItem } from "@/lib/sales-calc";
+import { computeSold, type CalcInvoice, type CalcInvoiceItem } from "@/lib/sales-calc";
 
 export const Route = createFileRoute("/sales-today")({
   head: () => ({
