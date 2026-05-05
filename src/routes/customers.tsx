@@ -83,7 +83,7 @@ function Customers() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{t("customers")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("customers")}</h1>
         <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -125,7 +125,7 @@ function Customers() {
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_customers")}</div>
         ) : (

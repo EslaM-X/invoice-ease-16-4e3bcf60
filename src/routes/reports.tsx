@@ -61,7 +61,7 @@ function Reports() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{t("reports")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("reports")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2" onClick={() => window.print()}><Download className="h-4 w-4" />{t("export_pdf")}</Button>
           <Button className="gap-2" onClick={exportExcel}><FileSpreadsheet className="h-4 w-4" />{t("export_excel")}</Button>
@@ -77,12 +77,12 @@ function Reports() {
         </select>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+      <div className="stagger grid gap-4 sm:grid-cols-2">
+        <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="text-sm text-muted-foreground">{t("total_sales")}</div>
           <div className="mt-1 text-2xl font-bold">{fmtMoney(totalSales, "EGP", lang)}</div>
         </div>
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="text-sm text-muted-foreground">{t("total_invoices")}</div>
           <div className="mt-1 text-2xl font-bold">{list.length}</div>
         </div>

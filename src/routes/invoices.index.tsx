@@ -113,7 +113,7 @@ function InvoicesList() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{t("invoices")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("invoices")}</h1>
         <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -146,7 +146,7 @@ function InvoicesList() {
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} placeholder={t("to")} />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
         ) : (

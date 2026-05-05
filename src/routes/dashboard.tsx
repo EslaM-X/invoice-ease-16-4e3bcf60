@@ -71,7 +71,7 @@ function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{t("dashboard")}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gradient-gold">{t("dashboard")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -109,9 +109,9 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, Icon, accent }) => (
-          <div key={label} className="group rounded-2xl border border-border/60 bg-card p-5 transition hover:shadow-md">
+          <div key={label} className="card-premium group rounded-2xl border border-border/60 bg-card p-5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
               <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-accent ${accent}`}>
@@ -124,7 +124,7 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
           <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("recent_invoices")}</h3>
           {recent.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
@@ -142,7 +142,7 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
           <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("top_products")}</h3>
           {top.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
