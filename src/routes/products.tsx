@@ -312,7 +312,7 @@ function Products() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card no-print">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card no-print">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_products")}</div>
         ) : (
