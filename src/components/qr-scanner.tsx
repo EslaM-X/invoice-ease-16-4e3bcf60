@@ -11,6 +11,15 @@ type Props = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function formatAgo(at: number): string {
+  const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (s < 60) return `قبل ${s}ث`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `قبل ${m}د`;
+  const h = Math.round(m / 60);
+  return `قبل ${h}س`;
+}
+
 /**
  * QR Scanner v3.2 — diagnostics, manual fallback, adaptive backoff.
  */
