@@ -188,7 +188,14 @@ function SalesToday() {
         last_at: l.created_at,
         movements: [],
       };
-      cur.sold_qty += -l.change;
+      // Only count movements that represent today's sale activity.
+      // Exclude `delete` (and unknown `other`) — deleting an OLDER invoice today
+      // returns stock but is NOT a today-return-of-sale; counting it would
+      // hide legitimate sales from the suggested purchase order.
+      const { kind } = classifyReason(l.reason);
+      if (kind === "sale" || kind === "void" || kind === "edit-resale" || kind === "edit-revert" || kind === "manual") {
+        cur.sold_qty += -l.change;
+      }
       if (l.invoices?.invoice_number) cur.invoices.add(l.invoices.invoice_number);
       if (l.created_at > cur.last_at) cur.last_at = l.created_at;
       cur.movements.push(l);
