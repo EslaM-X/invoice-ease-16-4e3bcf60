@@ -427,6 +427,7 @@ const en: Dict = {
   inventory_audit: "Inventory Audit",
   sales_today: "Today's Sales",
   sales_range: "Sales by Range",
+  shipping_order: "Shipping Order",
   audit_log: "Audit Log",
   audit_log_desc: "All system actions with the user who performed them.",
   details: "Details",
