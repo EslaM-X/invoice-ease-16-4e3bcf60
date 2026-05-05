@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database, AlertTriangle, Video } from "lucide-react";
 import { getCacheSize, getLastCacheUpdate } from "@/lib/product-cache";
+
+type CamInfo = { id: string; label: string };
 
 type Props = {
   onScan: (text: string) => void;
@@ -53,6 +55,9 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [manualId, setManualId] = useState("");
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
+  const [cameras, setCameras] = useState<CamInfo[]>([]);
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
     if (typeof navigator === "undefined") return 10;
@@ -110,13 +115,15 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       const sc = new Html5Qrcode(id, { verbose: false });
       scannerRef.current = sc;
 
-      const videoConstraints: MediaTrackConstraints = lowRes
-        ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } }
-        : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } };
+      const videoConstraints: MediaTrackConstraints | string = cameraId
+        ? cameraId
+        : (lowRes
+          ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
+          : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
 
       lastDecodeAtRef.current = performance.now();
       await sc.start(
-        videoConstraints,
+        videoConstraints as any,
         {
           fps: getFps(),
           qrbox: (vw: number, vh: number) => {
@@ -179,6 +186,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       if (!mountedRef.current) return;
       const kind = classifyError(e);
       setErrorKind(kind);
+      setFailToast(e?.message ?? "فشل تشغيل الماسح");
+      window.setTimeout(() => mountedRef.current && setFailToast(null), 3500);
       // Permission denied → don't auto-retry, ask the user
       if (kind === "permission" || attemptRef.current >= 3) {
         setError(e?.message ?? "تعذّر تشغيل الكاميرا");
@@ -198,7 +207,21 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       setTimeout(() => mountedRef.current && start(), delay);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScan, lowRes, getFps, online]);
+  }, [onScan, lowRes, getFps, online, cameraId]);
+
+  // Enumerate cameras once we have permission
+  useEffect(() => {
+    (async () => {
+      try {
+        const lib = await import("html5-qrcode");
+        const list = await lib.Html5Qrcode.getCameras();
+        if (!mountedRef.current) return;
+        setCameras(list.map((c: any) => ({ id: c.id, label: c.label || "كاميرا" })));
+      } catch (e) {
+        console.warn("[qr] enumerate failed", e);
+      }
+    })();
+  }, [starting]);
 
   const toggleTorch = async () => {
     const sc = scannerRef.current;
@@ -268,7 +291,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       if (sc) { try { sc.stop().then(() => sc.clear()).catch(() => {}); } catch {} }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lowRes]);
+  }, [lowRes, cameraId]);
 
   const errorHelp = () => {
     switch (errorKind) {
@@ -333,6 +356,21 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
         )}
 
         {flash && <div className="pointer-events-none absolute inset-0 bg-emerald-400/30" />}
+
+        {failToast && !error && (
+          <div className="absolute left-1/2 top-3 z-10 -translate-x-1/2 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 rounded-full bg-destructive/90 px-3 py-1.5 text-[11px] text-white shadow-lg backdrop-blur">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>{failToast}</span>
+              <button
+                onClick={() => { attemptRef.current = 0; setFailToast(null); start(); }}
+                className="flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 hover:bg-white/30"
+              >
+                <RefreshCw className="h-3 w-3" /> إعادة
+              </button>
+            </div>
+          </div>
+        )}
 
         {starting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-white">
@@ -415,6 +453,33 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
+        {cameras.length > 1 && (
+          <label className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <Video className="h-3.5 w-3.5 text-primary" />
+              اختيار الكاميرا
+            </span>
+            <select
+              value={cameraId ?? ""}
+              onChange={(e) => setCameraId(e.target.value || null)}
+              className="max-w-[55%] truncate rounded-md border bg-background px-2 py-1 text-xs"
+            >
+              <option value="">تلقائي (خلفية)</option>
+              {cameras.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {torchSupported && (
+          <button
+            onClick={toggleTorch}
+            className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent"
+          >
+            {torchOn ? <Zap className="h-3.5 w-3.5 text-primary" /> : <ZapOff className="h-3.5 w-3.5" />}
+            {torchOn ? "إيقاف الفلاش" : "تفعيل الفلاش"}
+          </button>
+        )}
         {!error && (
           <button
             onClick={() => setShowManual((v) => !v)}

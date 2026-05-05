@@ -595,29 +595,35 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accent_preference: string | null
           avatar_url: string | null
           created_at: string
           display_name: string | null
           email: string | null
           id: string
+          theme_preference: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          accent_preference?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
           id?: string
+          theme_preference?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          accent_preference?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
           id?: string
+          theme_preference?: string | null
           updated_at?: string
           user_id?: string
         }
