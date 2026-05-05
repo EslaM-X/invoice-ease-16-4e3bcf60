@@ -22,6 +22,18 @@ function formatAgo(at: number): string {
   return `قبل ${h}س`;
 }
 
+export async function requestCameraPermission(
+  facingMode: "environment" | "user" = "environment",
+): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return false;
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode },
+    audio: false,
+  });
+  stream.getTracks().forEach((track) => track.stop());
+  return true;
+}
+
 /**
  * QR Scanner v3.2 — diagnostics, manual fallback, adaptive backoff.
  */
@@ -78,10 +90,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const ensurePermission = async (): Promise<boolean> => {
     try {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return true;
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      // Release immediately — html5-qrcode opens its own stream.
-      stream.getTracks().forEach((t) => t.stop());
-      return true;
+      return await requestCameraPermission(facing);
     } catch (e: any) {
       console.warn("[qr] permission probe failed", e);
       throw e;
