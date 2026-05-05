@@ -36,7 +36,16 @@ type Item = {
   color: string | null;
   quantity: number;
 };
-type Prod = { id: string; serial_number: string | null; name: string; color: string | null };
+type Prod = { id: string; serial_number: string | null; name: string; color: string | null; collection: string | null };
+
+type CollectionLine = {
+  code: string;
+  product_name: string;
+  color: string | null;
+  collection: string;
+  qty: number;
+};
+type CollectionGroup = { collection: string; lines: CollectionLine[]; total: number };
 
 type Line = {
   code: string;
@@ -105,7 +114,7 @@ function ShippingOrder() {
       if (pIds.length) {
         const { data: prods } = await supabase
           .from("products")
-          .select("id, serial_number, name, color")
+          .select("id, serial_number, name, color, collection")
           .in("id", pIds);
         const m = new Map<string, Prod>();
         for (const p of (prods ?? []) as Prod[]) m.set(p.id, p);
@@ -120,10 +129,11 @@ function ShippingOrder() {
   useRealtimeTable("invoices", () => load(), [from, to, user?.id]);
   useRealtimeTable("invoice_items", () => load(), [from, to, user?.id]);
 
-  const { groups, grandTotal } = useMemo(() => {
+  const { groups, grandTotal, collectionGroups, collectionsGrandTotal } = useMemo(() => {
     const invMap = new Map(invoices.map((i) => [i.id, i]));
-    // day -> code -> Line
     const dayMap = new Map<string, Map<string, Line>>();
+    // collection -> key -> CollectionLine
+    const colMap = new Map<string, Map<string, CollectionLine>>();
     for (const it of items) {
       const inv = invMap.get(it.invoice_id);
       if (!inv) continue;
@@ -131,18 +141,24 @@ function ShippingOrder() {
       if (qty <= 0) continue;
       const p = it.product_id ? products.get(it.product_id) : undefined;
       const code = (p?.serial_number ?? it.serial_number ?? "—").toString();
+      const color = p?.color ?? it.color ?? null;
+      const name = p?.name || it.product_name;
       const dk = dayKey(inv.created_at);
       let inner = dayMap.get(dk);
       if (!inner) { inner = new Map(); dayMap.set(dk, inner); }
-      const key = `${code}|${(p?.color ?? it.color) ?? ""}`;
-      const cur = inner.get(key) ?? {
-        code,
-        product_name: p?.name || it.product_name,
-        color: p?.color ?? it.color ?? null,
-        sold: 0,
-      };
+      const key = `${code}|${color ?? ""}`;
+      const cur = inner.get(key) ?? { code, product_name: name, color, sold: 0 };
       cur.sold += qty;
       inner.set(key, cur);
+
+      // collection aggregation across the whole range
+      const collection = (p?.collection ?? "—") || "—";
+      let cInner = colMap.get(collection);
+      if (!cInner) { cInner = new Map(); colMap.set(collection, cInner); }
+      const cKey = `${code}|${color ?? ""}|${name}`;
+      const cCur = cInner.get(cKey) ?? { code, product_name: name, color, collection, qty: 0 };
+      cCur.qty += qty;
+      cInner.set(cKey, cCur);
     }
     const groups: DayGroup[] = Array.from(dayMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -152,7 +168,24 @@ function ShippingOrder() {
         return { date, lines, totalSold };
       });
     const grandTotal = groups.reduce((s, g) => s + g.totalSold, 0);
-    return { groups, grandTotal };
+
+    const COLLECTION_ORDER = ["JOY", "UP", "ART", "QUATRO"];
+    const collectionGroups: CollectionGroup[] = Array.from(colMap.entries())
+      .map(([collection, m]) => {
+        const lines = Array.from(m.values()).sort((a, b) => a.code.localeCompare(b.code));
+        const total = lines.reduce((s, l) => s + l.qty, 0);
+        return { collection, lines, total };
+      })
+      .sort((a, b) => {
+        const ai = COLLECTION_ORDER.indexOf(a.collection);
+        const bi = COLLECTION_ORDER.indexOf(b.collection);
+        if (ai === -1 && bi === -1) return a.collection.localeCompare(b.collection);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+    const collectionsGrandTotal = collectionGroups.reduce((s, g) => s + g.total, 0);
+    return { groups, grandTotal, collectionGroups, collectionsGrandTotal };
   }, [invoices, items, products]);
 
   const exportXlsx = () => {
@@ -175,6 +208,26 @@ function ShippingOrder() {
     ws["!cols"] = [{ wch: 22 }, { wch: 38 }, { wch: 10 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Shipping Order");
+
+    // Per-collection summary sheet
+    const aoa2: any[][] = [];
+    aoa2.push(["ملخص حسب الكولكشن — Per Collection", "", "", ""]);
+    aoa2.push([`من ${from} إلى ${to}`, "", "", ""]);
+    aoa2.push([]);
+    for (const cg of collectionGroups) {
+      aoa2.push([`Collection: ${cg.collection}`, "", "", ""]);
+      aoa2.push(["Code", "Product", "Color", "Qty"]);
+      for (const l of cg.lines) {
+        aoa2.push([l.code, l.product_name, l.color ?? "", l.qty]);
+      }
+      aoa2.push(["", "إجمالي الكولكشن / Collection Total", "", cg.total]);
+      aoa2.push([]);
+    }
+    aoa2.push(["", "الإجمالي الكلي / Grand Total", "", collectionsGrandTotal]);
+    const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+    ws2["!cols"] = [{ wch: 22 }, { wch: 38 }, { wch: 16 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Per Collection");
+
     XLSX.writeFile(wb, `shipping-order_${from}_to_${to}.xlsx`);
     toast.success("تم تصدير Excel");
   };
@@ -251,6 +304,63 @@ function ShippingOrder() {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
     pdf.text(`Grand Total: ${grandTotal}`, pageW - margin, y + 10, { align: "right" });
+    y += 28;
+
+    // Per-collection summary page
+    pdf.addPage();
+    y = margin;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text("Per Collection Summary", margin, y);
+    y += 16;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`From ${from}  to  ${to}`, margin, y);
+    y += 16;
+
+    const cCol = { code: margin, name: margin + 130, color: pageW - margin - 200, qty: pageW - margin };
+    const drawColHeader = () => {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("Code", cCol.code, y);
+      pdf.text("Product", cCol.name, y);
+      pdf.text("Color", cCol.color, y);
+      pdf.text("Qty", cCol.qty, y, { align: "right" });
+      y += 4;
+      pdf.setDrawColor(180);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 12;
+      pdf.setFont("helvetica", "normal");
+    };
+
+    for (const cg of collectionGroups) {
+      ensureSpace(60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setFillColor(230, 240, 255);
+      pdf.rect(margin, y - 12, pageW - margin * 2, 18, "F");
+      pdf.text(`Collection: ${cg.collection}`, margin + 6, y);
+      y += 14;
+      drawColHeader();
+      for (const l of cg.lines) {
+        ensureSpace(20);
+        pdf.text(String(l.code).slice(0, 24), cCol.code, y);
+        pdf.text(String(l.product_name).slice(0, 50), cCol.name, y);
+        pdf.text(String(l.color ?? ""), cCol.color, y);
+        pdf.text(String(l.qty), cCol.qty, y, { align: "right" });
+        y += 16;
+      }
+      ensureSpace(20);
+      pdf.setDrawColor(120);
+      pdf.line(margin, y - 4, pageW - margin, y - 4);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Collection Total: ${cg.total}`, pageW - margin, y + 6, { align: "right" });
+      y += 22;
+    }
+    ensureSpace(30);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
 
     pdf.save(`shipping-order_${from}_to_${to}.pdf`);
     toast.success("تم تصدير PDF");
@@ -382,6 +492,47 @@ function ShippingOrder() {
             </div>
           </Card>
         ))
+      )}
+
+      {collectionGroups.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between border-b bg-primary/10 p-3">
+            <h2 className="font-semibold">ملخص حسب الكولكشن خلال الفترة</h2>
+            <Badge>الإجمالي: {collectionsGrandTotal}</Badge>
+          </div>
+          <div className="divide-y">
+            {collectionGroups.map((cg) => (
+              <div key={cg.collection}>
+                <div className="flex items-center justify-between bg-muted/40 px-3 py-2">
+                  <span className="font-bold">{cg.collection}</span>
+                  <Badge variant="secondary">{cg.total}</Badge>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/20">
+                      <tr className="text-right">
+                        <th className="p-2 w-40">Code</th>
+                        <th className="p-2">Product</th>
+                        <th className="p-2 w-32">اللون</th>
+                        <th className="p-2 w-20 text-center">العدد</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cg.lines.map((l, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="p-2 font-mono text-xs">{l.code}</td>
+                          <td className="p-2">{l.product_name}</td>
+                          <td className="p-2 text-muted-foreground">{l.color ?? "—"}</td>
+                          <td className="p-2 text-center font-bold text-primary">{l.qty}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
     </div>
   );
