@@ -141,6 +141,13 @@ export function NotificationsBell() {
                   {!n.read_at && (
                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
                   )}
+                  <button
+                    onClick={(e) => toggleRead(n, e)}
+                    className="ms-1 self-start rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                    title={n.read_at ? "اجعلها غير مقروءة" : "اجعلها مقروءة"}
+                  >
+                    {n.read_at ? "○" : "●"}
+                  </button>
                 </div>
               );
               return n.link ? (
