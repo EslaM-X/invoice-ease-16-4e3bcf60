@@ -80,6 +80,7 @@ function Inventory() {
           <div className="mt-2 text-2xl font-bold">{products.length}</div>
         </div>
       </div>
+      )}
 
       {topValued.length > 0 && (
         <div className="card-premium rounded-2xl border bg-card p-5">
