@@ -8,6 +8,7 @@ import type { Product } from "@/lib/data";
 import { AlertTriangle, Boxes, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { useRealtimeTable } from "@/lib/realtime";
+import { CardsSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/inventory")({ component: () => <AppShell><Inventory /></AppShell> });
 
