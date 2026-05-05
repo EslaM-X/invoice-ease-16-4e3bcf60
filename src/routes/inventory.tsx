@@ -47,6 +47,7 @@ function Inventory() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("inventory")}</h1>
 
+      {loading ? <CardsSkeleton count={4} /> : (
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card-premium rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-5">
           <div className="flex items-center justify-between">
