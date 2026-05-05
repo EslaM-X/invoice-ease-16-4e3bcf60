@@ -18,7 +18,23 @@ import {
 } from "@/lib/scan-link";
 import { enqueueScan, flushQueue, queueLength } from "@/lib/scan-buffer";
 import { toast } from "sonner";
-import { Smartphone, ScanLine, Unlink, Check, WifiOff, CloudUpload } from "lucide-react";
+import { z } from "zod";
+import { Smartphone, ScanLine, Unlink, Check, WifiOff, CloudUpload, History, RefreshCw, X, AlertTriangle } from "lucide-react";
+
+const ProductIdSchema = z.string().trim().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  "INVALID_UUID",
+);
+
+type ScanLogEntry = {
+  id: string;
+  at: number;
+  raw: string;
+  productId: string | null;
+  productName: string | null;
+  status: "ok" | "queued" | "not_found" | "invalid" | "checksum";
+  message: string;
+};
 
 export const Route = createFileRoute("/scan-and-sell")({
   component: () => (
@@ -41,8 +57,16 @@ function ScanAndSellPage() {
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [pending, setPending] = useState<number>(0);
   const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
+  const [history, setHistory] = useState<ScanLogEntry[]>([]);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
+
+  const pushHistory = (entry: Omit<ScanLogEntry, "id" | "at">) => {
+    setHistory((prev) => [
+      { ...entry, id: Math.random().toString(36).slice(2), at: Date.now() },
+      ...prev,
+    ].slice(0, 20));
+  };
 
   // Refresh pending count from localStorage
   const refreshPending = () => {
@@ -172,65 +196,12 @@ function ScanAndSellPage() {
     setScanning(false);
   };
 
-  const handleScan = async (text: string) => {
-    if (!user || !session) return;
-    const raw = (text ?? "").trim();
-
-    const decoded = decodeProductQR(raw);
-    if (!decoded.ok) {
-      if (decoded.reason === "scanlink") return; // ignore pair QR
-      // Debounce duplicate invalid scans
-      const now = Date.now();
-      const last = recentScans.current.get(raw) ?? 0;
-      if (now - last < 1500) return;
-      recentScans.current.set(raw, now);
-      const msg = decoded.reason === "checksum"
-        ? (lang === "ar" ? "رمز QR تالف (فحص فشل)" : "Corrupted QR (checksum failed)")
-        : (lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
-      toast.error(msg);
-      return;
-    }
-
-    const productId = decoded.productId;
-    // Debounce duplicate valid scans
-    const now = Date.now();
-    const last = recentScans.current.get(productId) ?? 0;
-    if (now - last < 1500) return;
-    recentScans.current.set(productId, now);
-
-    const fetchAndPush = async () => {
-      const t0 = performance.now();
-      const { product, error } = await fetchProductCached(productId);
-      setLastFetchMs(Math.round(performance.now() - t0));
-      return { product, error };
-    };
-
-    const t0 = performance.now();
-    const { product: p, error } = await fetchProductCached(productId);
-    setLastFetchMs(Math.round(performance.now() - t0));
-    if (error || !p) {
-      toast.error(
-        lang === "ar" ? "لم يتم العثور على المنتج" : "Product not found",
-        {
-          description: lang === "ar"
-            ? `المعرّف: ${productId.slice(0, 8)}…`
-            : `ID: ${productId.slice(0, 8)}…`,
-          action: {
-            label: lang === "ar" ? "إعادة المحاولة" : "Retry",
-            onClick: async () => {
-              const r = await fetchAndPush();
-              if (r.product) {
-                toast.success(`✓ ${r.product.name}`);
-              } else {
-                toast.error(lang === "ar" ? "فشل مجددًا" : "Failed again");
-              }
-            },
-          },
-          duration: 6000,
-        }
-      );
-      return;
-    }
+  /** Push an already-resolved product to the paired session (used by scan + history re-add). */
+  const pushProductToSession = async (p: {
+    id: string; name: string; price?: number | null;
+    serial_number?: string | null; color?: string | null;
+  }) => {
+    if (!user || !session) return false;
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     const queueIt = () => {
       enqueueScan({
@@ -248,32 +219,118 @@ function ScanAndSellPage() {
       setLastAdded(p.name);
       toast.warning(`✓ ${p.name} — ${t("offline_queued")}`);
     };
-
-    if (isOffline) {
+    if (isOffline) { queueIt(); return true; }
+    try {
+      await pushScanEvent({
+        sessionId: session.id,
+        userId: user.id,
+        product: {
+          id: p.id, name: p.name, price: Number(p.price ?? 0),
+          serial_number: p.serial_number, color: p.color,
+        },
+      });
+      beep();
+      setLastAdded(p.name);
+      toast.success(`✓ ${p.name}`);
+      if (queueLength(user.id) > 0) tryFlush(true);
+      return true;
+    } catch {
       queueIt();
-    } else {
-      try {
-        await pushScanEvent({
-          sessionId: session.id,
-          userId: user.id,
-          product: {
-            id: p.id,
-            name: p.name,
-            price: Number(p.price ?? 0),
-            serial_number: p.serial_number,
-            color: p.color,
-          },
-        });
-        beep();
-        setLastAdded(p.name);
-        toast.success(`✓ ${p.name}`);
-        // Opportunistic: if anything was queued before, flush now
-        if (queueLength(user.id) > 0) tryFlush(true);
-      } catch (e: any) {
-        // Treat any push failure as a transient network problem and queue.
-        queueIt();
-      }
+      return true;
     }
+  };
+
+  const reAddFromHistory = async (entry: ScanLogEntry) => {
+    if (!entry.productId) return;
+    const { product } = await fetchProductCached(entry.productId);
+    if (!product) {
+      toast.error(lang === "ar" ? "تعذّر إعادة إضافة المنتج" : "Could not re-add product");
+      return;
+    }
+    await pushProductToSession(product as any);
+    pushHistory({
+      raw: entry.raw,
+      productId: product.id,
+      productName: product.name,
+      status: typeof navigator !== "undefined" && !navigator.onLine ? "queued" : "ok",
+      message: lang === "ar" ? "أُعيدت الإضافة" : "Re-added",
+    });
+  };
+
+  const handleScan = async (text: string) => {
+    if (!user || !session) return;
+    const raw = (text ?? "").trim();
+
+    const decoded = decodeProductQR(raw);
+    if (!decoded.ok) {
+      if (decoded.reason === "scanlink") return; // ignore pair QR
+      const now = Date.now();
+      const last = recentScans.current.get(raw) ?? 0;
+      if (now - last < 1500) return;
+      recentScans.current.set(raw, now);
+      const isChecksum = decoded.reason === "checksum";
+      const msg = isChecksum
+        ? (lang === "ar" ? "رمز QR تالف (فحص فشل)" : "Corrupted QR (checksum failed)")
+        : (lang === "ar" ? "رمز QR غير صالح أو غير متوافق" : "Invalid or unsupported QR");
+      toast.error(msg, {
+        description: raw.length > 0
+          ? (lang === "ar" ? `المحتوى: ${raw.slice(0, 32)}${raw.length > 32 ? "…" : ""}` : `Payload: ${raw.slice(0, 32)}${raw.length > 32 ? "…" : ""}`)
+          : undefined,
+      });
+      pushHistory({
+        raw, productId: null, productName: null,
+        status: isChecksum ? "checksum" : "invalid", message: msg,
+      });
+      return;
+    }
+
+    // Defense in depth: validate decoded productId shape with zod before any DB call.
+    const parsed = ProductIdSchema.safeParse(decoded.productId);
+    if (!parsed.success) {
+      const msg = lang === "ar" ? "معرّف المنتج غير صالح" : "Invalid product ID format";
+      toast.error(msg);
+      pushHistory({ raw, productId: decoded.productId, productName: null, status: "invalid", message: msg });
+      return;
+    }
+    const productId = parsed.data.toLowerCase();
+
+    // Debounce duplicate valid scans
+    const now = Date.now();
+    const last = recentScans.current.get(productId) ?? 0;
+    if (now - last < 1500) return;
+    recentScans.current.set(productId, now);
+
+    const t0 = performance.now();
+    const { product: p, error } = await fetchProductCached(productId);
+    setLastFetchMs(Math.round(performance.now() - t0));
+    if (error || !p) {
+      const msg = lang === "ar" ? "لم يتم العثور على المنتج" : "Product not found";
+      toast.error(msg, {
+        description: lang === "ar" ? `المعرّف: ${productId.slice(0, 8)}…` : `ID: ${productId.slice(0, 8)}…`,
+        action: {
+          label: lang === "ar" ? "إعادة المحاولة" : "Retry",
+          onClick: async () => {
+            const r = await fetchProductCached(productId);
+            if (r.product) {
+              await pushProductToSession(r.product as any);
+              pushHistory({ raw, productId, productName: r.product.name, status: "ok", message: lang === "ar" ? "نجح بعد الإعادة" : "Succeeded on retry" });
+            } else {
+              toast.error(lang === "ar" ? "فشل مجددًا" : "Failed again");
+            }
+          },
+        },
+        duration: 6000,
+      });
+      pushHistory({ raw, productId, productName: null, status: "not_found", message: msg });
+      return;
+    }
+
+    const ok = await pushProductToSession(p as any);
+    pushHistory({
+      raw, productId, productName: p.name,
+      status: typeof navigator !== "undefined" && !navigator.onLine ? "queued" : "ok",
+      message: ok ? `✓ ${p.name}` : (lang === "ar" ? "فشل" : "Failed"),
+    });
     if (!continuous) setScanning(false);
   };
 
@@ -438,6 +495,70 @@ function ScanAndSellPage() {
               </div>
             )}
           </div>
+
+          {history.length > 0 && (
+            <div className="rounded-2xl border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <History className="h-4 w-4 text-primary" />
+                  {lang === "ar" ? "آخر محاولات المسح" : "Recent scans"}
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {history.length}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setHistory([])}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-3 w-3" />
+                  {lang === "ar" ? "مسح" : "Clear"}
+                </button>
+              </div>
+              <ul className="space-y-1.5">
+                {history.map((h) => {
+                  const okStatus = h.status === "ok" || h.status === "queued";
+                  const tone =
+                    h.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" :
+                    h.status === "queued" ? "border-amber-500/30 bg-amber-500/5" :
+                    "border-destructive/30 bg-destructive/5";
+                  return (
+                    <li key={h.id} className={`flex items-start justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${tone}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {okStatus
+                            ? <Check className="h-3 w-3 shrink-0 text-emerald-500" />
+                            : <AlertTriangle className="h-3 w-3 shrink-0 text-destructive" />}
+                          <span className="truncate font-medium">
+                            {h.productName ?? (lang === "ar" ? "—" : "—")}
+                          </span>
+                          <span className="ml-auto text-[10px] text-muted-foreground" dir="ltr">
+                            {new Date(h.at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <span dir="ltr" className="truncate">
+                            {h.productId ? `${h.productId.slice(0, 8)}…` : (h.raw.slice(0, 24) || "—")}
+                          </span>
+                          <span>·</span>
+                          <span className="truncate">{h.message}</span>
+                        </div>
+                      </div>
+                      {okStatus && h.productId && (
+                        <button
+                          onClick={() => reAddFromHistory(h)}
+                          className="flex shrink-0 items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20"
+                          title={lang === "ar" ? "إعادة الإضافة للفاتورة" : "Re-add to invoice"}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          {lang === "ar" ? "إضافة" : "Add"}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
