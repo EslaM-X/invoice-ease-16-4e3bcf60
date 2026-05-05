@@ -25,6 +25,7 @@ const items = [
   { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
   { to: "/sales-today", icon: ShoppingCart, key: "sales_today" as const },
   { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
+  { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   { to: "/invoices", icon: FileText, key: "invoices" as const },
   { to: "/reports", icon: BarChart3, key: "reports" as const },
   { to: "/audit-log", icon: ShieldCheck, key: "audit_log" as const },
