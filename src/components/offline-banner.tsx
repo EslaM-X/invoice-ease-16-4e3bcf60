@@ -68,7 +68,7 @@ export function OfflineBanner() {
         // Auto trigger one resync on recovery
         runSync();
         if (recoverTimer.current) window.clearTimeout(recoverTimer.current);
-        recoverTimer.current = window.setTimeout(() => mounted && setShowRecovered(false), 6000);
+        recoverTimer.current = window.setTimeout(() => mounted && setShowRecovered(false), 2200);
       }
       wasOnlineRef.current = next;
     };
