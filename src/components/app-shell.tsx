@@ -15,6 +15,7 @@ import brandLogo from "@/assets/steinheim-logo-white.png";
 import { LowStockAlerts } from "@/components/low-stock-alerts";
 import { useRole } from "@/lib/use-role";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { LangStatusPill } from "@/components/lang-status-pill";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
@@ -158,6 +159,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <div className="flex-1" />
+          <LangStatusPill />
           <NotificationsBell />
           <LowStockAlerts />
           <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
