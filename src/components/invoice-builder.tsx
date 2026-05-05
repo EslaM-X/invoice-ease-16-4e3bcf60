@@ -87,6 +87,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
   const [scanning, setScanning] = useState(false);
+  const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
   const [continuous, setContinuous] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [pickerCollection, setPickerCollection] = useState<string>("");
@@ -279,9 +280,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
     // Cache-first lookup
     const fromList = products.find((p) => p.id === decoded.productId);
     if (fromList) setCachedProduct(fromList);
+    const t0 = performance.now();
     const { product: p, error } = fromList
       ? { product: fromList as Product, error: null as any }
       : await fetchProductCached(decoded.productId);
+    setLastFetchMs(Math.round(performance.now() - t0));
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
@@ -988,7 +991,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             <input type="checkbox" checked={continuous} onChange={(e) => setContinuous(e.target.checked)} />
             <span>{t("continuous_scan")}</span>
           </label>
-          {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />}
+          {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} lastFetchMs={lastFetchMs} />}
         </DialogContent>
       </Dialog>
 

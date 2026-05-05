@@ -40,6 +40,7 @@ function ScanAndSellPage() {
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [pending, setPending] = useState<number>(0);
+  const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
 
@@ -197,7 +198,9 @@ function ScanAndSellPage() {
     if (now - last < 1500) return;
     recentScans.current.set(productId, now);
 
+    const t0 = performance.now();
     const { product: p, error } = await fetchProductCached(productId);
+    setLastFetchMs(Math.round(performance.now() - t0));
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
@@ -396,7 +399,7 @@ function ScanAndSellPage() {
             </div>
 
             {scanning ? (
-              <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />
+              <QrScanner onScan={handleScan} onClose={() => setScanning(false)} lastFetchMs={lastFetchMs} />
             ) : (
               <div className="rounded-xl border-2 border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
                 {lang === "ar" ? "اضغط مسح لبدء قراءة المنتجات" : "Press scan to start reading products"}
