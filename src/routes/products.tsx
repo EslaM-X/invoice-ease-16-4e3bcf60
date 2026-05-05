@@ -49,6 +49,7 @@ function Products() {
       return (data ?? []) as Product[];
     });
     setList(data);
+    setLoading(false);
     if (fromCache) {
       // Background revalidate already runs in cachedListFetch; refresh again on focus
     }
