@@ -77,7 +77,7 @@ function Reports() {
         </select>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="stagger grid gap-4 sm:grid-cols-2">
         <div className="card-premium rounded-2xl border bg-card p-5">
           <div className="text-sm text-muted-foreground">{t("total_sales")}</div>
           <div className="mt-1 text-2xl font-bold">{fmtMoney(totalSales, "EGP", lang)}</div>
