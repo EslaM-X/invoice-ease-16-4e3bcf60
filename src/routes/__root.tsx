@@ -3,6 +3,8 @@ import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
+import { OfflineBanner } from "@/components/offline-banner";
+import { InstallPrompt } from "@/components/install-prompt";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -72,7 +74,9 @@ function RootComponent() {
     <ThemeProvider>
       <I18nProvider>
         <AuthProvider>
+          <OfflineBanner />
           <Outlet />
+          <InstallPrompt />
           <Toaster position="top-center" richColors closeButton />
         </AuthProvider>
       </I18nProvider>
