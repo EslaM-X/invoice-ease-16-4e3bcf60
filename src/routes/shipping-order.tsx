@@ -114,7 +114,7 @@ function ShippingOrder() {
       if (pIds.length) {
         const { data: prods } = await supabase
           .from("products")
-          .select("id, serial_number, name, color")
+          .select("id, serial_number, name, color, collection")
           .in("id", pIds);
         const m = new Map<string, Prod>();
         for (const p of (prods ?? []) as Prod[]) m.set(p.id, p);
