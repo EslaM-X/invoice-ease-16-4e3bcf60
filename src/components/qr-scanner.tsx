@@ -250,10 +250,23 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     const sc = scannerRef.current;
     if (!sc) return;
     try {
-      await sc.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
-      setTorchOn((v) => !v);
+      const next = !torchOn;
+      await sc.applyVideoConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+      try { localStorage.setItem("qr.torch", next ? "1" : "0"); } catch {}
     } catch (e) { console.warn("[qr] torch toggle failed", e); }
   };
+
+  // Restore torch preference once the camera is ready
+  useEffect(() => {
+    if (starting || error) return;
+    if (!torchSupported) return;
+    try {
+      const saved = localStorage.getItem("qr.torch");
+      if (saved === "1" && !torchOn) toggleTorch();
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [starting, torchSupported, error]);
 
   const submitManual = () => {
     const v = manualId.trim();
