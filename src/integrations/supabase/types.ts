@@ -783,6 +783,7 @@ export type Database = {
         Returns: string
       }
       delete_invoice: { Args: { _invoice_id: string }; Returns: string }
+      get_my_role: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -790,8 +791,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
       is_allowed_company_email: { Args: { _email: string }; Returns: boolean }
       is_company_member: { Args: never; Returns: boolean }
+      is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       pair_scan_session: { Args: { _pair_code: string }; Returns: string }
       update_invoice: {
         Args: {
@@ -808,7 +811,7 @@ export type Database = {
       void_invoice: { Args: { _invoice_id: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "manager" | "cashier" | "call_center"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -936,7 +939,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "manager", "cashier", "call_center"],
     },
   },
 } as const

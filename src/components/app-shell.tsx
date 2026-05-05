@@ -12,6 +12,7 @@ import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { LowStockAlerts } from "@/components/low-stock-alerts";
+import { useRole } from "@/lib/use-role";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
@@ -30,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang, setLang } = useI18n();
   const { theme, toggle } = useTheme();
+  const { isAdmin } = useRole();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -56,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-sidebar-primary/40 to-transparent" />
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-3 [scrollbar-width:thin]">
         <Link to="/invoices/new" onClick={() => setOpen(false)}
           className="mb-3 flex items-center justify-center gap-2 rounded-lg gradient-gold px-3 py-2.5 text-sm font-semibold text-[oklch(0.12_0.005_60)] shadow-glow transition active:scale-[0.98]">
           <Plus className="h-4 w-4" /> {t("new_invoice")}
@@ -82,6 +84,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+        {isAdmin && (
+          <Link
+            to="/admin"
+            onClick={() => setOpen(false)}
+            className={`group relative mt-3 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-600 transition hover:bg-amber-500/10 ${
+              location.pathname.startsWith("/admin") ? "bg-amber-500/15" : ""
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" /> لوحة الأدمن
+          </Link>
+        )}
       </nav>
       <div className="border-t border-sidebar-border p-3">
         <div className="mb-2 truncate px-2 text-xs text-sidebar-foreground/60">{user.email}</div>
