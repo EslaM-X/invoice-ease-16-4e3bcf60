@@ -370,6 +370,94 @@ function ShippingOrder() {
     toast.success("تم تصدير PDF");
   };
 
+  const exportCollectionsXlsx = () => {
+    const aoa: any[][] = [];
+    aoa.push(["ملخص حسب الكولكشن — Per Collection", "", "", ""]);
+    aoa.push([`من ${from} إلى ${to}`, "", "", ""]);
+    aoa.push([]);
+    for (const cg of collectionGroups) {
+      aoa.push([`Collection: ${cg.collection}`, "", "", ""]);
+      aoa.push(["Code", "Product", "Color", "Qty"]);
+      for (const l of cg.lines) {
+        aoa.push([l.code, l.product_name, l.color ?? "", l.qty]);
+      }
+      aoa.push(["", "إجمالي الكولكشن / Collection Total", "", cg.total]);
+      aoa.push([]);
+    }
+    aoa.push(["", "الإجمالي الكلي / Grand Total", "", collectionsGrandTotal]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 22 }, { wch: 38 }, { wch: 16 }, { wch: 10 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Per Collection");
+    XLSX.writeFile(wb, `collections-summary_${from}_to_${to}.xlsx`);
+    toast.success("تم تصدير Excel");
+  };
+
+  const exportCollectionsPdf = () => {
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 36;
+    let y = margin;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text("Per Collection Summary", margin, y);
+    y += 16;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`From ${from}  to  ${to}`, margin, y);
+    y += 16;
+
+    const cCol = { code: margin, name: margin + 130, color: pageW - margin - 200, qty: pageW - margin };
+    const ensureSpace = (need = 24) => {
+      if (y + need > pageH - margin) { pdf.addPage(); y = margin; }
+    };
+    const drawColHeader = () => {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("Code", cCol.code, y);
+      pdf.text("Product", cCol.name, y);
+      pdf.text("Color", cCol.color, y);
+      pdf.text("Qty", cCol.qty, y, { align: "right" });
+      y += 4;
+      pdf.setDrawColor(180);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 12;
+      pdf.setFont("helvetica", "normal");
+    };
+
+    for (const cg of collectionGroups) {
+      ensureSpace(60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setFillColor(230, 240, 255);
+      pdf.rect(margin, y - 12, pageW - margin * 2, 18, "F");
+      pdf.text(`Collection: ${cg.collection}`, margin + 6, y);
+      y += 14;
+      drawColHeader();
+      for (const l of cg.lines) {
+        ensureSpace(20);
+        pdf.text(String(l.code).slice(0, 24), cCol.code, y);
+        pdf.text(String(l.product_name).slice(0, 50), cCol.name, y);
+        pdf.text(String(l.color ?? ""), cCol.color, y);
+        pdf.text(String(l.qty), cCol.qty, y, { align: "right" });
+        y += 16;
+      }
+      ensureSpace(20);
+      pdf.setDrawColor(120);
+      pdf.line(margin, y - 4, pageW - margin, y - 4);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Collection Total: ${cg.total}`, pageW - margin, y + 6, { align: "right" });
+      y += 22;
+    }
+    ensureSpace(30);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
+    pdf.save(`collections-summary_${from}_to_${to}.pdf`);
+    toast.success("تم تصدير PDF");
+  };
+
   const setRange = (days: number) => {
     const end = new Date();
     const start = new Date(); start.setDate(start.getDate() - days + 1);
@@ -500,9 +588,17 @@ function ShippingOrder() {
 
       {collectionGroups.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="flex items-center justify-between border-b bg-primary/10 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-primary/10 p-3">
             <h2 className="font-semibold">ملخص حسب الكولكشن خلال الفترة</h2>
-            <Badge>الإجمالي: {collectionsGrandTotal}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge>الإجمالي: {collectionsGrandTotal}</Badge>
+              <Button size="sm" variant="outline" onClick={exportCollectionsXlsx}>
+                <Download className="h-4 w-4 ml-1" /> Excel
+              </Button>
+              <Button size="sm" variant="secondary" onClick={exportCollectionsPdf}>
+                <FileText className="h-4 w-4 ml-1" /> PDF
+              </Button>
+            </div>
           </div>
           <div className="divide-y">
             {collectionGroups.map((cg) => (
