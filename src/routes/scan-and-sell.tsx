@@ -57,8 +57,16 @@ function ScanAndSellPage() {
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [pending, setPending] = useState<number>(0);
   const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
+  const [history, setHistory] = useState<ScanLogEntry[]>([]);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
+
+  const pushHistory = (entry: Omit<ScanLogEntry, "id" | "at">) => {
+    setHistory((prev) => [
+      { ...entry, id: Math.random().toString(36).slice(2), at: Date.now() },
+      ...prev,
+    ].slice(0, 20));
+  };
 
   // Refresh pending count from localStorage
   const refreshPending = () => {
