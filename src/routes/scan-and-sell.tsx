@@ -7,6 +7,8 @@ import { QrScanner } from "@/components/qr-scanner";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchProductCached } from "@/lib/product-cache";
+import { decodeProductQR } from "@/lib/qr-codec";
 import {
   closeScanSession,
   getSessionById,
