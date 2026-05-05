@@ -210,41 +210,53 @@ function SalesToday() {
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, Aggregated>();
-    for (const l of logs) {
-      if (!l.products) continue;
-      const p = l.products;
-      const cur = map.get(p.id) ?? {
-        product_id: p.id,
-        name: p.name,
-        serial_number: p.serial_number,
-        color: p.color,
-        price: Number(p.price ?? 0),
-        current_stock: p.stock_quantity,
-        low_stock_threshold: p.low_stock_threshold,
-        image_url: p.image_url,
+
+    // 1) Source of truth: invoice_items of non-voided invoices for the day.
+    for (const it of items) {
+      const cur = map.get(it.product_id) ?? {
+        product_id: it.product_id,
+        name: it.product_name,
+        serial_number: it.serial_number,
+        color: it.color,
+        price: it.unit_price,
+        current_stock: 0,
+        low_stock_threshold: 0,
+        image_url: null,
         sold_qty: 0,
         total_value: 0,
         invoices: new Set<string>(),
-        last_at: l.created_at,
+        last_at: it.invoice_created_at,
         movements: [],
       };
-      // Only count movements that represent today's sale activity.
-      // Exclude `delete` (and unknown `other`) — deleting an OLDER invoice today
-      // returns stock but is NOT a today-return-of-sale; counting it would
-      // hide legitimate sales from the suggested purchase order.
-      const { kind } = classifyReason(l.reason);
-      if (kind === "sale" || kind === "void" || kind === "edit-resale" || kind === "edit-revert" || kind === "manual") {
-        cur.sold_qty += -l.change;
-      }
-      if (l.invoices?.invoice_number) cur.invoices.add(l.invoices.invoice_number);
-      if (l.created_at > cur.last_at) cur.last_at = l.created_at;
-      cur.movements.push(l);
-      map.set(p.id, cur);
+      cur.sold_qty += it.quantity;
+      cur.invoices.add(it.invoice_number);
+      if (it.invoice_created_at > cur.last_at) cur.last_at = it.invoice_created_at;
+      // Use latest unit price seen
+      if (it.unit_price) cur.price = it.unit_price;
+      map.set(it.product_id, cur);
     }
+
+    // 2) Enrich with current product info + attach movements log for detail panel.
+    for (const l of logs) {
+      if (!l.products) continue;
+      const p = l.products;
+      const cur = map.get(p.id);
+      if (cur) {
+        cur.current_stock = p.stock_quantity;
+        cur.low_stock_threshold = p.low_stock_threshold;
+        cur.image_url = p.image_url;
+        if (!cur.price) cur.price = Number(p.price ?? 0);
+        cur.movements.push(l);
+        if (l.created_at > cur.last_at) cur.last_at = l.created_at;
+      }
+      // Note: products that ONLY appear in logs (no invoice_items today, e.g.
+      // deleted invoices) are intentionally NOT added — they were not sold today.
+    }
+
     const arr = Array.from(map.values())
-      .filter((r) => r.sold_qty !== 0 || r.movements.length > 0)
+      .filter((r) => r.sold_qty > 0)
       .map((r) => ({ ...r, total_value: r.sold_qty * r.price }))
-      .sort((a, b) => Math.abs(b.sold_qty) - Math.abs(a.sold_qty));
+      .sort((a, b) => b.sold_qty - a.sold_qty);
 
     const t = arr.reduce(
       (acc, r) => {
@@ -256,7 +268,7 @@ function SalesToday() {
       { units: 0, value: 0, lowAfter: 0 }
     );
     return { rows: arr, totals: { ...t, distinct: arr.length } };
-  }, [logs]);
+  }, [logs, items]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pageRows = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
