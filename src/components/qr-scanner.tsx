@@ -291,7 +291,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       if (sc) { try { sc.stop().then(() => sc.clear()).catch(() => {}); } catch {} }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lowRes]);
+  }, [lowRes, cameraId]);
 
   const errorHelp = () => {
     switch (errorKind) {
