@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database, AlertTriangle, Video } from "lucide-react";
 import { getCacheSize, getLastCacheUpdate } from "@/lib/product-cache";
+
+type CamInfo = { id: string; label: string };
 
 type Props = {
   onScan: (text: string) => void;
