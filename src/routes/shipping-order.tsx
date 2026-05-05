@@ -493,6 +493,47 @@ function ShippingOrder() {
           </Card>
         ))
       )}
+
+      {collectionGroups.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between border-b bg-primary/10 p-3">
+            <h2 className="font-semibold">ملخص حسب الكولكشن خلال الفترة</h2>
+            <Badge>الإجمالي: {collectionsGrandTotal}</Badge>
+          </div>
+          <div className="divide-y">
+            {collectionGroups.map((cg) => (
+              <div key={cg.collection}>
+                <div className="flex items-center justify-between bg-muted/40 px-3 py-2">
+                  <span className="font-bold">{cg.collection}</span>
+                  <Badge variant="secondary">{cg.total}</Badge>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/20">
+                      <tr className="text-right">
+                        <th className="p-2 w-40">Code</th>
+                        <th className="p-2">Product</th>
+                        <th className="p-2 w-32">اللون</th>
+                        <th className="p-2 w-20 text-center">العدد</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cg.lines.map((l, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="p-2 font-mono text-xs">{l.code}</td>
+                          <td className="p-2">{l.product_name}</td>
+                          <td className="p-2 text-muted-foreground">{l.color ?? "—"}</td>
+                          <td className="p-2 text-center font-bold text-primary">{l.qty}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
