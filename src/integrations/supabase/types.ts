@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      backups_log: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          rows_count: number | null
+          size_bytes: number | null
+          status: string
+          storage_path: string | null
+          tables_count: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          rows_count?: number | null
+          size_bytes?: number | null
+          status?: string
+          storage_path?: string | null
+          tables_count?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          rows_count?: number | null
+          size_bytes?: number | null
+          status?: string
+          storage_path?: string | null
+          tables_count?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           agent_email: string | null
@@ -457,6 +493,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          meta: Json | null
+          read_at: string | null
+          recipient_role: Database["public"]["Enums"]["app_role"] | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          meta?: Json | null
+          read_at?: string | null
+          recipient_role?: Database["public"]["Enums"]["app_role"] | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          meta?: Json | null
+          read_at?: string | null
+          recipient_role?: Database["public"]["Enums"]["app_role"] | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       products: {
         Row: {
