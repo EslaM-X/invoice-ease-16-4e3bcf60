@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
 import { Route as SalesTodayRouteImport } from './routes/sales-today'
@@ -33,6 +34,11 @@ import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
+const ShippingOrderRoute = ShippingOrderRouteImport.update({
+  id: '/shipping-order',
+  path: '/shipping-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/sales-today': typeof SalesTodayRoute
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
+  '/shipping-order': typeof ShippingOrderRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices/': typeof InvoicesIndexRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/sales-today': typeof SalesTodayRoute
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
+  '/shipping-order': typeof ShippingOrderRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices': typeof InvoicesIndexRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/sales-today': typeof SalesTodayRoute
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
+  '/shipping-order': typeof ShippingOrderRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/invoices/': typeof InvoicesIndexRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/sales-today'
     | '/scan-and-sell'
     | '/settings'
+    | '/shipping-order'
     | '/invoices/$id'
     | '/invoices/new'
     | '/invoices/'
@@ -272,6 +282,7 @@ export interface FileRouteTypes {
     | '/sales-today'
     | '/scan-and-sell'
     | '/settings'
+    | '/shipping-order'
     | '/invoices/$id'
     | '/invoices/new'
     | '/invoices'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/sales-today'
     | '/scan-and-sell'
     | '/settings'
+    | '/shipping-order'
     | '/invoices/$id'
     | '/invoices/new'
     | '/invoices/'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   SalesTodayRoute: typeof SalesTodayRoute
   ScanAndSellRoute: typeof ScanAndSellRoute
   SettingsRoute: typeof SettingsRoute
+  ShippingOrderRoute: typeof ShippingOrderRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
   InvoicesNewRoute: typeof InvoicesNewRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
@@ -332,6 +345,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shipping-order': {
+      id: '/shipping-order'
+      path: '/shipping-order'
+      fullPath: '/shipping-order'
+      preLoaderRoute: typeof ShippingOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -515,6 +535,7 @@ const rootRouteChildren: RootRouteChildren = {
   SalesTodayRoute: SalesTodayRoute,
   ScanAndSellRoute: ScanAndSellRoute,
   SettingsRoute: SettingsRoute,
+  ShippingOrderRoute: ShippingOrderRoute,
   InvoicesIdRoute: InvoicesIdRoute,
   InvoicesNewRoute: InvoicesNewRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
@@ -524,3 +545,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
