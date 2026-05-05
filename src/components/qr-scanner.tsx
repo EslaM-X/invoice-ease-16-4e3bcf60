@@ -551,11 +551,13 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
           </div>
         )}
 
-        {!starting && !error && torchSupported && (
+        {!starting && !error && (
           <button
             onClick={toggleTorch}
+            disabled={!torchSupported}
             className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-black/80"
             aria-label="فلاش"
+            title={torchSupported ? (torchOn ? "إيقاف الفلاش" : "تشغيل الفلاش") : "الفلاش غير مدعوم على هذا الجهاز"}
           >
             {torchOn ? <Zap className="h-5 w-5 text-primary" /> : <ZapOff className="h-5 w-5" />}
           </button>
@@ -576,15 +578,14 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
-        {torchSupported && (
-          <button
-            onClick={toggleTorch}
-            className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent"
-          >
-            {torchOn ? <Zap className="h-3.5 w-3.5 text-primary" /> : <ZapOff className="h-3.5 w-3.5" />}
-            {torchOn ? "إيقاف الفلاش" : "تفعيل الفلاش"}
-          </button>
-        )}
+        <button
+          onClick={toggleTorch}
+          disabled={!torchSupported}
+          className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {torchOn ? <Zap className="h-3.5 w-3.5 text-primary" /> : <ZapOff className="h-3.5 w-3.5" />}
+          {torchSupported ? (torchOn ? "إيقاف الفلاش" : "تشغيل الفلاش") : "الفلاش غير مدعوم"}
+        </button>
         {!error && (
           <button
             onClick={() => setShowManual((v) => !v)}
