@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database } from "lucide-react";
+import { getCacheSize, getLastCacheUpdate } from "@/lib/product-cache";
 
 type Props = {
   onScan: (text: string) => void;
@@ -9,6 +10,15 @@ type Props = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function formatAgo(at: number): string {
+  const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (s < 60) return `قبل ${s}ث`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `قبل ${m}د`;
+  const h = Math.round(m / 60);
+  return `قبل ${h}س`;
+}
 
 /**
  * QR Scanner v3.2 — diagnostics, manual fallback, adaptive backoff.
@@ -37,6 +47,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [showManual, setShowManual] = useState(false);
   const [manualId, setManualId] = useState("");
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
 
   const getFps = useCallback(() => {
     if (typeof navigator === "undefined") return 10;
@@ -224,6 +235,13 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   }, []);
 
   useEffect(() => {
+    const refresh = () => setCacheInfo({ size: getCacheSize(), at: getLastCacheUpdate() });
+    refresh();
+    const iv = setInterval(refresh, 2000);
+    return () => clearInterval(iv);
+  }, [lastFetchMs]);
+
+  useEffect(() => {
     mountedRef.current = true;
     start();
     return () => {
@@ -285,6 +303,13 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
               <Wifi className="h-3 w-3 text-primary" />
               <span>جلب: {lastFetchMs != null ? `${lastFetchMs}ms` : "—"}</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur" title="عدد المنتجات المخزّنة محليًا وآخر تحديث">
+              <Database className="h-3 w-3 text-primary" />
+              <span>
+                كاش: {cacheInfo.size}
+                {cacheInfo.at ? ` · ${formatAgo(cacheInfo.at)}` : " · —"}
+              </span>
             </div>
           </div>
         )}

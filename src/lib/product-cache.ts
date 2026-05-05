@@ -46,15 +46,34 @@ function touch(id: string, p: Product) {
   persist();
 }
 
-export function getCachedProduct(id: string): Product | null {
+export function getCachedProduct(id: string, opts: { allowStale?: boolean } = {}): Product | null {
   load();
   const e = mem.get(id);
   if (!e) return null;
-  if (Date.now() - e.at > TTL_MS) {
+  if (!opts.allowStale && Date.now() - e.at > TTL_MS) {
     mem.delete(id);
     return null;
   }
   return e.p;
+}
+
+export function getCachedProductMeta(id: string): { at: number } | null {
+  load();
+  const e = mem.get(id);
+  return e ? { at: e.at } : null;
+}
+
+/** Most recent write time across the whole cache. */
+export function getLastCacheUpdate(): number | null {
+  load();
+  let max = 0;
+  for (const v of mem.values()) if (v.at > max) max = v.at;
+  return max || null;
+}
+
+export function getCacheSize(): number {
+  load();
+  return mem.size;
 }
 
 export function setCachedProduct(p: Product) {
@@ -67,29 +86,38 @@ export function setCachedProduct(p: Product) {
 export async function fetchProductCached(
   id: string,
   opts: { forceRefresh?: boolean } = {}
-): Promise<{ product: Product | null; fromCache: boolean; error?: any }> {
+): Promise<{ product: Product | null; fromCache: boolean; stale?: boolean; error?: any }> {
   load();
+  const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+
   if (!opts.forceRefresh) {
     const c = getCachedProduct(id);
     if (c) {
-      // Stale-while-revalidate in background
-      void supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) touch(id, data);
-        });
+      if (!isOffline) {
+        void supabase.from("products").select("*").eq("id", id).maybeSingle()
+          .then(({ data }) => { if (data) touch(id, data); });
+      }
       return { product: c, fromCache: true };
     }
   }
+
+  // Offline: return stale cache if any rather than failing
+  if (isOffline) {
+    const stale = getCachedProduct(id, { allowStale: true });
+    if (stale) return { product: stale, fromCache: true, stale: true };
+    return { product: null, fromCache: false, error: new Error("OFFLINE") };
+  }
+
   const { data, error } = await supabase
     .from("products")
     .select("*")
     .eq("id", id)
     .maybeSingle();
   if (data) touch(id, data);
+  if (!data && error) {
+    const stale = getCachedProduct(id, { allowStale: true });
+    if (stale) return { product: stale, fromCache: true, stale: true, error };
+  }
   return { product: data ?? null, fromCache: false, error };
 }
 
