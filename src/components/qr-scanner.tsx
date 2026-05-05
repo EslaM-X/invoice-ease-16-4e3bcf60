@@ -115,13 +115,15 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       const sc = new Html5Qrcode(id, { verbose: false });
       scannerRef.current = sc;
 
-      const videoConstraints: MediaTrackConstraints = lowRes
-        ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } }
-        : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } };
+      const videoConstraints: MediaTrackConstraints | string = cameraId
+        ? cameraId
+        : (lowRes
+          ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
+          : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
 
       lastDecodeAtRef.current = performance.now();
       await sc.start(
-        videoConstraints,
+        videoConstraints as any,
         {
           fps: getFps(),
           qrbox: (vw: number, vh: number) => {
