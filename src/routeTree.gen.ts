@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
 import { Route as SalesTodayRouteImport } from './routes/sales-today'
+import { Route as SalesAuditRouteImport } from './routes/sales-audit'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -44,6 +45,11 @@ const ScanAndSellRoute = ScanAndSellRouteImport.update({
 const SalesTodayRoute = SalesTodayRouteImport.update({
   id: '/sales-today',
   path: '/sales-today',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesAuditRoute = SalesAuditRouteImport.update({
+  id: '/sales-audit',
+  path: '/sales-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-audit': typeof SalesAuditRoute
   '/sales-today': typeof SalesTodayRoute
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-audit': typeof SalesAuditRoute
   '/sales-today': typeof SalesTodayRoute
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-audit': typeof SalesAuditRoute
   '/sales-today': typeof SalesTodayRoute
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/reset-password'
+    | '/sales-audit'
     | '/sales-today'
     | '/scan-and-sell'
     | '/settings'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/reset-password'
+    | '/sales-audit'
     | '/sales-today'
     | '/scan-and-sell'
     | '/settings'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/reset-password'
+    | '/sales-audit'
     | '/sales-today'
     | '/scan-and-sell'
     | '/settings'
@@ -294,6 +306,7 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SalesAuditRoute: typeof SalesAuditRoute
   SalesTodayRoute: typeof SalesTodayRoute
   ScanAndSellRoute: typeof ScanAndSellRoute
   SettingsRoute: typeof SettingsRoute
@@ -325,6 +338,13 @@ declare module '@tanstack/react-router' {
       path: '/sales-today'
       fullPath: '/sales-today'
       preLoaderRoute: typeof SalesTodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-audit': {
+      id: '/sales-audit'
+      path: '/sales-audit'
+      fullPath: '/sales-audit'
+      preLoaderRoute: typeof SalesAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -470,6 +490,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SalesAuditRoute: SalesAuditRoute,
   SalesTodayRoute: SalesTodayRoute,
   ScanAndSellRoute: ScanAndSellRoute,
   SettingsRoute: SettingsRoute,
@@ -482,3 +503,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
