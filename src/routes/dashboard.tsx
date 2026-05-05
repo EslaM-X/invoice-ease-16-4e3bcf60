@@ -109,9 +109,9 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, Icon, accent }) => (
-          <div key={label} className="group rounded-2xl border border-border/60 bg-card p-5 transition hover:shadow-md">
+          <div key={label} className="card-premium group rounded-2xl border border-border/60 bg-card p-5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
               <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-accent ${accent}`}>
@@ -124,7 +124,7 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
           <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("recent_invoices")}</h3>
           {recent.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
