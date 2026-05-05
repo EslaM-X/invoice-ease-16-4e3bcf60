@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import type { Customer, Product } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
-import { QrScanner, requestCameraPermission } from "@/components/qr-scanner";
+import { QrScanner } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
 import { DesktopPairWidget } from "@/components/desktop-pair-widget";
 import type { ScanEvent } from "@/lib/scan-link";
@@ -101,9 +101,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const beepCtx = useRef<AudioContext | null>(null);
 
   const openScanner = async () => {
-    try {
-      await requestCameraPermission("environment");
-    } catch {}
     setScanning(true);
   };
 
