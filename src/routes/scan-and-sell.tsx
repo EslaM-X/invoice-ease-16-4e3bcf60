@@ -40,6 +40,7 @@ function ScanAndSellPage() {
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [pending, setPending] = useState<number>(0);
+  const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
   const beepCtx = useRef<AudioContext | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
 
