@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { ShieldCheck, UserPlus, Trash2, Loader2, Database } from "lucide-react";
 import { BackupButton } from "@/components/backup-button";
+import { useRealtimeTable } from "@/lib/realtime";
 
 type Member = {
   user_id: string;
@@ -72,6 +73,11 @@ function AdminPage() {
   useEffect(() => {
     if (isAdmin) load();
   }, [isAdmin]);
+
+  // Realtime — refresh on any team member / role change
+  useRealtimeTable("user_roles", () => { if (isAdmin) load(); });
+  useRealtimeTable("profiles", () => { if (isAdmin) load(); });
+  useRealtimeTable("backups_log", () => { if (isAdmin) load(); });
 
   const addRole = async (userId: string, role: AppRole) => {
     const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
