@@ -28,6 +28,7 @@ function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
