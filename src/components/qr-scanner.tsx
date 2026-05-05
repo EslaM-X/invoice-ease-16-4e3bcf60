@@ -38,6 +38,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [showManual, setShowManual] = useState(false);
   const [manualId, setManualId] = useState("");
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
 
   const getFps = useCallback(() => {
     if (typeof navigator === "undefined") return 10;
@@ -223,6 +224,13 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     }, 1000);
     return () => clearInterval(iv);
   }, []);
+
+  useEffect(() => {
+    const refresh = () => setCacheInfo({ size: getCacheSize(), at: getLastCacheUpdate() });
+    refresh();
+    const iv = setInterval(refresh, 2000);
+    return () => clearInterval(iv);
+  }, [lastFetchMs]);
 
   useEffect(() => {
     mountedRef.current = true;
