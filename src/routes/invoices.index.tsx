@@ -34,6 +34,7 @@ function InvoicesList() {
     if (to) query = query.lte("created_at", to + "T23:59:59");
     const { data } = await query;
     setList(data ?? []);
+    setLoading(false);
   };
   useEffect(() => { load(); }, [user, from, to]);
   useRealtimeTable("invoices", () => { load(); });
