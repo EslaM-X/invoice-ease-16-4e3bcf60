@@ -146,7 +146,7 @@ function InvoicesList() {
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} placeholder={t("to")} />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
         ) : (
