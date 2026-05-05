@@ -196,65 +196,12 @@ function ScanAndSellPage() {
     setScanning(false);
   };
 
-  const handleScan = async (text: string) => {
-    if (!user || !session) return;
-    const raw = (text ?? "").trim();
-
-    const decoded = decodeProductQR(raw);
-    if (!decoded.ok) {
-      if (decoded.reason === "scanlink") return; // ignore pair QR
-      // Debounce duplicate invalid scans
-      const now = Date.now();
-      const last = recentScans.current.get(raw) ?? 0;
-      if (now - last < 1500) return;
-      recentScans.current.set(raw, now);
-      const msg = decoded.reason === "checksum"
-        ? (lang === "ar" ? "رمز QR تالف (فحص فشل)" : "Corrupted QR (checksum failed)")
-        : (lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
-      toast.error(msg);
-      return;
-    }
-
-    const productId = decoded.productId;
-    // Debounce duplicate valid scans
-    const now = Date.now();
-    const last = recentScans.current.get(productId) ?? 0;
-    if (now - last < 1500) return;
-    recentScans.current.set(productId, now);
-
-    const fetchAndPush = async () => {
-      const t0 = performance.now();
-      const { product, error } = await fetchProductCached(productId);
-      setLastFetchMs(Math.round(performance.now() - t0));
-      return { product, error };
-    };
-
-    const t0 = performance.now();
-    const { product: p, error } = await fetchProductCached(productId);
-    setLastFetchMs(Math.round(performance.now() - t0));
-    if (error || !p) {
-      toast.error(
-        lang === "ar" ? "لم يتم العثور على المنتج" : "Product not found",
-        {
-          description: lang === "ar"
-            ? `المعرّف: ${productId.slice(0, 8)}…`
-            : `ID: ${productId.slice(0, 8)}…`,
-          action: {
-            label: lang === "ar" ? "إعادة المحاولة" : "Retry",
-            onClick: async () => {
-              const r = await fetchAndPush();
-              if (r.product) {
-                toast.success(`✓ ${r.product.name}`);
-              } else {
-                toast.error(lang === "ar" ? "فشل مجددًا" : "Failed again");
-              }
-            },
-          },
-          duration: 6000,
-        }
-      );
-      return;
-    }
+  /** Push an already-resolved product to the paired session (used by scan + history re-add). */
+  const pushProductToSession = async (p: {
+    id: string; name: string; price?: number | null;
+    serial_number?: string | null; color?: string | null;
+  }) => {
+    if (!user || !session) return false;
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     const queueIt = () => {
       enqueueScan({
@@ -272,32 +219,118 @@ function ScanAndSellPage() {
       setLastAdded(p.name);
       toast.warning(`✓ ${p.name} — ${t("offline_queued")}`);
     };
-
-    if (isOffline) {
+    if (isOffline) { queueIt(); return true; }
+    try {
+      await pushScanEvent({
+        sessionId: session.id,
+        userId: user.id,
+        product: {
+          id: p.id, name: p.name, price: Number(p.price ?? 0),
+          serial_number: p.serial_number, color: p.color,
+        },
+      });
+      beep();
+      setLastAdded(p.name);
+      toast.success(`✓ ${p.name}`);
+      if (queueLength(user.id) > 0) tryFlush(true);
+      return true;
+    } catch {
       queueIt();
-    } else {
-      try {
-        await pushScanEvent({
-          sessionId: session.id,
-          userId: user.id,
-          product: {
-            id: p.id,
-            name: p.name,
-            price: Number(p.price ?? 0),
-            serial_number: p.serial_number,
-            color: p.color,
-          },
-        });
-        beep();
-        setLastAdded(p.name);
-        toast.success(`✓ ${p.name}`);
-        // Opportunistic: if anything was queued before, flush now
-        if (queueLength(user.id) > 0) tryFlush(true);
-      } catch (e: any) {
-        // Treat any push failure as a transient network problem and queue.
-        queueIt();
-      }
+      return true;
     }
+  };
+
+  const reAddFromHistory = async (entry: ScanLogEntry) => {
+    if (!entry.productId) return;
+    const { product } = await fetchProductCached(entry.productId);
+    if (!product) {
+      toast.error(lang === "ar" ? "تعذّر إعادة إضافة المنتج" : "Could not re-add product");
+      return;
+    }
+    await pushProductToSession(product as any);
+    pushHistory({
+      raw: entry.raw,
+      productId: product.id,
+      productName: product.name,
+      status: typeof navigator !== "undefined" && !navigator.onLine ? "queued" : "ok",
+      message: lang === "ar" ? "أُعيدت الإضافة" : "Re-added",
+    });
+  };
+
+  const handleScan = async (text: string) => {
+    if (!user || !session) return;
+    const raw = (text ?? "").trim();
+
+    const decoded = decodeProductQR(raw);
+    if (!decoded.ok) {
+      if (decoded.reason === "scanlink") return; // ignore pair QR
+      const now = Date.now();
+      const last = recentScans.current.get(raw) ?? 0;
+      if (now - last < 1500) return;
+      recentScans.current.set(raw, now);
+      const isChecksum = decoded.reason === "checksum";
+      const msg = isChecksum
+        ? (lang === "ar" ? "رمز QR تالف (فحص فشل)" : "Corrupted QR (checksum failed)")
+        : (lang === "ar" ? "رمز QR غير صالح أو غير متوافق" : "Invalid or unsupported QR");
+      toast.error(msg, {
+        description: raw.length > 0
+          ? (lang === "ar" ? `المحتوى: ${raw.slice(0, 32)}${raw.length > 32 ? "…" : ""}` : `Payload: ${raw.slice(0, 32)}${raw.length > 32 ? "…" : ""}`)
+          : undefined,
+      });
+      pushHistory({
+        raw, productId: null, productName: null,
+        status: isChecksum ? "checksum" : "invalid", message: msg,
+      });
+      return;
+    }
+
+    // Defense in depth: validate decoded productId shape with zod before any DB call.
+    const parsed = ProductIdSchema.safeParse(decoded.productId);
+    if (!parsed.success) {
+      const msg = lang === "ar" ? "معرّف المنتج غير صالح" : "Invalid product ID format";
+      toast.error(msg);
+      pushHistory({ raw, productId: decoded.productId, productName: null, status: "invalid", message: msg });
+      return;
+    }
+    const productId = parsed.data.toLowerCase();
+
+    // Debounce duplicate valid scans
+    const now = Date.now();
+    const last = recentScans.current.get(productId) ?? 0;
+    if (now - last < 1500) return;
+    recentScans.current.set(productId, now);
+
+    const t0 = performance.now();
+    const { product: p, error } = await fetchProductCached(productId);
+    setLastFetchMs(Math.round(performance.now() - t0));
+    if (error || !p) {
+      const msg = lang === "ar" ? "لم يتم العثور على المنتج" : "Product not found";
+      toast.error(msg, {
+        description: lang === "ar" ? `المعرّف: ${productId.slice(0, 8)}…` : `ID: ${productId.slice(0, 8)}…`,
+        action: {
+          label: lang === "ar" ? "إعادة المحاولة" : "Retry",
+          onClick: async () => {
+            const r = await fetchProductCached(productId);
+            if (r.product) {
+              await pushProductToSession(r.product as any);
+              pushHistory({ raw, productId, productName: r.product.name, status: "ok", message: lang === "ar" ? "نجح بعد الإعادة" : "Succeeded on retry" });
+            } else {
+              toast.error(lang === "ar" ? "فشل مجددًا" : "Failed again");
+            }
+          },
+        },
+        duration: 6000,
+      });
+      pushHistory({ raw, productId, productName: null, status: "not_found", message: msg });
+      return;
+    }
+
+    const ok = await pushProductToSession(p as any);
+    pushHistory({
+      raw, productId, productName: p.name,
+      status: typeof navigator !== "undefined" && !navigator.onLine ? "queued" : "ok",
+      message: ok ? `✓ ${p.name}` : (lang === "ar" ? "فشل" : "Failed"),
+    });
     if (!continuous) setScanning(false);
   };
 
