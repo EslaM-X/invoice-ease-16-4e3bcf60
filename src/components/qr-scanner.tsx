@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera, Database } from "lucide-react";
+import { getCacheSize, getLastCacheUpdate } from "@/lib/product-cache";
 
 type Props = {
   onScan: (text: string) => void;
