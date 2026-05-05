@@ -1,25 +1,31 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge } from "lucide-react";
+import { ScanLine, X, Loader2, RefreshCw, Zap, ZapOff, Wifi, WifiOff, Gauge, Keyboard, Timer, Camera } from "lucide-react";
 
-type Props = { onScan: (text: string) => void; onClose: () => void };
+type Props = {
+  onScan: (text: string) => void;
+  onClose: () => void;
+  /** Last network/fetch duration reported by parent (ms). Displayed in HUD. */
+  lastFetchMs?: number | null;
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * QR Scanner v3.1 — optimized for weak networks & unstable conditions.
- * - Lazy-loads html5-qrcode with retry + adaptive fps
- * - Low-res mode toggle (320x240) for weak devices
- * - Live status overlay: network, fps, retry countdown
- * - Torch toggle, auto-pause on hidden tab, auto-retry on failure
+ * QR Scanner v3.2 — diagnostics, manual fallback, adaptive backoff.
  */
-export function QrScanner({ onScan, onClose }: Props) {
+export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
   const lastScan = useRef<{ text: string; at: number }>({ text: "", at: 0 });
+  const lastDecodeAtRef = useRef<number>(0);
   const attemptRef = useRef(0);
   const mountedRef = useRef(true);
   const fpsTickRef = useRef<{ count: number; ts: number }>({ count: 0, ts: Date.now() });
+  const fpsRef = useRef(0);
 
   const [starting, setStarting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<"permission" | "notfound" | "inuse" | "generic">("generic");
   const [flash, setFlash] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -27,11 +33,11 @@ export function QrScanner({ onScan, onClose }: Props) {
   const [retryIn, setRetryIn] = useState(0);
   const [lowRes, setLowRes] = useState(false);
   const [fps, setFps] = useState(0);
-  const [online, setOnline] = useState<boolean>(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  const [lastDecodeMs, setLastDecodeMs] = useState<number | null>(null);
+  const [showManual, setShowManual] = useState(false);
+  const [manualId, setManualId] = useState("");
+  const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
 
-  // Adaptive fps based on device perf (capped lower in low-res mode for stability)
   const getFps = useCallback(() => {
     if (typeof navigator === "undefined") return 10;
     const mem = (navigator as any).deviceMemory ?? 4;
@@ -40,7 +46,6 @@ export function QrScanner({ onScan, onClose }: Props) {
     return lowRes ? Math.min(target, 8) : target;
   }, [lowRes]);
 
-  // Library load with retry
   const loadLib = async (retries = 3): Promise<any> => {
     for (let i = 0; i < retries; i++) {
       try { return await import("html5-qrcode"); }
@@ -51,11 +56,29 @@ export function QrScanner({ onScan, onClose }: Props) {
     }
   };
 
+  /** Adaptive backoff: factors network + recent fps + attempt count. */
+  const computeBackoff = (attempt: number) => {
+    let base = 800 * attempt; // 800, 1600, 2400…
+    if (!online) base *= 2;          // network down → wait longer
+    if (fpsRef.current && fpsRef.current < 5) base += 600; // perf issues
+    return Math.min(base, 6000);
+  };
+
+  const classifyError = (e: any): typeof errorKind => {
+    const name = e?.name || "";
+    const msg = (e?.message || "").toLowerCase();
+    if (name === "NotAllowedError" || msg.includes("permission")) return "permission";
+    if (name === "NotFoundError" || msg.includes("not found")) return "notfound";
+    if (name === "NotReadableError" || msg.includes("in use") || msg.includes("could not start")) return "inuse";
+    return "generic";
+  };
+
   const start = useCallback(async () => {
     setError(null);
     setStarting(true);
     setRetryIn(0);
     attemptRef.current += 1;
+    const startedAt = performance.now();
     try {
       const { Html5Qrcode } = await loadLib();
       if (!ref.current || !mountedRef.current) return;
@@ -75,6 +98,7 @@ export function QrScanner({ onScan, onClose }: Props) {
         ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } }
         : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } };
 
+      lastDecodeAtRef.current = performance.now();
       await sc.start(
         videoConstraints,
         {
@@ -90,8 +114,12 @@ export function QrScanner({ onScan, onClose }: Props) {
           experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         } as any,
         (text: string) => {
-          // Track frame-tick whenever the scan callback hits successful decode
           fpsTickRef.current.count += 1;
+          const nowPerf = performance.now();
+          const decodeMs = Math.round(nowPerf - lastDecodeAtRef.current);
+          lastDecodeAtRef.current = nowPerf;
+          setLastDecodeMs(decodeMs);
+
           const now = Date.now();
           if (lastScan.current.text === text && now - lastScan.current.at < 1500) return;
           lastScan.current = { text, at: now };
@@ -102,10 +130,7 @@ export function QrScanner({ onScan, onClose }: Props) {
           }
           onScan(text);
         },
-        () => {
-          // every scan attempt (success or not) — used as fps proxy
-          fpsTickRef.current.count += 1;
-        }
+        () => { fpsTickRef.current.count += 1; }
       );
 
       try {
@@ -114,6 +139,8 @@ export function QrScanner({ onScan, onClose }: Props) {
       } catch {}
 
       if (mountedRef.current) {
+        const bootMs = Math.round(performance.now() - startedAt);
+        console.info("[qr] camera ready in", bootMs, "ms");
         setStarting(false);
         setRetrying(false);
         attemptRef.current = 0;
@@ -121,27 +148,29 @@ export function QrScanner({ onScan, onClose }: Props) {
     } catch (e: any) {
       console.error("[qr] start failed", e);
       if (!mountedRef.current) return;
-      if (attemptRef.current < 3) {
-        setRetrying(true);
-        const delay = 1000 * attemptRef.current;
-        // countdown for UI
-        let remaining = Math.ceil(delay / 1000);
-        setRetryIn(remaining);
-        const tick = setInterval(() => {
-          remaining -= 1;
-          if (!mountedRef.current || remaining <= 0) { clearInterval(tick); setRetryIn(0); }
-          else setRetryIn(remaining);
-        }, 1000);
-        setTimeout(() => mountedRef.current && start(), delay);
-      } else {
+      const kind = classifyError(e);
+      setErrorKind(kind);
+      // Permission denied → don't auto-retry, ask the user
+      if (kind === "permission" || attemptRef.current >= 3) {
         setError(e?.message ?? "تعذّر تشغيل الكاميرا");
         setStarting(false);
         setRetrying(false);
+        return;
       }
+      setRetrying(true);
+      const delay = computeBackoff(attemptRef.current);
+      let remaining = Math.ceil(delay / 1000);
+      setRetryIn(remaining);
+      const tick = setInterval(() => {
+        remaining -= 1;
+        if (!mountedRef.current || remaining <= 0) { clearInterval(tick); setRetryIn(0); }
+        else setRetryIn(remaining);
+      }, 1000);
+      setTimeout(() => mountedRef.current && start(), delay);
     }
-  }, [onScan, lowRes, getFps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onScan, lowRes, getFps, online]);
 
-  // Torch
   const toggleTorch = async () => {
     const sc = scannerRef.current;
     if (!sc) return;
@@ -149,6 +178,17 @@ export function QrScanner({ onScan, onClose }: Props) {
       await sc.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
       setTorchOn((v) => !v);
     } catch (e) { console.warn("[qr] torch toggle failed", e); }
+  };
+
+  const submitManual = () => {
+    const v = manualId.trim();
+    if (!v) return;
+    // Accept either bare UUID or full encoded QR string
+    if (UUID_RE.test(v) || v.startsWith("S1:") || v.startsWith("{")) {
+      onScan(v);
+      setManualId("");
+      setShowManual(false);
+    }
   };
 
   // Visibility pause/resume
@@ -162,7 +202,6 @@ export function QrScanner({ onScan, onClose }: Props) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Network listeners
   useEffect(() => {
     const up = () => setOnline(true);
     const down = () => setOnline(false);
@@ -171,19 +210,19 @@ export function QrScanner({ onScan, onClose }: Props) {
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
   }, []);
 
-  // FPS sampler (1s window)
   useEffect(() => {
     const iv = setInterval(() => {
-      const ref = fpsTickRef.current;
+      const r = fpsTickRef.current;
       const now = Date.now();
-      const dt = (now - ref.ts) / 1000;
-      if (dt > 0) setFps(Math.round(ref.count / dt));
+      const dt = (now - r.ts) / 1000;
+      const v = dt > 0 ? Math.round(r.count / dt) : 0;
+      setFps(v);
+      fpsRef.current = v;
       fpsTickRef.current = { count: 0, ts: now };
     }, 1000);
     return () => clearInterval(iv);
   }, []);
 
-  // Restart when lowRes toggles
   useEffect(() => {
     mountedRef.current = true;
     start();
@@ -195,12 +234,20 @@ export function QrScanner({ onScan, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lowRes]);
 
+  const errorHelp = () => {
+    switch (errorKind) {
+      case "permission": return "اذهب إلى إعدادات المتصفح واسمح بالوصول إلى الكاميرا، ثم أعد المحاولة.";
+      case "notfound":  return "لم يتم العثور على كاميرا. تأكد من توصيل كاميرا أو استخدام جهاز آخر.";
+      case "inuse":     return "الكاميرا مستخدمة من تطبيق آخر. أغلق التطبيقات الأخرى وحاول مجددًا.";
+      default:          return "تأكد من إعطاء صلاحية الكاميرا، أو استخدم الإدخال اليدوي بالأسفل.";
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="relative overflow-hidden rounded-xl border border-border bg-black" style={{ minHeight: 320 }}>
         <div ref={ref} className="h-full w-full" />
 
-        {/* Aiming overlay */}
         {!starting && !error && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="relative h-56 w-56">
@@ -215,7 +262,7 @@ export function QrScanner({ onScan, onClose }: Props) {
         )}
 
         {/* Top status bar */}
-        <div className="pointer-events-none absolute left-2 right-2 top-2 flex items-center justify-between gap-2 text-[11px] text-white">
+        <div className="pointer-events-none absolute left-2 right-2 top-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white">
           <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
             {online
               ? <><Wifi className="h-3 w-3 text-emerald-400" /> <span>متصل</span></>
@@ -228,6 +275,20 @@ export function QrScanner({ onScan, onClose }: Props) {
           </div>
         </div>
 
+        {/* Bottom-left timing HUD */}
+        {!starting && !error && (
+          <div className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 text-[11px] text-white">
+            <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
+              <Timer className="h-3 w-3 text-primary" />
+              <span>فك: {lastDecodeMs != null ? `${lastDecodeMs}ms` : "—"}</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
+              <Wifi className="h-3 w-3 text-primary" />
+              <span>جلب: {lastFetchMs != null ? `${lastFetchMs}ms` : "—"}</span>
+            </div>
+          </div>
+        )}
+
         {flash && <div className="pointer-events-none absolute inset-0 bg-emerald-400/30" />}
 
         {starting && (
@@ -238,51 +299,105 @@ export function QrScanner({ onScan, onClose }: Props) {
                 ? `إعادة المحاولة (${attemptRef.current}/3)${retryIn ? ` خلال ${retryIn}ث` : "..."}`
                 : "جاري تشغيل الكاميرا..."}
             </span>
+            {retrying && (
+              <span className="text-[11px] opacity-70">
+                {!online ? "الشبكة غير متاحة — تأخير أطول" : fpsRef.current && fpsRef.current < 5 ? "أداء منخفض — تأخير معدّل" : "إعادة محاولة تكيّفية"}
+              </span>
+            )}
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-4 text-center text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-y-auto bg-black/85 px-4 py-6 text-center text-white">
             <ScanLine className="h-8 w-8 text-destructive" />
-            <span className="text-sm">{error}</span>
-            <span className="text-xs opacity-70">تأكد من إعطاء صلاحية الكاميرا</span>
-            <button
-              onClick={start}
-              className="mt-2 flex items-center gap-2 rounded-md border border-white/30 px-3 py-1.5 text-xs hover:bg-white/10"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> إعادة المحاولة
-            </button>
-          </div>
-        )}
-
-        {/* Bottom-right action buttons */}
-        {!starting && !error && (
-          <div className="absolute bottom-3 right-3 flex flex-col gap-2">
-            {torchSupported && (
+            <span className="text-sm font-medium">{error}</span>
+            <span className="max-w-xs text-xs opacity-80">{errorHelp()}</span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <button
-                onClick={toggleTorch}
-                className="rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-black/80"
-                aria-label="فلاش"
+                onClick={() => { attemptRef.current = 0; start(); }}
+                className="flex items-center gap-2 rounded-md border border-white/30 px-3 py-1.5 text-xs hover:bg-white/10"
               >
-                {torchOn ? <Zap className="h-5 w-5 text-primary" /> : <ZapOff className="h-5 w-5" />}
+                <RefreshCw className="h-3.5 w-3.5" /> إعادة المحاولة
               </button>
+              <button
+                onClick={() => setShowManual((v) => !v)}
+                className="flex items-center gap-2 rounded-md border border-white/30 px-3 py-1.5 text-xs hover:bg-white/10"
+              >
+                <Keyboard className="h-3.5 w-3.5" /> إدخال يدوي
+              </button>
+            </div>
+            {showManual && (
+              <div className="mt-2 w-full max-w-xs space-y-2">
+                <input
+                  value={manualId}
+                  onChange={(e) => setManualId(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitManual()}
+                  placeholder="أدخل معرّف المنتج (UUID) أو رمز QR"
+                  className="w-full rounded-md border border-white/30 bg-black/50 px-3 py-2 text-xs text-white placeholder:text-white/50"
+                  dir="ltr"
+                />
+                <button
+                  onClick={submitManual}
+                  className="w-full rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90"
+                >
+                  بحث وإضافة
+                </button>
+              </div>
             )}
           </div>
         )}
+
+        {!starting && !error && torchSupported && (
+          <button
+            onClick={toggleTorch}
+            className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-black/80"
+            aria-label="فلاش"
+          >
+            {torchOn ? <Zap className="h-5 w-5 text-primary" /> : <ZapOff className="h-5 w-5" />}
+          </button>
+        )}
       </div>
 
-      {/* Settings row */}
-      <div className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-xs">
-        <label className="flex cursor-pointer items-center gap-2">
+      {/* Settings + manual entry shortcut */}
+      <div className="grid gap-2 rounded-md border bg-card p-3 text-xs">
+        <label className="flex cursor-pointer items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <Camera className="h-3.5 w-3.5 text-primary" />
+            وضع منخفض الدقة (أكثر استقرارًا)
+          </span>
           <input
             type="checkbox"
             checked={lowRes}
             onChange={(e) => setLowRes(e.target.checked)}
             className="h-3.5 w-3.5 accent-primary"
           />
-          <span>وضع منخفض الدقة (أكثر استقرارًا للأجهزة الضعيفة)</span>
         </label>
-        <span className="text-muted-foreground">{lowRes ? "320×240" : "HD"}</span>
+        {!error && (
+          <button
+            onClick={() => setShowManual((v) => !v)}
+            className="flex items-center justify-center gap-2 rounded-md border bg-background px-3 py-1.5 hover:bg-accent"
+          >
+            <Keyboard className="h-3.5 w-3.5" /> إدخال يدوي
+          </button>
+        )}
+        {!error && showManual && (
+          <div className="space-y-2">
+            <input
+              value={manualId}
+              onChange={(e) => setManualId(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitManual()}
+              placeholder="UUID أو رمز QR"
+              className="w-full rounded-md border bg-background px-3 py-2"
+              dir="ltr"
+            />
+            <button
+              onClick={submitManual}
+              className="w-full rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:opacity-90"
+            >
+              بحث وإضافة
+            </button>
+          </div>
+        )}
       </div>
 
       <button
