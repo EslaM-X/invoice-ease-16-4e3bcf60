@@ -295,6 +295,13 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
               <Wifi className="h-3 w-3 text-primary" />
               <span>جلب: {lastFetchMs != null ? `${lastFetchMs}ms` : "—"}</span>
             </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur" title="عدد المنتجات المخزّنة محليًا وآخر تحديث">
+              <Database className="h-3 w-3 text-primary" />
+              <span>
+                كاش: {cacheInfo.size}
+                {cacheInfo.at ? ` · ${formatAgo(cacheInfo.at)}` : " · —"}
+              </span>
+            </div>
           </div>
         )}
 
