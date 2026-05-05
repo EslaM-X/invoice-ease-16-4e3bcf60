@@ -251,16 +251,13 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   /** Apply a scan event coming from a paired mobile device. */
   const handleMobileScanEvent = async (ev: ScanEvent): Promise<boolean> => {
     if (!ev.product_id) return false;
-    // Look up the latest product (price/stock may have changed)
-    const fromCache = products.find((p) => p.id === ev.product_id);
-    let product: Product | null = (fromCache as Product) ?? null;
+    const fromList = products.find((p) => p.id === ev.product_id);
+    let product: Product | null = (fromList as Product) ?? null;
     if (!product) {
-      const { data } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", ev.product_id)
-        .maybeSingle();
-      product = (data as Product) ?? null;
+      const { product: p } = await fetchProductCached(ev.product_id);
+      product = (p as Product) ?? null;
+    } else {
+      setCachedProduct(product);
     }
     if (!product) return false;
     const ok = addProduct(product);
@@ -269,28 +266,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   };
 
   const handleScan = async (text: string) => {
-    const raw = (text ?? "").trim();
-    let productId: string | null = null;
-    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRe.test(raw)) {
-      productId = raw;
-    } else {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed.product_id === "string" && uuidRe.test(parsed.product_id)) {
-          productId = parsed.product_id;
-        }
-      } catch {}
-    }
-    if (!productId) {
-      toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+    const decoded = decodeProductQR(text);
+    if (!decoded.ok) {
+      const msg = decoded.reason === "checksum"
+        ? (lang === "ar" ? "رمز QR تالف (فحص فشل)" : "Corrupted QR (checksum failed)")
+        : (lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
+      toast.error(msg);
       return;
     }
-    const { data: p, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("id", productId)
-      .maybeSingle();
+    // Cache-first lookup
+    const fromList = products.find((p) => p.id === decoded.productId);
+    if (fromList) setCachedProduct(fromList);
+    const { product: p, error } = fromList
+      ? { product: fromList as Product, error: null as any }
+      : await fetchProductCached(decoded.productId);
     if (error || !p) {
       toast.error(lang === "ar" ? "رمز QR غير صالح" : "Invalid QR Code");
       return;
