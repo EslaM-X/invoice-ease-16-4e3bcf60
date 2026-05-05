@@ -68,14 +68,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
   const [cameras, setCameras] = useState<CamInfo[]>([]);
-  const [cameraId, setCameraId] = useState<string | null>(() => {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage.getItem("qr.cameraId") || null;
-  });
-  const [facing, setFacing] = useState<"environment" | "user">(() => {
-    if (typeof localStorage === "undefined") return "environment";
-    return (localStorage.getItem("qr.facing") as any) || "environment";
-  });
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const facing: "environment" | "user" = "environment";
   const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
@@ -498,47 +492,6 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <Video className="h-3.5 w-3.5 text-primary" />
-            اتجاه الكاميرا
-          </span>
-          <div className="flex overflow-hidden rounded-md border">
-            <button
-              type="button"
-              onClick={() => { setFacing("environment"); setCameraId(null); localStorage.setItem("qr.facing", "environment"); localStorage.removeItem("qr.cameraId"); }}
-              className={`px-3 py-1 text-xs ${facing === "environment" && !cameraId ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
-            >خلفية</button>
-            <button
-              type="button"
-              onClick={() => { setFacing("user"); setCameraId(null); localStorage.setItem("qr.facing", "user"); localStorage.removeItem("qr.cameraId"); }}
-              className={`px-3 py-1 text-xs ${facing === "user" && !cameraId ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
-            >أمامية</button>
-          </div>
-        </div>
-        {cameras.length > 1 && (
-          <label className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
-              <Video className="h-3.5 w-3.5 text-primary" />
-              كاميرا محددة
-            </span>
-            <select
-              value={cameraId ?? ""}
-              onChange={(e) => {
-                const v = e.target.value || null;
-                setCameraId(v);
-                if (v) localStorage.setItem("qr.cameraId", v);
-                else localStorage.removeItem("qr.cameraId");
-              }}
-              className="max-w-[55%] truncate rounded-md border bg-background px-2 py-1 text-xs"
-            >
-              <option value="">تلقائي ({facing === "user" ? "أمامية" : "خلفية"})</option>
-              {cameras.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-          </label>
-        )}
         {torchSupported && (
           <button
             onClick={toggleTorch}
