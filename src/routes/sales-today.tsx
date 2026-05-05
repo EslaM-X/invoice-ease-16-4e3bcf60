@@ -25,6 +25,7 @@ import {
   Pencil,
   ClipboardList,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
