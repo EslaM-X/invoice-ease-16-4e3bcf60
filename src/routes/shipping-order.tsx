@@ -36,7 +36,16 @@ type Item = {
   color: string | null;
   quantity: number;
 };
-type Prod = { id: string; serial_number: string | null; name: string; color: string | null };
+type Prod = { id: string; serial_number: string | null; name: string; color: string | null; collection: string | null };
+
+type CollectionLine = {
+  code: string;
+  product_name: string;
+  color: string | null;
+  collection: string;
+  qty: number;
+};
+type CollectionGroup = { collection: string; lines: CollectionLine[]; total: number };
 
 type Line = {
   code: string;
