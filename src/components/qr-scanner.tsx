@@ -56,7 +56,14 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
   const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [cacheInfo, setCacheInfo] = useState<{ size: number; at: number | null }>({ size: 0, at: null });
   const [cameras, setCameras] = useState<CamInfo[]>([]);
-  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [cameraId, setCameraId] = useState<string | null>(() => {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem("qr.cameraId") || null;
+  });
+  const [facing, setFacing] = useState<"environment" | "user">(() => {
+    if (typeof localStorage === "undefined") return "environment";
+    return (localStorage.getItem("qr.facing") as any) || "environment";
+  });
   const [failToast, setFailToast] = useState<string | null>(null);
 
   const getFps = useCallback(() => {
@@ -134,8 +141,8 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       const videoConstraints: MediaTrackConstraints | string = cameraId
         ? cameraId
         : (lowRes
-          ? { facingMode: "environment", width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
-          : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
+          ? { facingMode: facing, width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } as MediaTrackConstraints
+          : { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } as MediaTrackConstraints);
 
       lastDecodeAtRef.current = performance.now();
       await sc.start(
@@ -223,7 +230,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       setTimeout(() => mountedRef.current && start(), delay);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScan, lowRes, getFps, online, cameraId]);
+  }, [onScan, lowRes, getFps, online, cameraId, facing]);
 
   // Enumerate cameras once we have permission
   useEffect(() => {
@@ -243,10 +250,23 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
     const sc = scannerRef.current;
     if (!sc) return;
     try {
-      await sc.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
-      setTorchOn((v) => !v);
+      const next = !torchOn;
+      await sc.applyVideoConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+      try { localStorage.setItem("qr.torch", next ? "1" : "0"); } catch {}
     } catch (e) { console.warn("[qr] torch toggle failed", e); }
   };
+
+  // Restore torch preference once the camera is ready
+  useEffect(() => {
+    if (starting || error) return;
+    if (!torchSupported) return;
+    try {
+      const saved = localStorage.getItem("qr.torch");
+      if (saved === "1" && !torchOn) toggleTorch();
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [starting, torchSupported, error]);
 
   const submitManual = () => {
     const v = manualId.trim();
@@ -307,7 +327,7 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       if (sc) { try { sc.stop().then(() => sc.clear()).catch(() => {}); } catch {} }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lowRes, cameraId]);
+  }, [lowRes, cameraId, facing]);
 
   const errorHelp = () => {
     switch (errorKind) {
@@ -469,18 +489,41 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
             className="h-3.5 w-3.5 accent-primary"
           />
         </label>
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <Video className="h-3.5 w-3.5 text-primary" />
+            اتجاه الكاميرا
+          </span>
+          <div className="flex overflow-hidden rounded-md border">
+            <button
+              type="button"
+              onClick={() => { setFacing("environment"); setCameraId(null); localStorage.setItem("qr.facing", "environment"); localStorage.removeItem("qr.cameraId"); }}
+              className={`px-3 py-1 text-xs ${facing === "environment" && !cameraId ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            >خلفية</button>
+            <button
+              type="button"
+              onClick={() => { setFacing("user"); setCameraId(null); localStorage.setItem("qr.facing", "user"); localStorage.removeItem("qr.cameraId"); }}
+              className={`px-3 py-1 text-xs ${facing === "user" && !cameraId ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            >أمامية</button>
+          </div>
+        </div>
         {cameras.length > 1 && (
           <label className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2">
               <Video className="h-3.5 w-3.5 text-primary" />
-              اختيار الكاميرا
+              كاميرا محددة
             </span>
             <select
               value={cameraId ?? ""}
-              onChange={(e) => setCameraId(e.target.value || null)}
+              onChange={(e) => {
+                const v = e.target.value || null;
+                setCameraId(v);
+                if (v) localStorage.setItem("qr.cameraId", v);
+                else localStorage.removeItem("qr.cameraId");
+              }}
               className="max-w-[55%] truncate rounded-md border bg-background px-2 py-1 text-xs"
             >
-              <option value="">تلقائي (خلفية)</option>
+              <option value="">تلقائي ({facing === "user" ? "أمامية" : "خلفية"})</option>
               {cameras.map((c) => (
                 <option key={c.id} value={c.id}>{c.label}</option>
               ))}
