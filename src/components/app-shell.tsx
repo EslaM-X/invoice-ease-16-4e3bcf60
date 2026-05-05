@@ -14,6 +14,7 @@ import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { LowStockAlerts } from "@/components/low-stock-alerts";
 import { useRole } from "@/lib/use-role";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 const items = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
@@ -86,15 +87,26 @@ export function AppShell({ children }: { children: ReactNode }) {
           );
         })}
         {isCallCenter && (
-          <Link
-            to="/call-center"
-            onClick={() => setOpen(false)}
-            className={`group relative mt-1 flex items-center gap-3 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-500/10 ${
-              location.pathname.startsWith("/call-center") ? "bg-purple-500/15" : ""
-            }`}
-          >
-            <Phone className="h-4 w-4" /> مركز الاتصال
-          </Link>
+          <>
+            <Link
+              to="/call-center"
+              onClick={() => setOpen(false)}
+              className={`group relative mt-1 flex items-center gap-3 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-500/10 ${
+                location.pathname === "/call-center" ? "bg-purple-500/15" : ""
+              }`}
+            >
+              <Phone className="h-4 w-4" /> مركز الاتصال
+            </Link>
+            <Link
+              to="/call-center-reports"
+              onClick={() => setOpen(false)}
+              className={`group relative mt-1 flex items-center gap-3 rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-sm font-medium text-purple-600/80 transition hover:bg-purple-500/10 ${
+                location.pathname === "/call-center-reports" ? "bg-purple-500/15" : ""
+              }`}
+            >
+              <BarChart3 className="h-4 w-4" /> تقارير الاتصال
+            </Link>
+          </>
         )}
         {isAdmin && (
           <Link
@@ -146,6 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <div className="flex-1" />
+          <NotificationsBell />
           <LowStockAlerts />
           <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
             <Languages className="h-4 w-4" />
