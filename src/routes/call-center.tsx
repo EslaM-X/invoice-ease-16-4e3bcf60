@@ -182,13 +182,15 @@ function CallCenterPage() {
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : calls.length === 0 ? (
+          ) : filteredCalls.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              لا توجد مكالمات بعد — اضغط "تسجيل مكالمة"
+              لا توجد مكالمات مطابقة
             </div>
           ) : (
             <div className="divide-y divide-border/60">
-              {calls.map((c) => (
+              {filteredCalls.map((c) => {
+                const canEdit = isManager || c.agent_id === user!.id;
+                return (
                 <div key={c.id} className="flex flex-wrap items-center gap-3 py-3">
                   <div
                     className={`rounded-lg p-2 ${
@@ -227,17 +229,37 @@ function CallCenterPage() {
                         {String(c.duration_seconds % 60).padStart(2, "0")}
                       </span>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setRatingFor(c)}
-                      className="gap-1"
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setRatingFor(c)} className="gap-1">
                       <Star className="h-3.5 w-3.5" /> تقييم
                     </Button>
+                    {canEdit && (
+                      <Button size="icon" variant="ghost" onClick={() => setEditing(c)} title="تعديل">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isManager && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="icon" variant="ghost" title="حذف">
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>حذف المكالمة</AlertDialogTitle>
+                            <AlertDialogDescription>سيتم حذف سجل المكالمة نهائياً.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteCall(c.id)}>تأكيد</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
