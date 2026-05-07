@@ -116,7 +116,7 @@ function Dashboard() {
               <div className="eyebrow">{label}</div>
               <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
             </div>
-            <div className="mt-6 font-display text-3xl font-medium tracking-tight tabular-nums text-foreground">{value}</div>
+            <div className="ltr-nums mt-6 font-display text-2xl font-medium tracking-tight tabular-nums text-foreground sm:text-3xl break-words">{value}</div>
           </div>
         ))}
       </div>
