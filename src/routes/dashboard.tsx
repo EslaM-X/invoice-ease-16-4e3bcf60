@@ -68,11 +68,11 @@ function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-10">
+      <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("dashboard")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
+          <div className="eyebrow mb-3">{t("welcome")}</div>
+          <h1 className="display-xl text-foreground">{t("dashboard")}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -95,17 +95,17 @@ function Dashboard() {
           >
             <ScanLine className="h-4 w-4" /> {t("scan_and_sell")}
           </Button>
-          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 shadow-glow">
+          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5">
             <Plus className="h-4 w-4" /> {t("new_invoice")}
           </Button>
         </div>
-      </div>
+      </header>
 
       {stats.lowStock > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
-          <AlertTriangle className="h-4 w-4 text-warning" />
+        <div className="flex items-center gap-3 rounded-md border border-foreground/15 bg-muted/40 px-4 py-3 text-sm">
+          <AlertTriangle className="h-4 w-4" />
           <span className="font-medium">{t("stock_low_alert")}: {stats.lowStock}</span>
-          <Link to="/inventory" className="ms-auto text-xs font-semibold text-primary hover:underline">{t("view")} →</Link>
+          <Link to="/inventory" className="ms-auto text-xs font-semibold underline-offset-4 hover:underline">{t("view")} →</Link>
         </div>
       )}
 
