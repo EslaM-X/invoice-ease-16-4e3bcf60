@@ -111,6 +111,7 @@ function CallCenterPage() {
 
   const todayCount = calls.filter(
     (c) => new Date(c.called_at).toDateString() === new Date().toDateString()
+  ).length;
 
   const filteredCalls = calls.filter((c) => {
     if (typeFilter !== "all" && c.call_type !== typeFilter) return false;
