@@ -111,12 +111,12 @@ function Dashboard() {
 
       <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, Icon }) => (
-          <div key={label} className="group relative bg-card p-6 transition-colors hover:bg-muted/40">
+          <div key={label} className="group relative bg-card p-4 sm:p-6 transition-colors hover:bg-muted/40 min-w-0">
             <div className="flex items-start justify-between gap-3">
               <div className="eyebrow">{label}</div>
               <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
             </div>
-            <div className="mt-6 font-display text-3xl font-medium tracking-tight tabular-nums text-foreground">{value}</div>
+            <div className="ltr-nums mt-6 font-display text-2xl font-medium tracking-tight tabular-nums text-foreground sm:text-3xl break-words">{value}</div>
           </div>
         ))}
       </div>

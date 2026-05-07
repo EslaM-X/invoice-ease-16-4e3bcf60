@@ -3,10 +3,11 @@
 // We force `numberingSystem: "latn"` everywhere to guarantee 0-9 digits.
 
 export function fmtMoney(n: number, currency = "EGP", lang: "ar" | "en" = "ar") {
+  // Always render in English locale to avoid RTL marks (‏) and ج.م. wrapping issues.
+  // Currency symbol stays consistent across both languages.
+  void lang;
   try {
-    // Use Arabic locale for currency word/placement when lang=ar, but force Latin digits.
-    const locale = (lang === "ar" ? "ar-EG" : "en-EG") + "-u-nu-latn";
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
       maximumFractionDigits: 2,

@@ -181,7 +181,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 pb-safe sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-6 pb-safe sm:px-6 sm:py-8 lg:px-8">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
