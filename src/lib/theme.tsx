@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 type Theme = "light" | "dark";
 export type AccentPreset = "gold" | "rose" | "emerald" | "sapphire" | "obsidian";
 
+// Editorial monochrome — all presets map to ink/paper. Labels kept for legacy UI.
 const ACCENTS: Record<AccentPreset, { accent: string; ring: string; label: string; swatch: string }> = {
-  gold:     { accent: "oklch(0.78 0.11 82)",  ring: "oklch(0.72 0.12 82)",  label: "ذهبي شامبانيا", swatch: "#d4b370" },
-  rose:     { accent: "oklch(0.72 0.14 18)",  ring: "oklch(0.66 0.15 18)",  label: "وردي نحاسي",    swatch: "#d97485" },
-  emerald:  { accent: "oklch(0.68 0.13 158)", ring: "oklch(0.62 0.14 158)", label: "زمردي",         swatch: "#42b48a" },
-  sapphire: { accent: "oklch(0.62 0.14 250)", ring: "oklch(0.56 0.15 250)", label: "أزرق ملكي",     swatch: "#5b7cd6" },
-  obsidian: { accent: "oklch(0.45 0.02 60)",  ring: "oklch(0.4 0.02 60)",   label: "رمادي معدني",   swatch: "#6b6b6b" },
+  gold:     { accent: "oklch(0.12 0 0)", ring: "oklch(0.12 0 0)", label: "حبر", swatch: "#111111" },
+  rose:     { accent: "oklch(0.18 0 0)", ring: "oklch(0.18 0 0)", label: "فحم", swatch: "#1f1f1f" },
+  emerald:  { accent: "oklch(0.30 0 0)", ring: "oklch(0.30 0 0)", label: "رصاصي داكن", swatch: "#3a3a3a" },
+  sapphire: { accent: "oklch(0.45 0 0)", ring: "oklch(0.45 0 0)", label: "رصاصي", swatch: "#666666" },
+  obsidian: { accent: "oklch(0.08 0 0)", ring: "oklch(0.08 0 0)", label: "أسود مطلق", swatch: "#000000" },
 };
 
 export const ACCENT_PRESETS = ACCENTS;
