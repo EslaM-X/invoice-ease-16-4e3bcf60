@@ -285,6 +285,18 @@ function CallCenterPage() {
           onClose={() => setRatingFor(null)}
         />
       )}
+
+      {editing && (
+        <Dialog open onOpenChange={(o) => !o && setEditing(null)}>
+          <CallDialog
+            userId={user!.id}
+            userEmail={user!.email ?? null}
+            customers={customers}
+            existing={editing}
+            onDone={() => { setEditing(null); load(); }}
+          />
+        </Dialog>
+      )}
     </AppShell>
   );
 }
