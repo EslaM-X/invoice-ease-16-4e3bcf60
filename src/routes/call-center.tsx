@@ -146,19 +146,38 @@ function CallCenterPage() {
                 <Plus className="h-4 w-4" /> تسجيل مكالمة
               </Button>
             </DialogTrigger>
-            <NewCallDialog
-              userId={user!.id}
-              userEmail={user!.email ?? null}
-              onDone={() => {
-                setDialogOpen(false);
-                load();
-              }}
-            />
+            {dialogOpen && (
+              <CallDialog
+                userId={user!.id}
+                userEmail={user!.email ?? null}
+                customers={customers}
+                onDone={() => {
+                  setDialogOpen(false);
+                  load();
+                }}
+              />
+            )}
           </Dialog>
         </div>
 
-        <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold">سجل المكالمات</h2>
+        <Card className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold flex-1">سجل المكالمات</h2>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث بالاسم، رقم، ملخص…"
+              className="w-full sm:w-64"
+            />
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="incoming">واردة</SelectItem>
+                <SelectItem value="outgoing">صادرة</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
