@@ -71,7 +71,7 @@ function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-gradient-gold">{t("dashboard")}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("dashboard")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
