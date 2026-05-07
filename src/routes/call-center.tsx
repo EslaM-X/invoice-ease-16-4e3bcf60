@@ -111,7 +111,18 @@ function CallCenterPage() {
 
   const todayCount = calls.filter(
     (c) => new Date(c.called_at).toDateString() === new Date().toDateString()
-  ).length;
+
+  const filteredCalls = calls.filter((c) => {
+    if (typeFilter !== "all" && c.call_type !== typeFilter) return false;
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      (c.customer_name ?? "").toLowerCase().includes(s) ||
+      (c.customer_phone ?? "").toLowerCase().includes(s) ||
+      (c.summary ?? "").toLowerCase().includes(s) ||
+      (c.agent_email ?? "").toLowerCase().includes(s)
+    );
+  });
 
   return (
     <AppShell>
