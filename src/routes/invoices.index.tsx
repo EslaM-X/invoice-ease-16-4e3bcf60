@@ -166,13 +166,33 @@ function InvoicesList() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="relative sm:col-span-1">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="relative lg:col-span-2">
           <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث برقم الفاتورة، اسم العميل أو رقم الهاتف…" className="ps-9" />
         </div>
-        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} placeholder={t("from")} />
-        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} placeholder={t("to")} />
+        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">كل الحالات</option>
+          <option value="completed">مكتملة</option>
+          <option value="voided">ملغاة</option>
+        </select>
+        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">كل المدفوعات</option>
+          <option value="paid">مدفوعة بالكامل</option>
+          <option value="partial">مدفوعة جزئياً</option>
+          <option value="unpaid">غير مدفوعة</option>
+        </select>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="date_desc">الأحدث أولاً</option>
+          <option value="date_asc">الأقدم أولاً</option>
+          <option value="total_desc">الأعلى قيمة</option>
+          <option value="total_asc">الأقل قيمة</option>
+        </select>
+        <div className="flex items-center justify-end text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
+          عرض {filtered.length} من {list.length} فاتورة
+        </div>
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
