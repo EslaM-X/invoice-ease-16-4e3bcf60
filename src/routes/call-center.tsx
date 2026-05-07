@@ -31,17 +31,29 @@ export const Route = createFileRoute("/call-center")({
 
 type CallLog = {
   id: string;
+  customer_id: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   call_type: "incoming" | "outgoing";
   duration_seconds: number;
   outcome: string | null;
   summary: string | null;
+  notes: string | null;
+  agent_id: string;
   agent_email: string | null;
   called_at: string;
 };
 
+type CustomerOpt = { id: string; name: string; phone: string | null };
+
 const OUTCOMES = [
+  { v: "resolved", label: "تم الحل" },
+  { v: "follow_up", label: "متابعة" },
+  { v: "no_answer", label: "لم يرد" },
+  { v: "complaint", label: "شكوى" },
+  { v: "sale", label: "بيع" },
+  { v: "other", label: "أخرى" },
+];
   { v: "resolved", label: "تم الحل" },
   { v: "follow_up", label: "متابعة" },
   { v: "no_answer", label: "لم يرد" },
