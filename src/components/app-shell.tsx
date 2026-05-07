@@ -65,7 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-sidebar-primary/40 to-transparent" />
       <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-3 [scrollbar-width:thin]">
         <Link to="/invoices/new" onClick={() => setOpen(false)}
-          className="mb-3 flex items-center justify-center gap-2 rounded-lg gradient-gold px-3 py-2.5 text-sm font-semibold text-[oklch(0.12_0.005_60)] shadow-glow transition active:scale-[0.98]">
+          className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-sidebar-primary px-3 py-2.5 text-sm font-semibold text-sidebar-primary-foreground transition hover:opacity-90 active:scale-[0.98]">
           <Plus className="h-4 w-4" /> {t("new_invoice")}
         </Link>
         {items.map((it) => {
