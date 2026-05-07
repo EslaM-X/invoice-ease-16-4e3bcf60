@@ -121,15 +121,18 @@ function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
-          <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("recent_invoices")}</h3>
+      <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border lg:grid-cols-2">
+        <div className="bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="eyebrow">{t("recent_invoices")}</h3>
+            <div className="h-px flex-1 mx-4 bg-border" />
+          </div>
           {recent.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
           ) : (
-            <div className="-mx-2 divide-y divide-border/60">
+            <div className="divide-y divide-border">
               {recent.map((r) => (
-                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between rounded-lg px-2 py-3 transition hover:bg-accent/50">
+                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between py-3 transition hover:opacity-70">
                   <div>
                     <div className="text-sm font-medium">{r.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
@@ -140,12 +143,15 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
-          <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("top_products")}</h3>
+        <div className="bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="eyebrow">{t("top_products")}</h3>
+            <div className="h-px flex-1 mx-4 bg-border" />
+          </div>
           {top.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
           ) : (
-            <div className="divide-y divide-border/60">
+            <div className="divide-y divide-border">
               {top.map((p) => (
                 <div key={p.name} className="flex items-center justify-between py-3">
                   <div>
