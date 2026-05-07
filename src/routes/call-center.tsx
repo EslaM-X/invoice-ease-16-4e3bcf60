@@ -54,13 +54,6 @@ const OUTCOMES = [
   { v: "sale", label: "بيع" },
   { v: "other", label: "أخرى" },
 ];
-  { v: "resolved", label: "تم الحل" },
-  { v: "follow_up", label: "متابعة" },
-  { v: "no_answer", label: "لم يرد" },
-  { v: "complaint", label: "شكوى" },
-  { v: "sale", label: "بيع" },
-  { v: "other", label: "أخرى" },
-];
 
 function CallCenterPage() {
   const { user } = useAuth();
