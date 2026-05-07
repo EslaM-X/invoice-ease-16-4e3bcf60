@@ -310,54 +310,120 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function NewCallDialog({
+function CallDialog({
   userId,
   userEmail,
+  customers,
+  existing,
   onDone,
 }: {
   userId: string;
   userEmail: string | null;
+  customers: CustomerOpt[];
+  existing?: CallLog;
   onDone: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [type, setType] = useState<"incoming" | "outgoing">("incoming");
-  const [duration, setDuration] = useState(0);
-  const [outcome, setOutcome] = useState("resolved");
-  const [summary, setSummary] = useState("");
+  const [customerId, setCustomerId] = useState<string | null>(existing?.customer_id ?? null);
+  const [name, setName] = useState(existing?.customer_name ?? "");
+  const [phone, setPhone] = useState(existing?.customer_phone ?? "");
+  const [type, setType] = useState<"incoming" | "outgoing">(existing?.call_type ?? "incoming");
+  const [duration, setDuration] = useState(existing?.duration_seconds ?? 0);
+  const [outcome, setOutcome] = useState(existing?.outcome ?? "resolved");
+  const [summary, setSummary] = useState(existing?.summary ?? "");
+  const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [calledAt, setCalledAt] = useState(
+    existing?.called_at
+      ? new Date(existing.called_at).toISOString().slice(0, 16)
+      : new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  );
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const pickCustomer = (c: CustomerOpt) => {
+    setCustomerId(c.id);
+    setName(c.name);
+    if (c.phone) setPhone(c.phone);
+    setPickerOpen(false);
+  };
 
   const save = async () => {
     if (!phone.trim() && !name.trim()) {
-      toast.error("أدخل اسم العميل أو رقمه");
+      toast.error("اختر عميلاً أو أدخل اسم/رقم");
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("call_logs").insert({
+    const payload = {
+      customer_id: customerId,
       customer_name: name.trim() || null,
       customer_phone: phone.trim() || null,
       call_type: type,
       duration_seconds: duration,
       outcome,
       summary: summary.trim() || null,
-      agent_id: userId,
-      agent_email: userEmail,
-    });
+      notes: notes.trim() || null,
+      called_at: new Date(calledAt).toISOString(),
+    };
+    const { error } = existing
+      ? await supabase.from("call_logs").update(payload).eq("id", existing.id)
+      : await supabase.from("call_logs").insert({ ...payload, agent_id: userId, agent_email: userEmail });
     setSaving(false);
     if (error) {
       toast.error("فشل الحفظ: " + error.message);
       return;
     }
-    toast.success("تم تسجيل المكالمة");
+    toast.success(existing ? "تم تحديث المكالمة" : "تم تسجيل المكالمة");
     onDone();
   };
 
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader>
-        <DialogTitle>تسجيل مكالمة جديدة</DialogTitle>
+        <DialogTitle>{existing ? "تعديل مكالمة" : "تسجيل مكالمة جديدة"}</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
+        <div>
+          <Label>اختيار عميل من القاعدة</Label>
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                {customerId ? (customers.find((c) => c.id === customerId)?.name ?? "—") : "ابحث عن عميل…"}
+                <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+              <Command>
+                <CommandInput placeholder="ابحث بالاسم أو الرقم…" />
+                <CommandList>
+                  <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                  <CommandGroup>
+                    {customers.slice(0, 200).map((c) => (
+                      <CommandItem
+                        key={c.id}
+                        value={`${c.name} ${c.phone ?? ""}`}
+                        onSelect={() => pickCustomer(c)}
+                      >
+                        <Check className={`me-2 h-4 w-4 ${customerId === c.id ? "opacity-100" : "opacity-0"}`} />
+                        <div className="flex flex-col">
+                          <span>{c.name}</span>
+                          {c.phone && <span className="text-xs text-muted-foreground" dir="ltr">{c.phone}</span>}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {customerId && (
+            <button
+              className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { setCustomerId(null); }}
+            >
+              إلغاء الربط بالعميل
+            </button>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>اسم العميل</Label>
@@ -401,6 +467,10 @@ function NewCallDialog({
           </div>
         </div>
         <div>
+          <Label>تاريخ ووقت المكالمة</Label>
+          <Input type="datetime-local" value={calledAt} onChange={(e) => setCalledAt(e.target.value)} />
+        </div>
+        <div>
           <Label>ملخص المكالمة</Label>
           <Textarea
             rows={3}
@@ -409,9 +479,18 @@ function NewCallDialog({
             placeholder="ما الذي تمت مناقشته؟"
           />
         </div>
+        <div>
+          <Label>ملاحظات داخلية</Label>
+          <Textarea
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="ملاحظات للفريق…"
+          />
+        </div>
         <Button onClick={save} disabled={saving} className="w-full">
           {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
-          حفظ المكالمة
+          {existing ? "حفظ التعديلات" : "حفظ المكالمة"}
         </Button>
       </div>
     </DialogContent>
