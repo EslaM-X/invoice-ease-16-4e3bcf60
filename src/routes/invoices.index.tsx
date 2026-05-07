@@ -43,11 +43,34 @@ function InvoicesList() {
   useEffect(() => { load(); }, [user, from, to]);
   useRealtimeTable("invoices", () => { load(); });
 
-  const filtered = list.filter((i) => {
-    const s = q.trim().toLowerCase();
-    if (!s) return true;
-    return (i.invoice_number ?? "").toLowerCase().includes(s) || (i.customer_name ?? "").toLowerCase().includes(s);
-  });
+  const filtered = list
+    .filter((i) => {
+      if (statusFilter !== "all" && (i.status ?? "completed") !== statusFilter) return false;
+      if (paymentFilter !== "all") {
+        const total = Number(i.total ?? 0);
+        const paid = Number(i.paid_amount ?? 0);
+        const ratio = total > 0 ? paid / total : 0;
+        if (paymentFilter === "paid" && ratio < 0.999) return false;
+        if (paymentFilter === "unpaid" && paid > 0.001) return false;
+        if (paymentFilter === "partial" && (paid <= 0.001 || ratio >= 0.999)) return false;
+      }
+      const s = q.trim().toLowerCase();
+      if (!s) return true;
+      return (
+        (i.invoice_number ?? "").toLowerCase().includes(s) ||
+        String(i.receipt_number ?? "").includes(s) ||
+        (i.customer_name ?? "").toLowerCase().includes(s) ||
+        (i.customer_phone ?? "").toLowerCase().includes(s)
+      );
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "date_asc": return +new Date(a.created_at) - +new Date(b.created_at);
+        case "total_desc": return Number(b.total) - Number(a.total);
+        case "total_asc": return Number(a.total) - Number(b.total);
+        default: return +new Date(b.created_at) - +new Date(a.created_at);
+      }
+    });
 
   const handleRpcError = (msg: string) => {
     if (msg.includes("OUT_OF_STOCK")) {
