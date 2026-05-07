@@ -51,21 +51,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col border-e border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex flex-col items-center gap-2 px-5 pb-4 pt-6">
+      <div className="flex flex-col items-center gap-3 px-5 pb-5 pt-7">
         <img
           src={brandLogo}
           alt="Steinheim"
-          className="h-20 w-auto select-none object-contain drop-shadow-[0_6px_20px_oklch(0.78_0.11_82_/_0.3)]"
+          className="h-16 w-auto select-none object-contain"
           draggable={false}
         />
-        <div className="font-latin text-[10px] font-medium uppercase tracking-[0.32em] text-sidebar-primary">
-          Steinheim Suite
+        <div className="font-latin text-[9px] font-medium uppercase tracking-[0.42em] text-sidebar-foreground/55">
+          Steinheim · Suite
         </div>
       </div>
-      <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-sidebar-primary/40 to-transparent" />
+      <div className="mx-5 mb-3 h-px bg-sidebar-border" />
       <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-3 [scrollbar-width:thin]">
         <Link to="/invoices/new" onClick={() => setOpen(false)}
-          className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-sidebar-primary px-3 py-2.5 text-sm font-semibold text-sidebar-primary-foreground transition hover:opacity-90 active:scale-[0.98]">
+          className="mb-4 flex items-center justify-center gap-2 rounded-md bg-sidebar-primary px-3 py-2.5 text-[13px] font-semibold uppercase tracking-[0.18em] text-sidebar-primary-foreground transition hover:opacity-90 active:scale-[0.98]">
           <Plus className="h-4 w-4" /> {t("new_invoice")}
         </Link>
         {items.map((it) => {
@@ -76,26 +76,29 @@ export function AppShell({ children }: { children: ReactNode }) {
               key={it.to}
               to={it.to}
               onClick={() => setOpen(false)}
-              className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
                 active
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
               {active && (
-                <span className="absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-sidebar-primary" />
+                <span className="absolute inset-y-2 start-0 w-[2px] rounded-full bg-sidebar-primary" />
               )}
-              <Icon className={`h-4 w-4 ${active ? "text-sidebar-primary" : ""}`} /> {t(it.key)}
+              <Icon className="h-4 w-4" /> {t(it.key)}
             </Link>
           );
         })}
         {isCallCenter && (
           <>
+            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">Call Center</div>
             <Link
               to="/call-center"
               onClick={() => setOpen(false)}
-              className={`group relative mt-1 flex items-center gap-3 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-500/10 ${
-                location.pathname === "/call-center" ? "bg-purple-500/15" : ""
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                location.pathname === "/call-center"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
               <Phone className="h-4 w-4" /> مركز الاتصال
@@ -103,8 +106,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               to="/call-center-reports"
               onClick={() => setOpen(false)}
-              className={`group relative mt-1 flex items-center gap-3 rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-sm font-medium text-purple-600/80 transition hover:bg-purple-500/10 ${
-                location.pathname === "/call-center-reports" ? "bg-purple-500/15" : ""
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                location.pathname === "/call-center-reports"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
               <BarChart3 className="h-4 w-4" /> تقارير الاتصال
@@ -112,19 +117,24 @@ export function AppShell({ children }: { children: ReactNode }) {
           </>
         )}
         {isAdmin && (
-          <Link
-            to="/admin"
-            onClick={() => setOpen(false)}
-            className={`group relative mt-3 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-600 transition hover:bg-amber-500/10 ${
-              location.pathname.startsWith("/admin") ? "bg-amber-500/15" : ""
-            }`}
-          >
-            <ShieldCheck className="h-4 w-4" /> لوحة الأدمن
-          </Link>
+          <>
+            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">Admin</div>
+            <Link
+              to="/admin"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                location.pathname.startsWith("/admin")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4" /> لوحة الأدمن
+            </Link>
+          </>
         )}
       </nav>
       <div className="border-t border-sidebar-border p-3">
-        <div className="mb-2 truncate px-2 text-xs text-sidebar-foreground/60">{user.email}</div>
+        <div className="mb-2 truncate px-2 text-[11px] tracking-wide text-sidebar-foreground/55">{user.email}</div>
         <Button
           variant="ghost"
           size="sm"

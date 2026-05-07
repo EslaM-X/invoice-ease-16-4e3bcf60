@@ -68,11 +68,11 @@ function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-10">
+      <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("dashboard")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("welcome")}</p>
+          <div className="eyebrow mb-3">{t("welcome")}</div>
+          <h1 className="display-xl text-foreground">{t("dashboard")}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -95,43 +95,44 @@ function Dashboard() {
           >
             <ScanLine className="h-4 w-4" /> {t("scan_and_sell")}
           </Button>
-          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 shadow-glow">
+          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5">
             <Plus className="h-4 w-4" /> {t("new_invoice")}
           </Button>
         </div>
-      </div>
+      </header>
 
       {stats.lowStock > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
-          <AlertTriangle className="h-4 w-4 text-warning" />
+        <div className="flex items-center gap-3 rounded-md border border-foreground/15 bg-muted/40 px-4 py-3 text-sm">
+          <AlertTriangle className="h-4 w-4" />
           <span className="font-medium">{t("stock_low_alert")}: {stats.lowStock}</span>
-          <Link to="/inventory" className="ms-auto text-xs font-semibold text-primary hover:underline">{t("view")} →</Link>
+          <Link to="/inventory" className="ms-auto text-xs font-semibold underline-offset-4 hover:underline">{t("view")} →</Link>
         </div>
       )}
 
-      <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, Icon }) => (
-          <div key={label} className="card-premium group rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Icon className="h-4 w-4" />
-              </div>
+          <div key={label} className="group relative bg-card p-6 transition-colors hover:bg-muted/40">
+            <div className="flex items-start justify-between gap-3">
+              <div className="eyebrow">{label}</div>
+              <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
             </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
+            <div className="mt-6 font-display text-3xl font-medium tracking-tight tabular-nums text-foreground">{value}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
-          <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("recent_invoices")}</h3>
+      <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border lg:grid-cols-2">
+        <div className="bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="eyebrow">{t("recent_invoices")}</h3>
+            <div className="h-px flex-1 mx-4 bg-border" />
+          </div>
           {recent.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
           ) : (
-            <div className="-mx-2 divide-y divide-border/60">
+            <div className="divide-y divide-border">
               {recent.map((r) => (
-                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between rounded-lg px-2 py-3 transition hover:bg-accent/50">
+                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between py-3 transition hover:opacity-70">
                   <div>
                     <div className="text-sm font-medium">{r.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
@@ -142,12 +143,15 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="card-premium rounded-2xl border border-border/60 bg-card p-6">
-          <h3 className="mb-4 text-sm font-semibold tracking-tight">{t("top_products")}</h3>
+        <div className="bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="eyebrow">{t("top_products")}</h3>
+            <div className="h-px flex-1 mx-4 bg-border" />
+          </div>
           {top.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
           ) : (
-            <div className="divide-y divide-border/60">
+            <div className="divide-y divide-border">
               {top.map((p) => (
                 <div key={p.name} className="flex items-center justify-between py-3">
                   <div>
