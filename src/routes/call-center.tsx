@@ -17,8 +17,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing } from "lucide-react";
+import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing, Pencil, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/call-center")({
   component: CallCenterPage,
@@ -26,15 +31,20 @@ export const Route = createFileRoute("/call-center")({
 
 type CallLog = {
   id: string;
+  customer_id: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   call_type: "incoming" | "outgoing";
   duration_seconds: number;
   outcome: string | null;
   summary: string | null;
+  notes: string | null;
+  agent_id: string;
   agent_email: string | null;
   called_at: string;
 };
+
+type CustomerOpt = { id: string; name: string; phone: string | null };
 
 const OUTCOMES = [
   { v: "resolved", label: "تم الحل" },
@@ -50,9 +60,13 @@ function CallCenterPage() {
   const { isCallCenter, isManager, loading: roleLoading } = useRole();
   const navigate = useNavigate();
   const [calls, setCalls] = useState<CallLog[]>([]);
+  const [customers, setCustomers] = useState<CustomerOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<CallLog | null>(null);
   const [ratingFor, setRatingFor] = useState<CallLog | null>(null);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "incoming" | "outgoing">("all");
 
   useEffect(() => {
     if (!roleLoading && !isCallCenter) {
@@ -63,12 +77,12 @@ function CallCenterPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("call_logs")
-      .select("*")
-      .order("called_at", { ascending: false })
-      .limit(100);
+    const [{ data }, { data: cs }] = await Promise.all([
+      supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
+      supabase.from("customers").select("id, name, phone").order("name"),
+    ]);
     setCalls((data as any) ?? []);
+    setCustomers((cs as any) ?? []);
     setLoading(false);
   };
 
@@ -76,6 +90,14 @@ function CallCenterPage() {
     if (isCallCenter) load();
   }, [isCallCenter]);
   useRealtimeTable("call_logs", () => isCallCenter && load());
+  useRealtimeTable("customers", () => isCallCenter && load());
+
+  const deleteCall = async (id: string) => {
+    const { error } = await supabase.from("call_logs").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("تم الحذف");
+    load();
+  };
 
   if (roleLoading || !isCallCenter) {
     return (
@@ -90,6 +112,18 @@ function CallCenterPage() {
   const todayCount = calls.filter(
     (c) => new Date(c.called_at).toDateString() === new Date().toDateString()
   ).length;
+
+  const filteredCalls = calls.filter((c) => {
+    if (typeFilter !== "all" && c.call_type !== typeFilter) return false;
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      (c.customer_name ?? "").toLowerCase().includes(s) ||
+      (c.customer_phone ?? "").toLowerCase().includes(s) ||
+      (c.summary ?? "").toLowerCase().includes(s) ||
+      (c.agent_email ?? "").toLowerCase().includes(s)
+    );
+  });
 
   return (
     <AppShell>
@@ -112,30 +146,51 @@ function CallCenterPage() {
                 <Plus className="h-4 w-4" /> تسجيل مكالمة
               </Button>
             </DialogTrigger>
-            <NewCallDialog
-              userId={user!.id}
-              userEmail={user!.email ?? null}
-              onDone={() => {
-                setDialogOpen(false);
-                load();
-              }}
-            />
+            {dialogOpen && (
+              <CallDialog
+                userId={user!.id}
+                userEmail={user!.email ?? null}
+                customers={customers}
+                onDone={() => {
+                  setDialogOpen(false);
+                  load();
+                }}
+              />
+            )}
           </Dialog>
         </div>
 
-        <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold">سجل المكالمات</h2>
+        <Card className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold flex-1">سجل المكالمات</h2>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث بالاسم، رقم، ملخص…"
+              className="w-full sm:w-64"
+            />
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="incoming">واردة</SelectItem>
+                <SelectItem value="outgoing">صادرة</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : calls.length === 0 ? (
+          ) : filteredCalls.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              لا توجد مكالمات بعد — اضغط "تسجيل مكالمة"
+              لا توجد مكالمات مطابقة
             </div>
           ) : (
             <div className="divide-y divide-border/60">
-              {calls.map((c) => (
+              {filteredCalls.map((c) => {
+                const canEdit = isManager || c.agent_id === user!.id;
+                return (
                 <div key={c.id} className="flex flex-wrap items-center gap-3 py-3">
                   <div
                     className={`rounded-lg p-2 ${
@@ -174,17 +229,37 @@ function CallCenterPage() {
                         {String(c.duration_seconds % 60).padStart(2, "0")}
                       </span>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setRatingFor(c)}
-                      className="gap-1"
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setRatingFor(c)} className="gap-1">
                       <Star className="h-3.5 w-3.5" /> تقييم
                     </Button>
+                    {canEdit && (
+                      <Button size="icon" variant="ghost" onClick={() => setEditing(c)} title="تعديل">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isManager && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="icon" variant="ghost" title="حذف">
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>حذف المكالمة</AlertDialogTitle>
+                            <AlertDialogDescription>سيتم حذف سجل المكالمة نهائياً.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteCall(c.id)}>تأكيد</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
@@ -210,6 +285,18 @@ function CallCenterPage() {
           onClose={() => setRatingFor(null)}
         />
       )}
+
+      {editing && (
+        <Dialog open onOpenChange={(o) => !o && setEditing(null)}>
+          <CallDialog
+            userId={user!.id}
+            userEmail={user!.email ?? null}
+            customers={customers}
+            existing={editing}
+            onDone={() => { setEditing(null); load(); }}
+          />
+        </Dialog>
+      )}
     </AppShell>
   );
 }
@@ -223,54 +310,120 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function NewCallDialog({
+function CallDialog({
   userId,
   userEmail,
+  customers,
+  existing,
   onDone,
 }: {
   userId: string;
   userEmail: string | null;
+  customers: CustomerOpt[];
+  existing?: CallLog;
   onDone: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [type, setType] = useState<"incoming" | "outgoing">("incoming");
-  const [duration, setDuration] = useState(0);
-  const [outcome, setOutcome] = useState("resolved");
-  const [summary, setSummary] = useState("");
+  const [customerId, setCustomerId] = useState<string | null>(existing?.customer_id ?? null);
+  const [name, setName] = useState(existing?.customer_name ?? "");
+  const [phone, setPhone] = useState(existing?.customer_phone ?? "");
+  const [type, setType] = useState<"incoming" | "outgoing">(existing?.call_type ?? "incoming");
+  const [duration, setDuration] = useState(existing?.duration_seconds ?? 0);
+  const [outcome, setOutcome] = useState(existing?.outcome ?? "resolved");
+  const [summary, setSummary] = useState(existing?.summary ?? "");
+  const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [calledAt, setCalledAt] = useState(
+    existing?.called_at
+      ? new Date(existing.called_at).toISOString().slice(0, 16)
+      : new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  );
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const pickCustomer = (c: CustomerOpt) => {
+    setCustomerId(c.id);
+    setName(c.name);
+    if (c.phone) setPhone(c.phone);
+    setPickerOpen(false);
+  };
 
   const save = async () => {
     if (!phone.trim() && !name.trim()) {
-      toast.error("أدخل اسم العميل أو رقمه");
+      toast.error("اختر عميلاً أو أدخل اسم/رقم");
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("call_logs").insert({
+    const payload = {
+      customer_id: customerId,
       customer_name: name.trim() || null,
       customer_phone: phone.trim() || null,
       call_type: type,
       duration_seconds: duration,
       outcome,
       summary: summary.trim() || null,
-      agent_id: userId,
-      agent_email: userEmail,
-    });
+      notes: notes.trim() || null,
+      called_at: new Date(calledAt).toISOString(),
+    };
+    const { error } = existing
+      ? await supabase.from("call_logs").update(payload).eq("id", existing.id)
+      : await supabase.from("call_logs").insert({ ...payload, agent_id: userId, agent_email: userEmail });
     setSaving(false);
     if (error) {
       toast.error("فشل الحفظ: " + error.message);
       return;
     }
-    toast.success("تم تسجيل المكالمة");
+    toast.success(existing ? "تم تحديث المكالمة" : "تم تسجيل المكالمة");
     onDone();
   };
 
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader>
-        <DialogTitle>تسجيل مكالمة جديدة</DialogTitle>
+        <DialogTitle>{existing ? "تعديل مكالمة" : "تسجيل مكالمة جديدة"}</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
+        <div>
+          <Label>اختيار عميل من القاعدة</Label>
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                {customerId ? (customers.find((c) => c.id === customerId)?.name ?? "—") : "ابحث عن عميل…"}
+                <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+              <Command>
+                <CommandInput placeholder="ابحث بالاسم أو الرقم…" />
+                <CommandList>
+                  <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                  <CommandGroup>
+                    {customers.slice(0, 200).map((c) => (
+                      <CommandItem
+                        key={c.id}
+                        value={`${c.name} ${c.phone ?? ""}`}
+                        onSelect={() => pickCustomer(c)}
+                      >
+                        <Check className={`me-2 h-4 w-4 ${customerId === c.id ? "opacity-100" : "opacity-0"}`} />
+                        <div className="flex flex-col">
+                          <span>{c.name}</span>
+                          {c.phone && <span className="text-xs text-muted-foreground" dir="ltr">{c.phone}</span>}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {customerId && (
+            <button
+              className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { setCustomerId(null); }}
+            >
+              إلغاء الربط بالعميل
+            </button>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>اسم العميل</Label>
@@ -314,6 +467,10 @@ function NewCallDialog({
           </div>
         </div>
         <div>
+          <Label>تاريخ ووقت المكالمة</Label>
+          <Input type="datetime-local" value={calledAt} onChange={(e) => setCalledAt(e.target.value)} />
+        </div>
+        <div>
           <Label>ملخص المكالمة</Label>
           <Textarea
             rows={3}
@@ -322,9 +479,18 @@ function NewCallDialog({
             placeholder="ما الذي تمت مناقشته؟"
           />
         </div>
+        <div>
+          <Label>ملاحظات داخلية</Label>
+          <Textarea
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="ملاحظات للفريق…"
+          />
+        </div>
         <Button onClick={save} disabled={saving} className="w-full">
           {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
-          حفظ المكالمة
+          {existing ? "حفظ التعديلات" : "حفظ المكالمة"}
         </Button>
       </div>
     </DialogContent>

@@ -26,6 +26,9 @@ function InvoicesList() {
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "voided">("all");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
+  const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
   const navigate = useNavigate();
 
   const load = async () => {
@@ -40,11 +43,34 @@ function InvoicesList() {
   useEffect(() => { load(); }, [user, from, to]);
   useRealtimeTable("invoices", () => { load(); });
 
-  const filtered = list.filter((i) => {
-    const s = q.trim().toLowerCase();
-    if (!s) return true;
-    return (i.invoice_number ?? "").toLowerCase().includes(s) || (i.customer_name ?? "").toLowerCase().includes(s);
-  });
+  const filtered = list
+    .filter((i) => {
+      if (statusFilter !== "all" && (i.status ?? "completed") !== statusFilter) return false;
+      if (paymentFilter !== "all") {
+        const total = Number(i.total ?? 0);
+        const paid = Number(i.paid_amount ?? 0);
+        const ratio = total > 0 ? paid / total : 0;
+        if (paymentFilter === "paid" && ratio < 0.999) return false;
+        if (paymentFilter === "unpaid" && paid > 0.001) return false;
+        if (paymentFilter === "partial" && (paid <= 0.001 || ratio >= 0.999)) return false;
+      }
+      const s = q.trim().toLowerCase();
+      if (!s) return true;
+      return (
+        (i.invoice_number ?? "").toLowerCase().includes(s) ||
+        String(i.receipt_number ?? "").includes(s) ||
+        (i.customer_name ?? "").toLowerCase().includes(s) ||
+        (i.customer_phone ?? "").toLowerCase().includes(s)
+      );
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "date_asc": return +new Date(a.created_at) - +new Date(b.created_at);
+        case "total_desc": return Number(b.total) - Number(a.total);
+        case "total_asc": return Number(a.total) - Number(b.total);
+        default: return +new Date(b.created_at) - +new Date(a.created_at);
+      }
+    });
 
   const handleRpcError = (msg: string) => {
     if (msg.includes("OUT_OF_STOCK")) {
@@ -140,13 +166,33 @@ function InvoicesList() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="relative sm:col-span-1">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="relative lg:col-span-2">
           <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث برقم الفاتورة، اسم العميل أو رقم الهاتف…" className="ps-9" />
         </div>
-        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} placeholder={t("from")} />
-        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} placeholder={t("to")} />
+        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">كل الحالات</option>
+          <option value="completed">مكتملة</option>
+          <option value="voided">ملغاة</option>
+        </select>
+        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">كل المدفوعات</option>
+          <option value="paid">مدفوعة بالكامل</option>
+          <option value="partial">مدفوعة جزئياً</option>
+          <option value="unpaid">غير مدفوعة</option>
+        </select>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="date_desc">الأحدث أولاً</option>
+          <option value="date_asc">الأقدم أولاً</option>
+          <option value="total_desc">الأعلى قيمة</option>
+          <option value="total_asc">الأقل قيمة</option>
+        </select>
+        <div className="flex items-center justify-end text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
+          عرض {filtered.length} من {list.length} فاتورة
+        </div>
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
