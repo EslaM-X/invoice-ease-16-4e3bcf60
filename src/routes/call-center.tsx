@@ -60,9 +60,13 @@ function CallCenterPage() {
   const { isCallCenter, isManager, loading: roleLoading } = useRole();
   const navigate = useNavigate();
   const [calls, setCalls] = useState<CallLog[]>([]);
+  const [customers, setCustomers] = useState<CustomerOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<CallLog | null>(null);
   const [ratingFor, setRatingFor] = useState<CallLog | null>(null);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "incoming" | "outgoing">("all");
 
   useEffect(() => {
     if (!roleLoading && !isCallCenter) {
@@ -73,12 +77,12 @@ function CallCenterPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("call_logs")
-      .select("*")
-      .order("called_at", { ascending: false })
-      .limit(100);
+    const [{ data }, { data: cs }] = await Promise.all([
+      supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
+      supabase.from("customers").select("id, name, phone").order("name"),
+    ]);
     setCalls((data as any) ?? []);
+    setCustomers((cs as any) ?? []);
     setLoading(false);
   };
 
@@ -86,6 +90,14 @@ function CallCenterPage() {
     if (isCallCenter) load();
   }, [isCallCenter]);
   useRealtimeTable("call_logs", () => isCallCenter && load());
+  useRealtimeTable("customers", () => isCallCenter && load());
+
+  const deleteCall = async (id: string) => {
+    const { error } = await supabase.from("call_logs").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("تم الحذف");
+    load();
+  };
 
   if (roleLoading || !isCallCenter) {
     return (
