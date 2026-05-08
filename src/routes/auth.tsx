@@ -253,6 +253,7 @@ function AuthPage() {
             <Link to="/" className="hover:text-white">←</Link>
           </p>
         </div>
+        </div>
       </div>
 
       {forgotOpen && (
