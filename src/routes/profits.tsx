@@ -79,7 +79,7 @@ function ProfitsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<RawItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [range, setRange] = useState<Range>("month");
+  const [range, setRange] = useState<Range>("all");
   const today = new Date().toISOString().slice(0, 10);
   const [day, setDay] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
