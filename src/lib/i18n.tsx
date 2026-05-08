@@ -87,7 +87,6 @@ const ar: Dict = {
   system_notes_hint: "ملاحظات داخلية لا تظهر في الفاتورة المطبوعة",
   invoices_with_system_notes: "فواتير بملاحظات النظام",
   search_invoice_or_name: "ابحث برقم الفاتورة أو اسم العميل",
-  save: "حفظ",
   save_invoice: "حفظ الفاتورة",
   saved: "تم الحفظ",
   print: "طباعة",
