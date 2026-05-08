@@ -94,6 +94,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [pickerCollection, setPickerCollection] = useState<string>("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
