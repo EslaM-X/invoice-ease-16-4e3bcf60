@@ -296,7 +296,7 @@ function AuthPage() {
               <Button
                 type="submit"
                 disabled={busy}
-                className="flex-1 bg-[oklch(0.78_0.11_82)] text-[oklch(0.12_0.005_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                className="flex-1 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
               >
                 {lang === "ar" ? "إرسال" : "Send"}
               </Button>
