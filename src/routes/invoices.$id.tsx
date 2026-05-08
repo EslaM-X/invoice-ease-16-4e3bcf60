@@ -300,6 +300,22 @@ function InvoiceView() {
         </div>
       </div>
 
+      {inv.system_notes && (
+        <div className="mx-auto max-w-3xl no-print">
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 sm:p-5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                {t("system_notes")}
+              </h3>
+              <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
+                {lang === "ar" ? "لا يطبع" : "Not printed"}
+              </span>
+            </div>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{inv.system_notes}</p>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-3xl">
         <InvoiceTimeline invoiceId={id} />
       </div>
