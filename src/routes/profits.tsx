@@ -236,12 +236,31 @@ function ProfitsPage() {
       },
       { revenue: 0, cost: 0, qty: 0, lines: 0 }
     );
+    // Include custom invoice lines (non-product, non-shipping) so KPI totals
+    // reflect the actual invoice value. Shipping fees and voided invoices remain excluded.
+    // When a product filter is active, skip extras (they aren't tied to a product).
+    let extrasRevenue = 0;
+    let extrasLines = 0;
+    if (selectedIds.size === 0) {
+      for (const it of items) {
+        if (it.product_id) continue;
+        if (isShippingLine(it)) continue;
+        extrasRevenue += Number(it.line_total ?? 0);
+        extrasLines += 1;
+      }
+    }
+    const totalRevenue = totals.revenue + extrasRevenue;
+    const totalCost = totals.cost; // custom lines have no cost basis
     return {
       list,
+      extras: { revenue: extrasRevenue, lines: extrasLines },
       totals: {
         ...totals,
-        profit: totals.revenue - totals.cost,
-        margin: totals.revenue > 0 ? ((totals.revenue - totals.cost) / totals.revenue) * 100 : 0,
+        revenue: totalRevenue,
+        cost: totalCost,
+        lines: totals.lines + extrasLines,
+        profit: totalRevenue - totalCost,
+        margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
       },
     };
   }, [items, productById, search, products, selectedIds]);
@@ -499,6 +518,7 @@ function ProfitsPage() {
                 <li>{t("إجمالي التكلفة = سعر التكلفة × الكمية المباعة.", "Cost = cost_price × sold qty.")}</li>
                 <li>{t("صافي الربح = إجمالي البيع − إجمالي التكلفة.", "Profit = Revenue − Cost.")}</li>
                 <li>{t("هامش % = (الربح ÷ إجمالي البيع) × 100.", "Margin % = (Profit ÷ Revenue) × 100.")}</li>
+                <li>{t("بنود مخصصة (بدون منتج) تُحتسب ضمن إجمالي البيع بتكلفة 0.", "Custom (non-product) lines are added to Revenue with zero cost.")}</li>
                 <li className="text-muted-foreground">{t("مستبعد: الفواتير الملغية، الفواتير المحذوفة، رسوم الشحن/الخدمة.", "Excluded: voided invoices, deleted invoices, shipping/service fees.")}</li>
               </ul>
             </PopoverContent>
