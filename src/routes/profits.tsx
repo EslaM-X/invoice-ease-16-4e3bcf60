@@ -733,6 +733,52 @@ function ProfitsPage() {
           </table>
         </div>
       </div>
+
+      {/* Price history dialog */}
+      <Dialog open={!!historyOpen} onOpenChange={(o) => { if (!o) { setHistoryOpen(null); setHistory([]); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {t("سجل تعديلات الأسعار", "Price change history")}
+              {historyOpen && <span className="block text-xs text-muted-foreground font-normal mt-1">{historyOpen.name}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("...جاري التحميل", "Loading...")}</div>
+            ) : history.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("لا توجد تعديلات سابقة", "No prior changes")}</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 text-start">{t("الحقل", "Field")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("من", "From")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إلى", "To")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("بواسطة", "By")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("التاريخ", "When")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {history.map((h) => (
+                    <tr key={h.id}>
+                      <td className="px-2 py-1.5">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.field === "cost_price" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
+                          {h.field === "cost_price" ? t("تكلفة", "cost") : t("بيع", "sale")}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(h.old_value ?? 0), "EGP", lang)}</td>
+                      <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{fmtMoney(Number(h.new_value ?? 0), "EGP", lang)}</td>
+                      <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
