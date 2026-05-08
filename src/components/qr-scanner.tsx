@@ -37,10 +37,25 @@ export async function requestCameraPermission(
     }).permissions;
     if (permissionApi?.query) {
       const status = await permissionApi.query({ name: "camera" as PermissionName });
-      return status.state === "granted";
+      if (status.state === "granted") return true;
+      if (status.state === "denied") return false;
     }
   } catch {}
-  return !!navigator.mediaDevices?.getUserMedia;
+  if (!navigator.mediaDevices?.getUserMedia) return false;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+    stream.getTracks().forEach((track) => track.stop());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function buildCameraCandidates(lowRes: boolean): StartCandidate[] {
@@ -291,6 +306,12 @@ export function QrScanner({ onScan, onClose, lastFetchMs }: Props) {
       console.error("[qr] start failed", e);
       if (!mountedRef.current) return;
       const kind = classifyError(e);
+      if (kind !== "permission" && !lowRes) {
+        setLowRes(true);
+        setStarting(false);
+        setRetrying(false);
+        return;
+      }
       setErrorKind(kind);
       setFailToast(e?.message ?? "فشل تشغيل الماسح");
       window.setTimeout(() => mountedRef.current && setFailToast(null), 3500);
