@@ -13,6 +13,7 @@ const ar: Dict = {
   invoices: "الفواتير",
   new_invoice: "فاتورة جديدة",
   reports: "التقارير",
+  profits: "الأرباح",
   settings: "الإعدادات",
   logout: "تسجيل الخروج",
   login: "تسجيل الدخول",
