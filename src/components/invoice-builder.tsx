@@ -12,6 +12,7 @@ import { Plus, Trash2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import type { Customer, Product } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
+import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { fmtMoney } from "@/lib/utils-money";
 import { QrScanner } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
