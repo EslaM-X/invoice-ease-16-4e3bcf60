@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus, PackagePlus } from "lucide-react";
+import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { TableSkeleton } from "@/components/skeletons";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
@@ -41,6 +42,11 @@ function Products() {
   const [adjustFor, setAdjustFor] = useState<Product | null>(null);
   const [adjustAmt, setAdjustAmt] = useState("0");
   const [adjustReason, setAdjustReason] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAmt, setBulkAmt] = useState("0");
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkScope, setBulkScope] = useState<"filtered" | "all">("filtered");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -190,6 +196,36 @@ function Products() {
     load();
   };
 
+  const runBulkAdjust = async () => {
+    if (!user) return;
+    const amt = parseInt(bulkAmt || "0", 10);
+    if (!amt) return toast.error(lang === "ar" ? "أدخل قيمة غير صفرية" : "Enter non-zero amount");
+    const reason = bulkReason.trim();
+    if (reason.length < 3) {
+      return toast.error(lang === "ar" ? "السبب مطلوب (3 أحرف على الأقل)" : "Reason required (min 3 chars)");
+    }
+    const targets = bulkScope === "filtered" ? filtered : list;
+    if (!targets.length) return toast.error(lang === "ar" ? "لا توجد منتجات" : "No products");
+    setBulkBusy(true);
+    let ok = 0;
+    let fail = 0;
+    for (const p of targets) {
+      const { error } = await supabase.rpc("adjust_stock", {
+        _product_id: p.id,
+        _change: amt,
+        _reason: reason,
+      });
+      if (error) fail++; else ok++;
+    }
+    setBulkBusy(false);
+    if (fail === 0) toast.success(`${ok} ✓`);
+    else toast.warning(`${ok} ✓ · ${fail} ✗`);
+    setBulkOpen(false);
+    setBulkAmt("0");
+    setBulkReason("");
+    load();
+  };
+
   const exportCsv = () => {
     const rows = list.map((p) => ({
       name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "",
@@ -242,6 +278,9 @@ function Products() {
           <Button variant="outline" onClick={exportCsv} className="gap-2"><Download className="h-4 w-4" />{t("export_csv")}</Button>
           <Button variant="outline" disabled={selected.size === 0} onClick={printLabels} className="gap-2">
             <Printer className="h-4 w-4" />{t("print_qr_labels")} {selected.size > 0 && `(${selected.size})`}
+          </Button>
+          <Button variant="outline" onClick={() => { setBulkOpen(true); setBulkAmt("0"); setBulkReason(""); setBulkScope("filtered"); }} className="gap-2">
+            <PackagePlus className="h-4 w-4" />{lang === "ar" ? "إضافة مخزون جماعية" : "Bulk add stock"}
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -299,8 +338,9 @@ function Products() {
             <button
               key={c}
               onClick={() => setCollectionFilter(c)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
             >
+              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
               {c} ({collectionCounts[c] ?? 0})
             </button>
           ))}
@@ -364,7 +404,7 @@ function Products() {
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         {p.collection ? (
-                          <span className="inline-flex rounded-md border bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{p.collection}</span>
+                          <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -467,6 +507,63 @@ function Products() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAdjustFor(null)}>{t("cancel")}</Button>
             <Button onClick={adjustStock}>{t("save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk add stock dialog */}
+      <Dialog open={bulkOpen} onOpenChange={(v) => !v && !bulkBusy && setBulkOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PackagePlus className="h-5 w-5" />
+              {lang === "ar" ? "إضافة مخزون لعدة منتجات" : "Bulk add stock"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              {lang === "ar"
+                ? "ستُطبَّق نفس الكمية على كل المنتجات المختارة. القيمة الموجبة تضيف، السالبة تخصم. تُسجَّل العملية في سجل المخزون."
+                : "The same amount will be applied to every selected product. Positive adds, negative subtracts. Each change is logged."}
+            </div>
+            <div>
+              <Label>{lang === "ar" ? "النطاق" : "Scope"}</Label>
+              <div className="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkScope("filtered")}
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-semibold transition ${bulkScope === "filtered" ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted/50"}`}
+                >
+                  {lang === "ar" ? `المعروضة فقط (${filtered.length})` : `Filtered only (${filtered.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkScope("all")}
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-semibold transition ${bulkScope === "all" ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted/50"}`}
+                >
+                  {lang === "ar" ? `كل المنتجات (${list.length})` : `All products (${list.length})`}
+                </button>
+              </div>
+            </div>
+            <div>
+              <Label>{t("adjust_stock_amount")}</Label>
+              <Input type="number" value={bulkAmt} onChange={(e) => setBulkAmt(e.target.value)} placeholder="+10 / -5" />
+            </div>
+            <div>
+              <Label>{t("adjust_stock_reason")} <span className="text-destructive">*</span></Label>
+              <Input
+                value={bulkReason}
+                onChange={(e) => setBulkReason(e.target.value)}
+                placeholder={lang === "ar" ? "مثال: استلام شحنة / جرد عام" : "e.g. shipment received / global count"}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBulkOpen(false)} disabled={bulkBusy}>{t("cancel")}</Button>
+            <Button onClick={runBulkAdjust} disabled={bulkBusy}>
+              {bulkBusy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Processing...") : t("save")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

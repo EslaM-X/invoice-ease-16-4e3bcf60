@@ -12,6 +12,7 @@ import { Plus, Trash2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import type { Customer, Product } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
+import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { fmtMoney } from "@/lib/utils-money";
 import { QrScanner } from "@/components/qr-scanner";
 import { useRealtimeTable } from "@/lib/realtime";
@@ -914,8 +915,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                 key={c}
                 type="button"
                 onClick={() => setPickerCollection(c)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${pickerCollection === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, pickerCollection === c)}`}
               >
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(c)}`} aria-hidden />
                 {c} ({collectionCounts[c] ?? 0})
               </button>
             ))}
@@ -959,7 +961,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-medium truncate">{p.name}</span>
                             {p.collection && (
-                              <span className="rounded border bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">{p.collection}</span>
+                              <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
