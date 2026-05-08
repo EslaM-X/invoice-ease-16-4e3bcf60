@@ -187,7 +187,12 @@ function ProfitsPage() {
           (r.product?.collection ?? "").toLowerCase().includes(s)
         );
       })
-      .sort((a, b) => b.profit - a.profit);
+      .sort((a, b) => {
+        if (a.qty === 0 && b.qty === 0) return a.name.localeCompare(b.name);
+        if (a.qty === 0) return 1;
+        if (b.qty === 0) return -1;
+        return b.profit - a.profit;
+      });
     return {
       list,
       totals: {
@@ -199,7 +204,7 @@ function ProfitsPage() {
         lines: totalLines,
       },
     };
-  }, [items, productById, search]);
+  }, [items, productById, search, products]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
