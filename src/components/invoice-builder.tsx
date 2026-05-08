@@ -946,13 +946,23 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                 {filteredProducts.map((p) => {
                   const out = p.stock_quantity <= 0;
                   const low = !out && p.stock_quantity <= p.low_stock_threshold;
+                  const inCartQty = items
+                    .filter((it) => it.product_id === p.id)
+                    .reduce((s, it) => s + (it.quantity || 0), 0);
+                  const justAdded = lastAddedId === p.id;
                   return (
                     <li key={p.id}>
                       <button
                         type="button"
                         onClick={() => addProduct(p)}
                         disabled={out}
-                        className="flex w-full items-center gap-3 px-2.5 py-2 text-start hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`relative flex w-full items-center gap-3 px-2.5 py-2 text-start transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                          justAdded
+                            ? "bg-emerald-500/15 ring-1 ring-emerald-500/40"
+                            : inCartQty > 0
+                              ? "bg-primary/5 hover:bg-primary/10"
+                              : "hover:bg-muted/50"
+                        }`}
                       >
                         <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
                           {p.image_url ? (
@@ -968,6 +978,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                             <span className="font-medium truncate">{p.name}</span>
                             {p.collection && (
                               <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
+                            )}
+                            {inCartQty > 0 && (
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white shadow ${justAdded ? "bg-emerald-500 animate-pulse" : "bg-gradient-to-r from-emerald-500 to-teal-500"}`}>
+                                ✓ {inCartQty} {lang === "ar" ? "مُضاف" : "added"}
+                              </span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
