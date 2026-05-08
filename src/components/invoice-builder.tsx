@@ -85,6 +85,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   );
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
+  const [systemNotes, setSystemNotes] = useState<string>(initial?.system_notes ?? "");
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
