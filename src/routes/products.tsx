@@ -42,6 +42,11 @@ function Products() {
   const [adjustFor, setAdjustFor] = useState<Product | null>(null);
   const [adjustAmt, setAdjustAmt] = useState("0");
   const [adjustReason, setAdjustReason] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAmt, setBulkAmt] = useState("0");
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkScope, setBulkScope] = useState<"filtered" | "all">("filtered");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
