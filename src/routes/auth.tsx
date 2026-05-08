@@ -87,8 +87,8 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    if (user) navigate({ to: "/dashboard" });
-  }, [user, navigate]);
+    if (user && !enrollPromptOpen) navigate({ to: "/dashboard" });
+  }, [user, navigate, enrollPromptOpen]);
 
   const afterLoginCheckBiometric = async () => {
     // If supported and not yet enrolled (or enrolled with a different email), prompt to enable.
