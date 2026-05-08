@@ -80,6 +80,7 @@ function ProfitsPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [items, setItems] = useState<RawItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [range, setRange] = useState<Range>("all");
@@ -90,6 +91,7 @@ function ProfitsPage() {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState("");
+  const [customerId, setCustomerId] = useState("");
   const [editing, setEditing] = useState<Record<string, { cost: string; sale: string }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -145,6 +147,11 @@ function ProfitsPage() {
     setProducts((data ?? []) as Product[]);
   };
 
+  const loadCustomers = async () => {
+    const { data } = await supabase.from("customers").select("id,name").order("name");
+    setCustomers(((data ?? []) as { id: string; name: string }[]));
+  };
+
   const loadItems = async () => {
     setLoading(true);
     const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
@@ -156,6 +163,7 @@ function ProfitsPage() {
       .neq("invoices.status", "voided");
     if (startISO) q = q.gte("invoices.created_at", startISO);
     if (endISO) q = q.lt("invoices.created_at", endISO);
+    if (customerId) q = q.eq("invoices.customer_id", customerId);
     const { data, error } = await q.limit(10000);
     if (error) toast.error(error.message);
     setItems((data ?? []) as any);
@@ -165,16 +173,18 @@ function ProfitsPage() {
   useEffect(() => {
     if (!user) return;
     loadProducts();
+    loadCustomers();
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
     loadItems();
-  }, [user, range, day, month, year, from, to]);
+  }, [user, range, day, month, year, from, to, customerId]);
 
   useRealtimeTable("invoices", () => loadItems());
   useRealtimeTable("invoice_items", () => loadItems());
   useRealtimeTable("products", () => loadProducts());
+  useRealtimeTable("customers", () => loadCustomers());
 
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
@@ -211,6 +221,23 @@ function ProfitsPage() {
 
   const netRev = (it: RawItem) =>
     Number(it.line_total ?? 0) * (invoiceFactor.get(it.invoice_id) ?? 1);
+
+  const filterSummary = useMemo(() => {
+    const customerName = customers.find((c) => c.id === customerId)?.name ?? (lang === "ar" ? "كل العملاء" : "All customers");
+    const productSummary = selectedIds.size > 0
+      ? `${selectedIds.size} ${lang === "ar" ? "منتج محدد" : "selected product(s)"}`
+      : search.trim()
+        ? search.trim()
+        : (lang === "ar" ? "كل المنتجات" : "All products");
+
+    let rangeLabel = lang === "ar" ? "كل الفترة" : "All time";
+    if (range === "day") rangeLabel = day;
+    else if (range === "month") rangeLabel = month;
+    else if (range === "year") rangeLabel = year;
+    else if (range === "custom") rangeLabel = `${from || "—"} → ${to || "—"}`;
+
+    return { rangeLabel, productSummary, customerName };
+  }, [customers, customerId, day, from, lang, month, range, search, selectedIds, to, year]);
 
   // Shipping/service fees aggregate (excluded from revenue/profit but shown for transparency)
   const shippingTotals = useMemo(() => {
@@ -312,6 +339,27 @@ function ProfitsPage() {
       },
     };
   }, [items, productById, search, products, selectedIds, invoiceFactor]);
+
+  const totalsMatch = useMemo(() => {
+    if (selectedIds.size > 0 || search.trim()) return null;
+
+    const totalsByInvoice = new Map<string, number>();
+    for (const it of items) {
+      if (!it.invoices) continue;
+      totalsByInvoice.set(it.invoice_id, Number(it.invoices.total ?? 0));
+    }
+
+    const reportsTotal = Array.from(totalsByInvoice.values()).reduce((sum, value) => sum + value, 0);
+    const profitsTotal = Number(rows.totals.revenue ?? 0);
+    const diff = Math.abs(profitsTotal - reportsTotal);
+
+    return {
+      reportsTotal,
+      profitsTotal,
+      diff,
+      ok: diff < 0.01,
+    };
+  }, [items, rows.totals.revenue, search, selectedIds]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
@@ -636,6 +684,19 @@ function ProfitsPage() {
             <Label className="text-xs">{t("بحث منتج", "Search product")}</Label>
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")} />
           </div>
+          <div className="min-w-[220px]">
+            <Label className="text-xs">{t("العميل", "Customer")}</Label>
+            <select
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+            >
+              <option value="">{t("كل العملاء", "All customers")}</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>{customer.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="min-w-[200px]">
             <Label className="text-xs">{t("فلترة منتجات محددة", "Filter specific products")}</Label>
             <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
@@ -712,6 +773,15 @@ function ProfitsPage() {
         )}
       </div>
 
+      <div className="rounded-2xl border bg-card p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-semibold text-foreground">{t("السياق الحالي", "Current context")}</span>
+          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("المدى", "Range")}: {filterSummary.rangeLabel}</span>
+          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("المنتج", "Product")}: {filterSummary.productSummary}</span>
+          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("العميل", "Customer")}: {filterSummary.customerName}</span>
+        </div>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Wallet className="h-5 w-5" />} label={t("إجمالي البيع", "Revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} className="from-sky-500/15 to-sky-500/5 text-sky-600" />
@@ -725,6 +795,26 @@ function ProfitsPage() {
           className="from-slate-500/15 to-slate-500/5 text-slate-600"
         />
       </div>
+      {totalsMatch && (
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${totalsMatch.ok ? "border-emerald-500/30 bg-emerald-500/8 text-emerald-700" : "border-destructive/30 bg-destructive/8 text-destructive"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">
+              {totalsMatch.ok
+                ? t("التحقق الآلي نجح: إجمالي البيع مطابق للتقارير", "Auto-check passed: revenue matches reports")
+                : t("تنبيه: يوجد فرق بين إجمالي البيع والتقارير", "Alert: revenue differs from reports") }
+            </div>
+            <div className="text-xs opacity-80">
+              {t("التقارير", "Reports")}: {fmtMoney(totalsMatch.reportsTotal, "EGP", lang)} · {t("الأرباح", "Profits")}: {fmtMoney(totalsMatch.profitsTotal, "EGP", lang)}
+              {!totalsMatch.ok && ` · ${t("الفرق", "Diff")}: ${fmtMoney(totalsMatch.diff, "EGP", lang)}`}
+            </div>
+          </div>
+        </div>
+      )}
+      {(selectedIds.size > 0 || search.trim()) && (
+        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+          {t("مطابقة التقارير التلقائية تُعرض عند عدم تقييد النتائج بفلتر منتج محدد أو بحث نصّي، لأن صفحة التقارير الحالية لا تطبق فلترة على مستوى المنتج.", "Automatic report matching is shown when no product-specific filter or text search is applied, because the reports page currently compares invoice totals rather than product-level subsets.")}
+        </div>
+      )}
       <p className="text-[11px] text-muted-foreground -mt-1">
         {t(
           `رسوم الشحن/الخدمة (${shippingTotals.lines} بند على ${shippingTotals.invoices} فاتورة) مستبعدة تمامًا من إجمالي البيع وصافي الأرباح. الفواتير الملغاة والمحذوفة كذلك.`,
