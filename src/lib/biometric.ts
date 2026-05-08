@@ -230,6 +230,13 @@ export async function verifyBiometric(): Promise<{
 
   if (!assertion) throw new Error("Biometric verification failed");
 
+  // Best-effort: update last_used_at after the session is restored by the caller.
+  // We update it here too — RLS will accept it if the active session is the owner.
+  void supabase
+    .from("biometric_credentials")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("credential_id", stored.credentialId);
+
   return {
     email: stored.email,
     access_token: stored.access_token,
