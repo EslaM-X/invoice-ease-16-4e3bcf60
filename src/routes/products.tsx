@@ -279,6 +279,9 @@ function Products() {
           <Button variant="outline" disabled={selected.size === 0} onClick={printLabels} className="gap-2">
             <Printer className="h-4 w-4" />{t("print_qr_labels")} {selected.size > 0 && `(${selected.size})`}
           </Button>
+          <Button variant="outline" onClick={() => { setBulkOpen(true); setBulkAmt("0"); setBulkReason(""); setBulkScope("filtered"); }} className="gap-2">
+            <PackagePlus className="h-4 w-4" />{lang === "ar" ? "إضافة مخزون جماعية" : "Bulk add stock"}
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("add_product")}</Button>
