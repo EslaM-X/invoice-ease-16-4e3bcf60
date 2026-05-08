@@ -454,6 +454,57 @@ function AuthPage() {
           </form>
         </div>
       )}
+
+      {enrollPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollPromptOpen(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.003_250)] p-6 text-white shadow-elegant"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.15)] text-[oklch(0.86_0.01_250)]">
+                {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {lang === "ar"
+                    ? (isApple ? "تفعيل Face ID" : "تفعيل البصمة")
+                    : (isApple ? "Enable Face ID" : "Enable Fingerprint")}
+                </h2>
+                <p className="text-xs text-white/60">
+                  {lang === "ar" ? "دخول أسرع وأكثر أمانًا" : "Faster, more secure sign-in"}
+                </p>
+              </div>
+            </div>
+            <p className="flex items-start gap-2 text-sm text-white/70">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.86_0.01_250)]" />
+              <span>
+                {lang === "ar"
+                  ? "في المرة القادمة سجّل الدخول مباشرة باستخدام بصمتك أو وجهك على هذا الجهاز."
+                  : "Next time, sign in instantly with your fingerprint or face on this device."}
+              </span>
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => setEnrollPromptOpen(false)}
+              >
+                {lang === "ar" ? "ليس الآن" : "Not now"}
+              </Button>
+              <Button
+                type="button"
+                disabled={busy}
+                className="flex-1 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+                onClick={handleEnableBiometric}
+              >
+                {lang === "ar" ? "تفعيل" : "Enable"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
