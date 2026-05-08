@@ -212,6 +212,21 @@ function ProfitsPage() {
   const netRev = (it: RawItem) =>
     Number(it.line_total ?? 0) * (invoiceFactor.get(it.invoice_id) ?? 1);
 
+  // Shipping/service fees aggregate (excluded from revenue/profit but shown for transparency)
+  const shippingTotals = useMemo(() => {
+    let amount = 0;
+    let lines = 0;
+    const invoices = new Set<string>();
+    for (const it of items) {
+      if (!isShippingLine(it)) continue;
+      if (selectedIds.size > 0) continue; // when filtering by product, shipping is irrelevant
+      amount += Number(it.line_total ?? 0);
+      lines += 1;
+      invoices.add(it.invoice_id);
+    }
+    return { amount, lines, invoices: invoices.size };
+  }, [items, selectedIds]);
+
   // Compute profit rows — include ALL products, even those with no sales in range.
   const rows = useMemo(() => {
     const filtered = items.filter((it) => !isShippingLine(it) && it.product_id);
