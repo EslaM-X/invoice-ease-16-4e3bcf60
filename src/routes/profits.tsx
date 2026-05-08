@@ -1,0 +1,632 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
+import { AppShell } from "@/components/app-shell";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { useRealtimeTable } from "@/lib/realtime";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
+import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
+import { toast } from "sonner";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent } from "lucide-react";
+import type { Product } from "@/lib/data";
+
+type Range = "day" | "month" | "year" | "all" | "custom";
+
+type RawItem = {
+  invoice_id: string;
+  product_id: string | null;
+  product_name: string;
+  serial_number: string | null;
+  color: string | null;
+  quantity: number;
+  unit_price: number;
+  discount: number;
+  line_total: number;
+  invoices: {
+    invoice_number: string;
+    status: string;
+    created_at: string;
+    customer_name: string | null;
+  } | null;
+};
+
+const SHIPPING_NAMES = new Set([
+  "رسوم شحن",
+  "رسوم خدمة / Service Fee",
+  "رسوم خدمة",
+  "Service Fee",
+]);
+const isShippingLine = (it: { product_id: string | null; product_name: string }) =>
+  it.product_id === null && SHIPPING_NAMES.has(it.product_name);
+
+function rangeBounds(r: Range, day: string, month: string, year: string, from: string, to: string) {
+  const now = new Date();
+  if (r === "all") return { startISO: null, endISO: null };
+  if (r === "day") {
+    const d = new Date(day || now.toISOString().slice(0, 10));
+    const s = new Date(d); s.setHours(0, 0, 0, 0);
+    const e = new Date(s); e.setDate(e.getDate() + 1);
+    return { startISO: s.toISOString(), endISO: e.toISOString() };
+  }
+  if (r === "month") {
+    const [y, m] = (month || now.toISOString().slice(0, 7)).split("-").map(Number);
+    const s = new Date(y, m - 1, 1);
+    const e = new Date(y, m, 1);
+    return { startISO: s.toISOString(), endISO: e.toISOString() };
+  }
+  if (r === "year") {
+    const y = Number(year || now.getFullYear());
+    return { startISO: new Date(y, 0, 1).toISOString(), endISO: new Date(y + 1, 0, 1).toISOString() };
+  }
+  // custom
+  const s = new Date((from || now.toISOString().slice(0, 10)) + "T00:00:00");
+  const e = new Date((to || now.toISOString().slice(0, 10)) + "T00:00:00");
+  e.setDate(e.getDate() + 1);
+  return { startISO: s.toISOString(), endISO: e.toISOString() };
+}
+
+function ProfitsPage() {
+  const { user } = useAuth();
+  const { lang } = useI18n();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [items, setItems] = useState<RawItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [range, setRange] = useState<Range>("month");
+  const today = new Date().toISOString().slice(0, 10);
+  const [day, setDay] = useState(today);
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<Record<string, { cost: string; sale: string }>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const loadProducts = async () => {
+    const { data } = await supabase.from("products").select("*").order("name");
+    setProducts((data ?? []) as Product[]);
+  };
+
+  const loadItems = async () => {
+    setLoading(true);
+    const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
+    let q = supabase
+      .from("invoice_items")
+      .select(
+        "invoice_id, product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(invoice_number, status, created_at, customer_name)"
+      )
+      .neq("invoices.status", "voided");
+    if (startISO) q = q.gte("invoices.created_at", startISO);
+    if (endISO) q = q.lt("invoices.created_at", endISO);
+    const { data, error } = await q.limit(10000);
+    if (error) toast.error(error.message);
+    setItems((data ?? []) as any);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    loadProducts();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    loadItems();
+  }, [user, range, day, month, year, from, to]);
+
+  useRealtimeTable("invoices", () => loadItems());
+  useRealtimeTable("invoice_items", () => loadItems());
+  useRealtimeTable("products", () => loadProducts());
+
+  const productById = useMemo(() => {
+    const m = new Map<string, Product>();
+    for (const p of products) m.set(p.id, p);
+    return m;
+  }, [products]);
+
+  // Compute profit rows
+  const rows = useMemo(() => {
+    const filtered = items.filter((it) => !isShippingLine(it) && it.product_id);
+    const byProduct = new Map<
+      string,
+      { product: Product | null; qty: number; revenue: number; cost: number; lines: number }
+    >();
+    let totalRevenue = 0;
+    let totalCost = 0;
+    let totalQty = 0;
+    let totalLines = 0;
+    for (const it of filtered) {
+      const p = productById.get(it.product_id!) ?? null;
+      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const rev = Number(it.line_total ?? 0);
+      totalRevenue += rev;
+      totalCost += cost;
+      totalQty += it.quantity;
+      totalLines += 1;
+      const cur = byProduct.get(it.product_id!) ?? {
+        product: p,
+        qty: 0,
+        revenue: 0,
+        cost: 0,
+        lines: 0,
+      };
+      cur.qty += it.quantity;
+      cur.revenue += rev;
+      cur.cost += cost;
+      cur.lines += 1;
+      byProduct.set(it.product_id!, cur);
+    }
+    const list = Array.from(byProduct.entries())
+      .map(([pid, v]) => ({
+        product_id: pid,
+        product: v.product,
+        name: v.product?.name ?? "(محذوف)",
+        qty: v.qty,
+        revenue: v.revenue,
+        cost: v.cost,
+        profit: v.revenue - v.cost,
+        margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
+        lines: v.lines,
+      }))
+      .filter((r) => {
+        if (!search.trim()) return true;
+        const s = search.trim().toLowerCase();
+        return (
+          r.name.toLowerCase().includes(s) ||
+          (r.product?.serial_number ?? "").toLowerCase().includes(s) ||
+          (r.product?.color ?? "").toLowerCase().includes(s) ||
+          (r.product?.collection ?? "").toLowerCase().includes(s)
+        );
+      })
+      .sort((a, b) => b.profit - a.profit);
+    return {
+      list,
+      totals: {
+        revenue: totalRevenue,
+        cost: totalCost,
+        profit: totalRevenue - totalCost,
+        margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
+        qty: totalQty,
+        lines: totalLines,
+      },
+    };
+  }, [items, productById, search]);
+
+  // Per-invoice profit breakdown
+  const invoiceRows = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        invoice_id: string;
+        invoice_number: string;
+        created_at: string;
+        customer_name: string | null;
+        revenue: number;
+        cost: number;
+        items: number;
+      }
+    >();
+    for (const it of items) {
+      if (isShippingLine(it)) continue;
+      if (!it.product_id) continue;
+      const p = productById.get(it.product_id);
+      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const rev = Number(it.line_total ?? 0);
+      const cur = map.get(it.invoice_id) ?? {
+        invoice_id: it.invoice_id,
+        invoice_number: it.invoices?.invoice_number ?? "",
+        created_at: it.invoices?.created_at ?? "",
+        customer_name: it.invoices?.customer_name ?? null,
+        revenue: 0,
+        cost: 0,
+        items: 0,
+      };
+      cur.revenue += rev;
+      cur.cost += cost;
+      cur.items += it.quantity;
+      map.set(it.invoice_id, cur);
+    }
+    return Array.from(map.values())
+      .map((r) => ({ ...r, profit: r.revenue - r.cost, margin: r.revenue > 0 ? ((r.revenue - r.cost) / r.revenue) * 100 : 0 }))
+      .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+  }, [items, productById]);
+
+  const startEdit = (p: Product) => {
+    setEditing((cur) => ({
+      ...cur,
+      [p.id]: { cost: String(p.cost_price ?? 0), sale: String(p.price ?? 0) },
+    }));
+  };
+  const cancelEdit = (id: string) => {
+    setEditing((cur) => {
+      const n = { ...cur };
+      delete n[id];
+      return n;
+    });
+  };
+  const saveEdit = async (p: Product) => {
+    const e = editing[p.id];
+    if (!e) return;
+    const cost = Number(e.cost) || 0;
+    const sale = Number(e.sale) || 0;
+    if (cost < 0 || sale < 0) {
+      toast.error(lang === "ar" ? "قيمة غير صحيحة" : "Invalid value");
+      return;
+    }
+    setSavingId(p.id);
+    const { error } = await supabase
+      .from("products")
+      .update({ cost_price: cost, price: sale } as any)
+      .eq("id", p.id);
+    setSavingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+    cancelEdit(p.id);
+    await loadProducts();
+  };
+
+  const exportXlsx = () => {
+    const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
+    const rangeLabel = !startISO
+      ? lang === "ar" ? "الإجمالي" : "All"
+      : `${startISO.slice(0, 10)} → ${(endISO ?? "").slice(0, 10)}`;
+
+    // Sheet 1: per-product
+    const ws1Data = [
+      [
+        lang === "ar" ? "المنتج" : "Product",
+        lang === "ar" ? "الكولكشن" : "Collection",
+        lang === "ar" ? "تسلسلي" : "Serial",
+        lang === "ar" ? "اللون" : "Color",
+        lang === "ar" ? "الكمية المباعة" : "Sold Qty",
+        lang === "ar" ? "سعر التكلفة" : "Cost Price",
+        lang === "ar" ? "سعر البيع" : "Sale Price",
+        lang === "ar" ? "إجمالي التكلفة" : "Total Cost",
+        lang === "ar" ? "إجمالي البيع" : "Total Revenue",
+        lang === "ar" ? "صافي الربح" : "Net Profit",
+        lang === "ar" ? "هامش %" : "Margin %",
+      ],
+      ...rows.list.map((r) => [
+        r.name,
+        r.product?.collection ?? "",
+        r.product?.serial_number ?? "",
+        r.product?.color ?? "",
+        r.qty,
+        Number(r.product?.cost_price ?? 0),
+        Number(r.product?.price ?? 0),
+        +r.cost.toFixed(2),
+        +r.revenue.toFixed(2),
+        +r.profit.toFixed(2),
+        +r.margin.toFixed(2),
+      ]),
+      [],
+      [
+        lang === "ar" ? "الإجمالي" : "TOTAL",
+        "",
+        "",
+        "",
+        rows.totals.qty,
+        "",
+        "",
+        +rows.totals.cost.toFixed(2),
+        +rows.totals.revenue.toFixed(2),
+        +rows.totals.profit.toFixed(2),
+        +rows.totals.margin.toFixed(2),
+      ],
+    ];
+
+    // Sheet 2: per-invoice
+    const ws2Data = [
+      [
+        lang === "ar" ? "رقم الفاتورة" : "Invoice #",
+        lang === "ar" ? "التاريخ" : "Date",
+        lang === "ar" ? "العميل" : "Customer",
+        lang === "ar" ? "عدد القطع" : "Items",
+        lang === "ar" ? "إجمالي البيع" : "Revenue",
+        lang === "ar" ? "إجمالي التكلفة" : "Cost",
+        lang === "ar" ? "صافي الربح" : "Net Profit",
+        lang === "ar" ? "هامش %" : "Margin %",
+      ],
+      ...invoiceRows.map((r) => [
+        r.invoice_number,
+        r.created_at.slice(0, 10),
+        r.customer_name ?? "",
+        r.items,
+        +r.revenue.toFixed(2),
+        +r.cost.toFixed(2),
+        +r.profit.toFixed(2),
+        +r.margin.toFixed(2),
+      ]),
+    ];
+
+    // Sheet 3: meta
+    const ws3Data = [
+      [lang === "ar" ? "النطاق" : "Range", rangeLabel],
+      [lang === "ar" ? "تم في" : "Generated", new Date().toISOString()],
+      [lang === "ar" ? "ملاحظة" : "Note", lang === "ar" ? "الفواتير الملغاة والمحذوفة مستبعدة. رسوم الشحن مستبعدة." : "Voided/deleted invoices and shipping fees excluded."],
+      [lang === "ar" ? "إجمالي البيع" : "Total Revenue", +rows.totals.revenue.toFixed(2)],
+      [lang === "ar" ? "إجمالي التكلفة" : "Total Cost", +rows.totals.cost.toFixed(2)],
+      [lang === "ar" ? "صافي الربح" : "Net Profit", +rows.totals.profit.toFixed(2)],
+      [lang === "ar" ? "الهامش %" : "Margin %", +rows.totals.margin.toFixed(2)],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws1Data), lang === "ar" ? "المنتجات" : "Products");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws2Data), lang === "ar" ? "الفواتير" : "Invoices");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws3Data), lang === "ar" ? "ملخص" : "Summary");
+    const fname = `profits_${range}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fname);
+    toast.success(lang === "ar" ? "تم التصدير" : "Exported");
+  };
+
+  const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-emerald-500" />
+            {t("صافي الأرباح", "Profit Analysis")}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {t(
+              "حساب الربح الفعلي لكل منتج وكل فاتورة. الفواتير الملغاة/المحذوفة ورسوم الشحن مستبعدة.",
+              "Actual profit per product & per invoice. Voided/deleted invoices and shipping fees excluded."
+            )}
+          </p>
+        </div>
+        <Button onClick={exportXlsx} className="gap-2">
+          <Download className="h-4 w-4" /> {t("تنزيل Excel", "Export Excel")}
+        </Button>
+      </div>
+
+      {/* Range filter */}
+      <div className="rounded-2xl border bg-card p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ["day", t("يوم", "Day")],
+              ["month", t("شهر", "Month")],
+              ["year", t("سنة", "Year")],
+              ["all", t("الإجمالي", "All")],
+              ["custom", t("نطاق", "Range")],
+            ] as [Range, string][]).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setRange(k)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  range === k
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "bg-muted hover:bg-muted/70"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {range === "day" && (
+            <div>
+              <Label className="text-xs">{t("اليوم", "Day")}</Label>
+              <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="w-[170px]" />
+            </div>
+          )}
+          {range === "month" && (
+            <div>
+              <Label className="text-xs">{t("الشهر", "Month")}</Label>
+              <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-[170px]" />
+            </div>
+          )}
+          {range === "year" && (
+            <div>
+              <Label className="text-xs">{t("السنة", "Year")}</Label>
+              <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className="w-[120px]" />
+            </div>
+          )}
+          {range === "custom" && (
+            <>
+              <div>
+                <Label className="text-xs">{t("من", "From")}</Label>
+                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-[170px]" />
+              </div>
+              <div>
+                <Label className="text-xs">{t("إلى", "To")}</Label>
+                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[170px]" />
+              </div>
+            </>
+          )}
+          <div className="flex-1 min-w-[200px]">
+            <Label className="text-xs">{t("بحث منتج", "Search product")}</Label>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")} />
+          </div>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard icon={<Wallet className="h-5 w-5" />} label={t("إجمالي البيع", "Revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} className="from-sky-500/15 to-sky-500/5 text-sky-600" />
+        <KpiCard icon={<Coins className="h-5 w-5" />} label={t("إجمالي التكلفة", "Cost")} value={fmtMoney(rows.totals.cost, "EGP", lang)} className="from-amber-500/15 to-amber-500/5 text-amber-600" />
+        <KpiCard icon={<TrendingUp className="h-5 w-5" />} label={t("صافي الربح", "Net Profit")} value={fmtMoney(rows.totals.profit, "EGP", lang)} className="from-emerald-500/20 to-emerald-500/5 text-emerald-600" />
+        <KpiCard icon={<Percent className="h-5 w-5" />} label={t("هامش الربح", "Margin")} value={`${rows.totals.margin.toFixed(1)}%`} className="from-violet-500/15 to-violet-500/5 text-violet-600" />
+      </div>
+
+      {/* Products table */}
+      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <h3 className="font-semibold text-sm">{t("ربح كل منتج", "Per-Product Profit")} ({fmtNumber(rows.list.length, lang)})</h3>
+          {loading && <span className="text-[11px] text-muted-foreground">{t("...جاري التحميل", "loading...")}</span>}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-start">{t("المنتج", "Product")}</th>
+                <th className="px-3 py-2 text-end">{t("الكمية", "Qty")}</th>
+                <th className="px-3 py-2 text-end">{t("سعر التكلفة", "Cost")}</th>
+                <th className="px-3 py-2 text-end">{t("سعر البيع", "Sale")}</th>
+                <th className="px-3 py-2 text-end">{t("إجمالي التكلفة", "Total Cost")}</th>
+                <th className="px-3 py-2 text-end">{t("إجمالي البيع", "Revenue")}</th>
+                <th className="px-3 py-2 text-end">{t("صافي الربح", "Profit")}</th>
+                <th className="px-3 py-2 text-end">{t("هامش %", "Margin")}</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.list.length === 0 ? (
+                <tr><td colSpan={9} className="px-3 py-12 text-center text-muted-foreground text-sm">{t("لا توجد بيانات في هذا النطاق", "No data in this range")}</td></tr>
+              ) : rows.list.map((r) => {
+                const p = r.product;
+                const e = p ? editing[p.id] : undefined;
+                return (
+                  <tr key={r.product_id} className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded border bg-muted">
+                          {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : null}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate flex items-center gap-1.5">
+                            {r.name}
+                            {p?.collection && (
+                              <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                                <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                                {p.collection}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground flex gap-2 flex-wrap">
+                            {p?.serial_number && <span className="font-mono">{p.serial_number}</span>}
+                            {p?.color && (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="inline-block h-2 w-2 rounded-full border" style={{ background: p.color }} />
+                                {p.color}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.qty, lang)}</td>
+                    <td className="px-3 py-2 text-end">
+                      {p && e ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={e.cost}
+                          onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], cost: ev.target.value } }))}
+                          className="h-8 w-24 text-end"
+                        />
+                      ) : (
+                        <span className="tabular-nums">{fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-end">
+                      {p && e ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={e.sale}
+                          onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], sale: ev.target.value } }))}
+                          className="h-8 w-24 text-end"
+                        />
+                      ) : (
+                        <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</td>
+                    <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</td>
+                    <td className={`px-3 py-2 text-end tabular-nums font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</td>
+                    <td className={`px-3 py-2 text-end tabular-nums ${r.margin >= 0 ? "" : "text-rose-600"}`}>{r.margin.toFixed(1)}%</td>
+                    <td className="px-3 py-2 text-end">
+                      {p && (
+                        e ? (
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => cancelEdit(p.id)}>×</Button>
+                            <Button size="sm" disabled={savingId === p.id} onClick={() => saveEdit(p)} className="h-7 px-2 gap-1">
+                              <Save className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(p)} className="h-7 text-xs">
+                            {t("تعديل", "Edit")}
+                          </Button>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Per-invoice profit */}
+      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <h3 className="font-semibold text-sm">{t("ربح كل فاتورة", "Per-Invoice Profit")} ({fmtNumber(invoiceRows.length, lang)})</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-start">{t("الفاتورة", "Invoice")}</th>
+                <th className="px-3 py-2 text-start">{t("التاريخ", "Date")}</th>
+                <th className="px-3 py-2 text-start">{t("العميل", "Customer")}</th>
+                <th className="px-3 py-2 text-end">{t("القطع", "Items")}</th>
+                <th className="px-3 py-2 text-end">{t("البيع", "Revenue")}</th>
+                <th className="px-3 py-2 text-end">{t("التكلفة", "Cost")}</th>
+                <th className="px-3 py-2 text-end">{t("الربح", "Profit")}</th>
+                <th className="px-3 py-2 text-end">{t("هامش", "Margin")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {invoiceRows.length === 0 ? (
+                <tr><td colSpan={8} className="px-3 py-12 text-center text-muted-foreground text-sm">{t("لا توجد فواتير", "No invoices")}</td></tr>
+              ) : invoiceRows.map((r) => (
+                <tr key={r.invoice_id} className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
+                  <td className="px-3 py-2 font-mono text-xs">{r.invoice_number}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
+                  <td className="px-3 py-2">{r.customer_name ?? "—"}</td>
+                  <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.items, lang)}</td>
+                  <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</td>
+                  <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</td>
+                  <td className={`px-3 py-2 text-end tabular-nums font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</td>
+                  <td className="px-3 py-2 text-end tabular-nums">{r.margin.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
+  return (
+    <div className={`rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${className ?? ""}`}>
+      <div className="flex items-center gap-2 text-xs font-semibold opacity-80">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="mt-1.5 text-lg sm:text-xl font-bold tabular-nums text-foreground">{value}</div>
+    </div>
+  );
+}
+
+export const Route = createFileRoute("/profits")({
+  component: () => (
+    <AppShell>
+      <ProfitsPage />
+    </AppShell>
+  ),
+});
