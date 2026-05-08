@@ -151,7 +151,7 @@ function ProfitsPage() {
     let q = supabase
       .from("invoice_items")
       .select(
-        "invoice_id, product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(invoice_number, status, created_at, customer_name)"
+        "invoice_id, product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(invoice_number, status, created_at, customer_name, subtotal, discount, total)"
       )
       .neq("invoices.status", "voided");
     if (startISO) q = q.gte("invoices.created_at", startISO);
