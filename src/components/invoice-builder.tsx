@@ -765,6 +765,17 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
             <Label>{t("notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1.5" />
           </div>
+
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-amber-700 dark:text-amber-400">{t("system_notes")}</Label>
+              <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
+                {lang === "ar" ? "داخلي" : "Internal"}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{t("system_notes_hint")}</p>
+            <Textarea value={systemNotes} onChange={(e) => setSystemNotes(e.target.value)} rows={3} className="mt-2" />
+          </div>
         </div>
 
          <aside className="min-w-0 space-y-3">
