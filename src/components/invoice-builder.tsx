@@ -43,6 +43,7 @@ type Props = {
     items: BuilderItem[];
     discount: number;
     notes: string;
+    system_notes?: string;
     paid_amount?: number | null;
   } | null;
   /** open scanner immediately on mount */
@@ -84,6 +85,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   );
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
+  const [systemNotes, setSystemNotes] = useState<string>(initial?.system_notes ?? "");
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
@@ -504,6 +506,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _language: lang,
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
+          _system_notes: systemNotes ?? "",
         } as any);
         if (error || !data) {
           handleRpcError(error?.message ?? "");
@@ -519,6 +522,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _language: lang,
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
+          _system_notes: systemNotes || null,
         } as any);
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
@@ -760,6 +764,17 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1.5" />
+          </div>
+
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-amber-700 dark:text-amber-400">{t("system_notes")}</Label>
+              <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
+                {lang === "ar" ? "داخلي" : "Internal"}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{t("system_notes_hint")}</p>
+            <Textarea value={systemNotes} onChange={(e) => setSystemNotes(e.target.value)} rows={3} className="mt-2" />
           </div>
         </div>
 

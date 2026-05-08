@@ -432,6 +432,7 @@ export type Database = {
           receipt_number: number | null
           status: string
           subtotal: number
+          system_notes: string | null
           total: number
           updated_at: string
           updated_by: string | null
@@ -455,6 +456,7 @@ export type Database = {
           receipt_number?: number | null
           status?: string
           subtotal?: number
+          system_notes?: string | null
           total?: number
           updated_at?: string
           updated_by?: string | null
@@ -478,6 +480,7 @@ export type Database = {
           receipt_number?: number | null
           status?: string
           subtotal?: number
+          system_notes?: string | null
           total?: number
           updated_at?: string
           updated_by?: string | null
@@ -1040,17 +1043,30 @@ export type Database = {
       }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
-      create_invoice: {
-        Args: {
-          _customer_id: string
-          _discount: number
-          _items: Json
-          _language: string
-          _notes: string
-          _paid_amount?: number
-        }
-        Returns: string
-      }
+      create_invoice:
+        | {
+            Args: {
+              _customer_id: string
+              _discount: number
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _customer_id: string
+              _discount: number
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+              _system_notes?: string
+            }
+            Returns: string
+          }
       delete_invoice: { Args: { _invoice_id: string }; Returns: string }
       get_my_role: { Args: never; Returns: string }
       has_role: {
@@ -1065,18 +1081,32 @@ export type Database = {
       is_company_member: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       pair_scan_session: { Args: { _pair_code: string }; Returns: string }
-      update_invoice: {
-        Args: {
-          _customer_id: string
-          _discount: number
-          _invoice_id: string
-          _items: Json
-          _language: string
-          _notes: string
-          _paid_amount?: number
-        }
-        Returns: string
-      }
+      update_invoice:
+        | {
+            Args: {
+              _customer_id: string
+              _discount: number
+              _invoice_id: string
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _customer_id: string
+              _discount: number
+              _invoice_id: string
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+              _system_notes?: string
+            }
+            Returns: string
+          }
       void_invoice: { Args: { _invoice_id: string }; Returns: string }
     }
     Enums: {

@@ -26,6 +26,7 @@ function EditInvoice() {
     items: BuilderItem[];
     discount: number;
     notes: string;
+    system_notes?: string;
     paid_amount?: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +83,7 @@ function EditInvoice() {
       items: [...nonFee, ...feeItems],
       discount: Number(inv.discount ?? 0),
       notes: inv.notes ?? "",
+      system_notes: invAny.system_notes ?? "",
       paid_amount: invAny.paid_amount != null ? Number(invAny.paid_amount) : null,
     });
     setSnapshotKey((k) => k + 1);

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
-  Phone, Truck, TrendingUp,
+  Phone, Truck, TrendingUp, StickyNote,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -27,6 +27,7 @@ const items = [
   { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
   { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   { to: "/invoices", icon: FileText, key: "invoices" as const },
+  { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
   { to: "/reports", icon: BarChart3, key: "reports" as const },
   { to: "/profits", icon: TrendingUp, key: "profits" as const },
   { to: "/audit-log", icon: ShieldCheck, key: "audit_log" as const },
