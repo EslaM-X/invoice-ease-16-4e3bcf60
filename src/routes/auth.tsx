@@ -121,9 +121,17 @@ function AuthPage() {
         if (error) throw error;
         toast.success(t("saved"));
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        await afterLoginCheckBiometric();
+        const sess = data.session;
+        if (sess && bioSupported) {
+          const currentEmail = sess.user.email ?? email;
+          if (bioEnrolled && enrolledEmail === currentEmail) {
+            updateStoredTokens({ access_token: sess.access_token, refresh_token: sess.refresh_token });
+          } else {
+            setEnrollPromptOpen(true);
+          }
+        }
       }
     } catch (err: any) {
       toast.error(err?.message ?? t("error_occurred"));
