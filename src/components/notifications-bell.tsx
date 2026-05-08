@@ -96,7 +96,7 @@ export function NotificationsBell() {
         >
           <Bell className="h-4 w-4" />
           {unread > 0 && (
-            <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+            <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white shadow-[0_0_0_2px_hsl(var(--background)),0_4px_10px_-2px_rgb(244,63,94,.6)] ring-1 ring-white/30 bg-gradient-to-br from-rose-500 via-pink-500 to-fuchsia-500 animate-pulse">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
