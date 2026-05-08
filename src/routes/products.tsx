@@ -511,6 +511,63 @@ function Products() {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk add stock dialog */}
+      <Dialog open={bulkOpen} onOpenChange={(v) => !v && !bulkBusy && setBulkOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PackagePlus className="h-5 w-5" />
+              {lang === "ar" ? "إضافة مخزون لعدة منتجات" : "Bulk add stock"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              {lang === "ar"
+                ? "ستُطبَّق نفس الكمية على كل المنتجات المختارة. القيمة الموجبة تضيف، السالبة تخصم. تُسجَّل العملية في سجل المخزون."
+                : "The same amount will be applied to every selected product. Positive adds, negative subtracts. Each change is logged."}
+            </div>
+            <div>
+              <Label>{lang === "ar" ? "النطاق" : "Scope"}</Label>
+              <div className="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkScope("filtered")}
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-semibold transition ${bulkScope === "filtered" ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted/50"}`}
+                >
+                  {lang === "ar" ? `المعروضة فقط (${filtered.length})` : `Filtered only (${filtered.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkScope("all")}
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-semibold transition ${bulkScope === "all" ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted/50"}`}
+                >
+                  {lang === "ar" ? `كل المنتجات (${list.length})` : `All products (${list.length})`}
+                </button>
+              </div>
+            </div>
+            <div>
+              <Label>{t("adjust_stock_amount")}</Label>
+              <Input type="number" value={bulkAmt} onChange={(e) => setBulkAmt(e.target.value)} placeholder="+10 / -5" />
+            </div>
+            <div>
+              <Label>{t("adjust_stock_reason")} <span className="text-destructive">*</span></Label>
+              <Input
+                value={bulkReason}
+                onChange={(e) => setBulkReason(e.target.value)}
+                placeholder={lang === "ar" ? "مثال: استلام شحنة / جرد عام" : "e.g. shipment received / global count"}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBulkOpen(false)} disabled={bulkBusy}>{t("cancel")}</Button>
+            <Button onClick={runBulkAdjust} disabled={bulkBusy}>
+              {bulkBusy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Processing...") : t("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Print sheet — only visible when printing */}
       {labelData && (
         <div className="print-only fixed inset-0 z-50 bg-white p-6 text-black">
