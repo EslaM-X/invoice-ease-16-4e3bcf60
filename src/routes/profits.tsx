@@ -713,12 +713,24 @@ function ProfitsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Wallet className="h-5 w-5" />} label={t("إجمالي البيع", "Revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} className="from-sky-500/15 to-sky-500/5 text-sky-600" />
         <KpiCard icon={<Coins className="h-5 w-5" />} label={t("إجمالي التكلفة", "Cost")} value={fmtMoney(rows.totals.cost, "EGP", lang)} className="from-amber-500/15 to-amber-500/5 text-amber-600" />
         <KpiCard icon={<TrendingUp className="h-5 w-5" />} label={t("صافي الربح", "Net Profit")} value={fmtMoney(rows.totals.profit, "EGP", lang)} className="from-emerald-500/20 to-emerald-500/5 text-emerald-600" />
         <KpiCard icon={<Percent className="h-5 w-5" />} label={t("هامش الربح", "Margin")} value={`${rows.totals.margin.toFixed(1)}%`} className="from-violet-500/15 to-violet-500/5 text-violet-600" />
+        <KpiCard
+          icon={<Coins className="h-5 w-5" />}
+          label={t("شحن/خدمة (مستبعد)", "Shipping/Fees (excluded)")}
+          value={fmtMoney(shippingTotals.amount, "EGP", lang)}
+          className="from-slate-500/15 to-slate-500/5 text-slate-600"
+        />
       </div>
+      <p className="text-[11px] text-muted-foreground -mt-1">
+        {t(
+          `رسوم الشحن/الخدمة (${shippingTotals.lines} بند على ${shippingTotals.invoices} فاتورة) مستبعدة تمامًا من إجمالي البيع وصافي الأرباح. الفواتير الملغاة والمحذوفة كذلك.`,
+          `Shipping/service fees (${shippingTotals.lines} line(s) across ${shippingTotals.invoices} invoice(s)) are fully excluded from Revenue and Net Profit. Voided/deleted invoices are also excluded.`
+        )}
+      </p>
 
       {/* Daily trend chart */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
