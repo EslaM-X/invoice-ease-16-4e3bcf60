@@ -307,11 +307,20 @@ function InvoiceView() {
               <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">
                 {t("system_notes")}
               </h3>
-              <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
-                {lang === "ar" ? "لا يطبع" : "Not printed"}
-              </span>
+              <div className="flex items-center gap-2">
+                <Link to="/invoices-system-notes">
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs">
+                    <Eye className="h-3 w-3" />
+                    {lang === "ar" ? "السجل" : "History"}
+                  </Button>
+                </Link>
+                <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
+                  {lang === "ar" ? "لا يطبع" : "Not printed"}
+                </span>
+              </div>
             </div>
             <p className="whitespace-pre-wrap text-sm text-foreground">{inv.system_notes}</p>
+            <SystemNotesHistoryInline invoiceId={inv.id} />
           </div>
         </div>
       )}
@@ -389,6 +398,66 @@ function InvoiceView() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function SystemNotesHistoryInline({ invoiceId }: { invoiceId: string }) {
+  const { lang, t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<Array<{ id: string; old_value: string | null; new_value: string | null; changed_by_email: string | null; changed_at: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("invoice_system_notes_history" as any)
+      .select("id,old_value,new_value,changed_by_email,changed_at")
+      .eq("invoice_id", invoiceId)
+      .order("changed_at", { ascending: false });
+    setRows(((data ?? []) as unknown) as any);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (open) load(); }, [open, invoiceId]);
+  useRealtimeTable("invoice_system_notes_history" as any, () => { if (open) load(); }, [open, invoiceId]);
+
+  return (
+    <div className="mt-3 border-t border-amber-500/20 pt-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
+      >
+        {open
+          ? (lang === "ar" ? "إخفاء سجل التعديلات" : "Hide change log")
+          : (lang === "ar" ? "عرض سجل تعديلات الملاحظة" : "View note change log")}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {loading ? (
+            <div className="text-xs text-muted-foreground">{t("loading")}</div>
+          ) : rows.length === 0 ? (
+            <div className="text-xs text-muted-foreground">{lang === "ar" ? "لا يوجد سجل" : "No history yet"}</div>
+          ) : rows.map((h) => (
+            <div key={h.id} className="rounded-lg border bg-background/60 p-2 text-xs">
+              <div className="mb-1 flex justify-between text-muted-foreground">
+                <span className="font-medium text-foreground">{h.changed_by_email || (lang === "ar" ? "مستخدم" : "User")}</span>
+                <span className="tabular-nums">{fmtDateTime(h.changed_at, lang)}</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded border border-destructive/30 bg-destructive/5 p-1.5">
+                  <div className="text-[10px] uppercase text-destructive">{lang === "ar" ? "قبل" : "Before"}</div>
+                  <p className="whitespace-pre-wrap">{h.old_value || (lang === "ar" ? "(فارغ)" : "(empty)")}</p>
+                </div>
+                <div className="rounded border border-emerald-500/30 bg-emerald-500/5 p-1.5">
+                  <div className="text-[10px] uppercase text-emerald-600 dark:text-emerald-400">{lang === "ar" ? "بعد" : "After"}</div>
+                  <p className="whitespace-pre-wrap">{h.new_value || (lang === "ar" ? "(فارغ)" : "(empty)")}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
