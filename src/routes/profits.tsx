@@ -456,7 +456,17 @@ function ProfitsPage() {
             variant="outline"
             onClick={async () => {
               await Promise.all([loadProducts(), loadItems()]);
-              toast.success(t("تم إعادة الاحتساب من الفواتير", "Recalculated from invoices"));
+              const r = rows.totals;
+              toast.success(
+                t("تم إعادة الاحتساب", "Recalculated"),
+                {
+                  description: t(
+                    `البيع: ${fmtMoney(r.revenue, "EGP", lang)} · التكلفة: ${fmtMoney(r.cost, "EGP", lang)} · الربح: ${fmtMoney(r.profit, "EGP", lang)} (${r.margin.toFixed(1)}%)`,
+                    `Revenue: ${fmtMoney(r.revenue, "EGP", lang)} · Cost: ${fmtMoney(r.cost, "EGP", lang)} · Profit: ${fmtMoney(r.profit, "EGP", lang)} (${r.margin.toFixed(1)}%)`
+                  ),
+                  duration: 6000,
+                }
+              );
             }}
             disabled={loading}
             className="gap-2"
