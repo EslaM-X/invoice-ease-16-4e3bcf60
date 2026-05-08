@@ -106,6 +106,7 @@ function ProfitsPage() {
     setHistoryLoading(false);
   };
 
+  const loadProducts = async () => {
     const { data } = await supabase.from("products").select("*").order("name");
     setProducts((data ?? []) as Product[]);
   };
