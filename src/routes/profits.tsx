@@ -262,6 +262,7 @@ function ProfitsPage() {
     for (const it of items) {
       if (isShippingLine(it)) continue;
       if (!it.product_id) continue;
+      if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
       const p = productById.get(it.product_id);
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
       const rev = Number(it.line_total ?? 0);
@@ -282,7 +283,25 @@ function ProfitsPage() {
     return Array.from(map.values())
       .map((r) => ({ ...r, profit: r.revenue - r.cost, margin: r.revenue > 0 ? ((r.revenue - r.cost) / r.revenue) * 100 : 0 }))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
-  }, [items, productById]);
+  }, [items, productById, selectedIds]);
+
+  // Daily trend (net profit per day) within selected range and product filter
+  const dailyTrend = useMemo(() => {
+    const map = new Map<string, { date: string; revenue: number; cost: number; profit: number }>();
+    for (const it of items) {
+      if (isShippingLine(it) || !it.product_id) continue;
+      if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
+      const day = (it.invoices?.created_at ?? "").slice(0, 10);
+      if (!day) continue;
+      const p = productById.get(it.product_id);
+      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const rev = Number(it.line_total ?? 0);
+      const cur = map.get(day) ?? { date: day, revenue: 0, cost: 0, profit: 0 };
+      cur.revenue += rev; cur.cost += cost; cur.profit = cur.revenue - cur.cost;
+      map.set(day, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => (a.date > b.date ? 1 : -1));
+  }, [items, productById, selectedIds]);
 
   const startEdit = (p: Product) => {
     setEditing((cur) => ({
