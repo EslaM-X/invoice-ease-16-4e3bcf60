@@ -639,6 +639,51 @@ function ProfitsPage() {
         <KpiCard icon={<Percent className="h-5 w-5" />} label={t("هامش الربح", "Margin")} value={`${rows.totals.margin.toFixed(1)}%`} className="from-violet-500/15 to-violet-500/5 text-violet-600" />
       </div>
 
+      {/* Daily trend chart */}
+      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            {t("اتجاه صافي الربح اليومي", "Daily net profit trend")}
+          </h3>
+          <span className="text-[11px] text-muted-foreground">
+            {t(`${dailyTrend.length} يوم`, `${dailyTrend.length} day(s)`)}
+          </span>
+        </div>
+        <div className="p-3 h-[260px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+          {dailyTrend.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+              {t("لا توجد بيانات لعرضها", "No data to display")}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dailyTrend} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  reversed={lang === "ar"}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => String(v).slice(5)}
+                />
+                <YAxis
+                  orientation={lang === "ar" ? "right" : "left"}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => fmtNumber(Number(v), lang)}
+                />
+                <Tooltip
+                  contentStyle={{ fontSize: 12, direction: lang === "ar" ? "rtl" : "ltr" }}
+                  formatter={(v: any, name: any) => [fmtMoney(Number(v), "EGP", lang), name]}
+                  labelFormatter={(l) => fmtDate(String(l), lang)}
+                />
+                <Line type="monotone" dataKey="profit" name={t("صافي الربح", "Net Profit")} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="revenue" name={t("البيع", "Revenue")} stroke="#0ea5e9" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                <Line type="monotone" dataKey="cost" name={t("التكلفة", "Cost")} stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
       {/* Products table */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
