@@ -555,7 +555,80 @@ function ProfitsPage() {
             <Label className="text-xs">{t("بحث منتج", "Search product")}</Label>
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")} />
           </div>
+          <div className="min-w-[200px]">
+            <Label className="text-xs">{t("فلترة منتجات محددة", "Filter specific products")}</Label>
+            <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start gap-2 h-10">
+                  <Filter className="h-4 w-4" />
+                  {selectedIds.size > 0
+                    ? t(`${selectedIds.size} منتج محدد`, `${selectedIds.size} selected`)
+                    : t("كل المنتجات", "All products")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="end">
+                <div className="p-2 border-b flex items-center gap-2">
+                  <Input
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder={t("بحث...", "Search...")}
+                    className="h-8 text-xs"
+                  />
+                  {selectedIds.size > 0 && (
+                    <Button size="sm" variant="ghost" onClick={clearSelected} className="h-8 px-2 text-[10px]">
+                      {t("مسح", "Clear")}
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto p-1">
+                  {products
+                    .filter((p) => {
+                      const s = pickerSearch.trim().toLowerCase();
+                      if (!s) return true;
+                      return (
+                        p.name.toLowerCase().includes(s) ||
+                        (p.serial_number ?? "").toLowerCase().includes(s) ||
+                        (p.collection ?? "").toLowerCase().includes(s)
+                      );
+                    })
+                    .map((p) => {
+                      const checked = selectedIds.has(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => toggleSelected(p.id)}
+                          className={`w-full text-start flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted ${checked ? "bg-primary/10" : ""}`}
+                        >
+                          <input type="checkbox" readOnly checked={checked} className="pointer-events-none" />
+                          <span className="truncate flex-1">{p.name}</span>
+                          {p.collection && (
+                            <span className={`text-[9px] rounded border px-1 ${collectionBadgeClass(p.collection)}`}>{p.collection}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
+        {selectedIds.size > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground">{t("المنتجات المحددة:", "Selected:")}</span>
+            {Array.from(selectedIds).map((id) => {
+              const p = productById.get(id);
+              if (!p) return null;
+              return (
+                <span key={id} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
+                  {p.name}
+                  <button onClick={() => toggleSelected(id)} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
+                </span>
+              );
+            })}
+            <button onClick={clearSelected} className="text-[10px] text-primary underline ms-1">{t("إلغاء الكل", "Clear all")}</button>
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
