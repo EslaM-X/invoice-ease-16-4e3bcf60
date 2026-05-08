@@ -506,6 +506,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _language: lang,
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
+          _system_notes: systemNotes ?? "",
         } as any);
         if (error || !data) {
           handleRpcError(error?.message ?? "");
@@ -521,6 +522,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           _language: lang,
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
+          _system_notes: systemNotes || null,
         } as any);
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
