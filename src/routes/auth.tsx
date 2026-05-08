@@ -38,6 +38,35 @@ function AuthPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("stein.rememberMe");
+    return v === null ? true : v === "1";
+  });
+  const [bioSupported, setBioSupported] = useState(false);
+  const [bioEnrolled, setBioEnrolled] = useState(false);
+  const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
+  const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
+  const isApple = typeof navigator !== "undefined" && /iP(hone|ad|od)|Mac/i.test(navigator.userAgent);
+
+  useEffect(() => {
+    let mounted = true;
+    isPlatformAuthenticatorAvailable().then((ok) => {
+      if (!mounted) return;
+      setBioSupported(ok);
+      const enrolled = isBiometricEnrolled();
+      setBioEnrolled(enrolled);
+      setEnrolledEmail(getEnrolledEmail());
+      if (enrolled && getEnrolledEmail()) setEmail(getEnrolledEmail() as string);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("stein.rememberMe", rememberMe ? "1" : "0");
+    }
+  }, [rememberMe]);
 
   const handleForgot = async (e: FormEvent) => {
     e.preventDefault();
