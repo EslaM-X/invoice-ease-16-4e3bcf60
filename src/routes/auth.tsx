@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -8,10 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun, Eye, EyeOff } from "lucide-react";
+import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import {
+  isPlatformAuthenticatorAvailable,
+  isEnrolled as isBiometricEnrolled,
+  getEnrolledEmail,
+  enrollBiometric,
+  verifyBiometric,
+  disableBiometric,
+  updateStoredTokens,
+} from "@/lib/biometric";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -30,6 +38,35 @@ function AuthPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("stein.rememberMe");
+    return v === null ? true : v === "1";
+  });
+  const [bioSupported, setBioSupported] = useState(false);
+  const [bioEnrolled, setBioEnrolled] = useState(false);
+  const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
+  const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
+  const isApple = typeof navigator !== "undefined" && /iP(hone|ad|od)|Mac/i.test(navigator.userAgent);
+
+  useEffect(() => {
+    let mounted = true;
+    isPlatformAuthenticatorAvailable().then((ok) => {
+      if (!mounted) return;
+      setBioSupported(ok);
+      const enrolled = isBiometricEnrolled();
+      setBioEnrolled(enrolled);
+      setEnrolledEmail(getEnrolledEmail());
+      if (enrolled && getEnrolledEmail()) setEmail(getEnrolledEmail() as string);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("stein.rememberMe", rememberMe ? "1" : "0");
+    }
+  }, [rememberMe]);
 
   const handleForgot = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,8 +87,8 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    if (user) navigate({ to: "/dashboard" });
-  }, [user, navigate]);
+    if (user && !enrollPromptOpen) navigate({ to: "/dashboard" });
+  }, [user, navigate, enrollPromptOpen]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -69,8 +106,17 @@ function AuthPage() {
         if (error) throw error;
         toast.success(t("saved"));
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        const sess = data.session;
+        if (sess && bioSupported) {
+          const currentEmail = sess.user.email ?? email;
+          if (bioEnrolled && enrolledEmail === currentEmail) {
+            updateStoredTokens({ access_token: sess.access_token, refresh_token: sess.refresh_token });
+          } else {
+            setEnrollPromptOpen(true);
+          }
+        }
       }
     } catch (err: any) {
       toast.error(err?.message ?? t("error_occurred"));
@@ -91,6 +137,65 @@ function AuthPage() {
       setBusy(false);
     }
   };
+
+  const handleBiometricLogin = async () => {
+    setBusy(true);
+    try {
+      const tokens = await verifyBiometric();
+      const { data, error } = await supabase.auth.setSession({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+      });
+      if (error) throw error;
+      if (data.session) {
+        updateStoredTokens({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (/expired|invalid|refresh/i.test(msg)) {
+        toast.error(lang === "ar"
+          ? "انتهت صلاحية الجلسة المحفوظة. سجّل الدخول بكلمة السر مرة واحدة."
+          : "Saved session expired. Please sign in with your password once.");
+      } else {
+        toast.error(lang === "ar" ? "تعذّر التحقق بالبصمة" : "Biometric verification failed");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEnableBiometric = async () => {
+    setBusy(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const sess = data.session;
+      if (!sess) throw new Error("No session");
+      await enrollBiometric({
+        email: sess.user.email ?? email,
+        access_token: sess.access_token,
+        refresh_token: sess.refresh_token,
+      });
+      setBioEnrolled(true);
+      setEnrolledEmail(sess.user.email ?? email);
+      toast.success(lang === "ar" ? "تم تفعيل الدخول بالبصمة" : "Biometric login enabled");
+      setEnrollPromptOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message ?? (lang === "ar" ? "فشل التفعيل" : "Enrollment failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisableBiometric = () => {
+    disableBiometric();
+    setBioEnrolled(false);
+    setEnrolledEmail(null);
+    toast.success(lang === "ar" ? "تم إلغاء الدخول بالبصمة" : "Biometric disabled");
+  };
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.005_250)]">
@@ -226,6 +331,28 @@ function AuthPage() {
                 </button>
               </div>
             </div>
+            {mode === "login" && (
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex cursor-pointer select-none items-center gap-2 text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 cursor-pointer rounded border-white/30 bg-white/10 accent-[oklch(0.86_0.01_250)]"
+                  />
+                  {lang === "ar" ? "تذكّرني" : "Remember me"}
+                </label>
+                {bioEnrolled && (
+                  <button
+                    type="button"
+                    onClick={handleDisableBiometric}
+                    className="text-xs text-white/50 hover:text-white"
+                  >
+                    {lang === "ar" ? "إلغاء البصمة" : "Disable biometric"}
+                  </button>
+                )}
+              </div>
+            )}
             <Button
               type="submit"
               disabled={busy}
@@ -234,6 +361,21 @@ function AuthPage() {
               {mode === "login" ? t("login") : t("signup")}
             </Button>
           </form>
+
+          {mode === "login" && bioSupported && bioEnrolled && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBiometricLogin}
+              disabled={busy}
+              className="mt-3 w-full border-[oklch(0.86_0.01_250_/_0.4)] bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            >
+              {isApple ? <ScanFace className="me-2 h-4 w-4" /> : <Fingerprint className="me-2 h-4 w-4" />}
+              {lang === "ar"
+                ? (isApple ? "الدخول بـ Face ID" : "الدخول بالبصمة")
+                : (isApple ? "Sign in with Face ID" : "Sign in with Fingerprint")}
+            </Button>
+          )}
 
           <div className="my-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/10" />
@@ -250,6 +392,7 @@ function AuthPage() {
             <svg className="me-2 h-4 w-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             {t("continue_with_google")}
           </Button>
+
 
           <p className="mt-5 text-center text-sm text-white/50">
             <Link to="/" className="hover:text-white">←</Link>
@@ -302,6 +445,57 @@ function AuthPage() {
               </Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {enrollPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollPromptOpen(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.003_250)] p-6 text-white shadow-elegant"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.15)] text-[oklch(0.86_0.01_250)]">
+                {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {lang === "ar"
+                    ? (isApple ? "تفعيل Face ID" : "تفعيل البصمة")
+                    : (isApple ? "Enable Face ID" : "Enable Fingerprint")}
+                </h2>
+                <p className="text-xs text-white/60">
+                  {lang === "ar" ? "دخول أسرع وأكثر أمانًا" : "Faster, more secure sign-in"}
+                </p>
+              </div>
+            </div>
+            <p className="flex items-start gap-2 text-sm text-white/70">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.86_0.01_250)]" />
+              <span>
+                {lang === "ar"
+                  ? "في المرة القادمة سجّل الدخول مباشرة باستخدام بصمتك أو وجهك على هذا الجهاز."
+                  : "Next time, sign in instantly with your fingerprint or face on this device."}
+              </span>
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => setEnrollPromptOpen(false)}
+              >
+                {lang === "ar" ? "ليس الآن" : "Not now"}
+              </Button>
+              <Button
+                type="button"
+                disabled={busy}
+                className="flex-1 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+                onClick={handleEnableBiometric}
+              >
+                {lang === "ar" ? "تفعيل" : "Enable"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
