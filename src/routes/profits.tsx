@@ -653,14 +653,59 @@ function ProfitsPage() {
 
       {/* Daily trend chart */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between border-b px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
             {t("اتجاه صافي الربح اليومي", "Daily net profit trend")}
+            <span className="text-[11px] text-muted-foreground font-normal">
+              · {t(`${dailyTrend.length} يوم`, `${dailyTrend.length} day(s)`)}
+            </span>
           </h3>
-          <span className="text-[11px] text-muted-foreground">
-            {t(`${dailyTrend.length} يوم`, `${dailyTrend.length} day(s)`)}
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-[11px]">
+              {(["profit", "all"] as const).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setChartView(k)}
+                  className={`rounded-full px-2.5 py-1 font-semibold transition ${chartView === k ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"}`}
+                >
+                  {k === "profit" ? t("صافي الربح فقط", "Profit only") : t("الكل", "All")}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-8"
+              disabled={dailyTrend.length === 0}
+              onClick={() => {
+                const headers = [
+                  t("التاريخ", "Date"),
+                  t("الإيراد", "Revenue"),
+                  t("التكلفة", "Cost"),
+                  t("صافي الربح", "Net Profit"),
+                ];
+                const lines = [headers.join(",")];
+                for (const d of dailyTrend) {
+                  lines.push([d.date, d.revenue.toFixed(2), d.cost.toFixed(2), d.profit.toFixed(2)].join(","));
+                }
+                const totals = dailyTrend.reduce((a, d) => ({ r: a.r + d.revenue, c: a.c + d.cost, p: a.p + d.profit }), { r: 0, c: 0, p: 0 });
+                lines.push([t("الإجمالي", "TOTAL"), totals.r.toFixed(2), totals.c.toFixed(2), totals.p.toFixed(2)].join(","));
+                const csv = "\uFEFF" + lines.join("\n");
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `profit_trend_${range}_${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success(t("تم تصدير CSV", "CSV exported"));
+              }}
+            >
+              <Download className="h-3.5 w-3.5" />
+              CSV
+            </Button>
+          </div>
         </div>
         <div className="p-3 h-[260px]" dir={lang === "ar" ? "rtl" : "ltr"}>
           {dailyTrend.length === 0 ? (
@@ -688,8 +733,12 @@ function ProfitsPage() {
                   labelFormatter={(l) => fmtDate(String(l), lang)}
                 />
                 <Line type="monotone" dataKey="profit" name={t("صافي الربح", "Net Profit")} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                <Line type="monotone" dataKey="revenue" name={t("البيع", "Revenue")} stroke="#0ea5e9" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
-                <Line type="monotone" dataKey="cost" name={t("التكلفة", "Cost")} stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                {chartView === "all" && (
+                  <Line type="monotone" dataKey="revenue" name={t("البيع", "Revenue")} stroke="#0ea5e9" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                )}
+                {chartView === "all" && (
+                  <Line type="monotone" dataKey="cost" name={t("التكلفة", "Cost")} stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                )}
               </LineChart>
             </ResponsiveContainer>
           )}
