@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,9 @@ import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent } from "lucide-react";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Product } from "@/lib/data";
 
 type Range = "day" | "month" | "year" | "all" | "custom";
@@ -86,6 +88,23 @@ function ProfitsPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Record<string, { cost: string; sale: string }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [historyOpen, setHistoryOpen] = useState<Product | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const openHistory = async (p: Product) => {
+    setHistoryOpen(p);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("product_price_history" as any)
+      .select("*")
+      .eq("product_id", p.id)
+      .order("changed_at", { ascending: false })
+      .limit(200);
+    setHistory((data ?? []) as any[]);
+    setHistoryLoading(false);
+  };
 
   const loadProducts = async () => {
     const { data } = await supabase.from("products").select("*").order("name");
@@ -393,9 +412,40 @@ function ProfitsPage() {
             )}
           </p>
         </div>
-        <Button onClick={exportXlsx} className="gap-2">
-          <Download className="h-4 w-4" /> {t("تنزيل Excel", "Export Excel")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await Promise.all([loadProducts(), loadItems()]);
+              toast.success(t("تم إعادة الاحتساب من الفواتير", "Recalculated from invoices"));
+            }}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {t("إعادة احتساب", "Recalculate")}
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="formula">
+                <Info className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] text-xs leading-relaxed">
+              <div className="font-semibold mb-1">{t("معادلة حساب الربح", "Profit formula")}</div>
+              <ul className="space-y-1 list-disc ps-4">
+                <li>{t("إجمالي البيع للمنتج = Σ (سعر الوحدة × الكمية − الخصم) لكل بند فاتورة غير ملغية.", "Revenue = Σ (unit_price × qty − discount) across non-voided invoice items.")}</li>
+                <li>{t("إجمالي التكلفة = سعر التكلفة × الكمية المباعة.", "Cost = cost_price × sold qty.")}</li>
+                <li>{t("صافي الربح = إجمالي البيع − إجمالي التكلفة.", "Profit = Revenue − Cost.")}</li>
+                <li>{t("هامش % = (الربح ÷ إجمالي البيع) × 100.", "Margin % = (Profit ÷ Revenue) × 100.")}</li>
+                <li className="text-muted-foreground">{t("مستبعد: الفواتير الملغية، الفواتير المحذوفة، رسوم الشحن/الخدمة.", "Excluded: voided invoices, deleted invoices, shipping/service fees.")}</li>
+              </ul>
+            </PopoverContent>
+          </Popover>
+          <Button onClick={exportXlsx} className="gap-2">
+            <Download className="h-4 w-4" /> {t("تنزيل Excel", "Export Excel")}
+          </Button>
+        </div>
       </div>
 
       {/* Range filter */}
@@ -495,7 +545,8 @@ function ProfitsPage() {
                 const p = r.product;
                 const e = p ? editing[p.id] : undefined;
                 return (
-                  <tr key={r.product_id} className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
+                  <Fragment key={r.product_id}>
+                  <tr className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="h-9 w-9 shrink-0 overflow-hidden rounded border bg-muted">
@@ -555,22 +606,88 @@ function ProfitsPage() {
                     <td className={`px-3 py-2 text-end tabular-nums font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</td>
                     <td className={`px-3 py-2 text-end tabular-nums ${r.margin >= 0 ? "" : "text-rose-600"}`}>{r.margin.toFixed(1)}%</td>
                     <td className="px-3 py-2 text-end">
-                      {p && (
-                        e ? (
-                          <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => cancelEdit(p.id)}>×</Button>
-                            <Button size="sm" disabled={savingId === p.id} onClick={() => saveEdit(p)} className="h-7 px-2 gap-1">
-                              <Save className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(p)} className="h-7 text-xs">
-                            {t("تعديل", "Edit")}
-                          </Button>
-                        )
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        {p && (
+                          e ? (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => cancelEdit(p.id)} className="h-7 px-2">×</Button>
+                              <Button size="sm" disabled={savingId === p.id} onClick={() => saveEdit(p)} className="h-7 px-2 gap-1">
+                                <Save className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => startEdit(p)} className="h-7 text-xs">
+                                {t("تعديل", "Edit")}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => openHistory(p)} className="h-7 px-1.5" title={t("سجل الأسعار", "Price history")}>
+                                <History className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          )
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setExpanded((cur) => ({ ...cur, [r.product_id]: !cur[r.product_id] }))} className="h-7 px-1.5" title={t("التفاصيل", "Details")}>
+                          {expanded[r.product_id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
+                  {expanded[r.product_id] && (
+                    <tr key={r.product_id + ":d"} className="bg-muted/20">
+                      <td colSpan={9} className="px-4 py-3">
+                        <div className="grid gap-3 md:grid-cols-2 text-xs">
+                          <div className="rounded-lg border bg-card p-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                              {t("معادلة الحساب", "Calculation")}
+                            </div>
+                            <div className="space-y-1.5 font-mono">
+                              <div>{t("سعر التكلفة", "Cost")}: <span className="tabular-nums">{fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)}</span></div>
+                              <div>{t("سعر البيع", "Sale")}: <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span></div>
+                              <div>{t("الكمية المباعة", "Sold qty")}: <span className="tabular-nums">{fmtNumber(r.qty, lang)}</span></div>
+                              <div>{t("عدد بنود الفواتير", "Invoice lines")}: <span className="tabular-nums">{fmtNumber(r.lines, lang)}</span></div>
+                              <div className="pt-1.5 border-t">
+                                {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
+                              </div>
+                              <div>
+                                {t("إجمالي البيع", "Revenue")} = Σ(unit × qty − discount) = <span className="font-semibold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</span>
+                              </div>
+                              <div className={`pt-1 font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                {t("صافي الربح", "Profit")} = {fmtMoney(r.revenue, "EGP", lang)} − {fmtMoney(r.cost, "EGP", lang)} = <span className="tabular-nums">{fmtMoney(r.profit, "EGP", lang)}</span>
+                              </div>
+                              <div>
+                                {t("الهامش", "Margin")} = ({fmtMoney(r.profit, "EGP", lang)} ÷ {fmtMoney(r.revenue, "EGP", lang)}) × 100 = <span className="font-semibold">{r.margin.toFixed(2)}%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="rounded-lg border bg-card p-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                              {t("بنود الفواتير المعتمدة", "Counted invoice lines")} ({fmtNumber(items.filter((it) => it.product_id === r.product_id && !isShippingLine(it)).length, lang)})
+                            </div>
+                            <div className="max-h-44 overflow-y-auto divide-y text-[11px]">
+                              {items
+                                .filter((it) => it.product_id === r.product_id && !isShippingLine(it))
+                                .slice(0, 50)
+                                .map((it, i) => (
+                                  <div key={i} className="py-1 flex items-center justify-between gap-2">
+                                    <span className="font-mono">{it.invoices?.invoice_number}</span>
+                                    <span className="text-muted-foreground">{it.invoices?.created_at?.slice(0,10)}</span>
+                                    <span className="tabular-nums">×{it.quantity}</span>
+                                    <span className="tabular-nums">{fmtMoney(Number(it.line_total ?? 0), "EGP", lang)}</span>
+                                  </div>
+                                ))}
+                              {items.filter((it) => it.product_id === r.product_id && !isShippingLine(it)).length === 0 && (
+                                <div className="py-3 text-center text-muted-foreground">{t("لا توجد مبيعات في النطاق", "No sales in range")}</div>
+                              )}
+                            </div>
+                            <div className="mt-2 text-[10px] text-muted-foreground">
+                              {t("الفواتير الملغية والمحذوفة ورسوم الشحن مستبعدة تلقائيًا.", "Voided/deleted invoices and shipping fees are auto-excluded.")}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -616,6 +733,52 @@ function ProfitsPage() {
           </table>
         </div>
       </div>
+
+      {/* Price history dialog */}
+      <Dialog open={!!historyOpen} onOpenChange={(o) => { if (!o) { setHistoryOpen(null); setHistory([]); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {t("سجل تعديلات الأسعار", "Price change history")}
+              {historyOpen && <span className="block text-xs text-muted-foreground font-normal mt-1">{historyOpen.name}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("...جاري التحميل", "Loading...")}</div>
+            ) : history.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("لا توجد تعديلات سابقة", "No prior changes")}</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 text-start">{t("الحقل", "Field")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("من", "From")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إلى", "To")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("بواسطة", "By")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("التاريخ", "When")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {history.map((h) => (
+                    <tr key={h.id}>
+                      <td className="px-2 py-1.5">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.field === "cost_price" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
+                          {h.field === "cost_price" ? t("تكلفة", "cost") : t("بيع", "sale")}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(h.old_value ?? 0), "EGP", lang)}</td>
+                      <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{fmtMoney(Number(h.new_value ?? 0), "EGP", lang)}</td>
+                      <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

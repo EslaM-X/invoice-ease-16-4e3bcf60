@@ -533,6 +533,39 @@ export type Database = {
         }
         Relationships: []
       }
+      product_price_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          field: string
+          id: string
+          new_value: number | null
+          old_value: number | null
+          product_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          field: string
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+          product_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          field?: string
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+          product_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           collection: string | null
