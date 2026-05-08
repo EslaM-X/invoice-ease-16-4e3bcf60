@@ -263,7 +263,7 @@ function AuthPage() {
           <form
             onSubmit={handleForgot}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.005_60)] p-6 text-[oklch(0.97_0.008_82)] shadow-elegant"
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.003_250)] p-6 text-white shadow-elegant"
           >
             <h2 className="text-lg font-semibold">
               {lang === "ar" ? "إعادة تعيين كلمة السر" : "Reset password"}
