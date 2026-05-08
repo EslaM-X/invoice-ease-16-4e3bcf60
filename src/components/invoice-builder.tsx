@@ -228,11 +228,13 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       toast.error(`${p.name} — ${msg}`);
       return false;
     }
+    let newQty = 1;
     setItems((prev) => {
       const idx = prev.findIndex((it) => it.product_id === p.id);
       if (idx >= 0) {
         const next = prev.slice();
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+        newQty = next[idx].quantity + 1;
+        next[idx] = { ...next[idx], quantity: newQty };
         return next;
       }
       const newItem: BuilderItem = {
@@ -254,6 +256,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       }
       return [...prev, newItem];
     });
+    setLastAddedId(p.id);
+    setTimeout(() => setLastAddedId((cur) => (cur === p.id ? null : cur)), 900);
+    toast.success(`✓ ${p.name}`, { description: `${lang === "ar" ? "الكمية" : "Qty"}: ${newQty}`, duration: 1400 });
     return true;
   };
 
