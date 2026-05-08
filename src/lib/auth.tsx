@@ -26,7 +26,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.session?.user ?? null);
       setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+
+    // "Remember Me" behaviour:
+    // - ON (default): session persists forever in localStorage (Supabase default).
+    // - OFF: clear the persisted session when the tab/window closes so the
+    //   user has to sign in again next visit. Manual sign-out always works.
+    const handleHide = () => {
+      try {
+        const remember = localStorage.getItem("stein.rememberMe");
+        if (remember === "0") {
+          for (const key of Object.keys(localStorage)) {
+            if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+              localStorage.removeItem(key);
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("pagehide", handleHide);
+
+    return () => {
+      sub.subscription.unsubscribe();
+      window.removeEventListener("pagehide", handleHide);
+    };
   }, []);
 
   const signOut = async () => {

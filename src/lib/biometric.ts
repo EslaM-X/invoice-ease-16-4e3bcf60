@@ -159,7 +159,8 @@ export async function enrollBiometric(params: {
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
-  // Persist enrollment to DB so the user can list/manage devices.
+  // Persist enrollment to DB so the user can list/manage devices,
+  // and create an in-app notification for the user + managers.
   try {
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;
@@ -173,6 +174,25 @@ export async function enrollBiometric(params: {
         user_agent: ua,
         last_used_at: new Date().toISOString(),
       }, { onConflict: "credential_id" });
+
+      const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
+      const method = isApple ? "Face ID / Touch ID" : "بصمة الإصبع";
+      await supabase.from("notifications").insert([
+        {
+          user_id: uid,
+          type: "biometric_enrolled",
+          title: `تم تفعيل ${method}`,
+          body: `جهاز جديد: ${label} · ${params.email}`,
+          meta: { credential_id: credentialId, device_label: label, platform, email: params.email },
+        },
+        {
+          recipient_role: "manager",
+          type: "biometric_enrolled",
+          title: "تفعيل دخول بالبصمة",
+          body: `${params.email} فعّل ${method} على ${label}`,
+          meta: { credential_id: credentialId, device_label: label, platform, email: params.email },
+        },
+      ]);
     }
   } catch {
     // Best-effort: enrollment still works locally even if the insert failed.
