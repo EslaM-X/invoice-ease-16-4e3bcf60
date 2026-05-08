@@ -94,6 +94,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   const [pickerCollection, setPickerCollection] = useState<string>("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
@@ -228,11 +229,13 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       toast.error(`${p.name} — ${msg}`);
       return false;
     }
+    let newQty = 1;
     setItems((prev) => {
       const idx = prev.findIndex((it) => it.product_id === p.id);
       if (idx >= 0) {
         const next = prev.slice();
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+        newQty = next[idx].quantity + 1;
+        next[idx] = { ...next[idx], quantity: newQty };
         return next;
       }
       const newItem: BuilderItem = {
@@ -254,6 +257,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
       }
       return [...prev, newItem];
     });
+    setLastAddedId(p.id);
+    setTimeout(() => setLastAddedId((cur) => (cur === p.id ? null : cur)), 900);
+    toast.success(`✓ ${p.name}`, { description: `${lang === "ar" ? "الكمية" : "Qty"}: ${newQty}`, duration: 1400 });
     return true;
   };
 
@@ -940,13 +946,23 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                 {filteredProducts.map((p) => {
                   const out = p.stock_quantity <= 0;
                   const low = !out && p.stock_quantity <= p.low_stock_threshold;
+                  const inCartQty = items
+                    .filter((it) => it.product_id === p.id)
+                    .reduce((s, it) => s + (it.quantity || 0), 0);
+                  const justAdded = lastAddedId === p.id;
                   return (
                     <li key={p.id}>
                       <button
                         type="button"
                         onClick={() => addProduct(p)}
                         disabled={out}
-                        className="flex w-full items-center gap-3 px-2.5 py-2 text-start hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`relative flex w-full items-center gap-3 px-2.5 py-2 text-start transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                          justAdded
+                            ? "bg-emerald-500/15 ring-1 ring-emerald-500/40"
+                            : inCartQty > 0
+                              ? "bg-primary/5 hover:bg-primary/10"
+                              : "hover:bg-muted/50"
+                        }`}
                       >
                         <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
                           {p.image_url ? (
@@ -962,6 +978,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                             <span className="font-medium truncate">{p.name}</span>
                             {p.collection && (
                               <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
+                            )}
+                            {inCartQty > 0 && (
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white shadow ${justAdded ? "bg-emerald-500 animate-pulse" : "bg-gradient-to-r from-emerald-500 to-teal-500"}`}>
+                                ✓ {inCartQty} {lang === "ar" ? "مُضاف" : "added"}
+                              </span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">

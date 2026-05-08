@@ -17,6 +17,7 @@ import { Route as SalesRangeRouteImport } from './routes/sales-range'
 import { Route as SalesAuditRouteImport } from './routes/sales-audit'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ProfitsRouteImport } from './routes/profits'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -72,6 +73,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitsRoute = ProfitsRouteImport.update({
+  id: '/profits',
+  path: '/profits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/products': typeof ProductsRoute
+  '/profits': typeof ProfitsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/products': typeof ProductsRoute
+  '/profits': typeof ProfitsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/products': typeof ProductsRoute
+  '/profits': typeof ProfitsRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/products'
+    | '/profits'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/products'
+    | '/profits'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/products'
+    | '/profits'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -328,6 +340,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   InventoryAuditRoute: typeof InventoryAuditRoute
   ProductsRoute: typeof ProductsRoute
+  ProfitsRoute: typeof ProfitsRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SalesAuditRoute: typeof SalesAuditRoute
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profits': {
+      id: '/profits'
+      path: '/profits'
+      fullPath: '/profits'
+      preLoaderRoute: typeof ProfitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -528,6 +548,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   InventoryAuditRoute: InventoryAuditRoute,
   ProductsRoute: ProductsRoute,
+  ProfitsRoute: ProfitsRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SalesAuditRoute: SalesAuditRoute,

@@ -10,6 +10,7 @@ export type Product = {
   price: number; stock_quantity: number; low_stock_threshold: number; qr_code: string | null;
   image_url?: string | null;
   collection?: string | null;
+  cost_price?: number;
   created_at: string; updated_at: string;
   created_by_email?: string | null; updated_by_email?: string | null;
 };
