@@ -189,8 +189,8 @@ function AuthPage() {
     }
   };
 
-  const handleDisableBiometric = () => {
-    disableBiometric();
+  const handleDisableBiometric = async () => {
+    await disableBiometric();
     setBioEnrolled(false);
     setEnrolledEmail(null);
     toast.success(lang === "ar" ? "تم إلغاء الدخول بالبصمة" : "Biometric disabled");
