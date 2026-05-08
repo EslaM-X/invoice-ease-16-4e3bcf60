@@ -238,6 +238,7 @@ const en: Dict = {
   invoices: "Invoices",
   new_invoice: "New Invoice",
   reports: "Reports",
+  profits: "Profits",
   settings: "Settings",
   logout: "Sign out",
   login: "Sign in",
