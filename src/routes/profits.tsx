@@ -239,28 +239,6 @@ function ProfitsPage() {
     return { rangeLabel, productSummary, customerName };
   }, [customers, customerId, day, from, lang, month, range, search, selectedIds, to, year]);
 
-  const totalsMatch = useMemo(() => {
-    if (selectedIds.size > 0 || search.trim()) return null;
-
-    const totalsByInvoice = new Map<string, number>();
-    for (const it of items) {
-      if (!it.invoices) continue;
-      totalsByInvoice.set(it.invoice_id, Number(it.invoices.total ?? 0));
-    }
-
-    const reportsTotal = Array.from(totalsByInvoice.values()).reduce((sum, value) => sum + value, 0);
-    const profitsTotal = Number(rows.totals.revenue ?? 0);
-    const diff = Math.abs(profitsTotal - reportsTotal);
-
-    return {
-      reportsTotal,
-      profitsTotal,
-      diff,
-      ok: diff < 0.01,
-      limitedByProductFilter: false,
-    };
-  }, [items, rows.totals.revenue, search, selectedIds]);
-
   // Shipping/service fees aggregate (excluded from revenue/profit but shown for transparency)
   const shippingTotals = useMemo(() => {
     let amount = 0;
@@ -361,6 +339,27 @@ function ProfitsPage() {
       },
     };
   }, [items, productById, search, products, selectedIds, invoiceFactor]);
+
+  const totalsMatch = useMemo(() => {
+    if (selectedIds.size > 0 || search.trim()) return null;
+
+    const totalsByInvoice = new Map<string, number>();
+    for (const it of items) {
+      if (!it.invoices) continue;
+      totalsByInvoice.set(it.invoice_id, Number(it.invoices.total ?? 0));
+    }
+
+    const reportsTotal = Array.from(totalsByInvoice.values()).reduce((sum, value) => sum + value, 0);
+    const profitsTotal = Number(rows.totals.revenue ?? 0);
+    const diff = Math.abs(profitsTotal - reportsTotal);
+
+    return {
+      reportsTotal,
+      profitsTotal,
+      diff,
+      ok: diff < 0.01,
+    };
+  }, [items, rows.totals.revenue, search, selectedIds]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
