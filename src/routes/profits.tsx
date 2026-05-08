@@ -95,6 +95,7 @@ function ProfitsPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [revertingId, setRevertingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [chartView, setChartView] = useState<"profit" | "all">("profit");
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
 
