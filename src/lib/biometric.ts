@@ -1,8 +1,37 @@
 // Local biometric (Face ID / Fingerprint) unlock using WebAuthn platform authenticator.
 // The biometric acts as a local gate that releases a stored Supabase session
 // (refresh + access token) so the user can sign in without typing credentials.
+// Enrollment metadata is also recorded in the `biometric_credentials` table
+// so users can list and manage devices from any signed-in client.
+
+import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "stein.biometric.v1";
+
+function detectDeviceLabel(): { label: string; platform: string; ua: string } {
+  if (typeof navigator === "undefined") return { label: "Unknown device", platform: "unknown", ua: "" };
+  const ua = navigator.userAgent;
+  let label = "Device";
+  if (/iPhone/i.test(ua)) label = "iPhone";
+  else if (/iPad/i.test(ua)) label = "iPad";
+  else if (/Macintosh/i.test(ua)) label = "Mac";
+  else if (/Android/i.test(ua)) label = /Mobile/i.test(ua) ? "Android phone" : "Android tablet";
+  else if (/Windows/i.test(ua)) label = "Windows PC";
+  else if (/Linux/i.test(ua)) label = "Linux PC";
+  const platform = (navigator as any).userAgentData?.platform || navigator.platform || "unknown";
+  return { label, platform, ua };
+}
+
+export type BiometricDevice = {
+  id: string;
+  credential_id: string;
+  device_label: string | null;
+  platform: string | null;
+  user_agent: string | null;
+  created_at: string;
+  last_used_at: string | null;
+};
+
 
 type StoredCred = {
   credentialId: string; // base64url
