@@ -124,7 +124,7 @@ function SystemNotesPage() {
       .select("id,old_value,new_value,changed_by_email,changed_at")
       .eq("invoice_id", invoiceId)
       .order("changed_at", { ascending: false });
-    setHistory((data ?? []) as HistoryRow[]);
+    setHistory(((data ?? []) as unknown) as HistoryRow[]);
     setHistoryLoading(false);
   };
 
