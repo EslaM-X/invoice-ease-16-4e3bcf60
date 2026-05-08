@@ -196,6 +196,36 @@ function Products() {
     load();
   };
 
+  const runBulkAdjust = async () => {
+    if (!user) return;
+    const amt = parseInt(bulkAmt || "0", 10);
+    if (!amt) return toast.error(lang === "ar" ? "أدخل قيمة غير صفرية" : "Enter non-zero amount");
+    const reason = bulkReason.trim();
+    if (reason.length < 3) {
+      return toast.error(lang === "ar" ? "السبب مطلوب (3 أحرف على الأقل)" : "Reason required (min 3 chars)");
+    }
+    const targets = bulkScope === "filtered" ? filtered : list;
+    if (!targets.length) return toast.error(lang === "ar" ? "لا توجد منتجات" : "No products");
+    setBulkBusy(true);
+    let ok = 0;
+    let fail = 0;
+    for (const p of targets) {
+      const { error } = await supabase.rpc("adjust_stock", {
+        _product_id: p.id,
+        _change: amt,
+        _reason: reason,
+      });
+      if (error) fail++; else ok++;
+    }
+    setBulkBusy(false);
+    if (fail === 0) toast.success(`${ok} ✓`);
+    else toast.warning(`${ok} ✓ · ${fail} ✗`);
+    setBulkOpen(false);
+    setBulkAmt("0");
+    setBulkReason("");
+    load();
+  };
+
   const exportCsv = () => {
     const rows = list.map((p) => ({
       name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "",
