@@ -182,6 +182,36 @@ function ProfitsPage() {
     return m;
   }, [products]);
 
+  // Per-invoice discount-proration factor: line_total -> net revenue after
+  // applying invoice-level discount, distributed proportionally across non-shipping lines.
+  // factor = (invoice.total - shippingTotal) / (invoice.subtotal - shippingTotal)
+  const invoiceFactor = useMemo(() => {
+    const shipByInv = new Map<string, number>();
+    const seenInv = new Map<string, { subtotal: number; total: number }>();
+    for (const it of items) {
+      if (it.invoices && !seenInv.has(it.invoice_id)) {
+        seenInv.set(it.invoice_id, {
+          subtotal: Number(it.invoices.subtotal ?? 0),
+          total: Number(it.invoices.total ?? 0),
+        });
+      }
+      if (isShippingLine(it)) {
+        shipByInv.set(it.invoice_id, (shipByInv.get(it.invoice_id) ?? 0) + Number(it.line_total ?? 0));
+      }
+    }
+    const f = new Map<string, number>();
+    for (const [id, inv] of seenInv) {
+      const ship = shipByInv.get(id) ?? 0;
+      const denom = inv.subtotal - ship;
+      const num = inv.total - ship;
+      f.set(id, denom > 0 ? num / denom : 1);
+    }
+    return f;
+  }, [items]);
+
+  const netRev = (it: RawItem) =>
+    Number(it.line_total ?? 0) * (invoiceFactor.get(it.invoice_id) ?? 1);
+
   // Compute profit rows — include ALL products, even those with no sales in range.
   const rows = useMemo(() => {
     const filtered = items.filter((it) => !isShippingLine(it) && it.product_id);
@@ -195,7 +225,7 @@ function ProfitsPage() {
     for (const it of filtered) {
       const p = productById.get(it.product_id!) ?? null;
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
-      const rev = Number(it.line_total ?? 0);
+      const rev = netRev(it);
       const cur = byProduct.get(it.product_id!) ?? { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 };
       cur.qty += it.quantity;
       cur.revenue += rev;
@@ -248,7 +278,7 @@ function ProfitsPage() {
       for (const it of items) {
         if (it.product_id) continue;
         if (isShippingLine(it)) continue;
-        extrasRevenue += Number(it.line_total ?? 0);
+        extrasRevenue += netRev(it);
         extrasLines += 1;
       }
     }
@@ -266,7 +296,7 @@ function ProfitsPage() {
         margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products, selectedIds]);
+  }, [items, productById, search, products, selectedIds, invoiceFactor]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
@@ -288,7 +318,7 @@ function ProfitsPage() {
       if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
       const p = productById.get(it.product_id);
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
-      const rev = Number(it.line_total ?? 0);
+      const rev = netRev(it);
       const cur = map.get(it.invoice_id) ?? {
         invoice_id: it.invoice_id,
         invoice_number: it.invoices?.invoice_number ?? "",
@@ -306,7 +336,7 @@ function ProfitsPage() {
     return Array.from(map.values())
       .map((r) => ({ ...r, profit: r.revenue - r.cost, margin: r.revenue > 0 ? ((r.revenue - r.cost) / r.revenue) * 100 : 0 }))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
-  }, [items, productById, selectedIds]);
+  }, [items, productById, selectedIds, invoiceFactor]);
 
   // Daily trend (net profit per day) within selected range and product filter
   const dailyTrend = useMemo(() => {
@@ -318,13 +348,13 @@ function ProfitsPage() {
       if (!day) continue;
       const p = productById.get(it.product_id);
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
-      const rev = Number(it.line_total ?? 0);
+      const rev = netRev(it);
       const cur = map.get(day) ?? { date: day, revenue: 0, cost: 0, profit: 0 };
       cur.revenue += rev; cur.cost += cost; cur.profit = cur.revenue - cur.cost;
       map.set(day, cur);
     }
     return Array.from(map.values()).sort((a, b) => (a.date > b.date ? 1 : -1));
-  }, [items, productById, selectedIds]);
+  }, [items, productById, selectedIds, invoiceFactor]);
 
   const startEdit = (p: Product) => {
     setEditing((cur) => ({
