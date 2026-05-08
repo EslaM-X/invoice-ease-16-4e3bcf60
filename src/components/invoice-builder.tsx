@@ -915,8 +915,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                 key={c}
                 type="button"
                 onClick={() => setPickerCollection(c)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${pickerCollection === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, pickerCollection === c)}`}
               >
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(c)}`} aria-hidden />
                 {c} ({collectionCounts[c] ?? 0})
               </button>
             ))}
