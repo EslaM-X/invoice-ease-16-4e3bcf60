@@ -307,11 +307,20 @@ function InvoiceView() {
               <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">
                 {t("system_notes")}
               </h3>
-              <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
-                {lang === "ar" ? "لا يطبع" : "Not printed"}
-              </span>
+              <div className="flex items-center gap-2">
+                <Link to="/invoices-system-notes">
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs">
+                    <Eye className="h-3 w-3" />
+                    {lang === "ar" ? "السجل" : "History"}
+                  </Button>
+                </Link>
+                <span className="text-[10px] uppercase tracking-wider text-amber-700/70 dark:text-amber-400/70">
+                  {lang === "ar" ? "لا يطبع" : "Not printed"}
+                </span>
+              </div>
             </div>
             <p className="whitespace-pre-wrap text-sm text-foreground">{inv.system_notes}</p>
+            <SystemNotesHistoryInline invoiceId={inv.id} />
           </div>
         </div>
       )}
