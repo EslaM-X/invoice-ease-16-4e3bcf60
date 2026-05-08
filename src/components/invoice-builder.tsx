@@ -961,7 +961,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-medium truncate">{p.name}</span>
                             {p.collection && (
-                              <span className="rounded border bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">{p.collection}</span>
+                              <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
