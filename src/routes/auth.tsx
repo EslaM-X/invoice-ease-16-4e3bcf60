@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -8,10 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun, Eye, EyeOff } from "lucide-react";
+import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import {
+  isPlatformAuthenticatorAvailable,
+  isEnrolled as isBiometricEnrolled,
+  getEnrolledEmail,
+  enrollBiometric,
+  verifyBiometric,
+  disableBiometric,
+  updateStoredTokens,
+} from "@/lib/biometric";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
