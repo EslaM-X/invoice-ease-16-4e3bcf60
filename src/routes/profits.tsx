@@ -687,7 +687,7 @@ function ProfitsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                  </Fragment>
                 );
               })}
             </tbody>
