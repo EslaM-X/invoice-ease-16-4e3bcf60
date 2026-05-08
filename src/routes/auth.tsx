@@ -93,11 +93,16 @@ function AuthPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[oklch(0.1_0.004_60)] text-[oklch(0.97_0.008_82)] flex items-center justify-center p-4">
-      {/* Decorative gold mesh */}
-      <div className="pointer-events-none absolute inset-0 opacity-60"
-        style={{ backgroundImage: "radial-gradient(at 15% 10%, oklch(0.78 0.11 82 / 0.18) 0px, transparent 50%), radial-gradient(at 85% 80%, oklch(0.62 0.13 75 / 0.14) 0px, transparent 50%)" }} />
-      <div className="absolute top-4 end-4 z-10 flex gap-2 no-print">
+    <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.008_82)]">
+      {/* Layered luxury background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 50% -10%, oklch(0.78 0.11 82 / 0.22) 0px, transparent 55%), radial-gradient(ellipse at 10% 110%, oklch(0.62 0.13 75 / 0.18) 0px, transparent 50%), radial-gradient(ellipse at 90% 90%, oklch(0.55 0.12 70 / 0.14) 0px, transparent 50%)" }} />
+        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(oklch(0.78 0.11 82) 1px, transparent 1px), linear-gradient(90deg, oklch(0.78 0.11 82) 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.6)] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.4)] to-transparent" />
+      </div>
+
+      <div className="absolute top-4 end-4 z-20 flex gap-2 no-print">
         <Button variant="ghost" size="icon" className="text-[oklch(0.97_0.008_82)] hover:bg-white/10" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
           <Languages className="h-4 w-4" />
         </Button>
@@ -106,17 +111,43 @@ function AuthPage() {
         </Button>
       </div>
 
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-8 text-center">
-          <img src={brandLogo} alt="Steinheim" className="mx-auto mb-4 h-28 w-auto select-none object-contain drop-shadow-[0_8px_28px_oklch(0.78_0.11_82_/_0.35)]" draggable={false} />
-          <div className="mx-auto h-px w-24 bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
-          <p className="font-latin mt-4 text-[11px] font-medium uppercase tracking-[0.4em] text-[oklch(0.78_0.11_82)]">
-            Invoice Suite
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-center gap-10 px-4 py-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10">
+        {/* Brand showcase */}
+        <div className="order-1 flex flex-col items-center text-center lg:order-none lg:items-start lg:text-start">
+          <div className="relative">
+            <div className="absolute -inset-10 rounded-full bg-[radial-gradient(circle,oklch(0.78_0.11_82_/_0.28),transparent_65%)] blur-2xl" />
+            <div className="relative rounded-3xl border border-[oklch(0.78_0.11_82_/_0.25)] bg-gradient-to-b from-[#121214] to-[#0b0b0c] p-6 shadow-[0_30px_80px_-20px_oklch(0.78_0.11_82_/_0.35)] sm:p-8">
+              <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/5" />
+              <div className="pointer-events-none absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
+              <img
+                src={brandLogo}
+                alt="Steinheim"
+                className="relative mx-auto h-44 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.78_0.11_82_/_0.55)] sm:h-56 lg:h-64"
+                draggable={false}
+              />
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-center gap-3">
+            <span className="h-px w-10 bg-gradient-to-r from-transparent to-[oklch(0.78_0.11_82)]" />
+            <p className="font-latin text-[11px] font-semibold uppercase tracking-[0.55em] text-[oklch(0.78_0.11_82)]">
+              Invoice Suite
+            </p>
+            <span className="h-px w-10 bg-gradient-to-l from-transparent to-[oklch(0.78_0.11_82)]" />
+          </div>
+
+          <h1 className="mt-5 max-w-md bg-gradient-to-b from-white to-[oklch(0.78_0.11_82)] bg-clip-text text-3xl font-semibold leading-tight text-transparent sm:text-4xl lg:text-5xl">
+            {lang === "ar" ? "فخامة الإدارة. دقة الأرقام." : "Refined management. Precise numbers."}
+          </h1>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/60 sm:text-base">
+            {t("hero_subtitle")}
           </p>
-          <p className="mt-2 text-sm text-white/60">{t("hero_subtitle")}</p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[oklch(0.15_0.005_60)] p-6 text-[oklch(0.97_0.008_82)] shadow-elegant">
+        {/* Auth card */}
+        <div className="order-2 w-full max-w-md justify-self-center lg:justify-self-end">
+        <div className="relative rounded-2xl border border-[oklch(0.78_0.11_82_/_0.18)] bg-[oklch(0.13_0.005_60_/_0.85)] p-6 text-[oklch(0.97_0.008_82)] shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
+          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
           <div className="mb-5 flex gap-1 rounded-lg bg-white/5 p-1">
             <button
               onClick={() => setMode("login")}
@@ -221,6 +252,7 @@ function AuthPage() {
           <p className="mt-5 text-center text-sm text-white/50">
             <Link to="/" className="hover:text-white">←</Link>
           </p>
+        </div>
         </div>
       </div>
 
