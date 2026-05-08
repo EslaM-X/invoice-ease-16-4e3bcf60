@@ -90,6 +90,21 @@ function AuthPage() {
     if (user) navigate({ to: "/dashboard" });
   }, [user, navigate]);
 
+  const afterLoginCheckBiometric = async () => {
+    // If supported and not yet enrolled (or enrolled with a different email), prompt to enable.
+    if (!bioSupported) return;
+    const { data } = await supabase.auth.getSession();
+    const sess = data.session;
+    if (!sess) return;
+    const currentEmail = sess.user.email ?? email;
+    if (bioEnrolled && enrolledEmail === currentEmail) {
+      // Refresh stored tokens so unlock keeps working
+      updateStoredTokens({ access_token: sess.access_token, refresh_token: sess.refresh_token });
+      return;
+    }
+    setEnrollPromptOpen(true);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -108,6 +123,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        await afterLoginCheckBiometric();
       }
     } catch (err: any) {
       toast.error(err?.message ?? t("error_occurred"));
@@ -128,6 +144,65 @@ function AuthPage() {
       setBusy(false);
     }
   };
+
+  const handleBiometricLogin = async () => {
+    setBusy(true);
+    try {
+      const tokens = await verifyBiometric();
+      const { data, error } = await supabase.auth.setSession({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+      });
+      if (error) throw error;
+      if (data.session) {
+        updateStoredTokens({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (/expired|invalid|refresh/i.test(msg)) {
+        toast.error(lang === "ar"
+          ? "انتهت صلاحية الجلسة المحفوظة. سجّل الدخول بكلمة السر مرة واحدة."
+          : "Saved session expired. Please sign in with your password once.");
+      } else {
+        toast.error(lang === "ar" ? "تعذّر التحقق بالبصمة" : "Biometric verification failed");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEnableBiometric = async () => {
+    setBusy(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const sess = data.session;
+      if (!sess) throw new Error("No session");
+      await enrollBiometric({
+        email: sess.user.email ?? email,
+        access_token: sess.access_token,
+        refresh_token: sess.refresh_token,
+      });
+      setBioEnrolled(true);
+      setEnrolledEmail(sess.user.email ?? email);
+      toast.success(lang === "ar" ? "تم تفعيل الدخول بالبصمة" : "Biometric login enabled");
+      setEnrollPromptOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message ?? (lang === "ar" ? "فشل التفعيل" : "Enrollment failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisableBiometric = () => {
+    disableBiometric();
+    setBioEnrolled(false);
+    setEnrolledEmail(null);
+    toast.success(lang === "ar" ? "تم إلغاء الدخول بالبصمة" : "Biometric disabled");
+  };
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.005_250)]">
