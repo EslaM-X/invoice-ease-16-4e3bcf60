@@ -93,6 +93,35 @@ function ProfitsPage() {
   const [historyOpen, setHistoryOpen] = useState<Product | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [revertingId, setRevertingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((cur) => {
+      const n = new Set(cur);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const clearSelected = () => setSelectedIds(new Set());
+
+  const revertHistory = async (h: any) => {
+    if (!historyOpen) return;
+    setRevertingId(h.id);
+    const field = h.field === "cost_price" ? "cost_price" : "price";
+    const value = Number(h.old_value ?? 0);
+    const { error } = await supabase
+      .from("products")
+      .update({ [field]: value } as any)
+      .eq("id", historyOpen.id);
+    setRevertingId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(t("تم الرجوع للقيمة السابقة", "Reverted to previous value"));
+    await loadProducts();
+    await openHistory(historyOpen);
+  };
 
   const openHistory = async (p: Product) => {
     setHistoryOpen(p);
