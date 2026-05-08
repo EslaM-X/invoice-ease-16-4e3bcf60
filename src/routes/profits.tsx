@@ -426,8 +426,19 @@ function ProfitsPage() {
     ];
 
     const wb = XLSX.utils.book_new();
+    const ws4Data = [
+      [
+        lang === "ar" ? "التاريخ" : "Date",
+        lang === "ar" ? "البيع" : "Revenue",
+        lang === "ar" ? "التكلفة" : "Cost",
+        lang === "ar" ? "صافي الربح" : "Net Profit",
+      ],
+      ...dailyTrend.map((d) => [d.date, +d.revenue.toFixed(2), +d.cost.toFixed(2), +d.profit.toFixed(2)]),
+    ];
+
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws1Data), lang === "ar" ? "المنتجات" : "Products");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws2Data), lang === "ar" ? "الفواتير" : "Invoices");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws4Data), lang === "ar" ? "اليومي" : "Daily");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws3Data), lang === "ar" ? "ملخص" : "Summary");
     const fname = `profits_${range}_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fname);
