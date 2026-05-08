@@ -118,7 +118,7 @@ function ProfitsPage() {
       .eq("id", historyOpen.id);
     setRevertingId(null);
     if (error) { toast.error(error.message); return; }
-    toast.success(t("تم الرجوع للقيمة السابقة", "Reverted to previous value"));
+    toast.success(lang === "ar" ? "تم الرجوع للقيمة السابقة" : "Reverted to previous value");
     await loadProducts();
     await openHistory(historyOpen);
   };
