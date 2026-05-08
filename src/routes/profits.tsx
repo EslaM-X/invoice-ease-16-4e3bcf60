@@ -185,29 +185,14 @@ function ProfitsPage() {
       string,
       { product: Product | null; qty: number; revenue: number; cost: number; lines: number }
     >();
-    // seed with every product so unsold ones still appear
     for (const p of products) {
       byProduct.set(p.id, { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 });
     }
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let totalQty = 0;
-    let totalLines = 0;
     for (const it of filtered) {
       const p = productById.get(it.product_id!) ?? null;
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
       const rev = Number(it.line_total ?? 0);
-      totalRevenue += rev;
-      totalCost += cost;
-      totalQty += it.quantity;
-      totalLines += 1;
-      const cur = byProduct.get(it.product_id!) ?? {
-        product: p,
-        qty: 0,
-        revenue: 0,
-        cost: 0,
-        lines: 0,
-      };
+      const cur = byProduct.get(it.product_id!) ?? { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 };
       cur.qty += it.quantity;
       cur.revenue += rev;
       cur.cost += cost;
@@ -226,6 +211,7 @@ function ProfitsPage() {
         margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
         lines: v.lines,
       }))
+      .filter((r) => selectedIds.size === 0 || selectedIds.has(r.product_id))
       .filter((r) => {
         if (!search.trim()) return true;
         const s = search.trim().toLowerCase();
@@ -242,18 +228,22 @@ function ProfitsPage() {
         if (b.qty === 0) return -1;
         return b.profit - a.profit;
       });
+    const totals = list.reduce(
+      (acc, r) => {
+        acc.revenue += r.revenue; acc.cost += r.cost; acc.qty += r.qty; acc.lines += r.lines;
+        return acc;
+      },
+      { revenue: 0, cost: 0, qty: 0, lines: 0 }
+    );
     return {
       list,
       totals: {
-        revenue: totalRevenue,
-        cost: totalCost,
-        profit: totalRevenue - totalCost,
-        margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
-        qty: totalQty,
-        lines: totalLines,
+        ...totals,
+        profit: totals.revenue - totals.cost,
+        margin: totals.revenue > 0 ? ((totals.revenue - totals.cost) / totals.revenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products]);
+  }, [items, productById, search, products, selectedIds]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
