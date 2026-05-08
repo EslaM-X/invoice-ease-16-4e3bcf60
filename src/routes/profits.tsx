@@ -545,7 +545,8 @@ function ProfitsPage() {
                 const p = r.product;
                 const e = p ? editing[p.id] : undefined;
                 return (
-                  <tr key={r.product_id} className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
+                  <Fragment key={r.product_id}>
+                  <tr className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="h-9 w-9 shrink-0 overflow-hidden rounded border bg-muted">
