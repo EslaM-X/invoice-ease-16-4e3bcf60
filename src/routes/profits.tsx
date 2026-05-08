@@ -412,9 +412,40 @@ function ProfitsPage() {
             )}
           </p>
         </div>
-        <Button onClick={exportXlsx} className="gap-2">
-          <Download className="h-4 w-4" /> {t("تنزيل Excel", "Export Excel")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await Promise.all([loadProducts(), loadItems()]);
+              toast.success(t("تم إعادة الاحتساب من الفواتير", "Recalculated from invoices"));
+            }}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {t("إعادة احتساب", "Recalculate")}
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="formula">
+                <Info className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] text-xs leading-relaxed">
+              <div className="font-semibold mb-1">{t("معادلة حساب الربح", "Profit formula")}</div>
+              <ul className="space-y-1 list-disc ps-4">
+                <li>{t("إجمالي البيع للمنتج = Σ (سعر الوحدة × الكمية − الخصم) لكل بند فاتورة غير ملغية.", "Revenue = Σ (unit_price × qty − discount) across non-voided invoice items.")}</li>
+                <li>{t("إجمالي التكلفة = سعر التكلفة × الكمية المباعة.", "Cost = cost_price × sold qty.")}</li>
+                <li>{t("صافي الربح = إجمالي البيع − إجمالي التكلفة.", "Profit = Revenue − Cost.")}</li>
+                <li>{t("هامش % = (الربح ÷ إجمالي البيع) × 100.", "Margin % = (Profit ÷ Revenue) × 100.")}</li>
+                <li className="text-muted-foreground">{t("مستبعد: الفواتير الملغية، الفواتير المحذوفة، رسوم الشحن/الخدمة.", "Excluded: voided invoices, deleted invoices, shipping/service fees.")}</li>
+              </ul>
+            </PopoverContent>
+          </Popover>
+          <Button onClick={exportXlsx} className="gap-2">
+            <Download className="h-4 w-4" /> {t("تنزيل Excel", "Export Excel")}
+          </Button>
+        </div>
       </div>
 
       {/* Range filter */}
