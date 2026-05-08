@@ -584,7 +584,7 @@ function ProfitsPage() {
           <h3 className="font-semibold text-sm">{t("ربح كل فاتورة", "Per-Invoice Profit")} ({fmtNumber(invoiceRows.length, lang)})</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-start">{t("الفاتورة", "Invoice")}</th>
