@@ -90,21 +90,6 @@ function AuthPage() {
     if (user && !enrollPromptOpen) navigate({ to: "/dashboard" });
   }, [user, navigate, enrollPromptOpen]);
 
-  const afterLoginCheckBiometric = async () => {
-    // If supported and not yet enrolled (or enrolled with a different email), prompt to enable.
-    if (!bioSupported) return;
-    const { data } = await supabase.auth.getSession();
-    const sess = data.session;
-    if (!sess) return;
-    const currentEmail = sess.user.email ?? email;
-    if (bioEnrolled && enrolledEmail === currentEmail) {
-      // Refresh stored tokens so unlock keeps working
-      updateStoredTokens({ access_token: sess.access_token, refresh_token: sess.refresh_token });
-      return;
-    }
-    setEnrollPromptOpen(true);
-  };
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
