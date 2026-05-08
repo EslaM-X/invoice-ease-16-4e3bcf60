@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Product } from "@/lib/data";
 
 type Range = "day" | "month" | "year" | "all" | "custom";
@@ -92,6 +93,35 @@ function ProfitsPage() {
   const [historyOpen, setHistoryOpen] = useState<Product | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [revertingId, setRevertingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((cur) => {
+      const n = new Set(cur);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const clearSelected = () => setSelectedIds(new Set());
+
+  const revertHistory = async (h: any) => {
+    if (!historyOpen) return;
+    setRevertingId(h.id);
+    const field = h.field === "cost_price" ? "cost_price" : "price";
+    const value = Number(h.old_value ?? 0);
+    const { error } = await supabase
+      .from("products")
+      .update({ [field]: value } as any)
+      .eq("id", historyOpen.id);
+    setRevertingId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(lang === "ar" ? "تم الرجوع للقيمة السابقة" : "Reverted to previous value");
+    await loadProducts();
+    await openHistory(historyOpen);
+  };
 
   const openHistory = async (p: Product) => {
     setHistoryOpen(p);
@@ -155,29 +185,14 @@ function ProfitsPage() {
       string,
       { product: Product | null; qty: number; revenue: number; cost: number; lines: number }
     >();
-    // seed with every product so unsold ones still appear
     for (const p of products) {
       byProduct.set(p.id, { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 });
     }
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let totalQty = 0;
-    let totalLines = 0;
     for (const it of filtered) {
       const p = productById.get(it.product_id!) ?? null;
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
       const rev = Number(it.line_total ?? 0);
-      totalRevenue += rev;
-      totalCost += cost;
-      totalQty += it.quantity;
-      totalLines += 1;
-      const cur = byProduct.get(it.product_id!) ?? {
-        product: p,
-        qty: 0,
-        revenue: 0,
-        cost: 0,
-        lines: 0,
-      };
+      const cur = byProduct.get(it.product_id!) ?? { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 };
       cur.qty += it.quantity;
       cur.revenue += rev;
       cur.cost += cost;
@@ -196,6 +211,7 @@ function ProfitsPage() {
         margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
         lines: v.lines,
       }))
+      .filter((r) => selectedIds.size === 0 || selectedIds.has(r.product_id))
       .filter((r) => {
         if (!search.trim()) return true;
         const s = search.trim().toLowerCase();
@@ -212,18 +228,22 @@ function ProfitsPage() {
         if (b.qty === 0) return -1;
         return b.profit - a.profit;
       });
+    const totals = list.reduce(
+      (acc, r) => {
+        acc.revenue += r.revenue; acc.cost += r.cost; acc.qty += r.qty; acc.lines += r.lines;
+        return acc;
+      },
+      { revenue: 0, cost: 0, qty: 0, lines: 0 }
+    );
     return {
       list,
       totals: {
-        revenue: totalRevenue,
-        cost: totalCost,
-        profit: totalRevenue - totalCost,
-        margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
-        qty: totalQty,
-        lines: totalLines,
+        ...totals,
+        profit: totals.revenue - totals.cost,
+        margin: totals.revenue > 0 ? ((totals.revenue - totals.cost) / totals.revenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products]);
+  }, [items, productById, search, products, selectedIds]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
@@ -242,6 +262,7 @@ function ProfitsPage() {
     for (const it of items) {
       if (isShippingLine(it)) continue;
       if (!it.product_id) continue;
+      if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
       const p = productById.get(it.product_id);
       const cost = Number(p?.cost_price ?? 0) * it.quantity;
       const rev = Number(it.line_total ?? 0);
@@ -262,7 +283,25 @@ function ProfitsPage() {
     return Array.from(map.values())
       .map((r) => ({ ...r, profit: r.revenue - r.cost, margin: r.revenue > 0 ? ((r.revenue - r.cost) / r.revenue) * 100 : 0 }))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
-  }, [items, productById]);
+  }, [items, productById, selectedIds]);
+
+  // Daily trend (net profit per day) within selected range and product filter
+  const dailyTrend = useMemo(() => {
+    const map = new Map<string, { date: string; revenue: number; cost: number; profit: number }>();
+    for (const it of items) {
+      if (isShippingLine(it) || !it.product_id) continue;
+      if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
+      const day = (it.invoices?.created_at ?? "").slice(0, 10);
+      if (!day) continue;
+      const p = productById.get(it.product_id);
+      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const rev = Number(it.line_total ?? 0);
+      const cur = map.get(day) ?? { date: day, revenue: 0, cost: 0, profit: 0 };
+      cur.revenue += rev; cur.cost += cost; cur.profit = cur.revenue - cur.cost;
+      map.set(day, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => (a.date > b.date ? 1 : -1));
+  }, [items, productById, selectedIds]);
 
   const startEdit = (p: Product) => {
     setEditing((cur) => ({
@@ -387,8 +426,19 @@ function ProfitsPage() {
     ];
 
     const wb = XLSX.utils.book_new();
+    const ws4Data = [
+      [
+        lang === "ar" ? "التاريخ" : "Date",
+        lang === "ar" ? "البيع" : "Revenue",
+        lang === "ar" ? "التكلفة" : "Cost",
+        lang === "ar" ? "صافي الربح" : "Net Profit",
+      ],
+      ...dailyTrend.map((d) => [d.date, +d.revenue.toFixed(2), +d.cost.toFixed(2), +d.profit.toFixed(2)]),
+    ];
+
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws1Data), lang === "ar" ? "المنتجات" : "Products");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws2Data), lang === "ar" ? "الفواتير" : "Invoices");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws4Data), lang === "ar" ? "اليومي" : "Daily");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws3Data), lang === "ar" ? "ملخص" : "Summary");
     const fname = `profits_${range}_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fname);
@@ -417,7 +467,17 @@ function ProfitsPage() {
             variant="outline"
             onClick={async () => {
               await Promise.all([loadProducts(), loadItems()]);
-              toast.success(t("تم إعادة الاحتساب من الفواتير", "Recalculated from invoices"));
+              const r = rows.totals;
+              toast.success(
+                t("تم إعادة الاحتساب", "Recalculated"),
+                {
+                  description: t(
+                    `البيع: ${fmtMoney(r.revenue, "EGP", lang)} · التكلفة: ${fmtMoney(r.cost, "EGP", lang)} · الربح: ${fmtMoney(r.profit, "EGP", lang)} (${r.margin.toFixed(1)}%)`,
+                    `Revenue: ${fmtMoney(r.revenue, "EGP", lang)} · Cost: ${fmtMoney(r.cost, "EGP", lang)} · Profit: ${fmtMoney(r.profit, "EGP", lang)} (${r.margin.toFixed(1)}%)`
+                  ),
+                  duration: 6000,
+                }
+              );
             }}
             disabled={loading}
             className="gap-2"
@@ -506,7 +566,80 @@ function ProfitsPage() {
             <Label className="text-xs">{t("بحث منتج", "Search product")}</Label>
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")} />
           </div>
+          <div className="min-w-[200px]">
+            <Label className="text-xs">{t("فلترة منتجات محددة", "Filter specific products")}</Label>
+            <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start gap-2 h-10">
+                  <Filter className="h-4 w-4" />
+                  {selectedIds.size > 0
+                    ? t(`${selectedIds.size} منتج محدد`, `${selectedIds.size} selected`)
+                    : t("كل المنتجات", "All products")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="end">
+                <div className="p-2 border-b flex items-center gap-2">
+                  <Input
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder={t("بحث...", "Search...")}
+                    className="h-8 text-xs"
+                  />
+                  {selectedIds.size > 0 && (
+                    <Button size="sm" variant="ghost" onClick={clearSelected} className="h-8 px-2 text-[10px]">
+                      {t("مسح", "Clear")}
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto p-1">
+                  {products
+                    .filter((p) => {
+                      const s = pickerSearch.trim().toLowerCase();
+                      if (!s) return true;
+                      return (
+                        p.name.toLowerCase().includes(s) ||
+                        (p.serial_number ?? "").toLowerCase().includes(s) ||
+                        (p.collection ?? "").toLowerCase().includes(s)
+                      );
+                    })
+                    .map((p) => {
+                      const checked = selectedIds.has(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => toggleSelected(p.id)}
+                          className={`w-full text-start flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted ${checked ? "bg-primary/10" : ""}`}
+                        >
+                          <input type="checkbox" readOnly checked={checked} className="pointer-events-none" />
+                          <span className="truncate flex-1">{p.name}</span>
+                          {p.collection && (
+                            <span className={`text-[9px] rounded border px-1 ${collectionBadgeClass(p.collection)}`}>{p.collection}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
+        {selectedIds.size > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground">{t("المنتجات المحددة:", "Selected:")}</span>
+            {Array.from(selectedIds).map((id) => {
+              const p = productById.get(id);
+              if (!p) return null;
+              return (
+                <span key={id} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
+                  {p.name}
+                  <button onClick={() => toggleSelected(id)} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
+                </span>
+              );
+            })}
+            <button onClick={clearSelected} className="text-[10px] text-primary underline ms-1">{t("إلغاء الكل", "Clear all")}</button>
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
@@ -515,6 +648,51 @@ function ProfitsPage() {
         <KpiCard icon={<Coins className="h-5 w-5" />} label={t("إجمالي التكلفة", "Cost")} value={fmtMoney(rows.totals.cost, "EGP", lang)} className="from-amber-500/15 to-amber-500/5 text-amber-600" />
         <KpiCard icon={<TrendingUp className="h-5 w-5" />} label={t("صافي الربح", "Net Profit")} value={fmtMoney(rows.totals.profit, "EGP", lang)} className="from-emerald-500/20 to-emerald-500/5 text-emerald-600" />
         <KpiCard icon={<Percent className="h-5 w-5" />} label={t("هامش الربح", "Margin")} value={`${rows.totals.margin.toFixed(1)}%`} className="from-violet-500/15 to-violet-500/5 text-violet-600" />
+      </div>
+
+      {/* Daily trend chart */}
+      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            {t("اتجاه صافي الربح اليومي", "Daily net profit trend")}
+          </h3>
+          <span className="text-[11px] text-muted-foreground">
+            {t(`${dailyTrend.length} يوم`, `${dailyTrend.length} day(s)`)}
+          </span>
+        </div>
+        <div className="p-3 h-[260px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+          {dailyTrend.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+              {t("لا توجد بيانات لعرضها", "No data to display")}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dailyTrend} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  reversed={lang === "ar"}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => String(v).slice(5)}
+                />
+                <YAxis
+                  orientation={lang === "ar" ? "right" : "left"}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => fmtNumber(Number(v), lang)}
+                />
+                <Tooltip
+                  contentStyle={{ fontSize: 12, direction: lang === "ar" ? "rtl" : "ltr" }}
+                  formatter={(v: any, name: any) => [fmtMoney(Number(v), "EGP", lang), name]}
+                  labelFormatter={(l) => fmtDate(String(l), lang)}
+                />
+                <Line type="monotone" dataKey="profit" name={t("صافي الربح", "Net Profit")} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="revenue" name={t("البيع", "Revenue")} stroke="#0ea5e9" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                <Line type="monotone" dataKey="cost" name={t("التكلفة", "Cost")} stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       {/* Products table */}
@@ -757,22 +935,43 @@ function ProfitsPage() {
                     <th className="px-2 py-1.5 text-end">{t("إلى", "To")}</th>
                     <th className="px-2 py-1.5 text-start">{t("بواسطة", "By")}</th>
                     <th className="px-2 py-1.5 text-start">{t("التاريخ", "When")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إجراء", "Action")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {history.map((h) => (
-                    <tr key={h.id}>
-                      <td className="px-2 py-1.5">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.field === "cost_price" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
-                          {h.field === "cost_price" ? t("تكلفة", "cost") : t("بيع", "sale")}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(h.old_value ?? 0), "EGP", lang)}</td>
-                      <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{fmtMoney(Number(h.new_value ?? 0), "EGP", lang)}</td>
-                      <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
-                    </tr>
-                  ))}
+                  {history.map((h) => {
+                    const currentVal = historyOpen
+                      ? Number((h.field === "cost_price" ? historyOpen.cost_price : historyOpen.price) ?? 0)
+                      : 0;
+                    const oldVal = Number(h.old_value ?? 0);
+                    const isCurrent = currentVal === oldVal;
+                    return (
+                      <tr key={h.id}>
+                        <td className="px-2 py-1.5">
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.field === "cost_price" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
+                            {h.field === "cost_price" ? t("تكلفة", "cost") : t("بيع", "sale")}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(oldVal, "EGP", lang)}</td>
+                        <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{fmtMoney(Number(h.new_value ?? 0), "EGP", lang)}</td>
+                        <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
+                        <td className="px-2 py-1.5 text-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={revertingId === h.id || isCurrent}
+                            onClick={() => revertHistory(h)}
+                            className="h-7 px-2 text-[10px] gap-1"
+                            title={isCurrent ? t("القيمة الحالية", "Current value") : t("استرجاع", "Revert")}
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            {isCurrent ? t("الحالي", "Current") : t("رجوع", "Revert")}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
