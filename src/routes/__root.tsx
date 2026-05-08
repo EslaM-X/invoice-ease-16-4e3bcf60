@@ -5,7 +5,11 @@ import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
 import { OfflineBanner } from "@/components/offline-banner";
 import { InstallPrompt } from "@/components/install-prompt";
+import { PwaVersionGuard } from "@/components/pwa-version-guard";
+import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
 import appCss from "../styles.css?url";
+
+const assetVersionQuery = `?v=${PWA_ASSET_VERSION}`;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -31,13 +35,13 @@ export const Route = createRootRoute({
       { name: "format-detection", content: "telephone=no" },
     ],
     links: [
-      { rel: "icon", type: "image/png", sizes: "192x192", href: "/favicon.png?v=3" },
-      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png?v=3" },
-      { rel: "shortcut icon", href: "/favicon.ico?v=3" },
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon-180.png?v=3" },
-      { rel: "apple-touch-icon", sizes: "1024x1024", href: "/apple-touch-icon.png?v=3" },
-      { rel: "mask-icon", href: "/icon-512.png?v=3", color: "#0b0b0c" },
-      { rel: "manifest", href: "/manifest.webmanifest?v=3" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: `/favicon.png${assetVersionQuery}` },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: `/icon-512.png${assetVersionQuery}` },
+      { rel: "shortcut icon", href: `/favicon.ico${assetVersionQuery}` },
+      { rel: "apple-touch-icon", sizes: "180x180", href: `/apple-touch-icon-180.png${assetVersionQuery}` },
+      { rel: "apple-touch-icon", sizes: "1024x1024", href: `/apple-touch-icon.png${assetVersionQuery}` },
+      { rel: "mask-icon", href: `/icon-512.png${assetVersionQuery}`, color: "#0b0b0c" },
+      { rel: "manifest", href: `/manifest.webmanifest${assetVersionQuery}` },
       { rel: "stylesheet", href: appCss },
     ],
   }),
@@ -77,6 +81,7 @@ function RootComponent() {
     <ThemeProvider>
       <I18nProvider>
         <AuthProvider>
+          <PwaVersionGuard />
           <OfflineBanner />
           <Outlet />
           <InstallPrompt />
