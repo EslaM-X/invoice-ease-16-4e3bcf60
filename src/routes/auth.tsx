@@ -93,67 +93,69 @@ function AuthPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.008_82)]">
-      {/* Layered luxury background */}
+    <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.005_250)]">
+      {/* Layered platinum background */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 50% -10%, oklch(0.78 0.11 82 / 0.22) 0px, transparent 55%), radial-gradient(ellipse at 10% 110%, oklch(0.62 0.13 75 / 0.18) 0px, transparent 50%), radial-gradient(ellipse at 90% 90%, oklch(0.55 0.12 70 / 0.14) 0px, transparent 50%)" }} />
-        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(oklch(0.78 0.11 82) 1px, transparent 1px), linear-gradient(90deg, oklch(0.78 0.11 82) 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.6)] to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.4)] to-transparent" />
+        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 50% -10%, oklch(0.86 0.01 250 / 0.18) 0px, transparent 55%), radial-gradient(ellipse at 10% 110%, oklch(0.72 0.01 250 / 0.14) 0px, transparent 50%), radial-gradient(ellipse at 90% 90%, oklch(0.6 0.008 250 / 0.12) 0px, transparent 50%)" }} />
+        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "linear-gradient(oklch(0.86 0.01 250) 1px, transparent 1px), linear-gradient(90deg, oklch(0.86 0.01 250) 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250_/_0.6)] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250_/_0.4)] to-transparent" />
       </div>
 
-      <div className="absolute top-4 end-4 z-20 flex gap-2 no-print">
-        <Button variant="ghost" size="icon" className="text-[oklch(0.97_0.008_82)] hover:bg-white/10" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
+      <div className="absolute top-3 end-3 z-20 flex gap-2 no-print sm:top-4 sm:end-4">
+        <Button variant="ghost" size="icon" className="text-white/90 hover:bg-white/10" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
           <Languages className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="text-[oklch(0.97_0.008_82)] hover:bg-white/10" onClick={toggle} aria-label="theme">
+        <Button variant="ghost" size="icon" className="text-white/90 hover:bg-white/10" onClick={toggle} aria-label="theme">
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       </div>
 
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-center gap-10 px-4 py-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10">
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-12 sm:gap-10 sm:px-6 sm:py-14 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10 lg:py-10">
         {/* Brand showcase */}
         <div className="order-1 flex flex-col items-center text-center lg:order-none lg:items-start lg:text-start">
-          <div className="relative">
-            <div className="absolute -inset-10 rounded-full bg-[radial-gradient(circle,oklch(0.78_0.11_82_/_0.28),transparent_65%)] blur-2xl" />
-            <div className="relative rounded-3xl border border-[oklch(0.78_0.11_82_/_0.25)] bg-gradient-to-b from-[#121214] to-[#0b0b0c] p-6 shadow-[0_30px_80px_-20px_oklch(0.78_0.11_82_/_0.35)] sm:p-8">
+          <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-none">
+            <div className="absolute -inset-8 rounded-full bg-[radial-gradient(circle,oklch(0.86_0.01_250_/_0.22),transparent_65%)] blur-2xl sm:-inset-10" />
+            <div className="relative rounded-3xl border border-[oklch(0.86_0.01_250_/_0.22)] bg-gradient-to-b from-[#141416] to-[#0b0b0c] p-5 shadow-[0_30px_80px_-20px_oklch(0.86_0.01_250_/_0.28)] sm:p-7 lg:p-8">
               <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/5" />
-              <div className="pointer-events-none absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
+              <div className="pointer-events-none absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
               <img
                 src={brandLogo}
                 alt="Steinheim"
-                className="relative mx-auto h-44 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.78_0.11_82_/_0.55)] sm:h-56 lg:h-64"
+                className="relative mx-auto h-32 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.86_0.01_250_/_0.45)] sm:h-44 md:h-52 lg:h-64"
                 draggable={false}
               />
             </div>
           </div>
 
-          <div className="mt-8 flex items-center gap-3">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-[oklch(0.78_0.11_82)]" />
-            <p className="font-latin text-[11px] font-semibold uppercase tracking-[0.55em] text-[oklch(0.78_0.11_82)]">
-              Invoice Suite
+          <div className="mt-6 flex items-center gap-3 sm:mt-8">
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
+            <p className="font-latin text-[10px] font-semibold uppercase tracking-[0.45em] text-[oklch(0.86_0.01_250)] sm:text-[11px] sm:tracking-[0.55em]">
+              {lang === "ar" ? "منصة الموزعين" : "Distributors Platform"}
             </p>
-            <span className="h-px w-10 bg-gradient-to-l from-transparent to-[oklch(0.78_0.11_82)]" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
           </div>
 
-          <h1 className="mt-5 max-w-md bg-gradient-to-b from-white to-[oklch(0.78_0.11_82)] bg-clip-text text-3xl font-semibold leading-tight text-transparent sm:text-4xl lg:text-5xl">
-            {lang === "ar" ? "فخامة الإدارة. دقة الأرقام." : "Refined management. Precise numbers."}
+          <h1 className="mt-4 max-w-md bg-gradient-to-b from-white to-[oklch(0.86_0.01_250)] bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:mt-5 sm:text-4xl lg:text-5xl">
+            {lang === "ar" ? "إدارة احترافية. شبكة موزعين أوسع." : "Professional management. A wider distributor network."}
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/60 sm:text-base">
-            {t("hero_subtitle")}
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60 sm:mt-4 sm:text-base">
+            {lang === "ar"
+              ? "نظام موحد لإدارة الفواتير والمخزون والعملاء والموزعين بدقة وسرعة."
+              : "A unified system to manage invoices, inventory, customers and distributors with precision and speed."}
           </p>
         </div>
 
         {/* Auth card */}
         <div className="order-2 w-full max-w-md justify-self-center lg:justify-self-end">
-        <div className="relative rounded-2xl border border-[oklch(0.78_0.11_82_/_0.18)] bg-[oklch(0.13_0.005_60_/_0.85)] p-6 text-[oklch(0.97_0.008_82)] shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
-          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82)] to-transparent" />
+        <div className="relative rounded-2xl border border-[oklch(0.86_0.01_250_/_0.2)] bg-[oklch(0.13_0.003_250_/_0.85)] p-5 text-white shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
+          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
           <div className="mb-5 flex gap-1 rounded-lg bg-white/5 p-1">
             <button
               onClick={() => setMode("login")}
               className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
                 mode === "login"
-                  ? "bg-[oklch(0.78_0.11_82)] text-[oklch(0.12_0.005_60)] shadow-sm"
+                  ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
             >{t("login")}</button>
@@ -161,7 +163,7 @@ function AuthPage() {
               onClick={() => setMode("signup")}
               className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
                 mode === "signup"
-                  ? "bg-[oklch(0.78_0.11_82)] text-[oklch(0.12_0.005_60)] shadow-sm"
+                  ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
             >{t("signup")}</button>
@@ -176,7 +178,7 @@ function AuthPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
+                  className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.86_0.01_250)]"
                 />
               </div>
             )}
@@ -188,7 +190,7 @@ function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
+                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.86_0.01_250)]"
               />
             </div>
             <div className="space-y-1.5">
@@ -198,7 +200,7 @@ function AuthPage() {
                   <button
                     type="button"
                     onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
-                    className="text-xs text-[oklch(0.78_0.11_82)] hover:underline"
+                    className="text-xs text-[oklch(0.86_0.01_250)] hover:underline"
                   >
                     {lang === "ar" ? "نسيت كلمة السر؟" : "Forgot password?"}
                   </button>
@@ -212,7 +214,7 @@ function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={6}
                   required
-                  className="border-white/15 bg-white/5 pe-10 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
+                  className="border-white/15 bg-white/5 pe-10 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.86_0.01_250)]"
                 />
                 <button
                   type="button"
@@ -227,7 +229,7 @@ function AuthPage() {
             <Button
               type="submit"
               disabled={busy}
-              className="w-full bg-[oklch(0.78_0.11_82)] text-[oklch(0.12_0.005_60)] hover:bg-[oklch(0.84_0.1_82)]"
+              className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
             >
               {mode === "login" ? t("login") : t("signup")}
             </Button>
@@ -261,7 +263,7 @@ function AuthPage() {
           <form
             onSubmit={handleForgot}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.005_60)] p-6 text-[oklch(0.97_0.008_82)] shadow-elegant"
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.003_250)] p-6 text-white shadow-elegant"
           >
             <h2 className="text-lg font-semibold">
               {lang === "ar" ? "إعادة تعيين كلمة السر" : "Reset password"}
@@ -279,7 +281,7 @@ function AuthPage() {
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
                 required
-                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
+                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.86_0.01_250)]"
               />
             </div>
             <div className="flex gap-2">
@@ -294,7 +296,7 @@ function AuthPage() {
               <Button
                 type="submit"
                 disabled={busy}
-                className="flex-1 bg-[oklch(0.78_0.11_82)] text-[oklch(0.12_0.005_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                className="flex-1 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
               >
                 {lang === "ar" ? "إرسال" : "Send"}
               </Button>
