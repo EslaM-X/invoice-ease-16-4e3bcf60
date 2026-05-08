@@ -35,6 +35,9 @@ type RawItem = {
     status: string;
     created_at: string;
     customer_name: string | null;
+    subtotal: number;
+    discount: number;
+    total: number;
   } | null;
 };
 
