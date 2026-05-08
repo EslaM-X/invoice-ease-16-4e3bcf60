@@ -129,13 +129,17 @@ function ProfitsPage() {
     return m;
   }, [products]);
 
-  // Compute profit rows
+  // Compute profit rows — include ALL products, even those with no sales in range.
   const rows = useMemo(() => {
     const filtered = items.filter((it) => !isShippingLine(it) && it.product_id);
     const byProduct = new Map<
       string,
       { product: Product | null; qty: number; revenue: number; cost: number; lines: number }
     >();
+    // seed with every product so unsold ones still appear
+    for (const p of products) {
+      byProduct.set(p.id, { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 });
+    }
     let totalRevenue = 0;
     let totalCost = 0;
     let totalQty = 0;
@@ -183,7 +187,12 @@ function ProfitsPage() {
           (r.product?.collection ?? "").toLowerCase().includes(s)
         );
       })
-      .sort((a, b) => b.profit - a.profit);
+      .sort((a, b) => {
+        if (a.qty === 0 && b.qty === 0) return a.name.localeCompare(b.name);
+        if (a.qty === 0) return 1;
+        if (b.qty === 0) return -1;
+        return b.profit - a.profit;
+      });
     return {
       list,
       totals: {
@@ -195,7 +204,7 @@ function ProfitsPage() {
         lines: totalLines,
       },
     };
-  }, [items, productById, search]);
+  }, [items, productById, search, products]);
 
   // Per-invoice profit breakdown
   const invoiceRows = useMemo(() => {
@@ -465,7 +474,7 @@ function ProfitsPage() {
           {loading && <span className="text-[11px] text-muted-foreground">{t("...جاري التحميل", "loading...")}</span>}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-start">{t("المنتج", "Product")}</th>
@@ -575,7 +584,7 @@ function ProfitsPage() {
           <h3 className="font-semibold text-sm">{t("ربح كل فاتورة", "Per-Invoice Profit")} ({fmtNumber(invoiceRows.length, lang)})</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-start">{t("الفاتورة", "Invoice")}</th>
