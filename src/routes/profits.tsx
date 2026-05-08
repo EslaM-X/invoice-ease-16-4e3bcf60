@@ -924,22 +924,43 @@ function ProfitsPage() {
                     <th className="px-2 py-1.5 text-end">{t("إلى", "To")}</th>
                     <th className="px-2 py-1.5 text-start">{t("بواسطة", "By")}</th>
                     <th className="px-2 py-1.5 text-start">{t("التاريخ", "When")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إجراء", "Action")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {history.map((h) => (
-                    <tr key={h.id}>
-                      <td className="px-2 py-1.5">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.field === "cost_price" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
-                          {h.field === "cost_price" ? t("تكلفة", "cost") : t("بيع", "sale")}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(h.old_value ?? 0), "EGP", lang)}</td>
-                      <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{fmtMoney(Number(h.new_value ?? 0), "EGP", lang)}</td>
-                      <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
-                    </tr>
-                  ))}
+                  {history.map((h) => {
+                    const currentVal = historyOpen
+                      ? Number((h.field === "cost_price" ? historyOpen.cost_price : historyOpen.price) ?? 0)
+                      : 0;
+                    const oldVal = Number(h.old_value ?? 0);
+                    const isCurrent = currentVal === oldVal;
+                    return (
+                      <tr key={h.id}>
+                        <td className="px-2 py-1.5">
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.field === "cost_price" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
+                            {h.field === "cost_price" ? t("تكلفة", "cost") : t("بيع", "sale")}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(oldVal, "EGP", lang)}</td>
+                        <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{fmtMoney(Number(h.new_value ?? 0), "EGP", lang)}</td>
+                        <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
+                        <td className="px-2 py-1.5 text-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={revertingId === h.id || isCurrent}
+                            onClick={() => revertHistory(h)}
+                            className="h-7 px-2 text-[10px] gap-1"
+                            title={isCurrent ? t("القيمة الحالية", "Current value") : t("استرجاع", "Revert")}
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            {isCurrent ? t("الحالي", "Current") : t("رجوع", "Revert")}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
