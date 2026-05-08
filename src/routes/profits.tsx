@@ -88,8 +88,24 @@ function ProfitsPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Record<string, { cost: string; sale: string }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [historyOpen, setHistoryOpen] = useState<Product | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  const loadProducts = async () => {
+  const openHistory = async (p: Product) => {
+    setHistoryOpen(p);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("product_price_history" as any)
+      .select("*")
+      .eq("product_id", p.id)
+      .order("changed_at", { ascending: false })
+      .limit(200);
+    setHistory((data ?? []) as any[]);
+    setHistoryLoading(false);
+  };
+
     const { data } = await supabase.from("products").select("*").order("name");
     setProducts((data ?? []) as Product[]);
   };
