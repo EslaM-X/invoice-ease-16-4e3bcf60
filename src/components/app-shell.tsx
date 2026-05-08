@@ -28,6 +28,7 @@ const items = [
   { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   { to: "/invoices", icon: FileText, key: "invoices" as const },
   { to: "/reports", icon: BarChart3, key: "reports" as const },
+  { to: "/profits", icon: TrendingUp, key: "profits" as const },
   { to: "/audit-log", icon: ShieldCheck, key: "audit_log" as const },
   { to: "/settings", icon: Settings, key: "settings" as const },
 ];
