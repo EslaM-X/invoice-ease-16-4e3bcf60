@@ -129,13 +129,17 @@ function ProfitsPage() {
     return m;
   }, [products]);
 
-  // Compute profit rows
+  // Compute profit rows — include ALL products, even those with no sales in range.
   const rows = useMemo(() => {
     const filtered = items.filter((it) => !isShippingLine(it) && it.product_id);
     const byProduct = new Map<
       string,
       { product: Product | null; qty: number; revenue: number; cost: number; lines: number }
     >();
+    // seed with every product so unsold ones still appear
+    for (const p of products) {
+      byProduct.set(p.id, { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 });
+    }
     let totalRevenue = 0;
     let totalCost = 0;
     let totalQty = 0;
