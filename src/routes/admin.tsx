@@ -296,3 +296,129 @@ function RoleInfo({ name, desc }: { name: AppRole; desc: string }) {
     </div>
   );
 }
+
+type PendingProfile = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  account_type: "employee" | "distributor" | null;
+  approval_status: string;
+  created_at: string;
+};
+
+function PendingApprovalsSection() {
+  const [items, setItems] = useState<PendingProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("user_id, email, display_name, account_type, approval_status, created_at")
+      .eq("approval_status", "pending")
+      .order("created_at", { ascending: false });
+    setItems((data ?? []) as PendingProfile[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+  useRealtimeTable("profiles", load);
+
+  const decide = async (p: PendingProfile, status: "approved" | "rejected") => {
+    if (status === "approved" && !p.account_type) {
+      toast.error("اختر نوع الحساب أولاً");
+      return;
+    }
+    setBusyId(p.user_id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        approval_status: status,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("user_id", p.user_id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "approved" ? "تمت الموافقة" : "تم الرفض");
+    load();
+  };
+
+  const setType = async (p: PendingProfile, t: "employee" | "distributor") => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ account_type: t })
+      .eq("user_id", p.user_id);
+    if (error) { toast.error(error.message); return; }
+    load();
+  };
+
+  return (
+    <Card className="p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-amber-600" />
+          <h2 className="text-lg font-semibold">طلبات الانضمام ({items.length})</h2>
+        </div>
+        <Button size="sm" variant="ghost" onClick={load}>تحديث</Button>
+      </div>
+
+      {loading ? (
+        <div className="flex h-20 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="py-6 text-center text-sm text-muted-foreground">لا توجد طلبات معلقة</div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((p) => (
+            <div key={p.user_id} className="flex flex-col gap-3 rounded-lg border border-border/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{p.display_name || p.email}</div>
+                <div className="truncate text-xs text-muted-foreground">{p.email}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setType(p, "employee")}
+                    className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${p.account_type === "employee" ? "border-blue-500/60 bg-blue-500/15 text-blue-600" : "border-border/60 hover:bg-muted"}`}
+                  >
+                    <Briefcase className="h-3 w-3" /> موظف
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setType(p, "distributor")}
+                    className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${p.account_type === "distributor" ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-600" : "border-border/60 hover:bg-muted"}`}
+                  >
+                    <Store className="h-3 w-3" /> موزّع
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(p.created_at).toLocaleString("ar-EG")}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => decide(p, "approved")}
+                  disabled={busyId === p.user_id || !p.account_type}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <Check className="me-1 h-4 w-4" /> موافقة
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => decide(p, "rejected")}
+                  disabled={busyId === p.user_id}
+                  className="border-red-500/40 text-red-600 hover:bg-red-500/10"
+                >
+                  <X className="me-1 h-4 w-4" /> رفض
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
