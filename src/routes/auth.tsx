@@ -96,16 +96,23 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (!accountType) {
+          toast.error(lang === "ar" ? "اختر نوع الحساب" : "Select account type");
+          setBusy(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: name },
+            data: { full_name: name, account_type: accountType },
           },
         });
         if (error) throw error;
-        toast.success(t("saved"));
+        toast.success(lang === "ar"
+          ? "تم إنشاء الحساب — في انتظار موافقة الإدارة"
+          : "Account created — awaiting admin approval");
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
