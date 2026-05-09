@@ -63,7 +63,7 @@ function AuthPage() {
         : (lang === "ar" ? "البصمة / المفتاح الأمني" : "Biometric / Security Key");
 
   const refreshBioState = () => {
-    const accounts = getEnrolledAccountsWithStatus(enrolledEmail ?? email || null);
+    const accounts = getEnrolledAccountsWithStatus((enrolledEmail ?? email) || null);
     setEnrolledAccounts(accounts);
     setBioEnrolled(accounts.length > 0);
     const em = accounts.find((account) => account.isCurrent)?.email ?? accounts[0]?.email ?? null;
