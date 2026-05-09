@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { createClient } from "@supabase/supabase-js";
 
 const TABLES = [
   "profiles", "user_roles", "company_members",
@@ -35,7 +36,7 @@ async function runBackup(triggeredBy: string) {
       status: "failed", error: upErr.message, triggered_by: triggeredBy,
       tables_count: TABLES.length, rows_count: totalRows, size_bytes: size,
     });
-    return { ok: false, error: upErr.message };
+    return { ok: false, error: "Backup failed" };
   }
 
   await supabaseAdmin.from("backups_log").insert({
@@ -48,23 +49,49 @@ async function runBackup(triggeredBy: string) {
     body: `${TABLES.length} جدول · ${totalRows} سجل · ${(size / 1024).toFixed(1)} KB`,
   });
 
-  return { ok: true, path, tables: TABLES.length, rows: totalRows, size };
+  // Do not leak internal storage path
+  return { ok: true, tables: TABLES.length, rows: totalRows, size };
+}
+
+async function authorize(request: Request): Promise<{ ok: boolean; triggered: string }> {
+  const secret = process.env.BACKUP_WEBHOOK_SECRET;
+  const providedSecret = request.headers.get("x-backup-secret");
+  if (secret && providedSecret && providedSecret === secret) {
+    return { ok: true, triggered: "cron" };
+  }
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) return { ok: false, triggered: "" };
+    const client = createClient(url, key, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: claims } = await client.auth.getClaims(token);
+    const userId = claims?.claims?.sub;
+    if (!userId) return { ok: false, triggered: "" };
+    const { data: isAdmin } = await client.rpc("is_admin");
+    if (isAdmin === true) return { ok: true, triggered: "manual" };
+  }
+  return { ok: false, triggered: "" };
 }
 
 export const Route = createFileRoute("/api/public/hooks/daily-backup")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let triggered = "cron";
+        const auth = await authorize(request);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+        }
+        let triggered = auth.triggered;
         try {
           const body = await request.json();
           if (body?.triggered_by) triggered = String(body.triggered_by);
         } catch {}
         const result = await runBackup(triggered);
-        return Response.json(result, { status: result.ok ? 200 : 500 });
-      },
-      GET: async () => {
-        const result = await runBackup("manual");
         return Response.json(result, { status: result.ok ? 200 : 500 });
       },
     },
