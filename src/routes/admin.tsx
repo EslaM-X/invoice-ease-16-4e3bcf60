@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ShieldCheck, UserPlus, Trash2, Loader2, Database } from "lucide-react";
+import { ShieldCheck, UserPlus, Trash2, Loader2, Database, Check, X, Briefcase, Store } from "lucide-react";
 import { BackupButton } from "@/components/backup-button";
 import { useRealtimeTable } from "@/lib/realtime";
 
