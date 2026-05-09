@@ -57,8 +57,9 @@ function AuthPage() {
       setBioSupported(ok);
       const enrolled = isBiometricEnrolled();
       setBioEnrolled(enrolled);
-      setEnrolledEmail(getEnrolledEmail());
-      if (enrolled && getEnrolledEmail()) setEmail(getEnrolledEmail() as string);
+      const em = getEnrolledEmail();
+      setEnrolledEmail(em);
+      if (enrolled && em) setEmail(em);
     });
     return () => { mounted = false; };
   }, []);
