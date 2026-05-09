@@ -7,6 +7,7 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { InstallPrompt } from "@/components/install-prompt";
 import { PwaVersionGuard } from "@/components/pwa-version-guard";
 import { ApprovalGate } from "@/components/approval-gate";
+import { LuxurySplash } from "@/components/luxury-splash";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
 import appCss from "../styles.css?url";
 
@@ -83,6 +84,7 @@ function RootComponent() {
       <I18nProvider>
         <AuthProvider>
           <PwaVersionGuard />
+          <LuxurySplash />
           <OfflineBanner />
           <ApprovalGate>
             <Outlet />
