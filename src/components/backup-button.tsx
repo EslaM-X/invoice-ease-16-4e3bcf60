@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Database, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export function BackupButton() {
   const [loading, setLoading] = useState(false);
@@ -9,9 +10,15 @@ export function BackupButton() {
   const run = async () => {
     setLoading(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("غير مصرح — يجب تسجيل الدخول كأدمن");
       const res = await fetch("/api/public/hooks/daily-backup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ triggered_by: "manual" }),
       });
       const json = await res.json();
