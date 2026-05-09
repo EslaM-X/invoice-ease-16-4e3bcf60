@@ -324,19 +324,63 @@ function AuthPage() {
                       ? `${deviceLabel} مُفعّل على هذا الجهاز`
                       : `${deviceLabel} is enabled on this device`}
                   </p>
-                  {enrolledEmail && (
-                    <p className="truncate text-xs text-white/70" dir="ltr">{enrolledEmail}</p>
-                  )}
+                  <p className="text-xs text-white/60">
+                    {lang === "ar"
+                      ? `${enrolledAccounts.length} حساب${enrolledAccounts.length > 1 ? "ات" : ""} مسجل${enrolledAccounts.length > 1 ? "ة" : ""}`
+                      : `${enrolledAccounts.length} account${enrolledAccounts.length > 1 ? "s" : ""} enrolled`}
+                  </p>
                 </div>
               </div>
+
+              <ul className="mb-3 space-y-1.5">
+                {enrolledAccounts.map((acc, i) => {
+                  const isCurrent = acc.email === enrolledEmail;
+                  return (
+                    <li
+                      key={acc.credentialId}
+                      className={`group flex items-center gap-2 rounded-lg border p-2 transition ${
+                        isCurrent
+                          ? "border-[oklch(0.86_0.01_250_/_0.5)] bg-white/10"
+                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleBiometricLogin(acc.email)}
+                        disabled={busy}
+                        className="flex flex-1 items-center gap-2 text-start"
+                      >
+                        <BioIcon className="h-4 w-4 shrink-0 text-[oklch(0.86_0.01_250)]" />
+                        <span className="min-w-0 flex-1 truncate text-xs text-white" dir="ltr">{acc.email}</span>
+                        {isCurrent && (
+                          <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                            {lang === "ar" ? "افتراضي" : "default"}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDisableBiometric(acc.email)}
+                        className="rounded p-1 text-[10px] text-white/40 opacity-0 hover:text-white group-hover:opacity-100"
+                        title={lang === "ar" ? "إلغاء التفعيل لهذا الحساب" : "Remove biometric for this account"}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
               <Button
                 type="button"
-                onClick={handleBiometricLogin}
+                onClick={() => handleBiometricLogin(enrolledEmail ?? undefined)}
                 disabled={busy}
                 className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
               >
                 <BioIcon className="me-2 h-5 w-5" />
-                {lang === "ar" ? `الدخول بـ ${deviceLabel}` : `Sign in with ${deviceLabel}`}
+                {lang === "ar"
+                  ? `الدخول بـ ${deviceLabel}${enrolledEmail ? ` كـ ${enrolledEmail}` : ""}`
+                  : `Sign in with ${deviceLabel}${enrolledEmail ? ` as ${enrolledEmail}` : ""}`}
               </Button>
             </div>
           )}
