@@ -449,7 +449,7 @@ function AuthPage() {
                   type="button"
                   onClick={() => handleBiometricLogin()}
                   disabled={busy}
-                  className="h-13 w-full gap-3 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+                  className="h-14 w-full gap-3 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
                 >
                   <BioIcon className="h-6 w-6" />
                   <span className="me-1 truncate">
