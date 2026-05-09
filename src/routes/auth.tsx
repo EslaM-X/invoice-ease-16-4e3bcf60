@@ -34,6 +34,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [accountType, setAccountType] = useState<"employee" | "distributor" | null>(null);
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
