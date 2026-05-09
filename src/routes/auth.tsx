@@ -19,6 +19,12 @@ import {
   disableBiometric,
   updateStoredTokens,
 } from "@/lib/biometric";
+import {
+  bumpPasswordFailure,
+  resetPasswordFailures,
+  triggerLuxurySplash,
+  PWD_FAIL_THRESHOLD,
+} from "@/lib/entry-counter";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
