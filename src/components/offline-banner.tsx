@@ -74,11 +74,20 @@ export function OfflineBanner() {
     };
 
     const check = async () => {
+      // Trust the browser's online flag first — false positives from the
+      // probe (CORS, transient hiccups) caused the banner to flicker
+      // between offline/recovered every interval.
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
         update(false); return;
       }
-      const ok = await probe();
-      update(ok);
+      // Only run a network probe if we previously thought we were offline,
+      // to confirm recovery. Otherwise stay online silently.
+      if (!wasOnlineRef.current) {
+        const ok = await probe();
+        update(ok);
+      } else {
+        update(true);
+      }
     };
 
     check();
