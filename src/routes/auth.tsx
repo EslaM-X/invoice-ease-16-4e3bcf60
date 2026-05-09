@@ -395,7 +395,7 @@ function AuthPage() {
             </div>
           )}
 
-          {mode === "login" && bioSupported && !bioEnrolled && (
+          {mode === "login" && bioSupported && enrolledAccounts.length === 0 && (
             <div className="mb-5 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
                 {isWindows ? <Monitor className="h-4 w-4" /> : <BioIcon className="h-4 w-4" />}
