@@ -429,21 +429,6 @@ function AuthPage() {
             </Button>
           </form>
 
-          {mode === "login" && bioSupported && bioEnrolled && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBiometricLogin}
-              disabled={busy}
-              className="mt-3 w-full border-[oklch(0.86_0.01_250_/_0.4)] bg-white/5 text-white hover:bg-white/10 hover:text-white"
-            >
-              {isApple ? <ScanFace className="me-2 h-4 w-4" /> : <Fingerprint className="me-2 h-4 w-4" />}
-              {lang === "ar"
-                ? (isApple ? "الدخول بـ Face ID" : "الدخول بالبصمة")
-                : (isApple ? "Sign in with Face ID" : "Sign in with Fingerprint")}
-            </Button>
-          )}
-
           <div className="my-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/10" />
             <span className="text-xs text-white/50">{t("or")}</span>
