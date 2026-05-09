@@ -62,8 +62,9 @@ function AuthPage() {
         ? (lang === "ar" ? "بصمة الإصبع" : "Fingerprint")
         : (lang === "ar" ? "البصمة / المفتاح الأمني" : "Biometric / Security Key");
 
-  const refreshBioState = () => {
-    const accounts = getEnrolledAccountsWithStatus((enrolledEmail ?? email) || null);
+  const refreshBioState = (preferredEmail?: string | null) => {
+    const activeEmail = preferredEmail ?? enrolledEmail ?? email ?? null;
+    const accounts = getEnrolledAccountsWithStatus(activeEmail);
     setEnrolledAccounts(accounts);
     setBioEnrolled(accounts.length > 0);
     const em = accounts.find((account) => account.isCurrent)?.email ?? accounts[0]?.email ?? null;
@@ -152,7 +153,7 @@ function AuthPage() {
           if (bioEnrolled && enrolledAccounts.some((account) => account.email === currentEmail)) {
             updateStoredTokens({ access_token: sess.access_token, refresh_token: sess.refresh_token }, currentEmail);
             setEnrolledEmail(currentEmail);
-            refreshBioState();
+            refreshBioState(currentEmail);
           } else {
             setEnrollPromptOpen(true);
           }
@@ -195,7 +196,7 @@ function AuthPage() {
         }, tokens.email);
         setEnrolledEmail(tokens.email);
         setEmail(tokens.email);
-        refreshBioState();
+        refreshBioState(tokens.email);
       }
     } catch (err: any) {
       const msg = err?.message || "";
@@ -243,8 +244,9 @@ function AuthPage() {
         access_token: sess.access_token,
         refresh_token: sess.refresh_token,
       });
-      setEnrolledEmail(sess.user.email ?? email);
-      refreshBioState();
+      const currentEmail = sess.user.email ?? email;
+      setEnrolledEmail(currentEmail);
+      refreshBioState(currentEmail);
       toast.success(lang === "ar" ? `تم تفعيل ${deviceLabel}` : `${deviceLabel} enabled`);
       setEnrollPromptOpen(false);
     } catch (err: any) {
