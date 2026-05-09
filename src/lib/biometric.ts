@@ -79,33 +79,69 @@ export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   }
 }
 
-export function getStored(): StoredCred | null {
-  if (typeof window === "undefined") return null;
+// Multi-account support: keep a list keyed by email for the same device.
+// We migrate any older single-cred record into the list on first read.
+const LIST_KEY = "stein.biometric.list.v1";
+
+function readList(): StoredCred[] {
+  if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) as StoredCred : null;
-  } catch {
-    return null;
-  }
+    const raw = localStorage.getItem(LIST_KEY);
+    if (raw) return JSON.parse(raw) as StoredCred[];
+  } catch { /* ignore */ }
+  // migrate legacy single record
+  try {
+    const legacy = localStorage.getItem(STORAGE_KEY);
+    if (legacy) {
+      const cred = JSON.parse(legacy) as StoredCred;
+      const list = [cred];
+      localStorage.setItem(LIST_KEY, JSON.stringify(list));
+      return list;
+    }
+  } catch { /* ignore */ }
+  return [];
 }
 
-export function isEnrolled(): boolean {
-  return !!getStored();
+function writeList(list: StoredCred[]) {
+  try { localStorage.setItem(LIST_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+  // keep legacy key in sync with the most-recently-used credential so
+  // older code paths that still read it pick a sensible default.
+  try {
+    if (list.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(list[0]));
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch { /* ignore */ }
+}
+
+export function listEnrolledAccounts(): { email: string; enrolledAt: number; credentialId: string }[] {
+  return readList().map((c) => ({ email: c.email, enrolledAt: c.enrolledAt, credentialId: c.credentialId }));
+}
+
+export function getStored(email?: string): StoredCred | null {
+  const list = readList();
+  if (list.length === 0) return null;
+  if (email) return list.find((c) => c.email === email) ?? null;
+  return list[0];
+}
+
+export function isEnrolled(email?: string): boolean {
+  return !!getStored(email);
 }
 
 export function getEnrolledEmail(): string | null {
   return getStored()?.email ?? null;
 }
 
-export async function disableBiometric(): Promise<void> {
-  const stored = getStored();
-  try { localStorage.removeItem(STORAGE_KEY); } catch {}
-  if (stored?.credentialId) {
+export async function disableBiometric(email?: string): Promise<void> {
+  const list = readList();
+  const target = email ? list.find((c) => c.email === email) : list[0];
+  const next = email ? list.filter((c) => c.email !== email) : [];
+  writeList(next);
+  if (target?.credentialId) {
     try {
       await supabase
         .from("biometric_credentials")
         .delete()
-        .eq("credential_id", stored.credentialId);
+        .eq("credential_id", target.credentialId);
     } catch {
       // ignore – DB cleanup best-effort (user may be offline)
     }
@@ -157,7 +193,10 @@ export async function enrollBiometric(params: {
     refresh_token: params.refresh_token,
     enrolledAt: Date.now(),
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  // upsert into the multi-account list (replace any existing entry for the same email)
+  const list = readList().filter((c) => c.email !== params.email);
+  list.unshift(stored);
+  writeList(list);
 
   // Persist enrollment to DB so the user can list/manage devices,
   // and create an in-app notification for the user + managers.
@@ -263,19 +302,27 @@ async function logAttempt(opts: {
   } catch { /* best-effort */ }
 }
 
-export async function verifyBiometric(): Promise<{
+export async function verifyBiometric(email?: string): Promise<{
   email: string;
   access_token: string;
   refresh_token: string;
 }> {
-  const stored = getStored();
-  if (!stored) {
+  const list = readList();
+  if (list.length === 0) {
     await logAttempt({ status: "failed", email: null, credential_id: null, error_message: "No enrolled biometric" });
     throw new Error("No enrolled biometric");
   }
   if (!isBiometricSupported()) {
-    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: "WebAuthn not supported" });
+    await logAttempt({ status: "failed", email: email ?? null, credential_id: null, error_message: "WebAuthn not supported" });
     throw new Error("WebAuthn not supported");
+  }
+
+  // If a specific email is requested, restrict allowCredentials to it; otherwise
+  // let the platform pick from any enrolled credential on this device.
+  const candidates = email ? list.filter((c) => c.email === email) : list;
+  if (candidates.length === 0) {
+    await logAttempt({ status: "failed", email: email ?? null, credential_id: null, error_message: "Email not enrolled on this device" });
+    throw new Error("No enrolled biometric for that account");
   }
 
   const challenge = randomBytes(32);
@@ -289,41 +336,49 @@ export async function verifyBiometric(): Promise<{
         timeout: 60_000,
         rpId,
         userVerification: "required",
-        allowCredentials: [{
+        allowCredentials: candidates.map((c) => ({
           type: "public-key",
-          id: b64urlToBuf(stored.credentialId),
+          id: b64urlToBuf(c.credentialId),
           transports: ["internal"],
-        }],
+        })),
       },
     }) as PublicKeyCredential | null;
   } catch (err: any) {
-    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: err?.message ?? "WebAuthn get failed" });
+    await logAttempt({ status: "failed", email: candidates[0].email, credential_id: candidates[0].credentialId, error_message: err?.message ?? "WebAuthn get failed" });
     throw err;
   }
 
   if (!assertion) {
-    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: "No assertion returned" });
+    await logAttempt({ status: "failed", email: candidates[0].email, credential_id: candidates[0].credentialId, error_message: "No assertion returned" });
     throw new Error("Biometric verification failed");
   }
+
+  // Identify which credential the platform chose
+  const usedId = bufToB64url(assertion.rawId);
+  const used = list.find((c) => c.credentialId === usedId) ?? candidates[0];
+
+  // Bring the just-used account to the front of the list
+  const reordered = [used, ...list.filter((c) => c.credentialId !== used.credentialId)];
+  writeList(reordered);
 
   void supabase
     .from("biometric_credentials")
     .update({ last_used_at: new Date().toISOString() })
-    .eq("credential_id", stored.credentialId);
+    .eq("credential_id", used.credentialId);
 
-  await logAttempt({ status: "success", email: stored.email, credential_id: stored.credentialId });
+  await logAttempt({ status: "success", email: used.email, credential_id: used.credentialId });
 
   return {
-    email: stored.email,
-    access_token: stored.access_token,
-    refresh_token: stored.refresh_token,
+    email: used.email,
+    access_token: used.access_token,
+    refresh_token: used.refresh_token,
   };
 }
 
-export function updateStoredTokens(tokens: { access_token: string; refresh_token: string }) {
-  const stored = getStored();
-  if (!stored) return;
-  stored.access_token = tokens.access_token;
-  stored.refresh_token = tokens.refresh_token;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch {}
+export function updateStoredTokens(tokens: { access_token: string; refresh_token: string }, email?: string) {
+  const list = readList();
+  const idx = email ? list.findIndex((c) => c.email === email) : 0;
+  if (idx < 0 || !list[idx]) return;
+  list[idx] = { ...list[idx], access_token: tokens.access_token, refresh_token: tokens.refresh_token };
+  writeList(list);
 }

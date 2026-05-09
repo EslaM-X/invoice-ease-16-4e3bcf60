@@ -13,8 +13,7 @@ import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
 import {
   isPlatformAuthenticatorAvailable,
-  isEnrolled as isBiometricEnrolled,
-  getEnrolledEmail,
+  listEnrolledAccounts,
   enrollBiometric,
   verifyBiometric,
   disableBiometric,
@@ -47,6 +46,7 @@ function AuthPage() {
   const [bioSupported, setBioSupported] = useState(false);
   const [bioEnrolled, setBioEnrolled] = useState(false);
   const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
+  const [enrolledAccounts, setEnrolledAccounts] = useState<{ email: string; enrolledAt: number; credentialId: string }[]>([]);
   const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
@@ -61,16 +61,21 @@ function AuthPage() {
         ? (lang === "ar" ? "بصمة الإصبع" : "Fingerprint")
         : (lang === "ar" ? "البصمة / المفتاح الأمني" : "Biometric / Security Key");
 
+  const refreshBioState = () => {
+    const accounts = listEnrolledAccounts();
+    setEnrolledAccounts(accounts);
+    setBioEnrolled(accounts.length > 0);
+    const em = accounts[0]?.email ?? null;
+    setEnrolledEmail(em);
+    if (em) setEmail(em);
+  };
+
   useEffect(() => {
     let mounted = true;
     isPlatformAuthenticatorAvailable().then((ok) => {
       if (!mounted) return;
       setBioSupported(ok);
-      const enrolled = isBiometricEnrolled();
-      setBioEnrolled(enrolled);
-      const em = getEnrolledEmail();
-      setEnrolledEmail(em);
-      if (enrolled && em) setEmail(em);
+      refreshBioState();
     });
     return () => { mounted = false; };
   }, []);
@@ -158,10 +163,10 @@ function AuthPage() {
     }
   };
 
-  const handleBiometricLogin = async () => {
+  const handleBiometricLogin = async (forEmail?: string) => {
     setBusy(true);
     try {
-      const tokens = await verifyBiometric();
+      const tokens = await verifyBiometric(forEmail);
       const { data, error } = await supabase.auth.setSession({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
@@ -171,7 +176,8 @@ function AuthPage() {
         updateStoredTokens({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
-        });
+        }, tokens.email);
+        setEmail(tokens.email);
       }
     } catch (err: any) {
       const msg = err?.message || "";
@@ -209,9 +215,8 @@ function AuthPage() {
         access_token: sess.access_token,
         refresh_token: sess.refresh_token,
       });
-      setBioEnrolled(true);
-      setEnrolledEmail(sess.user.email ?? email);
-      toast.success(lang === "ar" ? "تم تفعيل الدخول بالبصمة" : "Biometric login enabled");
+      refreshBioState();
+      toast.success(lang === "ar" ? `تم تفعيل ${deviceLabel}` : `${deviceLabel} enabled`);
       setEnrollPromptOpen(false);
     } catch (err: any) {
       toast.error(err?.message ?? (lang === "ar" ? "فشل التفعيل" : "Enrollment failed"));
@@ -220,10 +225,9 @@ function AuthPage() {
     }
   };
 
-  const handleDisableBiometric = async () => {
-    await disableBiometric();
-    setBioEnrolled(false);
-    setEnrolledEmail(null);
+  const handleDisableBiometric = async (forEmail?: string) => {
+    await disableBiometric(forEmail);
+    refreshBioState();
     toast.success(lang === "ar" ? "تم إلغاء الدخول بالبصمة" : "Biometric disabled");
   };
 
@@ -318,19 +322,63 @@ function AuthPage() {
                       ? `${deviceLabel} مُفعّل على هذا الجهاز`
                       : `${deviceLabel} is enabled on this device`}
                   </p>
-                  {enrolledEmail && (
-                    <p className="truncate text-xs text-white/70" dir="ltr">{enrolledEmail}</p>
-                  )}
+                  <p className="text-xs text-white/60">
+                    {lang === "ar"
+                      ? `${enrolledAccounts.length} حساب${enrolledAccounts.length > 1 ? "ات" : ""} مسجل${enrolledAccounts.length > 1 ? "ة" : ""}`
+                      : `${enrolledAccounts.length} account${enrolledAccounts.length > 1 ? "s" : ""} enrolled`}
+                  </p>
                 </div>
               </div>
+
+              <ul className="mb-3 space-y-1.5">
+                {enrolledAccounts.map((acc, i) => {
+                  const isCurrent = acc.email === enrolledEmail;
+                  return (
+                    <li
+                      key={acc.credentialId}
+                      className={`group flex items-center gap-2 rounded-lg border p-2 transition ${
+                        isCurrent
+                          ? "border-[oklch(0.86_0.01_250_/_0.5)] bg-white/10"
+                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleBiometricLogin(acc.email)}
+                        disabled={busy}
+                        className="flex flex-1 items-center gap-2 text-start"
+                      >
+                        <BioIcon className="h-4 w-4 shrink-0 text-[oklch(0.86_0.01_250)]" />
+                        <span className="min-w-0 flex-1 truncate text-xs text-white" dir="ltr">{acc.email}</span>
+                        {isCurrent && (
+                          <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                            {lang === "ar" ? "افتراضي" : "default"}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDisableBiometric(acc.email)}
+                        className="rounded p-1 text-[10px] text-white/40 opacity-0 hover:text-white group-hover:opacity-100"
+                        title={lang === "ar" ? "إلغاء التفعيل لهذا الحساب" : "Remove biometric for this account"}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
               <Button
                 type="button"
-                onClick={handleBiometricLogin}
+                onClick={() => handleBiometricLogin(enrolledEmail ?? undefined)}
                 disabled={busy}
                 className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
               >
                 <BioIcon className="me-2 h-5 w-5" />
-                {lang === "ar" ? `الدخول بـ ${deviceLabel}` : `Sign in with ${deviceLabel}`}
+                {lang === "ar"
+                  ? `الدخول بـ ${deviceLabel}${enrolledEmail ? ` كـ ${enrolledEmail}` : ""}`
+                  : `Sign in with ${deviceLabel}${enrolledEmail ? ` as ${enrolledEmail}` : ""}`}
               </Button>
             </div>
           )}
@@ -454,7 +502,7 @@ function AuthPage() {
                 {bioEnrolled && (
                   <button
                     type="button"
-                    onClick={handleDisableBiometric}
+                    onClick={() => handleDisableBiometric()}
                     className="text-xs text-white/50 hover:text-white"
                   >
                     {lang === "ar" ? "إلغاء البصمة" : "Disable biometric"}
