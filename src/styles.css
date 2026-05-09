@@ -149,6 +149,8 @@
   --gradient-subtle: linear-gradient(180deg, oklch(0.08 0 0), oklch(0.12 0 0));
   --gradient-mesh: radial-gradient(at 20% 0%, oklch(0.3 0 0 / 0.3) 0px, transparent 50%), radial-gradient(at 80% 30%, oklch(0.2 0 0 / 0.3) 0px, transparent 50%);
   --shadow-glow: 0 10px 32px -6px oklch(0 0 0 / 0.4);
+  --gradient-platinum-text: linear-gradient(135deg, oklch(1 0 0) 0%, oklch(0.78 0.005 250) 50%, oklch(0.95 0.005 250) 100%);
+  --gradient-hero-light: radial-gradient(ellipse 80% 60% at 50% 0%, oklch(0.18 0 0 / 0.9), transparent 70%), radial-gradient(circle at 20% 80%, oklch(0.22 0.005 250 / 0.5), transparent 60%);
 }
 
 @layer base {
