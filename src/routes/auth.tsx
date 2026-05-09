@@ -165,10 +165,10 @@ function AuthPage() {
     }
   };
 
-  const handleBiometricLogin = async () => {
+  const handleBiometricLogin = async (forEmail?: string) => {
     setBusy(true);
     try {
-      const tokens = await verifyBiometric();
+      const tokens = await verifyBiometric(forEmail);
       const { data, error } = await supabase.auth.setSession({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
@@ -178,7 +178,8 @@ function AuthPage() {
         updateStoredTokens({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
-        });
+        }, tokens.email);
+        setEmail(tokens.email);
       }
     } catch (err: any) {
       const msg = err?.message || "";
@@ -216,9 +217,8 @@ function AuthPage() {
         access_token: sess.access_token,
         refresh_token: sess.refresh_token,
       });
-      setBioEnrolled(true);
-      setEnrolledEmail(sess.user.email ?? email);
-      toast.success(lang === "ar" ? "تم تفعيل الدخول بالبصمة" : "Biometric login enabled");
+      refreshBioState();
+      toast.success(lang === "ar" ? `تم تفعيل ${deviceLabel}` : `${deviceLabel} enabled`);
       setEnrollPromptOpen(false);
     } catch (err: any) {
       toast.error(err?.message ?? (lang === "ar" ? "فشل التفعيل" : "Enrollment failed"));
@@ -227,10 +227,9 @@ function AuthPage() {
     }
   };
 
-  const handleDisableBiometric = async () => {
-    await disableBiometric();
-    setBioEnrolled(false);
-    setEnrolledEmail(null);
+  const handleDisableBiometric = async (forEmail?: string) => {
+    await disableBiometric(forEmail);
+    refreshBioState();
     toast.success(lang === "ar" ? "تم إلغاء الدخول بالبصمة" : "Biometric disabled");
   };
 
