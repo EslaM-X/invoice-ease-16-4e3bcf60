@@ -16,6 +16,7 @@ import {
   isPlatformAuthenticatorAvailable,
   getEnrolledAccountsWithStatus,
   enrollBiometric,
+  syncBiometricCredential,
   verifyBiometric,
   disableBiometric,
   updateStoredTokens,
@@ -159,6 +160,11 @@ function AuthPage() {
         const sess = data.session;
         if (sess && bioSupported) {
           const currentEmail = sess.user.email ?? email;
+          try {
+            await syncBiometricCredential(currentEmail, sess.user.id);
+          } catch (syncErr: any) {
+            console.warn("Biometric sync after password login failed:", syncErr?.message ?? syncErr);
+          }
           if (bioEnrolled && enrolledAccounts.some((account) => account.email === currentEmail)) {
             updateStoredTokens({ access_token: sess.access_token, refresh_token: sess.refresh_token }, currentEmail);
             setEnrolledEmail(currentEmail);
@@ -212,6 +218,11 @@ function AuthPage() {
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         }, tokens.email);
+        try {
+          await syncBiometricCredential(tokens.email, data.session.user.id);
+        } catch (syncErr: any) {
+          console.warn("Biometric sync after biometric sign-in failed:", syncErr?.message ?? syncErr);
+        }
         setEnrolledEmail(tokens.email);
         setEmail(tokens.email);
         setPassword("");
@@ -262,6 +273,7 @@ function AuthPage() {
         email: sess.user.email ?? email,
         access_token: sess.access_token,
         refresh_token: sess.refresh_token,
+        userId: sess.user.id,
       });
       const currentEmail = sess.user.email ?? email;
       setEnrolledEmail(currentEmail);

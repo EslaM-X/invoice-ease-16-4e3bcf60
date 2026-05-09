@@ -169,10 +169,39 @@ export async function disableBiometric(email?: string): Promise<void> {
   }
 }
 
+async function upsertBiometricCredentialRecord(params: {
+  credentialId: string;
+  userId: string;
+}) {
+  const { label, platform, ua } = detectDeviceLabel();
+  const { error } = await supabase.from("biometric_credentials").upsert({
+    user_id: params.userId,
+    credential_id: params.credentialId,
+    device_label: label,
+    platform,
+    user_agent: ua,
+    last_used_at: new Date().toISOString(),
+  }, { onConflict: "credential_id" });
+
+  if (error) throw error;
+  return { label, platform, ua };
+}
+
+export async function syncBiometricCredential(email: string, userId: string): Promise<boolean> {
+  const stored = getStored(email);
+  if (!stored) return false;
+  await upsertBiometricCredentialRecord({
+    credentialId: stored.credentialId,
+    userId,
+  });
+  return true;
+}
+
 export async function enrollBiometric(params: {
   email: string;
   access_token: string;
   refresh_token: string;
+  userId?: string;
 }): Promise<void> {
   if (!isBiometricSupported()) throw new Error("WebAuthn not supported");
 
@@ -221,56 +250,53 @@ export async function enrollBiometric(params: {
 
   // Persist enrollment to DB so the user can list/manage devices,
   // and create an in-app notification for the user + managers.
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id;
-    if (uid) {
-      const { label, platform, ua } = detectDeviceLabel();
-      await supabase.from("biometric_credentials").upsert({
-        user_id: uid,
-        credential_id: credentialId,
-        device_label: label,
-        platform,
-        user_agent: ua,
-        last_used_at: new Date().toISOString(),
-      }, { onConflict: "credential_id" });
+  const uid = params.userId ?? (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) {
+    throw new Error("Authenticated account not found for biometric enrollment");
+  }
 
-      const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
-      const lang = (typeof localStorage !== "undefined" && localStorage.getItem("lang")) === "en" ? "en" : "ar";
-      const method = isApple
-        ? (lang === "en" ? "Face ID / Touch ID" : "Face ID / Touch ID")
-        : (lang === "en" ? "Fingerprint" : "بصمة الإصبع");
-      const userTitle = lang === "en"
-        ? `${method} enabled successfully`
-        : `تم تفعيل ${method} بنجاح`;
-      const userBody = lang === "en"
-        ? `You can now sign in instantly on ${label} (${params.email}) without typing your password.`
-        : `يمكنك الآن تسجيل الدخول فورًا على ${label} (${params.email}) بدون كتابة كلمة المرور.`;
-      const mgrTitle = lang === "en"
-        ? "New biometric sign-in enabled"
-        : "تفعيل دخول جديد بالبصمة";
-      const mgrBody = lang === "en"
-        ? `${params.email} enabled ${method} on ${label}.`
-        : `${params.email} فعّل ${method} على جهاز ${label}.`;
-      await supabase.from("notifications").insert([
-        {
-          user_id: uid,
-          type: "biometric_enrolled",
-          title: userTitle,
-          body: userBody,
-          meta: { credential_id: credentialId, device_label: label, platform, email: params.email, lang },
-        },
-        {
-          recipient_role: "manager",
-          type: "biometric_enrolled",
-          title: mgrTitle,
-          body: mgrBody,
-          meta: { credential_id: credentialId, device_label: label, platform, email: params.email, lang },
-        },
-      ]);
-    }
-  } catch {
-    // Best-effort: enrollment still works locally even if the insert failed.
+  const { label, platform, ua } = await upsertBiometricCredentialRecord({
+    credentialId,
+    userId: uid,
+  });
+
+  const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
+  const lang = (typeof localStorage !== "undefined" && localStorage.getItem("lang")) === "en" ? "en" : "ar";
+  const method = isApple
+    ? (lang === "en" ? "Face ID / Touch ID" : "Face ID / Touch ID")
+    : (lang === "en" ? "Fingerprint" : "بصمة الإصبع");
+  const userTitle = lang === "en"
+    ? `${method} enabled successfully`
+    : `تم تفعيل ${method} بنجاح`;
+  const userBody = lang === "en"
+    ? `You can now sign in instantly on ${label} (${params.email}) without typing your password.`
+    : `يمكنك الآن تسجيل الدخول فورًا على ${label} (${params.email}) بدون كتابة كلمة المرور.`;
+  const mgrTitle = lang === "en"
+    ? "New biometric sign-in enabled"
+    : "تفعيل دخول جديد بالبصمة";
+  const mgrBody = lang === "en"
+    ? `${params.email} enabled ${method} on ${label}.`
+    : `${params.email} فعّل ${method} على جهاز ${label}.`;
+
+  const { error: notificationsError } = await supabase.from("notifications").insert([
+    {
+      user_id: uid,
+      type: "biometric_enrolled",
+      title: userTitle,
+      body: userBody,
+      meta: { credential_id: credentialId, device_label: label, platform, email: params.email, lang },
+    },
+    {
+      recipient_role: "manager",
+      type: "biometric_enrolled",
+      title: mgrTitle,
+      body: mgrBody,
+      meta: { credential_id: credentialId, device_label: label, platform, email: params.email, lang },
+    },
+  ]);
+
+  if (notificationsError) {
+    console.warn("Biometric enrollment saved, but notification insert failed:", notificationsError.message);
   }
 }
 
