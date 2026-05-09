@@ -11,12 +11,58 @@ type Ctx = {
 
 const AuthContext = createContext<Ctx | null>(null);
 
+const TAB_ALIVE_KEY = "stein.tabAlive";
+
+function purgeSupabaseStorage() {
+  try {
+    const matches = (k: string) =>
+      k.startsWith("sb-") ||
+      k.startsWith("supabase.") ||
+      k === "supabase.auth.token" ||
+      k.includes("-auth-token");
+    for (const store of [localStorage, sessionStorage]) {
+      for (const key of Object.keys(store)) {
+        if (matches(key)) store.removeItem(key);
+      }
+    }
+    // Best-effort: drop Supabase IndexedDB stores too.
+    if (typeof indexedDB !== "undefined" && (indexedDB as any).databases) {
+      (indexedDB as any).databases().then((dbs: { name?: string }[]) => {
+        for (const db of dbs ?? []) {
+          if (db.name && (db.name.startsWith("supabase") || db.name.includes("auth-token"))) {
+            indexedDB.deleteDatabase(db.name);
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch { /* ignore */ }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // "Remember Me" behaviour:
+    // - ON (default): session persists in localStorage (Supabase default).
+    // - OFF: clear any persisted Supabase auth state both when the tab/window
+    //   closes AND on a fresh page load that wasn't reached from the same
+    //   browsing session. A `sessionStorage` marker proves the current tab is
+    //   the same one that signed in; if it's missing on load, we know the
+    //   browser was closed (or this is a brand-new tab) and we wipe tokens
+    //   before Supabase tries to restore them.
+    const remember = (() => {
+      try { return localStorage.getItem("stein.rememberMe"); } catch { return null; }
+    })();
+    if (remember === "0") {
+      try {
+        const alive = sessionStorage.getItem(TAB_ALIVE_KEY);
+        if (!alive) purgeSupabaseStorage();
+        sessionStorage.setItem(TAB_ALIVE_KEY, "1");
+      } catch { /* ignore */ }
+    }
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
@@ -27,27 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // "Remember Me" behaviour:
-    // - ON (default): session persists forever in localStorage (Supabase default).
-    // - OFF: clear the persisted session when the tab/window closes so the
-    //   user has to sign in again next visit. Manual sign-out always works.
     const handleHide = () => {
       try {
-        const remember = localStorage.getItem("stein.rememberMe");
-        if (remember === "0") {
-          for (const key of Object.keys(localStorage)) {
-            if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
-              localStorage.removeItem(key);
-            }
-          }
+        if (localStorage.getItem("stein.rememberMe") === "0") {
+          purgeSupabaseStorage();
         }
       } catch { /* ignore */ }
     };
     window.addEventListener("pagehide", handleHide);
+    window.addEventListener("beforeunload", handleHide);
 
     return () => {
       sub.subscription.unsubscribe();
       window.removeEventListener("pagehide", handleHide);
+      window.removeEventListener("beforeunload", handleHide);
     };
   }, []);
 

@@ -176,21 +176,36 @@ export async function enrollBiometric(params: {
       }, { onConflict: "credential_id" });
 
       const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
-      const method = isApple ? "Face ID / Touch ID" : "بصمة الإصبع";
+      const lang = (typeof localStorage !== "undefined" && localStorage.getItem("lang")) === "en" ? "en" : "ar";
+      const method = isApple
+        ? (lang === "en" ? "Face ID / Touch ID" : "Face ID / Touch ID")
+        : (lang === "en" ? "Fingerprint" : "بصمة الإصبع");
+      const userTitle = lang === "en"
+        ? `${method} enabled successfully`
+        : `تم تفعيل ${method} بنجاح`;
+      const userBody = lang === "en"
+        ? `You can now sign in instantly on ${label} (${params.email}) without typing your password.`
+        : `يمكنك الآن تسجيل الدخول فورًا على ${label} (${params.email}) بدون كتابة كلمة المرور.`;
+      const mgrTitle = lang === "en"
+        ? "New biometric sign-in enabled"
+        : "تفعيل دخول جديد بالبصمة";
+      const mgrBody = lang === "en"
+        ? `${params.email} enabled ${method} on ${label}.`
+        : `${params.email} فعّل ${method} على جهاز ${label}.`;
       await supabase.from("notifications").insert([
         {
           user_id: uid,
           type: "biometric_enrolled",
-          title: `تم تفعيل ${method}`,
-          body: `جهاز جديد: ${label} · ${params.email}`,
-          meta: { credential_id: credentialId, device_label: label, platform, email: params.email },
+          title: userTitle,
+          body: userBody,
+          meta: { credential_id: credentialId, device_label: label, platform, email: params.email, lang },
         },
         {
           recipient_role: "manager",
           type: "biometric_enrolled",
-          title: "تفعيل دخول بالبصمة",
-          body: `${params.email} فعّل ${method} على ${label}`,
-          meta: { credential_id: credentialId, device_label: label, platform, email: params.email },
+          title: mgrTitle,
+          body: mgrBody,
+          meta: { credential_id: credentialId, device_label: label, platform, email: params.email, lang },
         },
       ]);
     }
