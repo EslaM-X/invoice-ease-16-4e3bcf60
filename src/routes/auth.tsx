@@ -168,7 +168,7 @@ function AuthPage() {
       }
     } catch (err: any) {
       // Track wrong-password attempts during sign-in (not signup)
-      if (mode === "signin") {
+      if (mode === "login") {
         const fails = bumpPasswordFailure();
         if (fails > PWD_FAIL_THRESHOLD) {
           triggerLuxurySplash();
