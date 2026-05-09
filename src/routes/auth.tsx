@@ -12,6 +12,7 @@ import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck, 
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
 import {
+  isBiometricSupported,
   isPlatformAuthenticatorAvailable,
   getEnrolledAccountsWithStatus,
   enrollBiometric,
@@ -88,7 +89,7 @@ function AuthPage() {
     refreshBioState();
     // Optimistically enable the biometric UI if WebAuthn exists at all,
     // then refine once the platform-auth probe resolves.
-    if (typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined") {
+    if (isBiometricSupported()) {
       setBioSupported(true);
     }
     isPlatformAuthenticatorAvailable().then((ok) => {
