@@ -37,6 +37,8 @@ export function OfflineBanner() {
   const [progress, setProgress] = useState(0);
   const wasOnlineRef = useRef(true);
   const recoverTimer = useRef<number | null>(null);
+  const lastRecoveredAt = useRef<number>(0);
+  const RECOVERED_DEDUPE_MS = 60_000;
 
   const runSync = useCallback(async () => {
     if (syncing) return;
@@ -62,13 +64,27 @@ export function OfflineBanner() {
 
     const update = (next: boolean) => {
       if (!mounted) return;
+      const wasOnline = wasOnlineRef.current;
       setOnline(next);
-      if (next && !wasOnlineRef.current) {
-        setShowRecovered(true);
-        // Auto trigger one resync on recovery
-        runSync();
+      // True recovery: was offline, now online — show ONCE, then suppress
+      // any duplicate "recovered" banners for the next minute.
+      if (next && !wasOnline) {
+        const now = Date.now();
+        if (now - lastRecoveredAt.current > RECOVERED_DEDUPE_MS) {
+          lastRecoveredAt.current = now;
+          setShowRecovered(true);
+          runSync();
+          if (recoverTimer.current) window.clearTimeout(recoverTimer.current);
+          recoverTimer.current = window.setTimeout(
+            () => { if (mounted) setShowRecovered(false); },
+            1800
+          );
+        }
+      }
+      // Going offline immediately hides any lingering "recovered" banner
+      if (!next) {
+        setShowRecovered(false);
         if (recoverTimer.current) window.clearTimeout(recoverTimer.current);
-        recoverTimer.current = window.setTimeout(() => mounted && setShowRecovered(false), 2200);
       }
       wasOnlineRef.current = next;
     };
