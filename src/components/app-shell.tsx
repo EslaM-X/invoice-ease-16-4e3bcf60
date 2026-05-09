@@ -43,6 +43,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  const handleSignOut = async () => {
+    setOpen(false);
+    await signOut();
+    navigate({ to: "/auth" });
+  };
+
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
@@ -141,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           variant="ghost"
           size="sm"
           className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          onClick={() => signOut()}
+          onClick={handleSignOut}
         >
           <LogOut className="me-2 h-4 w-4" /> {t("logout")}
         </Button>
