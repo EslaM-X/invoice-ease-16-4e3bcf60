@@ -13,8 +13,6 @@ import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
 import {
   isPlatformAuthenticatorAvailable,
-  isEnrolled as isBiometricEnrolled,
-  getEnrolledEmail,
   listEnrolledAccounts,
   enrollBiometric,
   verifyBiometric,
