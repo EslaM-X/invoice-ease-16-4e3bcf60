@@ -63,16 +63,21 @@ function AuthPage() {
         ? (lang === "ar" ? "بصمة الإصبع" : "Fingerprint")
         : (lang === "ar" ? "البصمة / المفتاح الأمني" : "Biometric / Security Key");
 
+  const refreshBioState = () => {
+    const accounts = listEnrolledAccounts();
+    setEnrolledAccounts(accounts);
+    setBioEnrolled(accounts.length > 0);
+    const em = accounts[0]?.email ?? null;
+    setEnrolledEmail(em);
+    if (em) setEmail(em);
+  };
+
   useEffect(() => {
     let mounted = true;
     isPlatformAuthenticatorAvailable().then((ok) => {
       if (!mounted) return;
       setBioSupported(ok);
-      const enrolled = isBiometricEnrolled();
-      setBioEnrolled(enrolled);
-      const em = getEnrolledEmail();
-      setEnrolledEmail(em);
-      if (enrolled && em) setEmail(em);
+      refreshBioState();
     });
     return () => { mounted = false; };
   }, []);
