@@ -1,38 +1,43 @@
-// Tracks how many times the user opened the app, and decides when
-// the luxury splash should be shown (after 5+ opens, once per session).
+// Controls when the luxury splash screen appears.
+// 1) Once per browser tab session at first app open.
+// 2) On demand (e.g. after 5+ wrong password attempts) via triggerLuxurySplash().
 
-const COUNT_KEY = "steinheim_entry_count";
-const SESSION_KEY = "steinheim_splash_session_shown";
-const THRESHOLD = 5;
+const SESSION_OPENED_KEY = "steinheim_session_splash_shown";
+const PWD_FAIL_KEY = "steinheim_pwd_fail_count";
+export const PWD_FAIL_THRESHOLD = 5;
+export const LUXURY_SPLASH_EVENT = "steinheim:luxury-splash";
 
-export function bumpEntryCount(): number {
-  if (typeof window === "undefined") return 0;
-  try {
-    const cur = Number(localStorage.getItem(COUNT_KEY) || "0") || 0;
-    const next = cur + 1;
-    localStorage.setItem(COUNT_KEY, String(next));
-    return next;
-  } catch {
-    return 0;
-  }
-}
-
-export function shouldShowLuxurySplash(): boolean {
+export function shouldShowOnSessionStart(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const count = Number(localStorage.getItem(COUNT_KEY) || "0") || 0;
-    if (count <= THRESHOLD) return false;
-    // once per browser tab session
-    if (sessionStorage.getItem(SESSION_KEY) === "1") return false;
+    if (sessionStorage.getItem(SESSION_OPENED_KEY) === "1") return false;
+    sessionStorage.setItem(SESSION_OPENED_KEY, "1");
     return true;
   } catch {
     return false;
   }
 }
 
-export function markLuxurySplashShown() {
+export function triggerLuxurySplash() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(LUXURY_SPLASH_EVENT));
+}
+
+export function bumpPasswordFailure(): number {
+  if (typeof window === "undefined") return 0;
   try {
-    sessionStorage.setItem(SESSION_KEY, "1");
+    const cur = Number(localStorage.getItem(PWD_FAIL_KEY) || "0") || 0;
+    const next = cur + 1;
+    localStorage.setItem(PWD_FAIL_KEY, String(next));
+    return next;
+  } catch {
+    return 0;
+  }
+}
+
+export function resetPasswordFailures() {
+  try {
+    localStorage.removeItem(PWD_FAIL_KEY);
   } catch {
     /* noop */
   }

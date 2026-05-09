@@ -147,6 +147,7 @@ function AuthPage() {
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        resetPasswordFailures();
         const sess = data.session;
         if (sess && bioSupported) {
           const currentEmail = sess.user.email ?? email;
@@ -160,6 +161,14 @@ function AuthPage() {
         }
       }
     } catch (err: any) {
+      // Track wrong-password attempts during sign-in (not signup)
+      if (mode === "signin") {
+        const fails = bumpPasswordFailure();
+        if (fails > PWD_FAIL_THRESHOLD) {
+          triggerLuxurySplash();
+          resetPasswordFailures();
+        }
+      }
       toast.error(err?.message ?? t("error_occurred"));
     } finally {
       setBusy(false);

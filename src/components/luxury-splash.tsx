@@ -1,31 +1,32 @@
 import { useEffect, useState } from "react";
 import {
-  bumpEntryCount,
-  shouldShowLuxurySplash,
-  markLuxurySplashShown,
+  shouldShowOnSessionStart,
+  LUXURY_SPLASH_EVENT,
 } from "@/lib/entry-counter";
 
 /**
- * Luxury splash screen — appears after the user has opened the app more
- * than 5 times. Black background with silver/platinum logo type and a
- * shimmer sweep. Self-dismisses after ~2.4s. Tap to skip.
+ * Luxury splash screen — black/silver/platinum.
+ * Appears (a) once per session on app open, and (b) on demand
+ * via triggerLuxurySplash() (e.g. after 5+ wrong password attempts).
  */
 export function LuxurySplash() {
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  useEffect(() => {
-    bumpEntryCount();
-    if (!shouldShowLuxurySplash()) return;
-    markLuxurySplashShown();
+  const show = () => {
+    setClosing(false);
     setVisible(true);
-    const t1 = window.setTimeout(() => setClosing(true), 2100);
-    const t2 = window.setTimeout(() => setVisible(false), 2700);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    window.setTimeout(() => setClosing(true), 2100);
+    window.setTimeout(() => setVisible(false), 2700);
+  };
+
+  useEffect(() => {
+    if (shouldShowOnSessionStart()) show();
+    const onTrigger = () => show();
+    window.addEventListener(LUXURY_SPLASH_EVENT, onTrigger);
+    return () => window.removeEventListener(LUXURY_SPLASH_EVENT, onTrigger);
   }, []);
+
 
   if (!visible) return null;
 
