@@ -32,6 +32,13 @@ export type BiometricDevice = {
   last_used_at: string | null;
 };
 
+export type EnrolledBiometricAccount = {
+  email: string;
+  enrolledAt: number;
+  credentialId: string;
+  isCurrent: boolean;
+};
+
 
 type StoredCred = {
   credentialId: string; // base64url
@@ -114,6 +121,15 @@ function writeList(list: StoredCred[]) {
 
 export function listEnrolledAccounts(): { email: string; enrolledAt: number; credentialId: string }[] {
   return readList().map((c) => ({ email: c.email, enrolledAt: c.enrolledAt, credentialId: c.credentialId }));
+}
+
+export function getEnrolledAccountsWithStatus(activeEmail?: string | null): EnrolledBiometricAccount[] {
+  return readList().map((c, index) => ({
+    email: c.email,
+    enrolledAt: c.enrolledAt,
+    credentialId: c.credentialId,
+    isCurrent: activeEmail ? c.email === activeEmail : index === 0,
+  }));
 }
 
 export function getStored(email?: string): StoredCred | null {
@@ -377,8 +393,9 @@ export async function verifyBiometric(email?: string): Promise<{
 
 export function updateStoredTokens(tokens: { access_token: string; refresh_token: string }, email?: string) {
   const list = readList();
-  const idx = email ? list.findIndex((c) => c.email === email) : 0;
+  const idx = email ? list.findIndex((c) => c.email === email) : -1;
   if (idx < 0 || !list[idx]) return;
   list[idx] = { ...list[idx], access_token: tokens.access_token, refresh_token: tokens.refresh_token };
-  writeList(list);
+  const current = list[idx];
+  writeList([current, ...list.filter((_, itemIndex) => itemIndex !== idx)]);
 }
