@@ -486,23 +486,39 @@ function AuthPage() {
             </div>
           )}
 
-          {mode === "login" && bioSupported && enrolledAccounts.length === 0 && (
-            <div className="mb-5 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
-                {isWindows ? <Monitor className="h-4 w-4" /> : <BioIcon className="h-4 w-4" />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white/85">
+          {mode === "login" && enrolledAccounts.length === 0 && (
+            <div className="mb-5 space-y-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!bioSupported) {
+                    toast.error(lang === "ar"
+                      ? "هذا الجهاز أو المتصفح لا يدعم البصمة / Face ID."
+                      : "This device or browser does not support biometric / Face ID.");
+                    return;
+                  }
+                  handleBiometricLogin();
+                }}
+                disabled={busy}
+                className="h-14 w-full gap-3 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+              >
+                <BioIcon className="h-6 w-6" />
+                <span className="me-1 truncate">
                   {lang === "ar"
-                    ? `${deviceLabel} مدعوم على هذا الجهاز`
-                    : `${deviceLabel} is supported on this device`}
-                </p>
-                <p className="mt-0.5">
-                  {lang === "ar"
-                    ? "سجّل الدخول مرة واحدة بكلمة السر وسنعرض لك خيار التفعيل."
-                    : "Sign in once with your password and we'll offer to enable it."}
-                </p>
-              </div>
+                    ? `الدخول بـ ${deviceLabel}`
+                    : `Sign in with ${deviceLabel}`}
+                </span>
+              </Button>
+              <p className="text-center text-[11px] leading-5 text-white/55">
+                {lang === "ar"
+                  ? "أول مرة؟ سجّل الدخول بكلمة السر، وسنعرض لك تفعيل البصمة / Face ID للدخول السريع لاحقًا."
+                  : "First time? Sign in with your password and we'll offer to enable biometric / Face ID for fast sign-in next time."}
+              </p>
+              {biometricError && (
+                <div className="rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2.5 text-xs leading-6 text-red-100">
+                  {biometricError}
+                </div>
+              )}
             </div>
           )}
 
