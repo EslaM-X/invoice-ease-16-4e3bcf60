@@ -352,11 +352,15 @@ export async function verifyBiometric(email?: string): Promise<{
         timeout: 60_000,
         rpId,
         userVerification: "required",
-        allowCredentials: candidates.map((c) => ({
-          type: "public-key",
-          id: b64urlToBuf(c.credentialId),
-          transports: ["internal"],
-        })),
+        ...(email
+          ? {
+              allowCredentials: candidates.map((c) => ({
+                type: "public-key" as const,
+                id: b64urlToBuf(c.credentialId),
+                transports: ["internal" as AuthenticatorTransport],
+              })),
+            }
+          : {}),
       },
     }) as PublicKeyCredential | null;
   } catch (err: any) {
@@ -371,7 +375,16 @@ export async function verifyBiometric(email?: string): Promise<{
 
   // Identify which credential the platform chose
   const usedId = bufToB64url(assertion.rawId);
-  const used = list.find((c) => c.credentialId === usedId) ?? candidates[0];
+  const used = list.find((c) => c.credentialId === usedId);
+  if (!used) {
+    await logAttempt({
+      status: "failed",
+      email: email ?? null,
+      credential_id: usedId,
+      error_message: "Credential not enrolled on this device",
+    });
+    throw new Error("Credential not enrolled on this device");
+  }
 
   // Bring the just-used account to the front of the list
   const reordered = [used, ...list.filter((c) => c.credentialId !== used.credentialId)];
