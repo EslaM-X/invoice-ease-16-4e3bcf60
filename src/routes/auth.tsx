@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck, Briefcase, Store } from "lucide-react";
+import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck, Briefcase, Store, Monitor, KeyRound } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
 import {
@@ -48,7 +48,18 @@ function AuthPage() {
   const [bioEnrolled, setBioEnrolled] = useState(false);
   const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
   const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
-  const isApple = typeof navigator !== "undefined" && /iP(hone|ad|od)|Mac/i.test(navigator.userAgent);
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
+  const isWindows = /Windows/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const BioIcon = isApple ? ScanFace : isWindows ? KeyRound : Fingerprint;
+  const deviceLabel = isApple
+    ? (lang === "ar" ? "Face ID / Touch ID" : "Face ID / Touch ID")
+    : isWindows
+      ? (lang === "ar" ? "Windows Hello" : "Windows Hello")
+      : isAndroid
+        ? (lang === "ar" ? "بصمة الإصبع" : "Fingerprint")
+        : (lang === "ar" ? "البصمة / المفتاح الأمني" : "Biometric / Security Key");
 
   useEffect(() => {
     let mounted = true;
@@ -164,13 +175,24 @@ function AuthPage() {
       }
     } catch (err: any) {
       const msg = err?.message || "";
+      const isCancel = /NotAllowed|cancelled|canceled|aborted|timed? ?out/i.test(msg) || err?.name === "NotAllowedError";
       if (/expired|invalid|refresh/i.test(msg)) {
         toast.error(lang === "ar"
-          ? "انتهت صلاحية الجلسة المحفوظة. سجّل الدخول بكلمة السر مرة واحدة."
-          : "Saved session expired. Please sign in with your password once.");
+          ? "انتهت صلاحية الجلسة. الرجاء تسجيل الدخول بكلمة السر أو Google لتجديدها."
+          : "Saved session expired. Please sign in with password or Google to refresh it.");
+      } else if (isCancel) {
+        toast.message(lang === "ar"
+          ? "تم إلغاء التحقق — يمكنك تسجيل الدخول بكلمة السر بدلًا من ذلك."
+          : "Verification cancelled — you can sign in with your password instead.");
       } else {
-        toast.error(lang === "ar" ? "تعذّر التحقق بالبصمة" : "Biometric verification failed");
+        toast.error(lang === "ar"
+          ? `تعذّر التحقق بـ ${deviceLabel}. الرجاء استخدام كلمة السر.`
+          : `${deviceLabel} verification failed. Please use your password.`);
       }
+      // Make sure password field is focused for fallback
+      setTimeout(() => {
+        try { (document.getElementById("password") as HTMLInputElement | null)?.focus(); } catch { /* ignore */ }
+      }, 50);
     } finally {
       setBusy(false);
     }
@@ -287,13 +309,14 @@ function AuthPage() {
             <div className="mb-5 rounded-xl border border-[oklch(0.86_0.01_250_/_0.45)] bg-gradient-to-br from-[oklch(0.86_0.01_250_/_0.18)] to-[oklch(0.86_0.01_250_/_0.05)] p-4 shadow-[0_10px_40px_-15px_oklch(0.86_0.01_250_/_0.5)]">
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.2)] text-[oklch(0.86_0.01_250)] ring-1 ring-[oklch(0.86_0.01_250_/_0.4)]">
-                  {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+                  <BioIcon className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" />
                     {lang === "ar"
-                      ? (isApple ? "Face ID مُفعّل على هذا الجهاز" : "البصمة مُفعّلة على هذا الجهاز")
-                      : (isApple ? "Face ID is enabled on this device" : "Fingerprint is enabled on this device")}
+                      ? `${deviceLabel} مُفعّل على هذا الجهاز`
+                      : `${deviceLabel} is enabled on this device`}
                   </p>
                   {enrolledEmail && (
                     <p className="truncate text-xs text-white/70" dir="ltr">{enrolledEmail}</p>
@@ -306,13 +329,32 @@ function AuthPage() {
                 disabled={busy}
                 className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
               >
-                {isApple ? <ScanFace className="me-2 h-5 w-5" /> : <Fingerprint className="me-2 h-5 w-5" />}
-                {lang === "ar"
-                  ? (isApple ? "الدخول بـ Face ID" : "الدخول بالبصمة")
-                  : (isApple ? "Sign in with Face ID" : "Sign in with Fingerprint")}
+                <BioIcon className="me-2 h-5 w-5" />
+                {lang === "ar" ? `الدخول بـ ${deviceLabel}` : `Sign in with ${deviceLabel}`}
               </Button>
             </div>
           )}
+
+          {mode === "login" && bioSupported && !bioEnrolled && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
+                {isWindows ? <Monitor className="h-4 w-4" /> : <BioIcon className="h-4 w-4" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white/85">
+                  {lang === "ar"
+                    ? `${deviceLabel} مدعوم على هذا الجهاز`
+                    : `${deviceLabel} is supported on this device`}
+                </p>
+                <p className="mt-0.5">
+                  {lang === "ar"
+                    ? "سجّل الدخول مرة واحدة بكلمة السر وسنعرض لك خيار التفعيل."
+                    : "Sign in once with your password and we'll offer to enable it."}
+                </p>
+              </div>
+            </div>
+          )}
+
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
@@ -508,13 +550,11 @@ function AuthPage() {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.15)] text-[oklch(0.86_0.01_250)]">
-                {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+                <BioIcon className="h-6 w-6" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold">
-                  {lang === "ar"
-                    ? (isApple ? "تفعيل Face ID" : "تفعيل البصمة")
-                    : (isApple ? "Enable Face ID" : "Enable Fingerprint")}
+                  {lang === "ar" ? `تفعيل ${deviceLabel}` : `Enable ${deviceLabel}`}
                 </h2>
                 <p className="text-xs text-white/60">
                   {lang === "ar" ? "دخول أسرع وأكثر أمانًا" : "Faster, more secure sign-in"}

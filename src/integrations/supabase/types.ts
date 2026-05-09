@@ -83,6 +83,45 @@ export type Database = {
         }
         Relationships: []
       }
+      biometric_auth_log: {
+        Row: {
+          created_at: string
+          credential_id: string | null
+          device_label: string | null
+          email: string | null
+          error_message: string | null
+          id: string
+          platform: string | null
+          status: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          credential_id?: string | null
+          device_label?: string | null
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          platform?: string | null
+          status: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string | null
+          device_label?: string | null
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          platform?: string | null
+          status?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       biometric_credentials: {
         Row: {
           created_at: string
