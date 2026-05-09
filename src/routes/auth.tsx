@@ -175,13 +175,24 @@ function AuthPage() {
       }
     } catch (err: any) {
       const msg = err?.message || "";
+      const isCancel = /NotAllowed|cancelled|canceled|aborted|timed? ?out/i.test(msg) || err?.name === "NotAllowedError";
       if (/expired|invalid|refresh/i.test(msg)) {
         toast.error(lang === "ar"
-          ? "انتهت صلاحية الجلسة المحفوظة. سجّل الدخول بكلمة السر مرة واحدة."
-          : "Saved session expired. Please sign in with your password once.");
+          ? "انتهت صلاحية الجلسة. الرجاء تسجيل الدخول بكلمة السر أو Google لتجديدها."
+          : "Saved session expired. Please sign in with password or Google to refresh it.");
+      } else if (isCancel) {
+        toast.message(lang === "ar"
+          ? "تم إلغاء التحقق — يمكنك تسجيل الدخول بكلمة السر بدلًا من ذلك."
+          : "Verification cancelled — you can sign in with your password instead.");
       } else {
-        toast.error(lang === "ar" ? "تعذّر التحقق بالبصمة" : "Biometric verification failed");
+        toast.error(lang === "ar"
+          ? `تعذّر التحقق بـ ${deviceLabel}. الرجاء استخدام كلمة السر.`
+          : `${deviceLabel} verification failed. Please use your password.`);
       }
+      // Make sure password field is focused for fallback
+      setTimeout(() => {
+        try { (document.getElementById("password") as HTMLInputElement | null)?.focus(); } catch { /* ignore */ }
+      }, 50);
     } finally {
       setBusy(false);
     }
