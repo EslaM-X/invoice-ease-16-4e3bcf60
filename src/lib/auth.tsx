@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const TARGET = "2026-05-09-bio";
       if (localStorage.getItem(FORCE_KEY) !== TARGET) {
         purgeSupabaseStorage();
-        try { localStorage.removeItem("stein.biometric.v1"); } catch { /* ignore */ }
+        // keep biometric enrolment if any — so users can sign in with it
         localStorage.setItem(FORCE_KEY, TARGET);
         void supabase.auth.signOut();
       }
