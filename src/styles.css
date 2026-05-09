@@ -185,6 +185,25 @@
   .gradient-gold { background: var(--gradient-gold); }
   .gradient-subtle { background: var(--gradient-subtle); }
   .gradient-mesh { background-image: var(--gradient-mesh); }
+  .gradient-silver { background: var(--gradient-silver); }
+  .gradient-hero-light { background-image: var(--gradient-hero-light); }
+  .text-platinum {
+    background: var(--gradient-platinum-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .border-silver { border-color: color-mix(in oklab, var(--silver-500) 50%, transparent); }
+  .ring-silver { box-shadow: 0 0 0 1px color-mix(in oklab, var(--silver-500) 35%, transparent), var(--shadow-md); }
+  .shimmer-silver {
+    background: linear-gradient(110deg, transparent 30%, color-mix(in oklab, var(--silver-100) 60%, transparent) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 3.5s linear infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-elegant { box-shadow: var(--shadow-lg); }
   .glass {
