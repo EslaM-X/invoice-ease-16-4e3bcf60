@@ -72,11 +72,23 @@ function AuthPage() {
 
   useEffect(() => {
     let mounted = true;
+    // Load enrolled accounts immediately so the biometric panel shows on
+    // first render (don't wait for the async platform-auth check, which can
+    // return false inside iframes / preview environments even when WebAuthn
+    // works fine on the published app).
+    refreshBioState();
+    // Optimistically enable the biometric UI if WebAuthn exists at all,
+    // then refine once the platform-auth probe resolves.
+    if (typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined") {
+      setBioSupported(true);
+    }
     isPlatformAuthenticatorAvailable().then((ok) => {
       if (!mounted) return;
-      setBioSupported(ok);
+      // Keep it enabled if WebAuthn is present even if platform-auth probe
+      // says no — the actual `navigator.credentials.get` call will decide.
+      setBioSupported((prev) => prev || ok);
       refreshBioState();
-    });
+    }).catch(() => { /* ignore */ });
     return () => { mounted = false; };
   }, []);
 
@@ -309,7 +321,7 @@ function AuthPage() {
             >{t("signup")}</button>
           </div>
 
-          {mode === "login" && bioSupported && bioEnrolled && (
+          {mode === "login" && enrolledAccounts.length > 0 && (
             <div className="mb-5 rounded-xl border border-[oklch(0.86_0.01_250_/_0.45)] bg-gradient-to-br from-[oklch(0.86_0.01_250_/_0.18)] to-[oklch(0.86_0.01_250_/_0.05)] p-4 shadow-[0_10px_40px_-15px_oklch(0.86_0.01_250_/_0.5)]">
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.2)] text-[oklch(0.86_0.01_250)] ring-1 ring-[oklch(0.86_0.01_250_/_0.4)]">
@@ -383,7 +395,7 @@ function AuthPage() {
             </div>
           )}
 
-          {mode === "login" && bioSupported && !bioEnrolled && (
+          {mode === "login" && bioSupported && enrolledAccounts.length === 0 && (
             <div className="mb-5 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
                 {isWindows ? <Monitor className="h-4 w-4" /> : <BioIcon className="h-4 w-4" />}
