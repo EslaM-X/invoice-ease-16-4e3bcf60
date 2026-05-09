@@ -550,13 +550,11 @@ function AuthPage() {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.15)] text-[oklch(0.86_0.01_250)]">
-                {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+                <BioIcon className="h-6 w-6" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold">
-                  {lang === "ar"
-                    ? (isApple ? "تفعيل Face ID" : "تفعيل البصمة")
-                    : (isApple ? "Enable Face ID" : "Enable Fingerprint")}
+                  {lang === "ar" ? `تفعيل ${deviceLabel}` : `Enable ${deviceLabel}`}
                 </h2>
                 <p className="text-xs text-white/60">
                   {lang === "ar" ? "دخول أسرع وأكثر أمانًا" : "Faster, more secure sign-in"}
