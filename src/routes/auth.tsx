@@ -295,6 +295,33 @@ function AuthPage() {
                 />
               </div>
             )}
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label className="text-white/80">
+                  {lang === "ar" ? "نوع الحساب" : "Account type"}
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { v: "employee", icon: Briefcase, ar: "موظف في الشركة", en: "Company employee" },
+                    { v: "distributor", icon: Store, ar: "موزّع", en: "Distributor" },
+                  ] as const).map((o) => (
+                    <button
+                      key={o.v}
+                      type="button"
+                      onClick={() => setAccountType(o.v)}
+                      className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center text-xs transition ${
+                        accountType === o.v
+                          ? "border-[oklch(0.86_0.01_250)] bg-white/10"
+                          : "border-white/15 bg-white/5 hover:bg-white/10"
+                      }`}
+                    >
+                      <o.icon className="h-5 w-5 text-[oklch(0.86_0.01_250)]" />
+                      <span>{lang === "ar" ? o.ar : o.en}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-white/80">{t("email")}</Label>
               <Input
