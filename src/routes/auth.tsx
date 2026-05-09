@@ -48,6 +48,7 @@ function AuthPage() {
   const [bioSupported, setBioSupported] = useState(false);
   const [bioEnrolled, setBioEnrolled] = useState(false);
   const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
+  const [enrolledAccounts, setEnrolledAccounts] = useState<{ email: string; enrolledAt: number; credentialId: string }[]>([]);
   const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
