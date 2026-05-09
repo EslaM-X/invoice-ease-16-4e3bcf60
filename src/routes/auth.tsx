@@ -72,11 +72,23 @@ function AuthPage() {
 
   useEffect(() => {
     let mounted = true;
+    // Load enrolled accounts immediately so the biometric panel shows on
+    // first render (don't wait for the async platform-auth check, which can
+    // return false inside iframes / preview environments even when WebAuthn
+    // works fine on the published app).
+    refreshBioState();
+    // Optimistically enable the biometric UI if WebAuthn exists at all,
+    // then refine once the platform-auth probe resolves.
+    if (typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined") {
+      setBioSupported(true);
+    }
     isPlatformAuthenticatorAvailable().then((ok) => {
       if (!mounted) return;
-      setBioSupported(ok);
+      // Keep it enabled if WebAuthn is present even if platform-auth probe
+      // says no — the actual `navigator.credentials.get` call will decide.
+      setBioSupported((prev) => prev || ok);
       refreshBioState();
-    });
+    }).catch(() => { /* ignore */ });
     return () => { mounted = false; };
   }, []);
 
