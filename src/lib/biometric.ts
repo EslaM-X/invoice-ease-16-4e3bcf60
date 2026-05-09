@@ -302,19 +302,27 @@ async function logAttempt(opts: {
   } catch { /* best-effort */ }
 }
 
-export async function verifyBiometric(): Promise<{
+export async function verifyBiometric(email?: string): Promise<{
   email: string;
   access_token: string;
   refresh_token: string;
 }> {
-  const stored = getStored();
-  if (!stored) {
+  const list = readList();
+  if (list.length === 0) {
     await logAttempt({ status: "failed", email: null, credential_id: null, error_message: "No enrolled biometric" });
     throw new Error("No enrolled biometric");
   }
   if (!isBiometricSupported()) {
-    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: "WebAuthn not supported" });
+    await logAttempt({ status: "failed", email: email ?? null, credential_id: null, error_message: "WebAuthn not supported" });
     throw new Error("WebAuthn not supported");
+  }
+
+  // If a specific email is requested, restrict allowCredentials to it; otherwise
+  // let the platform pick from any enrolled credential on this device.
+  const candidates = email ? list.filter((c) => c.email === email) : list;
+  if (candidates.length === 0) {
+    await logAttempt({ status: "failed", email: email ?? null, credential_id: null, error_message: "Email not enrolled on this device" });
+    throw new Error("No enrolled biometric for that account");
   }
 
   const challenge = randomBytes(32);
@@ -328,41 +336,49 @@ export async function verifyBiometric(): Promise<{
         timeout: 60_000,
         rpId,
         userVerification: "required",
-        allowCredentials: [{
+        allowCredentials: candidates.map((c) => ({
           type: "public-key",
-          id: b64urlToBuf(stored.credentialId),
+          id: b64urlToBuf(c.credentialId),
           transports: ["internal"],
-        }],
+        })),
       },
     }) as PublicKeyCredential | null;
   } catch (err: any) {
-    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: err?.message ?? "WebAuthn get failed" });
+    await logAttempt({ status: "failed", email: candidates[0].email, credential_id: candidates[0].credentialId, error_message: err?.message ?? "WebAuthn get failed" });
     throw err;
   }
 
   if (!assertion) {
-    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: "No assertion returned" });
+    await logAttempt({ status: "failed", email: candidates[0].email, credential_id: candidates[0].credentialId, error_message: "No assertion returned" });
     throw new Error("Biometric verification failed");
   }
+
+  // Identify which credential the platform chose
+  const usedId = bufToB64url(assertion.rawId);
+  const used = list.find((c) => c.credentialId === usedId) ?? candidates[0];
+
+  // Bring the just-used account to the front of the list
+  const reordered = [used, ...list.filter((c) => c.credentialId !== used.credentialId)];
+  writeList(reordered);
 
   void supabase
     .from("biometric_credentials")
     .update({ last_used_at: new Date().toISOString() })
-    .eq("credential_id", stored.credentialId);
+    .eq("credential_id", used.credentialId);
 
-  await logAttempt({ status: "success", email: stored.email, credential_id: stored.credentialId });
+  await logAttempt({ status: "success", email: used.email, credential_id: used.credentialId });
 
   return {
-    email: stored.email,
-    access_token: stored.access_token,
-    refresh_token: stored.refresh_token,
+    email: used.email,
+    access_token: used.access_token,
+    refresh_token: used.refresh_token,
   };
 }
 
-export function updateStoredTokens(tokens: { access_token: string; refresh_token: string }) {
-  const stored = getStored();
-  if (!stored) return;
-  stored.access_token = tokens.access_token;
-  stored.refresh_token = tokens.refresh_token;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch {}
+export function updateStoredTokens(tokens: { access_token: string; refresh_token: string }, email?: string) {
+  const list = readList();
+  const idx = email ? list.findIndex((c) => c.email === email) : 0;
+  if (idx < 0 || !list[idx]) return;
+  list[idx] = { ...list[idx], access_token: tokens.access_token, refresh_token: tokens.refresh_token };
+  writeList(list);
 }
