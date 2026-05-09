@@ -72,14 +72,19 @@ function randomBytes(n: number): ArrayBuffer {
 
 export function isBiometricSupported(): boolean {
   return typeof window !== "undefined"
-    && typeof window.PublicKeyCredential !== "undefined"
     && typeof navigator !== "undefined"
-    && !!navigator.credentials;
+    && window.isSecureContext
+    && !!navigator.credentials
+    && typeof navigator.credentials.create === "function"
+    && typeof navigator.credentials.get === "function";
 }
 
 export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   if (!isBiometricSupported()) return false;
   try {
+    if (typeof PublicKeyCredential === "undefined" || typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
+      return false;
+    }
     return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
   } catch {
     return false;
@@ -352,15 +357,11 @@ export async function verifyBiometric(email?: string): Promise<{
         timeout: 60_000,
         rpId,
         userVerification: "required",
-        ...(email
-          ? {
-              allowCredentials: candidates.map((c) => ({
-                type: "public-key" as const,
-                id: b64urlToBuf(c.credentialId),
-                transports: ["internal" as AuthenticatorTransport],
-              })),
-            }
-          : {}),
+        allowCredentials: candidates.map((c) => ({
+          type: "public-key" as const,
+          id: b64urlToBuf(c.credentialId),
+          transports: ["internal" as AuthenticatorTransport],
+        })),
       },
     }) as PublicKeyCredential | null;
   } catch (err: any) {
