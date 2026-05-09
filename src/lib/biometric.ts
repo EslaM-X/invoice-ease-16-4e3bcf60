@@ -237,40 +237,81 @@ export async function removeBiometricDevice(id: string): Promise<void> {
   }
 }
 
+async function logAttempt(opts: {
+  status: "success" | "failed";
+  email: string | null;
+  credential_id: string | null;
+  error_message?: string | null;
+}): Promise<void> {
+  try {
+    const { label, platform, ua } = detectDeviceLabel();
+    let userId: string | null = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      userId = data.user?.id ?? null;
+    } catch { /* anonymous */ }
+    await supabase.from("biometric_auth_log").insert({
+      user_id: userId,
+      email: opts.email,
+      credential_id: opts.credential_id,
+      status: opts.status,
+      error_message: opts.error_message ?? null,
+      device_label: label,
+      platform,
+      user_agent: ua,
+    });
+  } catch { /* best-effort */ }
+}
+
 export async function verifyBiometric(): Promise<{
   email: string;
   access_token: string;
   refresh_token: string;
 }> {
   const stored = getStored();
-  if (!stored) throw new Error("No enrolled biometric");
-  if (!isBiometricSupported()) throw new Error("WebAuthn not supported");
+  if (!stored) {
+    await logAttempt({ status: "failed", email: null, credential_id: null, error_message: "No enrolled biometric" });
+    throw new Error("No enrolled biometric");
+  }
+  if (!isBiometricSupported()) {
+    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: "WebAuthn not supported" });
+    throw new Error("WebAuthn not supported");
+  }
 
   const challenge = randomBytes(32);
   const rpId = window.location.hostname;
 
-  const assertion = await navigator.credentials.get({
-    publicKey: {
-      challenge,
-      timeout: 60_000,
-      rpId,
-      userVerification: "required",
-      allowCredentials: [{
-        type: "public-key",
-        id: b64urlToBuf(stored.credentialId),
-        transports: ["internal"],
-      }],
-    },
-  }) as PublicKeyCredential | null;
+  let assertion: PublicKeyCredential | null;
+  try {
+    assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        timeout: 60_000,
+        rpId,
+        userVerification: "required",
+        allowCredentials: [{
+          type: "public-key",
+          id: b64urlToBuf(stored.credentialId),
+          transports: ["internal"],
+        }],
+      },
+    }) as PublicKeyCredential | null;
+  } catch (err: any) {
+    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: err?.message ?? "WebAuthn get failed" });
+    throw err;
+  }
 
-  if (!assertion) throw new Error("Biometric verification failed");
+  if (!assertion) {
+    await logAttempt({ status: "failed", email: stored.email, credential_id: stored.credentialId, error_message: "No assertion returned" });
+    throw new Error("Biometric verification failed");
+  }
 
-  // Best-effort: update last_used_at after the session is restored by the caller.
-  // We update it here too — RLS will accept it if the active session is the owner.
   void supabase
     .from("biometric_credentials")
     .update({ last_used_at: new Date().toISOString() })
     .eq("credential_id", stored.credentialId);
+
+  await logAttempt({ status: "success", email: stored.email, credential_id: stored.credentialId });
 
   return {
     email: stored.email,
