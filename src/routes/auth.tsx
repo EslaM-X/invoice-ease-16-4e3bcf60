@@ -15,6 +15,7 @@ import {
   isPlatformAuthenticatorAvailable,
   isEnrolled as isBiometricEnrolled,
   getEnrolledEmail,
+  listEnrolledAccounts,
   enrollBiometric,
   verifyBiometric,
   disableBiometric,
