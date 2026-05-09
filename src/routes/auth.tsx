@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/lib/theme";
-import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck } from "lucide-react";
+import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck, Briefcase, Store } from "lucide-react";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
 import {
@@ -34,6 +34,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [accountType, setAccountType] = useState<"employee" | "distributor" | null>(null);
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -95,16 +96,23 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (!accountType) {
+          toast.error(lang === "ar" ? "اختر نوع الحساب" : "Select account type");
+          setBusy(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: name },
+            data: { full_name: name, account_type: accountType },
           },
         });
         if (error) throw error;
-        toast.success(t("saved"));
+        toast.success(lang === "ar"
+          ? "تم إنشاء الحساب — في انتظار موافقة الإدارة"
+          : "Account created — awaiting admin approval");
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -285,6 +293,33 @@ function AuthPage() {
                   required
                   className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.86_0.01_250)]"
                 />
+              </div>
+            )}
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label className="text-white/80">
+                  {lang === "ar" ? "نوع الحساب" : "Account type"}
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { v: "employee", icon: Briefcase, ar: "موظف في الشركة", en: "Company employee" },
+                    { v: "distributor", icon: Store, ar: "موزّع", en: "Distributor" },
+                  ] as const).map((o) => (
+                    <button
+                      key={o.v}
+                      type="button"
+                      onClick={() => setAccountType(o.v)}
+                      className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center text-xs transition ${
+                        accountType === o.v
+                          ? "border-[oklch(0.86_0.01_250)] bg-white/10"
+                          : "border-white/15 bg-white/5 hover:bg-white/10"
+                      }`}
+                    >
+                      <o.icon className="h-5 w-5 text-[oklch(0.86_0.01_250)]" />
+                      <span>{lang === "ar" ? o.ar : o.en}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <div className="space-y-1.5">

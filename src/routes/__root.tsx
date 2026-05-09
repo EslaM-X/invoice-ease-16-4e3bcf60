@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth";
 import { OfflineBanner } from "@/components/offline-banner";
 import { InstallPrompt } from "@/components/install-prompt";
 import { PwaVersionGuard } from "@/components/pwa-version-guard";
+import { ApprovalGate } from "@/components/approval-gate";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
 import appCss from "../styles.css?url";
 
@@ -83,7 +84,9 @@ function RootComponent() {
         <AuthProvider>
           <PwaVersionGuard />
           <OfflineBanner />
-          <Outlet />
+          <ApprovalGate>
+            <Outlet />
+          </ApprovalGate>
           <InstallPrompt />
           <Toaster position="top-center" richColors closeButton />
         </AuthProvider>
