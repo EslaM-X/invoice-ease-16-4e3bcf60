@@ -196,6 +196,7 @@ function AuthPage() {
         }, tokens.email);
         setEnrolledEmail(tokens.email);
         setEmail(tokens.email);
+        setPassword("");
         refreshBioState(tokens.email);
       }
     } catch (err: any) {
@@ -217,8 +218,8 @@ function AuthPage() {
           : "Verification cancelled — you can sign in with your password instead.");
       } else {
         setBiometricError(lang === "ar"
-          ? `تعذر مطابقة ${deviceLabel} مع الحساب الصحيح. جرّب كلمة المرور لهذا الحساب ثم أعد تفعيل البصمة إذا لزم.`
-          : `${deviceLabel} could not match the correct account. Try this account with password, then re-enable biometrics if needed.`);
+          ? `تعذر التحقق للحساب المطابق على هذا الجهاز. اختر الحساب من القائمة أو استخدم كلمة المرور مرة واحدة ثم أعد التفعيل إذا لزم.`
+          : `Could not verify the matching account on this device. Choose the account from the list or use password once, then re-enable biometrics if needed.`);
         toast.error(lang === "ar"
           ? `تعذّر التحقق بـ ${deviceLabel}. الرجاء استخدام كلمة السر.`
           : `${deviceLabel} verification failed. Please use your password.`);
@@ -341,14 +342,14 @@ function AuthPage() {
           </div>
 
           {mode === "login" && enrolledAccounts.length > 0 && (
-            <div className="mb-5 overflow-hidden rounded-2xl border border-[oklch(0.86_0.01_250_/_0.35)] bg-[linear-gradient(180deg,oklch(0.2_0.004_250_/_0.92),oklch(0.14_0.003_250_/_0.94))] shadow-[0_18px_60px_-24px_oklch(0.86_0.01_250_/_0.45)]">
+            <div className="mb-5 overflow-hidden rounded-2xl border border-[oklch(0.86_0.01_250_/_0.28)] bg-[linear-gradient(180deg,oklch(0.2_0.004_250_/_0.92),oklch(0.14_0.003_250_/_0.94))] shadow-[0_18px_60px_-24px_oklch(0.86_0.01_250_/_0.45)]">
               <div className="border-b border-white/10 px-4 py-4 sm:px-5">
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.16)] text-[oklch(0.9_0.01_250)] ring-1 ring-[oklch(0.86_0.01_250_/_0.35)]">
                     <BioIcon className="h-6 w-6" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
                       <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" />
                       {lang === "ar"
                         ? `${deviceLabel} مُفعّل على هذا الجهاز`
@@ -365,7 +366,7 @@ function AuthPage() {
 
               <div className="space-y-3 px-4 py-4 sm:px-5">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-medium text-white/75">
                       {lang === "ar" ? "الحسابات المسجلة" : "Enrolled accounts"}
                     </p>
@@ -375,6 +376,15 @@ function AuthPage() {
                         : `${enrolledAccounts.length} account${enrolledAccounts.length > 1 ? "s" : ""}`}
                     </span>
                   </div>
+
+                  {enrolledEmail && (
+                    <div className="mb-3 rounded-lg border border-[oklch(0.86_0.01_250_/_0.2)] bg-[oklch(0.86_0.01_250_/_0.08)] px-3 py-2 text-xs text-white/75">
+                      <span className="block text-[10px] uppercase tracking-[0.2em] text-white/45">
+                        {lang === "ar" ? "الحساب المحدد الآن" : "current enrollment"}
+                      </span>
+                      <span className="mt-1 block truncate text-sm font-medium text-white" dir="ltr">{enrolledEmail}</span>
+                    </div>
+                  )}
 
                   <ul className="space-y-2">
                     {enrolledAccounts.map((acc) => {
@@ -399,9 +409,9 @@ function AuthPage() {
                             }`}>
                               <BioIcon className="h-4 w-4" />
                             </div>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 overflow-hidden">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="truncate text-sm font-medium text-white" dir="ltr">{acc.email}</span>
+                                <span className="max-w-full truncate text-sm font-medium text-white" dir="ltr">{acc.email}</span>
                                 {isCurrent && (
                                   <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
                                     {lang === "ar" ? "الحساب الحالي" : "current"}
@@ -410,7 +420,7 @@ function AuthPage() {
                               </div>
                               <p className="mt-0.5 text-[11px] text-white/50">
                                 {lang === "ar"
-                                  ? "جاهز للدخول السريع بالحساب الصحيح"
+                                  ? "جاهز للدخول السريع وربط البصمة بالحساب الصحيح"
                                   : "Ready for fast sign-in with the correct account"}
                               </p>
                             </div>
@@ -437,17 +447,22 @@ function AuthPage() {
 
                 <Button
                   type="button"
-                  onClick={() => handleBiometricLogin(enrolledEmail ?? undefined)}
+                  onClick={() => handleBiometricLogin()}
                   disabled={busy}
-                  className="h-12 w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+                  className="h-14 w-full gap-3 bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
                 >
                   <BioIcon className="h-6 w-6" />
-                  <span className="me-1">
+                  <span className="me-1 truncate">
                     {lang === "ar"
-                      ? `الدخول بـ ${deviceLabel}${enrolledEmail ? ` كـ ${enrolledEmail}` : ""}`
-                      : `Sign in with ${deviceLabel}${enrolledEmail ? ` as ${enrolledEmail}` : ""}`}
+                      ? `الدخول السريع بـ ${deviceLabel}`
+                      : `Fast sign-in with ${deviceLabel}`}
                   </span>
                 </Button>
+                <p className="text-center text-[11px] leading-5 text-white/45">
+                  {lang === "ar"
+                    ? "سنختار الحساب المطابق تلقائيًا بعد نجاح البصمة أو Face ID، ويمكنك أيضًا اختيار حساب محدد من القائمة بالأعلى."
+                    : "We automatically select the matching account after a successful fingerprint or Face ID check, or you can pick a specific account above."}
+                </p>
               </div>
             </div>
           )}
