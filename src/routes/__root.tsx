@@ -84,7 +84,9 @@ function RootComponent() {
         <AuthProvider>
           <PwaVersionGuard />
           <OfflineBanner />
-          <Outlet />
+          <ApprovalGate>
+            <Outlet />
+          </ApprovalGate>
           <InstallPrompt />
           <Toaster position="top-center" richColors closeButton />
         </AuthProvider>
