@@ -48,7 +48,18 @@ function AuthPage() {
   const [bioEnrolled, setBioEnrolled] = useState(false);
   const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
   const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
-  const isApple = typeof navigator !== "undefined" && /iP(hone|ad|od)|Mac/i.test(navigator.userAgent);
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
+  const isWindows = /Windows/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const BioIcon = isApple ? ScanFace : isWindows ? KeyRound : Fingerprint;
+  const deviceLabel = isApple
+    ? (lang === "ar" ? "Face ID / Touch ID" : "Face ID / Touch ID")
+    : isWindows
+      ? (lang === "ar" ? "Windows Hello" : "Windows Hello")
+      : isAndroid
+        ? (lang === "ar" ? "بصمة الإصبع" : "Fingerprint")
+        : (lang === "ar" ? "البصمة / المفتاح الأمني" : "Biometric / Security Key");
 
   useEffect(() => {
     let mounted = true;
