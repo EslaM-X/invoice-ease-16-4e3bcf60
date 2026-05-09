@@ -44,6 +44,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // One-time forced sign-out so all existing accounts re-authenticate
+    // (used to roll out biometric enrolment to current users).
+    try {
+      const FORCE_KEY = "stein.forceSignout.v";
+      const TARGET = "2026-05-09-bio";
+      if (localStorage.getItem(FORCE_KEY) !== TARGET) {
+        purgeSupabaseStorage();
+        // keep biometric enrolment if any — so users can sign in with it
+        localStorage.setItem(FORCE_KEY, TARGET);
+        void supabase.auth.signOut();
+      }
+    } catch { /* ignore */ }
+
     // "Remember Me" behaviour:
     // - ON (default): session persists in localStorage (Supabase default).
     // - OFF: clear any persisted Supabase auth state both when the tab/window

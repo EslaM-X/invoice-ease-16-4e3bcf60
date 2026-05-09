@@ -57,8 +57,9 @@ function AuthPage() {
       setBioSupported(ok);
       const enrolled = isBiometricEnrolled();
       setBioEnrolled(enrolled);
-      setEnrolledEmail(getEnrolledEmail());
-      if (enrolled && getEnrolledEmail()) setEmail(getEnrolledEmail() as string);
+      const em = getEnrolledEmail();
+      setEnrolledEmail(em);
+      if (enrolled && em) setEmail(em);
     });
     return () => { mounted = false; };
   }, []);
@@ -282,6 +283,37 @@ function AuthPage() {
             >{t("signup")}</button>
           </div>
 
+          {mode === "login" && bioSupported && bioEnrolled && (
+            <div className="mb-5 rounded-xl border border-[oklch(0.86_0.01_250_/_0.45)] bg-gradient-to-br from-[oklch(0.86_0.01_250_/_0.18)] to-[oklch(0.86_0.01_250_/_0.05)] p-4 shadow-[0_10px_40px_-15px_oklch(0.86_0.01_250_/_0.5)]">
+              <div className="mb-3 flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.2)] text-[oklch(0.86_0.01_250)] ring-1 ring-[oklch(0.86_0.01_250_/_0.4)]">
+                  {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-white">
+                    {lang === "ar"
+                      ? (isApple ? "Face ID مُفعّل على هذا الجهاز" : "البصمة مُفعّلة على هذا الجهاز")
+                      : (isApple ? "Face ID is enabled on this device" : "Fingerprint is enabled on this device")}
+                  </p>
+                  {enrolledEmail && (
+                    <p className="truncate text-xs text-white/70" dir="ltr">{enrolledEmail}</p>
+                  )}
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={handleBiometricLogin}
+                disabled={busy}
+                className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+              >
+                {isApple ? <ScanFace className="me-2 h-5 w-5" /> : <Fingerprint className="me-2 h-5 w-5" />}
+                {lang === "ar"
+                  ? (isApple ? "الدخول بـ Face ID" : "الدخول بالبصمة")
+                  : (isApple ? "Sign in with Face ID" : "Sign in with Fingerprint")}
+              </Button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-1.5">
@@ -396,21 +428,6 @@ function AuthPage() {
               {mode === "login" ? t("login") : t("signup")}
             </Button>
           </form>
-
-          {mode === "login" && bioSupported && bioEnrolled && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBiometricLogin}
-              disabled={busy}
-              className="mt-3 w-full border-[oklch(0.86_0.01_250_/_0.4)] bg-white/5 text-white hover:bg-white/10 hover:text-white"
-            >
-              {isApple ? <ScanFace className="me-2 h-4 w-4" /> : <Fingerprint className="me-2 h-4 w-4" />}
-              {lang === "ar"
-                ? (isApple ? "الدخول بـ Face ID" : "الدخول بالبصمة")
-                : (isApple ? "Sign in with Face ID" : "Sign in with Fingerprint")}
-            </Button>
-          )}
 
           <div className="my-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/10" />
