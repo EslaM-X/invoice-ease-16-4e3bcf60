@@ -309,13 +309,14 @@ function AuthPage() {
             <div className="mb-5 rounded-xl border border-[oklch(0.86_0.01_250_/_0.45)] bg-gradient-to-br from-[oklch(0.86_0.01_250_/_0.18)] to-[oklch(0.86_0.01_250_/_0.05)] p-4 shadow-[0_10px_40px_-15px_oklch(0.86_0.01_250_/_0.5)]">
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[oklch(0.86_0.01_250_/_0.2)] text-[oklch(0.86_0.01_250)] ring-1 ring-[oklch(0.86_0.01_250_/_0.4)]">
-                  {isApple ? <ScanFace className="h-6 w-6" /> : <Fingerprint className="h-6 w-6" />}
+                  <BioIcon className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" />
                     {lang === "ar"
-                      ? (isApple ? "Face ID مُفعّل على هذا الجهاز" : "البصمة مُفعّلة على هذا الجهاز")
-                      : (isApple ? "Face ID is enabled on this device" : "Fingerprint is enabled on this device")}
+                      ? `${deviceLabel} مُفعّل على هذا الجهاز`
+                      : `${deviceLabel} is enabled on this device`}
                   </p>
                   {enrolledEmail && (
                     <p className="truncate text-xs text-white/70" dir="ltr">{enrolledEmail}</p>
@@ -328,13 +329,32 @@ function AuthPage() {
                 disabled={busy}
                 className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
               >
-                {isApple ? <ScanFace className="me-2 h-5 w-5" /> : <Fingerprint className="me-2 h-5 w-5" />}
-                {lang === "ar"
-                  ? (isApple ? "الدخول بـ Face ID" : "الدخول بالبصمة")
-                  : (isApple ? "Sign in with Face ID" : "Sign in with Fingerprint")}
+                <BioIcon className="me-2 h-5 w-5" />
+                {lang === "ar" ? `الدخول بـ ${deviceLabel}` : `Sign in with ${deviceLabel}`}
               </Button>
             </div>
           )}
+
+          {mode === "login" && bioSupported && !bioEnrolled && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
+                {isWindows ? <Monitor className="h-4 w-4" /> : <BioIcon className="h-4 w-4" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white/85">
+                  {lang === "ar"
+                    ? `${deviceLabel} مدعوم على هذا الجهاز`
+                    : `${deviceLabel} is supported on this device`}
+                </p>
+                <p className="mt-0.5">
+                  {lang === "ar"
+                    ? "سجّل الدخول مرة واحدة بكلمة السر وسنعرض لك خيار التفعيل."
+                    : "Sign in once with your password and we'll offer to enable it."}
+                </p>
+              </div>
+            </div>
+          )}
+
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
