@@ -12,6 +12,7 @@ import { Languages, Moon, Sun, Eye, EyeOff, Fingerprint, ScanFace, ShieldCheck, 
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { toast } from "sonner";
 import {
+  isBiometricSupported,
   isPlatformAuthenticatorAvailable,
   getEnrolledAccountsWithStatus,
   enrollBiometric,
@@ -55,6 +56,7 @@ function AuthPage() {
   const [enrolledAccounts, setEnrolledAccounts] = useState<{ email: string; enrolledAt: number; credentialId: string; isCurrent: boolean }[]>([]);
   const [biometricError, setBiometricError] = useState<string | null>(null);
   const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
+  const [pauseAuthRedirect, setPauseAuthRedirect] = useState(false);
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
   const isWindows = /Windows/i.test(ua);
@@ -87,7 +89,7 @@ function AuthPage() {
     refreshBioState();
     // Optimistically enable the biometric UI if WebAuthn exists at all,
     // then refine once the platform-auth probe resolves.
-    if (typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined") {
+    if (isBiometricSupported()) {
       setBioSupported(true);
     }
     isPlatformAuthenticatorAvailable().then((ok) => {
@@ -125,8 +127,8 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    if (user && !enrollPromptOpen) navigate({ to: "/dashboard" });
-  }, [user, navigate, enrollPromptOpen]);
+    if (user && !enrollPromptOpen && !pauseAuthRedirect) navigate({ to: "/dashboard" });
+  }, [user, navigate, enrollPromptOpen, pauseAuthRedirect]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -162,6 +164,7 @@ function AuthPage() {
             setEnrolledEmail(currentEmail);
             refreshBioState(currentEmail);
           } else {
+            setPauseAuthRedirect(true);
             setEnrollPromptOpen(true);
           }
         }
@@ -264,6 +267,7 @@ function AuthPage() {
       setEnrolledEmail(currentEmail);
       refreshBioState(currentEmail);
       toast.success(lang === "ar" ? `تم تفعيل ${deviceLabel}` : `${deviceLabel} enabled`);
+      setPauseAuthRedirect(false);
       setEnrollPromptOpen(false);
     } catch (err: any) {
       toast.error(err?.message ?? (lang === "ar" ? "فشل التفعيل" : "Enrollment failed"));
@@ -690,7 +694,7 @@ function AuthPage() {
       )}
 
       {enrollPromptOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollPromptOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setPauseAuthRedirect(false); setEnrollPromptOpen(false); }}>
           <div
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[oklch(0.15_0.003_250)] p-6 text-white shadow-elegant"
@@ -721,7 +725,7 @@ function AuthPage() {
                 type="button"
                 variant="outline"
                 className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                onClick={() => setEnrollPromptOpen(false)}
+                onClick={() => { setPauseAuthRedirect(false); setEnrollPromptOpen(false); }}
               >
                 {lang === "ar" ? "ليس الآن" : "Not now"}
               </Button>
