@@ -37,11 +37,13 @@ export function OfflineBanner() {
   const [progress, setProgress] = useState(0);
   const wasOnlineRef = useRef(true);
   const recoverTimer = useRef<number | null>(null);
+  const syncingRef = useRef(false);
   const lastRecoveredAt = useRef<number>(0);
   const RECOVERED_DEDUPE_MS = 60_000;
 
   const runSync = useCallback(async () => {
-    if (syncing) return;
+    if (syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     setProgress(8);
     triggerAppResync();
@@ -56,8 +58,13 @@ export function OfflineBanner() {
       }, 80);
     });
     setProgress(100);
-    setTimeout(() => { setSyncing(false); setProgress(0); }, 350);
-  }, [syncing]);
+    setTimeout(() => {
+      syncingRef.current = false;
+      setSyncing(false);
+      setProgress(0);
+      setShowRecovered(false);
+    }, 350);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
