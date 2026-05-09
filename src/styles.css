@@ -96,6 +96,14 @@
   --shadow-md: 0 4px 18px -4px oklch(0 0 0 / 0.08);
   --shadow-lg: 0 24px 48px -16px oklch(0 0 0 / 0.18);
   --shadow-glow: 0 8px 28px -8px oklch(0 0 0 / 0.25);
+  /* Luxury silver / platinum tokens */
+  --silver-100: oklch(0.98 0.005 250);
+  --silver-300: oklch(0.86 0.005 250);
+  --silver-500: oklch(0.68 0.006 250);
+  --silver-700: oklch(0.42 0.005 250);
+  --gradient-silver: linear-gradient(135deg, oklch(0.98 0.005 250) 0%, oklch(0.78 0.005 250) 35%, oklch(0.55 0.005 250) 60%, oklch(0.88 0.005 250) 100%);
+  --gradient-platinum-text: linear-gradient(135deg, oklch(0.18 0 0) 0%, oklch(0.42 0.005 250) 50%, oklch(0.08 0 0) 100%);
+  --gradient-hero-light: radial-gradient(ellipse 80% 60% at 50% 0%, oklch(0.94 0.005 250 / 0.9), transparent 70%), radial-gradient(circle at 80% 80%, oklch(0.9 0.005 250 / 0.6), transparent 60%);
 }
 
 .dark {
