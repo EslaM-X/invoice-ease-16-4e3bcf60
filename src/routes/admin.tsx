@@ -216,6 +216,8 @@ function AdminPage() {
           </div>
         </Card>
 
+        <PendingApprovalsSection />
+
         <BackupsSection />
       </div>
     </AppShell>
