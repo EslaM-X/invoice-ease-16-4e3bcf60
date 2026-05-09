@@ -79,33 +79,69 @@ export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   }
 }
 
-export function getStored(): StoredCred | null {
-  if (typeof window === "undefined") return null;
+// Multi-account support: keep a list keyed by email for the same device.
+// We migrate any older single-cred record into the list on first read.
+const LIST_KEY = "stein.biometric.list.v1";
+
+function readList(): StoredCred[] {
+  if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) as StoredCred : null;
-  } catch {
-    return null;
-  }
+    const raw = localStorage.getItem(LIST_KEY);
+    if (raw) return JSON.parse(raw) as StoredCred[];
+  } catch { /* ignore */ }
+  // migrate legacy single record
+  try {
+    const legacy = localStorage.getItem(STORAGE_KEY);
+    if (legacy) {
+      const cred = JSON.parse(legacy) as StoredCred;
+      const list = [cred];
+      localStorage.setItem(LIST_KEY, JSON.stringify(list));
+      return list;
+    }
+  } catch { /* ignore */ }
+  return [];
 }
 
-export function isEnrolled(): boolean {
-  return !!getStored();
+function writeList(list: StoredCred[]) {
+  try { localStorage.setItem(LIST_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+  // keep legacy key in sync with the most-recently-used credential so
+  // older code paths that still read it pick a sensible default.
+  try {
+    if (list.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(list[0]));
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch { /* ignore */ }
+}
+
+export function listEnrolledAccounts(): { email: string; enrolledAt: number; credentialId: string }[] {
+  return readList().map((c) => ({ email: c.email, enrolledAt: c.enrolledAt, credentialId: c.credentialId }));
+}
+
+export function getStored(email?: string): StoredCred | null {
+  const list = readList();
+  if (list.length === 0) return null;
+  if (email) return list.find((c) => c.email === email) ?? null;
+  return list[0];
+}
+
+export function isEnrolled(email?: string): boolean {
+  return !!getStored(email);
 }
 
 export function getEnrolledEmail(): string | null {
   return getStored()?.email ?? null;
 }
 
-export async function disableBiometric(): Promise<void> {
-  const stored = getStored();
-  try { localStorage.removeItem(STORAGE_KEY); } catch {}
-  if (stored?.credentialId) {
+export async function disableBiometric(email?: string): Promise<void> {
+  const list = readList();
+  const target = email ? list.find((c) => c.email === email) : list[0];
+  const next = email ? list.filter((c) => c.email !== email) : [];
+  writeList(next);
+  if (target?.credentialId) {
     try {
       await supabase
         .from("biometric_credentials")
         .delete()
-        .eq("credential_id", stored.credentialId);
+        .eq("credential_id", target.credentialId);
     } catch {
       // ignore – DB cleanup best-effort (user may be offline)
     }
