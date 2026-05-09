@@ -504,7 +504,7 @@ function AuthPage() {
                 {bioEnrolled && (
                   <button
                     type="button"
-                    onClick={handleDisableBiometric}
+                    onClick={() => handleDisableBiometric()}
                     className="text-xs text-white/50 hover:text-white"
                   >
                     {lang === "ar" ? "إلغاء البصمة" : "Disable biometric"}
