@@ -193,7 +193,10 @@ export async function enrollBiometric(params: {
     refresh_token: params.refresh_token,
     enrolledAt: Date.now(),
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  // upsert into the multi-account list (replace any existing entry for the same email)
+  const list = readList().filter((c) => c.email !== params.email);
+  list.unshift(stored);
+  writeList(list);
 
   // Persist enrollment to DB so the user can list/manage devices,
   // and create an in-app notification for the user + managers.
