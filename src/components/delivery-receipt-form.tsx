@@ -31,6 +31,7 @@ type ExistingReceipt = {
   signature_manager: string | null;
   signature_accountant: string | null;
   status: string;
+  shipping_fees: number | null;
   items: Array<{
     invoice_item_id: string | null;
     quantity: number;
@@ -81,6 +82,12 @@ export function DeliveryReceiptForm({
   const [sigCustomer, setSigCustomer] = useState<string | null>(existing?.signature_customer ?? null);
   const [sigManager, setSigManager] = useState<string | null>(existing?.signature_manager ?? null);
   const [sigAccountant, setSigAccountant] = useState<string | null>(existing?.signature_accountant ?? null);
+  const [shippingEnabled, setShippingEnabled] = useState<boolean>(
+    existing?.shipping_fees != null && existing.shipping_fees > 0,
+  );
+  const [shippingFees, setShippingFees] = useState<string>(
+    existing?.shipping_fees != null ? String(existing.shipping_fees) : "",
+  );
 
   useEffect(() => {
     (async () => {
@@ -172,6 +179,7 @@ export function DeliveryReceiptForm({
         signature_manager: sigManager,
         signature_accountant: sigAccountant,
         status,
+        shipping_fees: shippingEnabled ? Number(shippingFees) || 0 : null,
         items,
       };
       let id = receiptId;
@@ -241,8 +249,8 @@ export function DeliveryReceiptForm({
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "اسم المستلم" : "Recipient name"}</label>
-            <Input value={deliveredName} onChange={(e) => setDeliveredName(e.target.value)} />
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "اسم المستلم (اختياري)" : "Recipient name (optional)"}</label>
+            <Input value={deliveredName} onChange={(e) => setDeliveredName(e.target.value)} placeholder={isAr ? "اتركه فارغاً ليوقّع المستلم فقط" : "Leave empty to use signature only"} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "هاتف المستلم" : "Recipient phone"}</label>
@@ -329,19 +337,39 @@ export function DeliveryReceiptForm({
           <label className="mb-2 block text-sm font-semibold">{isAr ? "ملاحظات عامة" : "General notes"}</label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
         </div>
-        <div className="grid grid-cols-2 gap-3 rounded-2xl border bg-card p-5">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "اسم المدير" : "Manager name"}</label>
-            <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} />
-          </div>
+        <div className="space-y-3 rounded-2xl border bg-card p-5">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "اسم مدير الحسابات" : "Accountant name"}</label>
             <Input value={accountantName} onChange={(e) => setAccountantName(e.target.value)} />
           </div>
+          <div className="rounded-lg border border-dashed border-border/60 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Checkbox checked={shippingEnabled} onCheckedChange={(v) => setShippingEnabled(!!v)} />
+                {isAr ? "إضافة رسوم شحن" : "Add shipping fees"}
+              </label>
+              {shippingEnabled && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setShippingEnabled(false); setShippingFees(""); }} className="h-7 text-xs text-destructive">
+                  {isAr ? "حذف" : "Remove"}
+                </Button>
+              )}
+            </div>
+            {shippingEnabled && (
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={shippingFees}
+                onChange={(e) => setShippingFees(e.target.value)}
+                placeholder={isAr ? "قيمة رسوم الشحن" : "Shipping amount"}
+                className="ltr-nums"
+              />
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border bg-card p-4">
           <SignaturePad
             label={isAr ? "توقيع المستلم" : "Recipient signature"}
@@ -354,13 +382,6 @@ export function DeliveryReceiptForm({
             label={isAr ? "توقيع مدير الحسابات" : "Accountant signature"}
             value={sigAccountant}
             onChange={setSigAccountant}
-          />
-        </div>
-        <div className="rounded-2xl border bg-card p-4">
-          <SignaturePad
-            label={isAr ? "توقيع المدير" : "Manager signature"}
-            value={sigManager}
-            onChange={setSigManager}
           />
         </div>
       </div>

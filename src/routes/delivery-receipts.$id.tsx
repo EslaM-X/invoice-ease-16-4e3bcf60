@@ -1,14 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Pencil, Plus } from "lucide-react";
+import { Printer, ArrowLeft, Pencil, Plus, FileDown, History } from "lucide-react";
 import { fmtDateTime } from "@/lib/utils-money";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
+import { elementToPdf } from "@/lib/delivery-receipts";
+import { toast } from "sonner";
 
 type Search = { print?: boolean };
 
@@ -29,8 +31,12 @@ function ReceiptView() {
   const [r, setR] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [invoice, setInvoice] = useState<any>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [, setSettings] = useState<Settings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [showAudit, setShowAudit] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,6 +49,12 @@ function ReceiptView() {
         const { data: inv } = await supabase.from("invoices").select("*").eq("id", (rec as any).invoice_id).single();
         setInvoice(inv);
       }
+      const { data: audit } = await supabase
+        .from("delivery_receipt_audit_log" as any)
+        .select("*")
+        .eq("receipt_id", id)
+        .order("created_at", { ascending: false });
+      setAuditLog((audit ?? []) as any[]);
       if (user) {
         const s = await getSettings(user.id);
         setSettings(s);
@@ -58,7 +70,22 @@ function ReceiptView() {
     if (print && r) setTimeout(() => window.print(), 400);
   }, [print, r]);
 
+  const exportPdf = async () => {
+    if (!printRef.current) return;
+    setExporting(true);
+    try {
+      const pdf = await elementToPdf(printRef.current);
+      pdf.save(`delivery-receipt-${r.receipt_number}.pdf`);
+    } catch (e: any) {
+      toast.error(e?.message || "PDF error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!r) return <div className="text-muted-foreground">{isAr ? "جاري التحميل…" : "Loading…"}</div>;
+
+  const shipping = r.shipping_fees != null ? Number(r.shipping_fees) : null;
 
   return (
     <div className="space-y-6">
@@ -67,6 +94,9 @@ function ReceiptView() {
           <Button variant="ghost" className="gap-2 rounded-full"><ArrowLeft className="h-4 w-4" />{isAr ? "محاضر الاستلام" : "Receipts"}</Button>
         </Link>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="gap-2 rounded-full" onClick={() => setShowAudit((v) => !v)}>
+            <History className="h-4 w-4" />{isAr ? `سجل التعديلات (${auditLog.length})` : `Audit log (${auditLog.length})`}
+          </Button>
           <Button variant="outline" className="gap-2 rounded-full" onClick={() => navigate({ to: "/delivery-receipts/$id/edit", params: { id } })}>
             <Pencil className="h-4 w-4" />{isAr ? "تعديل" : "Edit"}
           </Button>
@@ -75,13 +105,33 @@ function ReceiptView() {
               <Plus className="h-4 w-4" />{isAr ? "محضر آخر لنفس الفاتورة" : "Another receipt"}
             </Button>
           )}
+          <Button variant="outline" className="gap-2 rounded-full" onClick={exportPdf} disabled={exporting}>
+            <FileDown className="h-4 w-4" />{exporting ? "..." : "PDF"}
+          </Button>
           <Button onClick={() => window.print()} className="gap-2 rounded-full px-5 shadow-glow">
-            <Printer className="h-4 w-4" />{isAr ? "طباعة" : "Print"} / PDF
+            <Printer className="h-4 w-4" />{isAr ? "طباعة" : "Print"}
           </Button>
         </div>
       </div>
 
-      <div className="print-area mx-auto max-w-3xl rounded-3xl border border-border/60 bg-white text-black shadow-elegant print:rounded-none print:border-0 print:shadow-none">
+      {showAudit && (
+        <div className="no-print rounded-2xl border bg-card p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <History className="h-4 w-4" />{isAr ? "سجل التعديلات" : "Audit log"}
+          </h3>
+          {auditLog.length === 0 ? (
+            <div className="text-sm text-muted-foreground">{isAr ? "لا يوجد سجل" : "No history"}</div>
+          ) : (
+            <div className="space-y-3">
+              {auditLog.map((a) => (
+                <AuditEntry key={a.id} entry={a} isAr={isAr} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div ref={printRef} className="print-area mx-auto max-w-3xl rounded-3xl border border-border/60 bg-white text-black shadow-elegant print:rounded-none print:border-0 print:shadow-none">
         <div className="flex flex-col px-8 pt-8 pb-6 sm:px-12 sm:pt-10" dir="ltr">
           <header className="relative flex flex-col items-center pb-2">
             <div className="absolute top-0 left-0 text-[11px] leading-tight">
@@ -92,7 +142,7 @@ function ReceiptView() {
               <div>{fmtDateTime(r.delivered_at, lang)}</div>
               {r.created_by_email && <div className="text-[10px] text-gray-700">{r.created_by_email}</div>}
             </div>
-            <img src={logoUrl || steinheimLogo} alt="Steinheim" className="invoice-logo h-24 w-auto object-contain" style={{ filter: "brightness(0)" }} />
+            <img src={logoUrl || steinheimLogo} alt="Steinheim" className="invoice-logo h-24 w-auto object-contain" style={{ filter: "brightness(0)" }} crossOrigin="anonymous" />
           </header>
 
           <div className="mt-4 text-center">
@@ -116,7 +166,7 @@ function ReceiptView() {
             </div>
             <div>
               <div className="text-[11px] uppercase text-gray-600">{isAr ? "المستلم" : "Recipient"}</div>
-              <div className="font-semibold">{r.delivered_to_name || invoice?.customer_name || "—"}</div>
+              <div className="font-semibold">{r.delivered_to_name || (isAr ? "(يوقّع المستلم أدناه)" : "(see signature below)")}</div>
               {r.delivered_to_phone && <div className="text-[11px] ltr-nums">{r.delivered_to_phone}</div>}
               {r.delivered_to_id_number && <div className="text-[11px] ltr-nums">{isAr ? "رقم البطاقة:" : "ID:"} {r.delivered_to_id_number}</div>}
             </div>
@@ -147,6 +197,14 @@ function ReceiptView() {
                 {items.length === 0 && (
                   <tr><td colSpan={4} className="border border-gray-400 px-2 py-4 text-center text-gray-500">—</td></tr>
                 )}
+                {shipping != null && shipping > 0 && (
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle text-[11px]">—</td>
+                    <td className="border border-gray-400 px-2 py-2 align-middle font-semibold">{isAr ? "رسوم الشحن" : "Shipping fees"}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{shipping.toLocaleString()}</td>
+                    <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]"></td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </section>
@@ -164,10 +222,9 @@ function ReceiptView() {
               : "I, the undersigned, hereby acknowledge receipt of the above items in good and complete condition."}
           </div>
 
-          <section className="mt-8 grid grid-cols-3 gap-4 text-[12px]" dir={isAr ? "rtl" : "ltr"}>
+          <section className="mt-8 grid grid-cols-2 gap-6 text-[12px]" dir={isAr ? "rtl" : "ltr"}>
             <SignatureBlock title={isAr ? "توقيع المستلم" : "Recipient"} name={r.delivered_to_name} sig={r.signature_customer} />
             <SignatureBlock title={isAr ? "مدير الحسابات" : "Accountant"} name={r.accountant_name} sig={r.signature_accountant} />
-            <SignatureBlock title={isAr ? "المدير العام" : "Manager"} name={r.manager_name} sig={r.signature_manager} />
           </section>
 
           <footer className="mt-6 border-t border-gray-300 pt-2 text-center text-[10.5px] leading-relaxed" dir="ltr">
@@ -188,6 +245,84 @@ function SignatureBlock({ title, name, sig }: { title: string; name?: string | n
         {sig ? <img src={sig} alt="" className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-gray-400">—</span>}
       </div>
       <div className="mt-1 border-t border-gray-400 pt-1 text-[11px] font-medium">{name || ""}</div>
+    </div>
+  );
+}
+
+const FIELD_LABELS_AR: Record<string, string> = {
+  delivered_to_name: "اسم المستلم",
+  delivered_to_phone: "هاتف المستلم",
+  delivered_to_id_number: "رقم البطاقة",
+  notes: "الملاحظات",
+  manager_name: "اسم المدير",
+  accountant_name: "اسم مدير الحسابات",
+  signature_customer: "توقيع المستلم",
+  signature_manager: "توقيع المدير",
+  signature_accountant: "توقيع مدير الحسابات",
+  status: "الحالة",
+  shipping_fees: "رسوم الشحن",
+};
+
+function AuditEntry({ entry, isAr }: { entry: any; isAr: boolean }) {
+  const [open, setOpen] = useState(false);
+  const fields: string[] = (entry.changed_fields || []).filter(
+    (f: string) => !["id", "created_at", "user_id", "invoice_id", "receipt_number", "created_by", "created_by_email", "updated_by", "updated_by_email"].includes(f),
+  );
+  const before = entry.before_data || {};
+  const after = entry.after_data || {};
+  const fmt = (v: any) => {
+    if (v == null || v === "") return "—";
+    if (typeof v === "string" && v.startsWith("data:image")) return isAr ? "[توقيع]" : "[signature]";
+    if (typeof v === "string" && v.length > 80) return v.slice(0, 80) + "…";
+    return String(v);
+  };
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
+            entry.action === "created" ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700" :
+            entry.action === "deleted" ? "border-red-500/30 bg-red-500/15 text-red-700" :
+            "border-amber-500/30 bg-amber-500/15 text-amber-700"
+          }`}>{entry.action}</span>
+          <span className="text-xs font-medium">{entry.actor_email || (isAr ? "نظام" : "system")}</span>
+          <span className="text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString("ar-EG")}</span>
+        </div>
+        {fields.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)} className="h-7 text-xs">
+            {open ? (isAr ? "إخفاء" : "Hide") : (isAr ? `عرض الحقول (${fields.length})` : `Show fields (${fields.length})`)}
+          </Button>
+        )}
+      </div>
+      {open && fields.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {fields.map((f) => {
+            const beforeIsSig = typeof before[f] === "string" && before[f].startsWith("data:image");
+            const afterIsSig = typeof after[f] === "string" && after[f].startsWith("data:image");
+            return (
+              <div key={f} className="grid grid-cols-1 gap-1 rounded border border-border/40 bg-background p-2 text-xs sm:grid-cols-[120px_1fr_1fr]">
+                <div className="font-semibold text-muted-foreground">{FIELD_LABELS_AR[f] || f}</div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">{isAr ? "قبل" : "Before"}</div>
+                  {beforeIsSig ? (
+                    <img src={before[f]} alt="" className="h-12 rounded border bg-white" />
+                  ) : (
+                    <div className="break-all text-red-700 line-through">{fmt(before[f])}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">{isAr ? "بعد" : "After"}</div>
+                  {afterIsSig ? (
+                    <img src={after[f]} alt="" className="h-12 rounded border bg-white" />
+                  ) : (
+                    <div className="break-all text-emerald-700">{fmt(after[f])}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

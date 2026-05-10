@@ -17,6 +17,7 @@ export type DRPayload = {
   signature_manager?: string | null;
   signature_accountant?: string | null;
   status?: "draft" | "signed";
+  shipping_fees?: number | null;
   items: DRItemInput[];
 };
 
@@ -34,6 +35,7 @@ export async function createDeliveryReceipt(invoiceId: string, p: DRPayload) {
     _signature_accountant: p.signature_accountant ?? null,
     _status: p.status ?? "draft",
     _items: p.items as any,
+    _shipping_fees: p.shipping_fees ?? null,
   } as any);
   if (error) throw error;
   return data as string;
@@ -53,6 +55,7 @@ export async function updateDeliveryReceipt(receiptId: string, p: DRPayload) {
     _signature_accountant: p.signature_accountant ?? null,
     _status: p.status ?? "draft",
     _items: p.items as any,
+    _shipping_fees: p.shipping_fees ?? null,
   } as any);
   if (error) throw error;
   return data as string;
@@ -64,11 +67,10 @@ export type InvoiceItemWithDelivered = {
   serial_number: string | null;
   color: string | null;
   quantity: number;
-  delivered_qty: number; // total across all receipts
+  delivered_qty: number;
   remaining: number;
 };
 
-/** Fetch invoice items + already-delivered totals. Pass excludeReceiptId when editing. */
 export async function fetchInvoiceItemsWithDelivered(
   invoiceId: string,
   excludeReceiptId?: string,
@@ -81,11 +83,10 @@ export async function fetchInvoiceItemsWithDelivered(
   const itemIds = (items ?? []).map((i: any) => i.id);
   if (itemIds.length === 0) return [];
 
-  let q = supabase
+  const { data: dris } = await supabase
     .from("delivery_receipt_items" as any)
     .select("invoice_item_id, quantity, receipt_id")
     .in("invoice_item_id", itemIds);
-  const { data: dris } = await q;
 
   const totals = new Map<string, number>();
   for (const r of (dris ?? []) as any[]) {
@@ -109,12 +110,9 @@ export async function fetchInvoiceItemsWithDelivered(
 
 export function deliveryStatusLabel(status: string | null | undefined, isAr: boolean) {
   switch (status) {
-    case "delivered":
-      return isAr ? "تم التسليم" : "Delivered";
-    case "partial":
-      return isAr ? "تسليم جزئي" : "Partial";
-    default:
-      return isAr ? "لم يُسلَّم" : "Pending";
+    case "delivered": return isAr ? "تم التسليم" : "Delivered";
+    case "partial": return isAr ? "تسليم جزئي" : "Partial";
+    default: return isAr ? "لم يُسلَّم" : "Pending";
   }
 }
 
@@ -127,4 +125,33 @@ export function deliveryStatusColor(status: string | null | undefined) {
     default:
       return "bg-muted text-muted-foreground border-border";
   }
+}
+
+/** Render an HTML element to a single multi-page A4 PDF. Returns a jsPDF instance. */
+export async function elementToPdf(el: HTMLElement) {
+  const { default: html2canvas } = await import("html2canvas");
+  const { default: jsPDF } = await import("jspdf");
+  const canvas = await html2canvas(el, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    useCORS: true,
+    logging: false,
+  });
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const imgW = pageW;
+  const imgH = (canvas.height * imgW) / canvas.width;
+  let heightLeft = imgH;
+  let position = 0;
+  const imgData = canvas.toDataURL("image/jpeg", 0.95);
+  pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+  heightLeft -= pageH;
+  while (heightLeft > 0) {
+    position = heightLeft - imgH;
+    pdf.addPage();
+    pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+    heightLeft -= pageH;
+  }
+  return pdf;
 }
