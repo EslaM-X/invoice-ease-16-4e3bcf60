@@ -249,8 +249,8 @@ export function DeliveryReceiptForm({
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "اسم المستلم" : "Recipient name"}</label>
-            <Input value={deliveredName} onChange={(e) => setDeliveredName(e.target.value)} />
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "اسم المستلم (اختياري)" : "Recipient name (optional)"}</label>
+            <Input value={deliveredName} onChange={(e) => setDeliveredName(e.target.value)} placeholder={isAr ? "اتركه فارغاً ليوقّع المستلم فقط" : "Leave empty to use signature only"} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">{isAr ? "هاتف المستلم" : "Recipient phone"}</label>
