@@ -31,6 +31,7 @@ type ExistingReceipt = {
   signature_manager: string | null;
   signature_accountant: string | null;
   status: string;
+  shipping_fees: number | null;
   items: Array<{
     invoice_item_id: string | null;
     quantity: number;
