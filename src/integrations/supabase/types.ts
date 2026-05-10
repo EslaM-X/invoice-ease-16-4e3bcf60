@@ -343,6 +343,42 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_receipt_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          changed_fields: string[] | null
+          created_at: string
+          id: string
+          receipt_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          changed_fields?: string[] | null
+          created_at?: string
+          id?: string
+          receipt_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          changed_fields?: string[] | null
+          created_at?: string
+          id?: string
+          receipt_id?: string
+        }
+        Relationships: []
+      }
       delivery_receipt_items: {
         Row: {
           color: string | null
@@ -409,6 +445,7 @@ export type Database = {
           manager_name: string | null
           notes: string | null
           receipt_number: string
+          shipping_fees: number | null
           signature_accountant: string | null
           signature_customer: string | null
           signature_manager: string | null
@@ -432,6 +469,7 @@ export type Database = {
           manager_name?: string | null
           notes?: string | null
           receipt_number: string
+          shipping_fees?: number | null
           signature_accountant?: string | null
           signature_customer?: string | null
           signature_manager?: string | null
@@ -455,6 +493,7 @@ export type Database = {
           manager_name?: string | null
           notes?: string | null
           receipt_number?: string
+          shipping_fees?: number | null
           signature_accountant?: string | null
           signature_customer?: string | null
           signature_manager?: string | null
@@ -1330,23 +1369,42 @@ export type Database = {
       }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
-      create_delivery_receipt: {
-        Args: {
-          _accountant_name: string
-          _delivered_to_id_number: string
-          _delivered_to_name: string
-          _delivered_to_phone: string
-          _invoice_id: string
-          _items: Json
-          _manager_name: string
-          _notes: string
-          _signature_accountant: string
-          _signature_customer: string
-          _signature_manager: string
-          _status: string
-        }
-        Returns: string
-      }
+      create_delivery_receipt:
+        | {
+            Args: {
+              _accountant_name: string
+              _delivered_to_id_number: string
+              _delivered_to_name: string
+              _delivered_to_phone: string
+              _invoice_id: string
+              _items: Json
+              _manager_name: string
+              _notes: string
+              _signature_accountant: string
+              _signature_customer: string
+              _signature_manager: string
+              _status: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _accountant_name: string
+              _delivered_to_id_number: string
+              _delivered_to_name: string
+              _delivered_to_phone: string
+              _invoice_id: string
+              _items: Json
+              _manager_name: string
+              _notes: string
+              _shipping_fees?: number
+              _signature_accountant: string
+              _signature_customer: string
+              _signature_manager: string
+              _status: string
+            }
+            Returns: string
+          }
       create_invoice:
         | {
             Args: {
@@ -1389,23 +1447,42 @@ export type Database = {
         Args: { _invoice_id: string }
         Returns: undefined
       }
-      update_delivery_receipt: {
-        Args: {
-          _accountant_name: string
-          _delivered_to_id_number: string
-          _delivered_to_name: string
-          _delivered_to_phone: string
-          _items: Json
-          _manager_name: string
-          _notes: string
-          _receipt_id: string
-          _signature_accountant: string
-          _signature_customer: string
-          _signature_manager: string
-          _status: string
-        }
-        Returns: string
-      }
+      update_delivery_receipt:
+        | {
+            Args: {
+              _accountant_name: string
+              _delivered_to_id_number: string
+              _delivered_to_name: string
+              _delivered_to_phone: string
+              _items: Json
+              _manager_name: string
+              _notes: string
+              _receipt_id: string
+              _signature_accountant: string
+              _signature_customer: string
+              _signature_manager: string
+              _status: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _accountant_name: string
+              _delivered_to_id_number: string
+              _delivered_to_name: string
+              _delivered_to_phone: string
+              _items: Json
+              _manager_name: string
+              _notes: string
+              _receipt_id: string
+              _shipping_fees?: number
+              _signature_accountant: string
+              _signature_customer: string
+              _signature_manager: string
+              _status: string
+            }
+            Returns: string
+          }
       update_invoice:
         | {
             Args: {
