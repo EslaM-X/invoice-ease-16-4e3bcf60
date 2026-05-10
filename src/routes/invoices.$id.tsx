@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus } from "lucide-react";
+import { deliveryStatusLabel, deliveryStatusColor } from "@/lib/delivery-receipts";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
 import { getSettings } from "@/lib/data";
@@ -325,6 +326,26 @@ function InvoiceView() {
         </div>
       )}
 
+      <div className="mx-auto max-w-3xl no-print">
+        <div className="rounded-2xl border bg-card p-4 sm:p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">{isAr ? "محاضر الاستلام" : "Delivery Receipts"}</h3>
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${deliveryStatusColor(inv.delivery_status)}`}>
+                {deliveryStatusLabel(inv.delivery_status, isAr)}
+              </span>
+            </div>
+            {!isVoided && (
+              <Button size="sm" className="gap-1.5" onClick={() => navigate({ to: "/delivery-receipts/new", search: { invoiceId: id } })}>
+                <Plus className="h-3.5 w-3.5" />{isAr ? "إنشاء محضر" : "New receipt"}
+              </Button>
+            )}
+          </div>
+          <DeliveryReceiptsForInvoice invoiceId={id} />
+        </div>
+      </div>
+
       <div className="mx-auto max-w-3xl">
         <InvoiceTimeline invoiceId={id} />
       </div>
@@ -458,6 +479,47 @@ function SystemNotesHistoryInline({ invoiceId }: { invoiceId: string }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function DeliveryReceiptsForInvoice({ invoiceId }: { invoiceId: string }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const [list, setList] = useState<any[]>([]);
+  const load = async () => {
+    const { data } = await supabase
+      .from("delivery_receipts" as any)
+      .select("*")
+      .eq("invoice_id", invoiceId)
+      .order("created_at", { ascending: false });
+    setList((data ?? []) as any[]);
+  };
+  useEffect(() => { load(); }, [invoiceId]);
+  useRealtimeTable("delivery_receipts" as any, (p: any) => {
+    if (p.new?.invoice_id === invoiceId || p.old?.invoice_id === invoiceId) load();
+  }, [invoiceId]);
+  if (list.length === 0) {
+    return <div className="text-xs text-muted-foreground">{isAr ? "لا يوجد محاضر بعد" : "No receipts yet"}</div>;
+  }
+  return (
+    <div className="space-y-2">
+      {list.map((r) => (
+        <Link key={r.id} to="/delivery-receipts/$id" params={{ id: r.id }}
+          className="flex items-center justify-between gap-3 rounded-lg border bg-background/40 p-2.5 hover:bg-muted/50">
+          <div>
+            <div className="font-mono text-sm font-medium">{r.receipt_number}</div>
+            <div className="text-[11px] text-muted-foreground">{r.delivered_to_name || "—"} · {fmtDateTime(r.delivered_at, lang)}</div>
+          </div>
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
+            r.status === "signed"
+              ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+              : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+          }`}>
+            {r.status === "signed" ? (isAr ? "موقّع" : "Signed") : (isAr ? "مسودة" : "Draft")}
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }

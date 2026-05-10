@@ -343,6 +343,137 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_receipt_items: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          invoice_item_id: string | null
+          note: string | null
+          product_name: string
+          quantity: number
+          receipt_id: string
+          serial_number: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          invoice_item_id?: string | null
+          note?: string | null
+          product_name: string
+          quantity: number
+          receipt_id: string
+          serial_number?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          invoice_item_id?: string | null
+          note?: string | null
+          product_name?: string
+          quantity?: number
+          receipt_id?: string
+          serial_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_receipt_items_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_receipts: {
+        Row: {
+          accountant_name: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          delivered_at: string
+          delivered_to_id_number: string | null
+          delivered_to_name: string | null
+          delivered_to_phone: string | null
+          id: string
+          invoice_id: string
+          manager_name: string | null
+          notes: string | null
+          receipt_number: string
+          signature_accountant: string | null
+          signature_customer: string | null
+          signature_manager: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
+          user_id: string
+        }
+        Insert: {
+          accountant_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          delivered_at?: string
+          delivered_to_id_number?: string | null
+          delivered_to_name?: string | null
+          delivered_to_phone?: string | null
+          id?: string
+          invoice_id: string
+          manager_name?: string | null
+          notes?: string | null
+          receipt_number: string
+          signature_accountant?: string | null
+          signature_customer?: string | null
+          signature_manager?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+          user_id: string
+        }
+        Update: {
+          accountant_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          delivered_at?: string
+          delivered_to_id_number?: string | null
+          delivered_to_name?: string | null
+          delivered_to_phone?: string | null
+          id?: string
+          invoice_id?: string
+          manager_name?: string | null
+          notes?: string | null
+          receipt_number?: string
+          signature_accountant?: string | null
+          signature_customer?: string | null
+          signature_manager?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_logs: {
         Row: {
           actor_email: string | null
@@ -525,6 +656,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_status: string
           discount: number
           id: string
           invoice_number: string
@@ -549,6 +681,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivery_status?: string
           discount?: number
           id?: string
           invoice_number: string
@@ -573,6 +706,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivery_status?: string
           discount?: number
           id?: string
           invoice_number?: string
@@ -1196,6 +1330,23 @@ export type Database = {
       }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
+      create_delivery_receipt: {
+        Args: {
+          _accountant_name: string
+          _delivered_to_id_number: string
+          _delivered_to_name: string
+          _delivered_to_phone: string
+          _invoice_id: string
+          _items: Json
+          _manager_name: string
+          _notes: string
+          _signature_accountant: string
+          _signature_customer: string
+          _signature_manager: string
+          _status: string
+        }
+        Returns: string
+      }
       create_invoice:
         | {
             Args: {
@@ -1234,6 +1385,27 @@ export type Database = {
       is_company_member: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       pair_scan_session: { Args: { _pair_code: string }; Returns: string }
+      recalc_invoice_delivery_status: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
+      update_delivery_receipt: {
+        Args: {
+          _accountant_name: string
+          _delivered_to_id_number: string
+          _delivered_to_name: string
+          _delivered_to_phone: string
+          _items: Json
+          _manager_name: string
+          _notes: string
+          _receipt_id: string
+          _signature_accountant: string
+          _signature_customer: string
+          _signature_manager: string
+          _status: string
+        }
+        Returns: string
+      }
       update_invoice:
         | {
             Args: {
