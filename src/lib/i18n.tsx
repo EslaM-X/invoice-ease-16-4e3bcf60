@@ -209,6 +209,7 @@ const ar: Dict = {
   sales_today: "مبيعات اليوم",
   sales_range: "تقرير الفترة",
   shipping_order: "طلبية الشحن",
+  delivery_receipts: "محاضر الاستلام",
   audit_log: "سجل التدقيق",
   audit_log_desc: "كل العمليات في النظام مع المستخدم الذي نفذها.",
   details: "التفاصيل",
