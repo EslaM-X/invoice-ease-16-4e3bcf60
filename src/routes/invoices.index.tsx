@@ -231,6 +231,21 @@ function InvoicesList() {
         </div>
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-primary/5 px-4 py-3">
+          <div className="text-sm font-medium">تم تحديد {selected.size} فاتورة</div>
+          <div className="flex gap-2">
+            <Button onClick={exportOrdersStyle} disabled={exporting} className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              تصدير Excel (نمط الطلبات)
+            </Button>
+            <Button variant="outline" onClick={() => setSelected(new Set())}>
+              إلغاء التحديد
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {loading ? (
           <TableSkeleton rows={6} cols={5} />
@@ -241,6 +256,9 @@ function InvoicesList() {
             <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="px-3 py-3 w-10">
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="تحديد الكل" />
+                  </th>
                   <th className="px-4 py-3 text-start font-medium">{t("invoice_number")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("customer")}</th>
                   <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("date")}</th>
@@ -253,6 +271,15 @@ function InvoicesList() {
                   const voided = i.status === "voided";
                   return (
                     <tr key={i.id} className={`hover:bg-muted/30 ${voided ? "opacity-60" : ""}`}>
+                      <td className="px-3 py-3">
+                        {!voided && (
+                          <Checkbox
+                            checked={selected.has(i.id)}
+                            onCheckedChange={() => toggleOne(i.id)}
+                            aria-label="تحديد الفاتورة"
+                          />
+                        )}
+                      </td>
                       <td className="px-4 py-3 font-medium">
                         <div className="flex items-center gap-2">
                           {i.receipt_number != null && (
