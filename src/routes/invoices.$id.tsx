@@ -482,3 +482,44 @@ function SystemNotesHistoryInline({ invoiceId }: { invoiceId: string }) {
     </div>
   );
 }
+
+function DeliveryReceiptsForInvoice({ invoiceId }: { invoiceId: string }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const [list, setList] = useState<any[]>([]);
+  const load = async () => {
+    const { data } = await supabase
+      .from("delivery_receipts" as any)
+      .select("*")
+      .eq("invoice_id", invoiceId)
+      .order("created_at", { ascending: false });
+    setList((data ?? []) as any[]);
+  };
+  useEffect(() => { load(); }, [invoiceId]);
+  useRealtimeTable("delivery_receipts" as any, (p: any) => {
+    if (p.new?.invoice_id === invoiceId || p.old?.invoice_id === invoiceId) load();
+  }, [invoiceId]);
+  if (list.length === 0) {
+    return <div className="text-xs text-muted-foreground">{isAr ? "لا يوجد محاضر بعد" : "No receipts yet"}</div>;
+  }
+  return (
+    <div className="space-y-2">
+      {list.map((r) => (
+        <Link key={r.id} to="/delivery-receipts/$id" params={{ id: r.id }}
+          className="flex items-center justify-between gap-3 rounded-lg border bg-background/40 p-2.5 hover:bg-muted/50">
+          <div>
+            <div className="font-mono text-sm font-medium">{r.receipt_number}</div>
+            <div className="text-[11px] text-muted-foreground">{r.delivered_to_name || "—"} · {fmtDateTime(r.delivered_at, lang)}</div>
+          </div>
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
+            r.status === "signed"
+              ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+              : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+          }`}>
+            {r.status === "signed" ? (isAr ? "موقّع" : "Signed") : (isAr ? "مسودة" : "Draft")}
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
