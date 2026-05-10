@@ -37,6 +37,7 @@ import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
+import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
 const ShippingOrderRoute = ShippingOrderRouteImport.update({
@@ -179,6 +180,11 @@ const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
   path: '/invoices/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryReceiptsIdEditRoute = DeliveryReceiptsIdEditRouteImport.update({
+  id: '/delivery-receipts_/$id/edit',
+  path: '/delivery-receipts/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksDailyBackupRoute =
   ApiPublicHooksDailyBackupRouteImport.update({
     id: '/api/public/hooks/daily-backup',
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
+  '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts': typeof DeliveryReceiptsIndexRoute
   '/invoices': typeof InvoicesIndexRoute
+  '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
+  '/delivery-receipts_/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
+    | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
     | '/api/public/hooks/daily-backup'
   fileRoutesByTo: FileRoutesByTo
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts'
     | '/invoices'
+    | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
     | '/api/public/hooks/daily-backup'
   id:
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
+    | '/delivery-receipts_/$id/edit'
     | '/invoices_/$id/edit'
     | '/api/public/hooks/daily-backup'
   fileRoutesById: FileRoutesById
@@ -404,6 +416,7 @@ export interface RootRouteChildren {
   InvoicesNewRoute: typeof InvoicesNewRoute
   DeliveryReceiptsIndexRoute: typeof DeliveryReceiptsIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
+  DeliveryReceiptsIdEditRoute: typeof DeliveryReceiptsIdEditRoute
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
   ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
 }
@@ -606,6 +619,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvoicesIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery-receipts_/$id/edit': {
+      id: '/delivery-receipts_/$id/edit'
+      path: '/delivery-receipts/$id/edit'
+      fullPath: '/delivery-receipts/$id/edit'
+      preLoaderRoute: typeof DeliveryReceiptsIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-backup': {
       id: '/api/public/hooks/daily-backup'
       path: '/api/public/hooks/daily-backup'
@@ -644,6 +664,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesNewRoute: InvoicesNewRoute,
   DeliveryReceiptsIndexRoute: DeliveryReceiptsIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
+  DeliveryReceiptsIdEditRoute: DeliveryReceiptsIdEditRoute,
   InvoicesIdEditRoute: InvoicesIdEditRoute,
   ApiPublicHooksDailyBackupRoute: ApiPublicHooksDailyBackupRoute,
 }
