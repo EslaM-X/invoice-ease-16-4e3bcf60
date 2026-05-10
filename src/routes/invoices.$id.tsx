@@ -326,6 +326,26 @@ function InvoiceView() {
         </div>
       )}
 
+      <div className="mx-auto max-w-3xl no-print">
+        <div className="rounded-2xl border bg-card p-4 sm:p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">{isAr ? "محاضر الاستلام" : "Delivery Receipts"}</h3>
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${deliveryStatusColor(inv.delivery_status)}`}>
+                {deliveryStatusLabel(inv.delivery_status, isAr)}
+              </span>
+            </div>
+            {!isVoided && (
+              <Button size="sm" className="gap-1.5" onClick={() => navigate({ to: "/delivery-receipts/new", search: { invoiceId: id } })}>
+                <Plus className="h-3.5 w-3.5" />{isAr ? "إنشاء محضر" : "New receipt"}
+              </Button>
+            )}
+          </div>
+          <DeliveryReceiptsForInvoice invoiceId={id} />
+        </div>
+      </div>
+
       <div className="mx-auto max-w-3xl">
         <InvoiceTimeline invoiceId={id} />
       </div>
