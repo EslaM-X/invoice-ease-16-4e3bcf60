@@ -124,6 +124,22 @@ function InvoicesList() {
   };
 
   const [exporting, setExporting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const selectableFiltered = filtered.filter((i) => i.status !== "voided");
+  const allSelected = selectableFiltered.length > 0 && selectableFiltered.every((i) => selected.has(i.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(selectableFiltered.map((i) => i.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const doExport = async (kind: "csv" | "xlsx" | "pdf") => {
     if (filtered.length === 0) return toast.error(t("no_data"));
@@ -133,6 +149,24 @@ function InvoicesList() {
       if (kind === "csv") exportInvoicesToCSV(rows, lang);
       else if (kind === "xlsx") exportInvoicesToExcel(rows, lang);
       else await exportInvoicesBatchPDF(rows, lang);
+      toast.success(t("exported"));
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportOrdersStyle = async () => {
+    const picks = filtered.filter((i) => selected.has(i.id) && i.status !== "voided");
+    if (picks.length === 0) return toast.error(t("no_data"));
+    setExporting(true);
+    try {
+      await exportInvoicesOrdersStyle(picks.map((i) => ({
+        id: i.id,
+        invoice_number: i.invoice_number,
+        customer_name: i.customer_name ?? null,
+      })));
       toast.success(t("exported"));
     } catch (e: any) {
       toast.error(e.message || "Export failed");
