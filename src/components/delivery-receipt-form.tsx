@@ -82,6 +82,12 @@ export function DeliveryReceiptForm({
   const [sigCustomer, setSigCustomer] = useState<string | null>(existing?.signature_customer ?? null);
   const [sigManager, setSigManager] = useState<string | null>(existing?.signature_manager ?? null);
   const [sigAccountant, setSigAccountant] = useState<string | null>(existing?.signature_accountant ?? null);
+  const [shippingEnabled, setShippingEnabled] = useState<boolean>(
+    existing?.shipping_fees != null && existing.shipping_fees > 0,
+  );
+  const [shippingFees, setShippingFees] = useState<string>(
+    existing?.shipping_fees != null ? String(existing.shipping_fees) : "",
+  );
 
   useEffect(() => {
     (async () => {
