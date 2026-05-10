@@ -35,6 +35,7 @@ import { Route as DeliveryReceiptsIndexRouteImport } from './routes/delivery-rec
 import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
+import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
@@ -168,6 +169,11 @@ const DeliveryReceiptsNewRoute = DeliveryReceiptsNewRouteImport.update({
   path: '/delivery-receipts/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryReceiptsIdRoute = DeliveryReceiptsIdRouteImport.update({
+  id: '/delivery-receipts/$id',
+  path: '/delivery-receipts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
   id: '/invoices_/$id/edit',
   path: '/invoices/$id/edit',
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/new': typeof InvoicesNewRoute
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
     | '/invoices/new'
@@ -325,6 +335,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
     | '/invoices/new'
@@ -355,6 +366,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
     | '/invoices/new'
@@ -386,6 +398,7 @@ export interface RootRouteChildren {
   ScanAndSellRoute: typeof ScanAndSellRoute
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
+  DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
   InvoicesNewRoute: typeof InvoicesNewRoute
@@ -579,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryReceiptsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery-receipts/$id': {
+      id: '/delivery-receipts/$id'
+      path: '/delivery-receipts/$id'
+      fullPath: '/delivery-receipts/$id'
+      preLoaderRoute: typeof DeliveryReceiptsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invoices_/$id/edit': {
       id: '/invoices_/$id/edit'
       path: '/invoices/$id/edit'
@@ -618,6 +638,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScanAndSellRoute: ScanAndSellRoute,
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
+  DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
   InvoicesIdRoute: InvoicesIdRoute,
   InvoicesNewRoute: InvoicesNewRoute,
