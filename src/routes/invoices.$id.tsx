@@ -146,6 +146,34 @@ function InvoiceView() {
               <Button variant="outline" className="gap-2 rounded-full" onClick={() => navigate({ to: "/invoices/$id/edit", params: { id } })}>
                 <Pencil className="h-4 w-4" />{t("edit")}
               </Button>
+              {(() => {
+                const totalNum = Number(inv.total);
+                const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+                const remaining = +(totalNum - paidNum).toFixed(2);
+                const isDelivered = inv.delivery_status === "delivered";
+                return (
+                  <>
+                    <Button
+                      variant={isDelivered ? "default" : "outline"}
+                      className={`gap-2 rounded-full ${isDelivered ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"}`}
+                      onClick={() => toggleDelivered(!isDelivered)}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {isDelivered ? (isAr ? "مُسلَّمة" : "Delivered") : (isAr ? "تعليم تسليم" : "Mark delivered")}
+                    </Button>
+                    {remaining > 0 && (
+                      <Button
+                        variant="outline"
+                        className="gap-2 rounded-full border-blue-500/40 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10"
+                        onClick={payRemaining}
+                      >
+                        <Wallet className="h-4 w-4" />
+                        {isAr ? `سداد المتبقي (${Number(remaining).toFixed(2)} EGP)` : `Pay remaining (${Number(remaining).toFixed(2)} EGP)`}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="gap-2 rounded-full text-destructive hover:text-destructive">
