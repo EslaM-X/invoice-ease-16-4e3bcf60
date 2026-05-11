@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
+import { shouldDisablePwaFeatures } from "@/lib/pwa-runtime";
 
 const CACHE_PREFIX = "steinheim-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}${PWA_ASSET_VERSION}`;
@@ -13,6 +14,19 @@ export function PwaVersionGuard() {
     const syncPwaVersion = async () => {
       try {
         const registrations = await navigator.serviceWorker.getRegistrations();
+
+        if (shouldDisablePwaFeatures()) {
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(
+              cacheNames
+                .filter((cacheName) => cacheName.startsWith(CACHE_PREFIX))
+                .map((cacheName) => caches.delete(cacheName)),
+            );
+          }
+          return;
+        }
 
         await Promise.all(
           registrations.map(async (registration) => {
