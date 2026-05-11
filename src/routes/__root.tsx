@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
@@ -81,10 +82,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  if (typeof window !== "undefined" && isPreviewHost() && isStandaloneDisplay()) {
-    window.location.replace(getCanonicalAppUrl());
-    return null;
-  }
+  useEffect(() => {
+    if (isPreviewHost() && isStandaloneDisplay()) {
+      window.location.replace(getCanonicalAppUrl());
+    }
+  }, []);
 
   return (
     <ThemeProvider>
