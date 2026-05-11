@@ -1,7 +1,7 @@
-const version = new URL(self.location.href).searchParams.get("v") || "dev";
-const CACHE_PREFIX = "steinheim-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}${version}`;
-
+// Kill-switch service worker.
+// Unregisters itself and clears all caches on every device that previously
+// installed an older service worker. Keeps the app accessible even if the
+// custom domain has temporary DNS or network issues.
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -9,18 +9,24 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const cacheNames = await caches.keys();
-      await Promise.all(
-        cacheNames
-          .filter((cacheName) => cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName)),
-      );
-
-      await self.clients.claim();
-
-      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const client of clients) {
-        client.postMessage({ type: "PWA_VERSION", version });
+      try {
+        await self.clients.claim();
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        await Promise.all(
+          clients.map((client) => {
+            try {
+              const url = new URL(client.url);
+              url.searchParams.set("sw-cleanup", Date.now().toString());
+              return client.navigate(url.toString());
+            } catch {
+              return Promise.resolve();
+            }
+          }),
+        );
+      } finally {
+        await self.registration.unregister();
       }
     })(),
   );
