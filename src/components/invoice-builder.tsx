@@ -514,6 +514,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           handleRpcError(error?.message ?? "");
           return;
         }
+        await supabase
+          .from("invoices")
+          .update({ delivery_status: delivered ? "delivered" : "pending" } as any)
+          .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceId } });
       } else {
@@ -529,6 +533,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
           return;
+        }
+        if (delivered) {
+          await supabase
+            .from("invoices")
+            .update({ delivery_status: "delivered" } as any)
+            .eq("id", invoiceIdRet as string);
         }
         if (draftKey) localStorage.removeItem(draftKey);
         toast.success(t("invoice_saved"));
