@@ -85,6 +85,7 @@ function RootComponent() {
       <I18nProvider>
         <AuthProvider>
           <PwaVersionGuard />
+          <StaleChunkGuard />
           <LuxurySplash />
           <OfflineBanner />
           <ApprovalGate>
