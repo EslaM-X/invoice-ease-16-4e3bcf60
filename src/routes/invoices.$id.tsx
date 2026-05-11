@@ -157,6 +157,27 @@ function InvoiceView() {
             </span>
           </div>
         )}
+        {!isVoided && inv.delivery_status === "delivered" && (
+          <div className="pointer-events-none absolute inset-0 flex items-start justify-end z-10 p-6 sm:p-10">
+            <span className="rotate-[12deg] rounded-lg border-4 border-emerald-600 px-6 py-1.5 text-3xl font-black tracking-widest text-emerald-600 opacity-30">
+              {isAr ? "تم التسليم" : "DELIVERED"}
+            </span>
+          </div>
+        )}
+        {!isVoided && (() => {
+          const totalNum = Number(inv.total);
+          const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+          if (paidNum >= totalNum && totalNum > 0) {
+            return (
+              <div className="pointer-events-none absolute inset-0 flex items-end justify-start z-10 p-6 sm:p-10">
+                <span className="rotate-[-12deg] rounded-lg border-4 border-blue-600 px-6 py-1.5 text-3xl font-black tracking-widest text-blue-600 opacity-30">
+                  {isAr ? "مدفوعة بالكامل" : "PAID"}
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
         <div className="invoice-page flex flex-col px-8 pt-8 pb-2 sm:px-12 sm:pt-10" dir="ltr">
           {/* Header: date top-right, logo center, registry top-left */}
           <header className="relative flex flex-col items-center pb-2">
