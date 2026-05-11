@@ -90,6 +90,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
+  const [delivered, setDelivered] = useState<boolean>(initial?.delivery_status === "delivered");
   const [scanning, setScanning] = useState(false);
   const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
   const [continuous, setContinuous] = useState(false);
