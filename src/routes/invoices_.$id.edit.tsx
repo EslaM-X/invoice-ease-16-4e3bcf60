@@ -86,6 +86,7 @@ function EditInvoice() {
       notes: inv.notes ?? "",
       system_notes: invAny.system_notes ?? "",
       paid_amount: invAny.paid_amount != null ? Number(invAny.paid_amount) : null,
+      delivery_status: invAny.delivery_status ?? null,
     });
     setSnapshotKey((k) => k + 1);
     setLoading(false);
