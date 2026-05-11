@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth";
 import { OfflineBanner } from "@/components/offline-banner";
 import { InstallPrompt } from "@/components/install-prompt";
 import { PwaVersionGuard } from "@/components/pwa-version-guard";
+import { StaleChunkGuard } from "@/components/stale-chunk-guard";
 import { ApprovalGate } from "@/components/approval-gate";
 import { LuxurySplash } from "@/components/luxury-splash";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
