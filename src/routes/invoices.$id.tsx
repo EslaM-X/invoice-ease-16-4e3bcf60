@@ -56,6 +56,27 @@ function InvoiceView() {
     load();
   };
 
+  const toggleDelivered = async (next: boolean) => {
+    const { error } = await supabase
+      .from("invoices")
+      .update({ delivery_status: next ? "delivered" : "pending" } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? (lang === "ar" ? "تم التعليم بالتسليم" : "Marked delivered") : (lang === "ar" ? "تم إلغاء التسليم" : "Unmarked delivered"));
+    load();
+  };
+
+  const payRemaining = async () => {
+    if (!inv) return;
+    const { error } = await supabase
+      .from("invoices")
+      .update({ paid_amount: Number(inv.total) } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(lang === "ar" ? "تم سداد المتبقي" : "Remaining marked paid");
+    load();
+  };
+
   if (!inv) return <div className="text-muted-foreground">{t("loading")}</div>;
 
   const isAr = lang === "ar";
