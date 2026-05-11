@@ -3,7 +3,13 @@
 //   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, cloudflare (build-only),
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-export default defineConfig();
+export default defineConfig({
+  // Route SSR through our wrapper (src/server.ts) so module-init failures and
+  // h3-swallowed handler errors return a friendly HTML page instead of
+  // {"unhandled":true,"message":"HTTPError"}.
+  tanstackStart: {
+    server: { entry: "server" },
+  },
+});
