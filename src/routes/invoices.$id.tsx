@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus, CheckCircle2, Wallet } from "lucide-react";
 import { deliveryStatusLabel, deliveryStatusColor } from "@/lib/delivery-receipts";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
@@ -53,6 +53,27 @@ function InvoiceView() {
     const { error } = await supabase.rpc("void_invoice", { _invoice_id: id } as any);
     if (error) return toast.error(error.message);
     toast.success(t("invoice_voided"));
+    load();
+  };
+
+  const toggleDelivered = async (next: boolean) => {
+    const { error } = await supabase
+      .from("invoices")
+      .update({ delivery_status: next ? "delivered" : "pending" } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? (lang === "ar" ? "تم التعليم بالتسليم" : "Marked delivered") : (lang === "ar" ? "تم إلغاء التسليم" : "Unmarked delivered"));
+    load();
+  };
+
+  const payRemaining = async () => {
+    if (!inv) return;
+    const { error } = await supabase
+      .from("invoices")
+      .update({ paid_amount: Number(inv.total) } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(lang === "ar" ? "تم سداد المتبقي" : "Remaining marked paid");
     load();
   };
 
@@ -125,6 +146,34 @@ function InvoiceView() {
               <Button variant="outline" className="gap-2 rounded-full" onClick={() => navigate({ to: "/invoices/$id/edit", params: { id } })}>
                 <Pencil className="h-4 w-4" />{t("edit")}
               </Button>
+              {(() => {
+                const totalNum = Number(inv.total);
+                const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+                const remaining = +(totalNum - paidNum).toFixed(2);
+                const isDelivered = inv.delivery_status === "delivered";
+                return (
+                  <>
+                    <Button
+                      variant={isDelivered ? "default" : "outline"}
+                      className={`gap-2 rounded-full ${isDelivered ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"}`}
+                      onClick={() => toggleDelivered(!isDelivered)}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {isDelivered ? (isAr ? "مُسلَّمة" : "Delivered") : (isAr ? "تعليم تسليم" : "Mark delivered")}
+                    </Button>
+                    {remaining > 0 && (
+                      <Button
+                        variant="outline"
+                        className="gap-2 rounded-full border-blue-500/40 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10"
+                        onClick={payRemaining}
+                      >
+                        <Wallet className="h-4 w-4" />
+                        {isAr ? `سداد المتبقي (${Number(remaining).toFixed(2)} EGP)` : `Pay remaining (${Number(remaining).toFixed(2)} EGP)`}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="gap-2 rounded-full text-destructive hover:text-destructive">
@@ -157,6 +206,27 @@ function InvoiceView() {
             </span>
           </div>
         )}
+        {!isVoided && inv.delivery_status === "delivered" && (
+          <div className="pointer-events-none absolute inset-0 flex items-start justify-end z-10 p-6 sm:p-10">
+            <span className="rotate-[12deg] rounded-lg border-4 border-emerald-600 px-6 py-1.5 text-3xl font-black tracking-widest text-emerald-600 opacity-30">
+              {isAr ? "تم التسليم" : "DELIVERED"}
+            </span>
+          </div>
+        )}
+        {!isVoided && (() => {
+          const totalNum = Number(inv.total);
+          const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+          if (paidNum >= totalNum && totalNum > 0) {
+            return (
+              <div className="pointer-events-none absolute inset-0 flex items-end justify-start z-10 p-6 sm:p-10">
+                <span className="rotate-[-12deg] rounded-lg border-4 border-blue-600 px-6 py-1.5 text-3xl font-black tracking-widest text-blue-600 opacity-30">
+                  {isAr ? "مدفوعة بالكامل" : "PAID"}
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
         <div className="invoice-page flex flex-col px-8 pt-8 pb-2 sm:px-12 sm:pt-10" dir="ltr">
           {/* Header: date top-right, logo center, registry top-left */}
           <header className="relative flex flex-col items-center pb-2">

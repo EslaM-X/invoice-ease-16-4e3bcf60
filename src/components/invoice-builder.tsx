@@ -45,6 +45,7 @@ type Props = {
     notes: string;
     system_notes?: string;
     paid_amount?: number | null;
+    delivery_status?: string | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
@@ -89,6 +90,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
+  const [delivered, setDelivered] = useState<boolean>(initial?.delivery_status === "delivered");
   const [scanning, setScanning] = useState(false);
   const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
   const [continuous, setContinuous] = useState(false);
@@ -512,6 +514,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
           handleRpcError(error?.message ?? "");
           return;
         }
+        await supabase
+          .from("invoices")
+          .update({ delivery_status: delivered ? "delivered" : "pending" } as any)
+          .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceId } });
       } else {
@@ -527,6 +533,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
           return;
+        }
+        if (delivered) {
+          await supabase
+            .from("invoices")
+            .update({ delivery_status: "delivered" } as any)
+            .eq("id", invoiceIdRet as string);
         }
         if (draftKey) localStorage.removeItem(draftKey);
         toast.success(t("invoice_saved"));
@@ -891,9 +903,42 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }:
                   <span className="text-muted-foreground">
                     {lang === "ar" ? "المبلغ المتبقي" : "Remaining Amount"}
                   </span>
-                  <span className="font-semibold tabular-nums">{fmtMoney(remainingAmount, "EGP", lang)}</span>
+                  <span className={`font-semibold tabular-nums ${remainingAmount <= 0 ? "text-emerald-600" : ""}`}>{fmtMoney(remainingAmount, "EGP", lang)}</span>
                 </div>
+                {remainingAmount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+                    onClick={() => {
+                      setPaidMode("custom");
+                      setPaidCustom(+total.toFixed(2));
+                      toast.success(lang === "ar" ? "تم سداد المتبقي" : "Remaining marked paid");
+                    }}
+                  >
+                    {lang === "ar" ? `سداد المتبقي (${fmtMoney(remainingAmount, "EGP", lang)})` : `Pay remaining (${fmtMoney(remainingAmount, "EGP", lang)})`}
+                  </Button>
+                )}
+                {remainingAmount <= 0 && total > 0 && (
+                  <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-center text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                    {lang === "ar" ? "✓ مدفوعة بالكامل" : "✓ Fully paid"}
+                  </div>
+                )}
               </div>
+
+              {/* Delivered toggle */}
+              <label className="mt-2 flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                <span className="text-sm font-medium">
+                  {lang === "ar" ? "تم التسليم بالكامل" : "Marked as delivered"}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={delivered}
+                  onChange={(e) => setDelivered(e.target.checked)}
+                  className="h-4 w-4 accent-emerald-600"
+                />
+              </label>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">
               {t("save_invoice")}
