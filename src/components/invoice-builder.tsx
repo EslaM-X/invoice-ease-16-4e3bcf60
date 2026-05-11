@@ -45,6 +45,7 @@ type Props = {
     notes: string;
     system_notes?: string;
     paid_amount?: number | null;
+    delivery_status?: string | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
