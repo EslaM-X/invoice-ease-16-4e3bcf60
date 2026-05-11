@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
@@ -10,6 +11,7 @@ import { StaleChunkGuard } from "@/components/stale-chunk-guard";
 import { ApprovalGate } from "@/components/approval-gate";
 import { LuxurySplash } from "@/components/luxury-splash";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
+import { getCanonicalAppUrl, isPreviewHost, isStandaloneDisplay } from "@/lib/pwa-runtime";
 import appCss from "../styles.css?url";
 
 const assetVersionQuery = `?v=${PWA_ASSET_VERSION}`;
@@ -80,6 +82,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  useEffect(() => {
+    if (isPreviewHost() && isStandaloneDisplay()) {
+      window.location.replace(getCanonicalAppUrl());
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <I18nProvider>

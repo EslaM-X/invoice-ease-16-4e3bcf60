@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, Share2, X, Apple, Smartphone } from "lucide-react";
+import { getStableAppUrl, shouldDisablePwaFeatures } from "@/lib/pwa-runtime";
 
 /**
  * Universal install prompt:
@@ -48,6 +49,7 @@ export function InstallPrompt() {
   const [platform] = useState(platformOf());
 
   useEffect(() => {
+    if (shouldDisablePwaFeatures()) return;
     if (isStandalone() || dismissed()) return;
 
     const onBip = (e: Event) => {
@@ -82,6 +84,7 @@ export function InstallPrompt() {
   if (!open) return null;
 
   const isApple = platform === "ios" || platform === "macos-safari";
+  const installUrl = getStableAppUrl("/dashboard");
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[55] flex justify-center px-3 pb-[max(env(safe-area-inset-bottom),12px)] no-print">
@@ -102,16 +105,18 @@ export function InstallPrompt() {
                   <span className="text-primary">١.</span> اضغط زر المشاركة
                   <Share2 className="inline h-3.5 w-3.5 text-primary" /> في Safari
                 </li>
-                <li><span className="text-primary">٢.</span> اختر <b>Add to Home Screen</b></li>
-                <li><span className="text-primary">٣.</span> اضغط <b>Add</b></li>
+                <li><span className="text-primary">٢.</span> افتح أولًا الرابط الثابت <b>{installUrl}</b></li>
+                <li><span className="text-primary">٣.</span> اختر <b>Add to Home Screen</b></li>
+                <li><span className="text-primary">٤.</span> اضغط <b>Add</b></li>
               </ol>
             )}
 
             {platform === "macos-safari" && (
               <ol className="mt-3 space-y-1 text-xs text-foreground/90">
-                <li><span className="text-primary">١.</span> من القائمة اختر <b>File</b></li>
-                <li><span className="text-primary">٢.</span> اختر <b>Add to Dock…</b></li>
-                <li><span className="text-primary">٣.</span> اضغط <b>Add</b></li>
+                <li><span className="text-primary">١.</span> افتح أولًا الرابط الثابت <b>{installUrl}</b></li>
+                <li><span className="text-primary">٢.</span> من القائمة اختر <b>File</b></li>
+                <li><span className="text-primary">٣.</span> اختر <b>Add to Dock…</b></li>
+                <li><span className="text-primary">٤.</span> اضغط <b>Add</b></li>
               </ol>
             )}
 
@@ -126,7 +131,7 @@ export function InstallPrompt() {
 
             {!isApple && !deferred && (
               <p className="mt-3 text-xs text-muted-foreground">
-                من قائمة المتصفح اختر <b>Install app</b> أو أيقونة التثبيت ⊕ في شريط العنوان.
+                افتح الرابط الثابت <b>{installUrl}</b> ثم اختر <b>Install app</b> أو أيقونة التثبيت ⊕ في شريط العنوان.
               </p>
             )}
           </div>
