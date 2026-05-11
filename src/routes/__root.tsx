@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
