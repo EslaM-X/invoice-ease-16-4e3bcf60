@@ -281,7 +281,7 @@ function InvoicesList() {
                         )}
                       </td>
                       <td className="px-4 py-3 font-medium">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {i.receipt_number != null && (
                             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">#{i.receipt_number}</span>
                           )}
@@ -291,6 +291,33 @@ function InvoicesList() {
                               {t("voided")}
                             </span>
                           )}
+                          {!voided && (() => {
+                            const totalNum = Number(i.total ?? 0);
+                            const paidNum = Number(i.paid_amount ?? 0);
+                            const fullyPaid = totalNum > 0 && paidNum >= totalNum - 0.001;
+                            const delivered = i.delivery_status === "delivered";
+                            if (fullyPaid && delivered) {
+                              return (
+                                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400">
+                                  {lang === "ar" ? "✓ مُغلقة" : "✓ Closed"}
+                                </span>
+                              );
+                            }
+                            return (
+                              <>
+                                {delivered && (
+                                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
+                                    {lang === "ar" ? "مُسلَّمة" : "Delivered"}
+                                  </span>
+                                )}
+                                {fullyPaid && (
+                                  <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-400">
+                                    {lang === "ar" ? "مدفوعة" : "Paid"}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-3">
