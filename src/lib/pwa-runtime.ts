@@ -42,3 +42,12 @@ export function getStableAppUrl(path = "/dashboard") {
 
   return new URL(path, window.location.origin).toString();
 }
+
+export function getCanonicalAppUrl() {
+  if (typeof window === "undefined") {
+    return new URL("/dashboard", CANONICAL_APP_ORIGIN).toString();
+  }
+
+  const path = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return new URL(path || "/dashboard", CANONICAL_APP_ORIGIN).toString();
+}
