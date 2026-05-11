@@ -22,6 +22,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
@@ -103,6 +104,11 @@ const InventoryAuditRoute = InventoryAuditRouteImport.update({
 const InventoryRoute = InventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticsRoute = DiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/diagnostics': typeof DiagnosticsRoute
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/diagnostics': typeof DiagnosticsRoute
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
@@ -266,6 +274,7 @@ export interface FileRoutesById {
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/diagnostics': typeof DiagnosticsRoute
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/call-center-reports'
     | '/customers'
     | '/dashboard'
+    | '/diagnostics'
     | '/inventory'
     | '/inventory-audit'
     | '/invoices-system-notes'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/call-center-reports'
     | '/customers'
     | '/dashboard'
+    | '/diagnostics'
     | '/inventory'
     | '/inventory-audit'
     | '/invoices-system-notes'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/call-center-reports'
     | '/customers'
     | '/dashboard'
+    | '/diagnostics'
     | '/inventory'
     | '/inventory-audit'
     | '/invoices-system-notes'
@@ -397,6 +409,7 @@ export interface RootRouteChildren {
   CallCenterReportsRoute: typeof CallCenterReportsRoute
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
+  DiagnosticsRoute: typeof DiagnosticsRoute
   InventoryRoute: typeof InventoryRoute
   InventoryAuditRoute: typeof InventoryAuditRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
@@ -512,6 +525,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/inventory'
       preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostics': {
+      id: '/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/diagnostics'
+      preLoaderRoute: typeof DiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -645,6 +665,7 @@ const rootRouteChildren: RootRouteChildren = {
   CallCenterReportsRoute: CallCenterReportsRoute,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
+  DiagnosticsRoute: DiagnosticsRoute,
   InventoryRoute: InventoryRoute,
   InventoryAuditRoute: InventoryAuditRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
