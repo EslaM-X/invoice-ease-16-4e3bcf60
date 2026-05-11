@@ -28,6 +28,7 @@ function EditInvoice() {
     notes: string;
     system_notes?: string;
     paid_amount?: number | null;
+    delivery_status?: string | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
