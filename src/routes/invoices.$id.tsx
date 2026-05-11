@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus, CheckCircle2, Wallet } from "lucide-react";
 import { deliveryStatusLabel, deliveryStatusColor } from "@/lib/delivery-receipts";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
