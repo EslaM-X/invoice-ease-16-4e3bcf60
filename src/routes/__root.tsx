@@ -10,6 +10,7 @@ import { StaleChunkGuard } from "@/components/stale-chunk-guard";
 import { ApprovalGate } from "@/components/approval-gate";
 import { LuxurySplash } from "@/components/luxury-splash";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
+import { getCanonicalAppUrl, isPreviewHost, isStandaloneDisplay } from "@/lib/pwa-runtime";
 import appCss from "../styles.css?url";
 
 const assetVersionQuery = `?v=${PWA_ASSET_VERSION}`;
@@ -80,6 +81,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  if (typeof window !== "undefined" && isPreviewHost() && isStandaloneDisplay()) {
+    window.location.replace(getCanonicalAppUrl());
+    return null;
+  }
+
   return (
     <ThemeProvider>
       <I18nProvider>
