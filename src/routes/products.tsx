@@ -120,6 +120,7 @@ function Products() {
       serial_number: form.serial_number || null,
       color: form.color || null,
       price: Number(form.price) || 0,
+      cost_price_usd: Number(form.cost_price_usd) || 0,
       stock_quantity: parseInt(form.stock_quantity || "0", 10),
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
       image_url: form.image_url || null,
