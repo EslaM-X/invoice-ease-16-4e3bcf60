@@ -463,6 +463,7 @@ const en: Dict = {
   all_collections: "All collections",
   filter_by_collection: "Filter by collection",
   no_collection: "No collection",
+  inventory_group: "Products & Inventory",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };
