@@ -20,6 +20,8 @@ function Inventory() {
   const [products, setProducts] = useState<Product[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [orderInitialId, setOrderInitialId] = useState<string | null>(null);
 
   const load = async () => {
     const [{ data: p }, { data: l }] = await Promise.all([
