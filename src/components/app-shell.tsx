@@ -30,6 +30,7 @@ const items: NavEntry[] = [
     icon: Warehouse,
     children: [
       { to: "/products", icon: Package, key: "products" as const },
+      { to: "/stock-intake", icon: Warehouse, key: "stock_intake" as const },
       { to: "/inventory", icon: Boxes, key: "inventory" as const },
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
     ],
