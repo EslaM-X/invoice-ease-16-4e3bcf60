@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ArrowLeft, Save, FileCheck2 } from "lucide-react";
+import { ArrowLeft, Save, FileCheck2, Truck } from "lucide-react";
 import {
   createDeliveryReceipt,
   updateDeliveryReceipt,
