@@ -104,23 +104,28 @@ function PurchaseOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <ShoppingCart className="h-6 w-6 text-primary" />
-            {isAr ? "أوامر الشراء" : "Purchase Orders"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isAr
-              ? "أنشئ أوامر شراء بالدولار، والمدير المالي يضيف سعر الصرف والجمارك والشحن لاحتساب التكلفة بالجنيه."
-              : "Create USD purchase orders. The CFO adds FX rate, customs, shipping & taxes to compute the EGP landed cost."}
-          </p>
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5">
+        <div className="absolute -end-12 -top-12 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary shadow-sm">
+                <ShoppingCart className="h-5 w-5" />
+              </span>
+              {isAr ? "أوامر الشراء" : "Purchase Orders"}
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {isAr
+                ? "أنشئ أوامر شراء بالدولار، والمدير المالي يضيف سعر الصرف والجمارك والشحن لاحتساب التكلفة بالجنيه."
+                : "Create USD purchase orders. The CFO adds FX rate, customs, shipping & taxes to compute the EGP landed cost."}
+            </p>
+          </div>
+          {(isAdmin || isPurchasing) && (
+            <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
+              <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
+            </Button>
+          )}
         </div>
-        {(isAdmin || isPurchasing) && (
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
-          </Button>
-        )}
       </div>
 
       <Card className="overflow-hidden">
