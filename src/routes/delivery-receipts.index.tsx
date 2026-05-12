@@ -303,6 +303,24 @@ function ReceiptsList() {
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex justify-end gap-1">
+                          {r.status !== "signed" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={r.status === "out_for_delivery" ? (isAr ? "إرجاع لمسودة" : "Back to draft") : (isAr ? "تعليم: في الطريق" : "Mark: out for delivery")}
+                              onClick={async () => {
+                                const next = r.status === "out_for_delivery" ? "draft" : "out_for_delivery";
+                                const { error } = await supabase
+                                  .from("delivery_receipts" as any)
+                                  .update({ status: next })
+                                  .eq("id", r.id);
+                                if (error) toast.error(error.message);
+                                else { toast.success(isAr ? "تم التحديث" : "Updated"); load(); }
+                              }}
+                            >
+                              <Truck className={`h-4 w-4 ${r.status === "out_for_delivery" ? "text-sky-600" : ""}`} />
+                            </Button>
+                          )}
                           <Link to="/delivery-receipts/$id" params={{ id: r.id }}>
                             <Button variant="ghost" size="icon" title={isAr ? "عرض" : "View"}>
                               <Eye className="h-4 w-4" />
