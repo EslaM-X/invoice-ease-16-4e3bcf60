@@ -22,7 +22,7 @@ function Inventory() {
   const load = async () => {
     const [{ data: p }, { data: l }] = await Promise.all([
       supabase.from("products").select("*").order("name"),
-      supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30),
+      supabase.from("inventory_logs").select("*, products(name, serial_number, color, image_url, collection, price)").order("created_at", { ascending: false }).limit(30),
     ]);
     setProducts((p ?? []) as Product[]);
     setLogs(l ?? []);
@@ -215,24 +215,49 @@ function Inventory() {
                 <tr>
                   <th className="px-3 py-2 text-start font-medium">{t("date")}</th>
                   <th className="px-3 py-2 text-start font-medium">{t("product_name")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{lang === "ar" ? "السيريال" : "S/N"}</th>
+                  <th className="px-3 py-2 text-start font-medium">{lang === "ar" ? "اللون" : "Color"}</th>
+                  <th className="px-3 py-2 text-start font-medium">{lang === "ar" ? "الكولكشن" : "Collection"}</th>
                   <th className="px-3 py-2 text-start font-medium">{t("change")}</th>
                   <th className="px-3 py-2 text-start font-medium">{t("reason")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {logs.map((l) => (
-                  <tr key={l.id}>
-                    <td className="px-3 py-2 text-muted-foreground">{fmtDate(l.created_at, lang)}</td>
-                    <td className="px-3 py-2 font-medium">{l.products?.name ?? "—"}</td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 font-semibold ${l.change < 0 ? "text-destructive" : "text-success"}`}>
-                        {l.change < 0 ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
-                        {l.change > 0 ? `+${l.change}` : l.change}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">{l.reason || "—"}</td>
-                  </tr>
-                ))}
+                {logs.map((l) => {
+                  const p = l.products;
+                  return (
+                    <tr key={l.id}>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{fmtDate(l.created_at, lang)}</td>
+                      <td className="px-3 py-2 font-medium">
+                        <div className="flex items-center gap-2">
+                          {p?.image_url ? (
+                            <img src={p.image_url} alt={p.name} className="h-8 w-8 rounded border object-cover" />
+                          ) : (
+                            <div className="h-8 w-8 rounded border bg-muted" />
+                          )}
+                          <span className="truncate">{p?.name ?? "—"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{p?.serial_number || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {p?.color ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: p.color }} aria-hidden />
+                            {p.color}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">{p?.collection || "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center gap-1 font-semibold ${l.change < 0 ? "text-destructive" : "text-success"}`}>
+                          {l.change < 0 ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                          {l.change > 0 ? `+${l.change}` : l.change}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{l.reason || "—"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
