@@ -768,7 +768,7 @@ function BulkAdjustBar({
   isAr: boolean;
   filteredIds: string[];
   rows: Record<string, Row>;
-  setRows: React.Dispatch<React.SetStateAction<Record<string, Row>>>;
+  setRows: Dispatch<SetStateAction<Record<string, Row>>>;
 }) {
   const [delta, setDelta] = useState<string>("5");
   const [scope, setScope] = useState<"selected" | "visible">("selected");
