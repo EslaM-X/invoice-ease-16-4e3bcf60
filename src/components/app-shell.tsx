@@ -244,3 +244,31 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+function GroupNav({
+  label,
+  icon: Icon,
+  defaultOpen,
+  children,
+}: {
+  label: string;
+  icon: any;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="space-y-0.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+      >
+        <Icon className="h-4 w-4" />
+        <span className="flex-1 text-start">{label}</span>
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="space-y-0.5">{children}</div>}
+    </div>
+  );
+}
