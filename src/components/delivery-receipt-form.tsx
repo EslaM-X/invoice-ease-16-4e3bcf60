@@ -227,6 +227,9 @@ export function DeliveryReceiptForm({
           <Button variant="outline" disabled={saving} onClick={() => submit("draft")} className="gap-2">
             <Save className="h-4 w-4" /> {isAr ? "حفظ كمسودة" : "Save draft"}
           </Button>
+          <Button variant="outline" disabled={saving} onClick={() => submit("out_for_delivery")} className="gap-2 border-sky-500/40 text-sky-700 hover:bg-sky-500/10 dark:text-sky-400">
+            <Truck className="h-4 w-4" /> {isAr ? "في الطريق" : "Out for delivery"}
+          </Button>
           <Button disabled={saving} onClick={() => submit("signed")} className="gap-2 shadow-glow">
             <FileCheck2 className="h-4 w-4" /> {isAr ? "حفظ وإنهاء" : "Save & finalize"}
           </Button>
