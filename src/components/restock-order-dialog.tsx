@@ -254,7 +254,10 @@ export function RestockOrderDialog({
                 <th className="p-2 text-start">{isAr ? "المخزون" : "Stock"}</th>
                 <th className="p-2 text-start">{isAr ? "الكمية" : "Qty"}</th>
                 {mode === "individual" && (
-                  <th className="p-2 text-start">{isAr ? "تكلفة الوحدة" : "Unit cost"}</th>
+                  <th className="p-2 text-start">{isAr ? "تكلفة الوحدة (قابلة للتعديل)" : "Unit cost (editable)"}</th>
+                )}
+                {mode === "individual" && (
+                  <th className="p-2 text-start">{isAr ? "متوسط جديد" : "New avg"}</th>
                 )}
                 {mode === "individual" && (
                   <th className="p-2 text-end">{isAr ? "إجمالي" : "Total"}</th>
