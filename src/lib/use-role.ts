@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
-export type AppRole = "admin" | "manager" | "cashier" | "call_center" | "user";
+export type AppRole = "admin" | "manager" | "cashier" | "call_center" | "purchasing" | "cfo" | "user";
 
 /**
  * Returns the current user's roles + helpers. Cached per session.
