@@ -157,16 +157,16 @@ function StockIntake() {
     }
     setSubmitting(true);
     const { error } = await supabase.rpc("record_stock_intake", {
-      _supplier_name: supplier || null,
-      _invoice_reference: invoiceRef || null,
+      _supplier_name: supplier || "",
+      _invoice_reference: invoiceRef || "",
       _pricing_mode: pricingMode,
-      _bulk_total: pricingMode === "bulk" ? bulkTotal : null,
-      _notes: notes || null,
+      _bulk_total: pricingMode === "bulk" ? bulkTotal : 0,
+      _notes: notes || "",
       _items: rows.map((r) => ({
         product_id: r.product_id,
         quantity: r.quantity,
         unit_cost: r.unit_cost,
-      })),
+      })) as any,
     });
     setSubmitting(false);
     if (error) {
