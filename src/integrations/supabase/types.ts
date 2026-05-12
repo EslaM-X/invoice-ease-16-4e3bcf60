@@ -849,6 +849,7 @@ export type Database = {
           collection: string | null
           color: string | null
           cost_price: number
+          cost_price_usd: number
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -869,6 +870,7 @@ export type Database = {
           collection?: string | null
           color?: string | null
           cost_price?: number
+          cost_price_usd?: number
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -889,6 +891,7 @@ export type Database = {
           collection?: string | null
           color?: string | null
           cost_price?: number
+          cost_price_usd?: number
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -954,6 +957,143 @@ export type Database = {
           id?: string
           theme_preference?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      purchase_order_items: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          line_total_usd: number
+          po_id: string
+          product_id: string
+          product_name: string
+          quantity: number
+          serial_number: string | null
+          unit_cost_usd: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          line_total_usd?: number
+          po_id: string
+          product_id: string
+          product_name: string
+          quantity: number
+          serial_number?: string | null
+          unit_cost_usd?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          line_total_usd?: number
+          po_id?: string
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          serial_number?: string | null
+          unit_cost_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          cfo_notes: string | null
+          cfo_priced_at: string | null
+          cfo_priced_by: string | null
+          cfo_priced_by_email: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          customs_mode: string | null
+          customs_value: number | null
+          id: string
+          notes: string | null
+          other_mode: string | null
+          other_value: number | null
+          po_number: string
+          shipping_mode: string | null
+          shipping_value: number | null
+          status: string
+          supplier_name: string | null
+          taxes_mode: string | null
+          taxes_value: number | null
+          total_egp: number | null
+          total_qty: number
+          total_usd: number
+          updated_at: string
+          usd_rate: number | null
+          user_id: string
+        }
+        Insert: {
+          cfo_notes?: string | null
+          cfo_priced_at?: string | null
+          cfo_priced_by?: string | null
+          cfo_priced_by_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          customs_mode?: string | null
+          customs_value?: number | null
+          id?: string
+          notes?: string | null
+          other_mode?: string | null
+          other_value?: number | null
+          po_number: string
+          shipping_mode?: string | null
+          shipping_value?: number | null
+          status?: string
+          supplier_name?: string | null
+          taxes_mode?: string | null
+          taxes_value?: number | null
+          total_egp?: number | null
+          total_qty?: number
+          total_usd?: number
+          updated_at?: string
+          usd_rate?: number | null
+          user_id: string
+        }
+        Update: {
+          cfo_notes?: string | null
+          cfo_priced_at?: string | null
+          cfo_priced_by?: string | null
+          cfo_priced_by_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          customs_mode?: string | null
+          customs_value?: number | null
+          id?: string
+          notes?: string | null
+          other_mode?: string | null
+          other_value?: number | null
+          po_number?: string
+          shipping_mode?: string | null
+          shipping_value?: number | null
+          status?: string
+          supplier_name?: string | null
+          taxes_mode?: string | null
+          taxes_value?: number | null
+          total_egp?: number | null
+          total_qty?: number
+          total_usd?: number
+          updated_at?: string
+          usd_rate?: number | null
           user_id?: string
         }
         Relationships: []
