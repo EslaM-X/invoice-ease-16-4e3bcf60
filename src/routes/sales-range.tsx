@@ -59,9 +59,15 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function daysAgoISO(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function SalesRange() {
   const { user } = useAuth();
-  const [from, setFrom] = useState<string>(todayISO());
+  const [from, setFrom] = useState<string>(daysAgoISO(6));
   const [to, setTo] = useState<string>(todayISO());
   const [invoices, setInvoices] = useState<Inv[]>([]);
   const [items, setItems] = useState<Item[]>([]);
