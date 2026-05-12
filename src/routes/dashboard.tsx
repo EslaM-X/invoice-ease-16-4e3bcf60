@@ -70,7 +70,6 @@ function Dashboard() {
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
     { label: t("total_invoices"), value: stats.invoices, Icon: FileText, sensitive: false },
     { label: t("total_customers"), value: stats.customers, Icon: Users, sensitive: false },
-    { label: t("total_products"), value: stats.products, Icon: Package, sensitive: false },
   ];
 
   return (
