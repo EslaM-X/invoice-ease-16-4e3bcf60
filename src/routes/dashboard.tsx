@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
-import { Users, Package, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff } from "lucide-react";
+import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useRealtimeTable } from "@/lib/realtime";
@@ -31,8 +31,8 @@ function Dashboard() {
     const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
       supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").neq("status", "voided").order("created_at", { ascending: false }).limit(50),
       supabase.from("customers").select("*", { count: "exact", head: true }),
-      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold"),
-      supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
+      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
+      supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
     ]);
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
@@ -44,12 +44,18 @@ function Dashboard() {
       lowStock,
     });
     setRecent((invs ?? []).slice(0, 5));
-    const map = new Map<string, { name: string; qty: number; total: number }>();
+    const prodMap = new Map<string, any>();
+    (prods ?? []).forEach((p: any) => prodMap.set(p.id, p));
+    const map = new Map<string, { key: string; name: string; serial?: string | null; color?: string | null; qty: number; total: number }>();
     (items ?? []).forEach((it: any) => {
-      const prev = map.get(it.product_name) ?? { name: it.product_name, qty: 0, total: 0 };
+      const prod = it.product_id ? prodMap.get(it.product_id) : null;
+      const serial = it.serial_number ?? prod?.serial_number ?? null;
+      const color = it.color ?? prod?.color ?? null;
+      const key = `${it.product_id ?? it.product_name}|${serial ?? ""}|${color ?? ""}`;
+      const prev = map.get(key) ?? { key, name: it.product_name, serial, color, qty: 0, total: 0 };
       prev.qty += Number(it.quantity ?? 0);
       prev.total += Number(it.line_total ?? 0);
-      map.set(it.product_name, prev);
+      map.set(key, prev);
     });
     setTop([...map.values()].sort((a, b) => b.total - a.total).slice(0, 5));
   };
@@ -64,7 +70,6 @@ function Dashboard() {
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
     { label: t("total_invoices"), value: stats.invoices, Icon: FileText, sensitive: false },
     { label: t("total_customers"), value: stats.customers, Icon: Users, sensitive: false },
-    { label: t("total_products"), value: stats.products, Icon: Package, sensitive: false },
   ];
 
   return (
@@ -109,7 +114,7 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {cards.map(({ label, value, Icon }) => (
           <div key={label} className="group relative bg-card p-4 sm:p-6 transition-colors hover:bg-muted/40 min-w-0">
             <div className="flex items-start justify-between gap-3">
@@ -153,12 +158,23 @@ function Dashboard() {
           ) : (
             <div className="divide-y divide-border">
               {top.map((p) => (
-                <div key={p.name} className="flex items-center justify-between py-3">
-                  <div>
-                    <div className="text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">× {p.qty}</div>
+                <div key={p.key} className="flex items-start justify-between gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{p.name}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="tabular-nums">× {p.qty}</span>
+                      {p.serial && (
+                        <span className="font-mono">{lang === "ar" ? "ت: " : "S/N: "}{p.serial}</span>
+                      )}
+                      {p.color && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: p.color }} aria-hidden />
+                          {p.color}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(p.total, "EGP", lang)}</div>
+                  <div className="text-sm font-semibold tabular-nums whitespace-nowrap">{fmtMoney(p.total, "EGP", lang)}</div>
                 </div>
               ))}
             </div>
