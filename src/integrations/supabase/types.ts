@@ -1627,7 +1627,14 @@ export type Database = {
       void_invoice: { Args: { _invoice_id: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "user" | "manager" | "cashier" | "call_center"
+      app_role:
+        | "admin"
+        | "user"
+        | "manager"
+        | "cashier"
+        | "call_center"
+        | "purchasing"
+        | "cfo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1755,7 +1762,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "manager", "cashier", "call_center"],
+      app_role: [
+        "admin",
+        "user",
+        "manager",
+        "cashier",
+        "call_center",
+        "purchasing",
+        "cfo",
+      ],
     },
   },
 } as const
