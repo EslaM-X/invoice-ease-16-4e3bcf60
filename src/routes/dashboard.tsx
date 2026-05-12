@@ -158,12 +158,23 @@ function Dashboard() {
           ) : (
             <div className="divide-y divide-border">
               {top.map((p) => (
-                <div key={p.name} className="flex items-center justify-between py-3">
-                  <div>
-                    <div className="text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">× {p.qty}</div>
+                <div key={p.key} className="flex items-start justify-between gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{p.name}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="tabular-nums">× {p.qty}</span>
+                      {p.serial && (
+                        <span className="font-mono">{lang === "ar" ? "ت: " : "S/N: "}{p.serial}</span>
+                      )}
+                      {p.color && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: p.color }} aria-hidden />
+                          {p.color}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(p.total, "EGP", lang)}</div>
+                  <div className="text-sm font-semibold tabular-nums whitespace-nowrap">{fmtMoney(p.total, "EGP", lang)}</div>
                 </div>
               ))}
             </div>
