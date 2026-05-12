@@ -114,7 +114,7 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {cards.map(({ label, value, Icon }) => (
           <div key={label} className="group relative bg-card p-4 sm:p-6 transition-colors hover:bg-muted/40 min-w-0">
             <div className="flex items-start justify-between gap-3">
