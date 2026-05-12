@@ -290,9 +290,15 @@ function ReceiptsList() {
                         <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
                           r.status === "signed"
                             ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                            : r.status === "out_for_delivery"
+                            ? "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-400"
                             : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
                         }`}>
-                          {r.status === "signed" ? (isAr ? "موقّع" : "Signed") : (isAr ? "مسودة" : "Draft")}
+                          {r.status === "signed"
+                            ? (isAr ? "موقّع" : "Signed")
+                            : r.status === "out_for_delivery"
+                            ? (isAr ? "في الطريق" : "Out for delivery")
+                            : (isAr ? "مسودة" : "Draft")}
                         </span>
                       </td>
                       <td className="px-3 py-3">
