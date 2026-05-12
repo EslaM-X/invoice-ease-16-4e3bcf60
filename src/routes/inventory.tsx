@@ -139,73 +139,99 @@ function Inventory() {
 
       {lowStock.length > 0 && (
         <div className="rounded-2xl border border-warning/40 bg-warning/10 p-5">
-          <div className="mb-4 flex items-center gap-2 font-semibold">
+          <div className="mb-4 flex flex-wrap items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4" />
             {t("stock_low_alert")}
-            <span className="ms-auto rounded-full bg-warning/30 px-2 py-0.5 text-xs font-bold">
+            <span className="rounded-full bg-warning/30 px-2 py-0.5 text-xs font-bold">
               {lowStock.length}
             </span>
+            <Button
+              size="sm"
+              className="ms-auto"
+              onClick={() => { setOrderInitialId(null); setOrderOpen(true); }}
+            >
+              <ShoppingCart className="me-1 h-4 w-4" />
+              {lang === "ar" ? "إنشاء طلب لكل المنتجات" : "Create order for all"}
+            </Button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid max-h-[60vh] gap-3 overflow-y-auto pe-1 sm:grid-cols-2 lg:grid-cols-3">
             {lowStock.map((p) => {
               const isOut = p.stock_quantity <= 0;
               return (
                 <div
                   key={p.id}
-                  className={`flex gap-3 rounded-lg border bg-card p-3 text-sm shadow-sm ${
+                  className={`flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm shadow-sm ${
                     isOut ? "border-destructive/50" : "border-warning/40"
                   }`}
                 >
-                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <Boxes className="h-full w-full p-3 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 truncate font-semibold">{p.name}</div>
-                      {isOut && (
-                        <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold text-destructive">
-                          {lang === "ar" ? "نفد" : "OUT"}
-                        </span>
+                  <div className="flex gap-3">
+                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <Boxes className="h-full w-full p-3 text-muted-foreground" />
                       )}
                     </div>
-                    {p.serial_number && (
-                      <div className="truncate font-mono text-[11px] text-muted-foreground">
-                        {lang === "ar" ? "ت: " : "S/N: "}{p.serial_number}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 truncate font-semibold">{p.name}</div>
+                        {isOut && (
+                          <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold text-destructive">
+                            {lang === "ar" ? "نفد" : "OUT"}
+                          </span>
+                        )}
                       </div>
-                    )}
-                    {p.color && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      {p.serial_number && (
+                        <div className="truncate font-mono text-[11px] text-muted-foreground">
+                          {lang === "ar" ? "ت: " : "S/N: "}{p.serial_number}
+                        </div>
+                      )}
+                      {p.color && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full border"
+                            style={{ background: p.color }}
+                            aria-hidden
+                          />
+                          {lang === "ar" ? "اللون: " : "Color: "}{p.color}
+                        </div>
+                      )}
+                      <div className="flex items-baseline gap-1 pt-0.5">
                         <span
-                          className="inline-block h-2.5 w-2.5 rounded-full border"
-                          style={{ background: p.color }}
-                          aria-hidden
-                        />
-                        {lang === "ar" ? "اللون: " : "Color: "}{p.color}
+                          className={`text-lg font-bold tabular-nums ${
+                            isOut ? "text-destructive" : "text-warning-foreground"
+                          }`}
+                        >
+                          {p.stock_quantity}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          / {p.low_stock_threshold} {lang === "ar" ? "حد أدنى" : "min"}
+                        </span>
                       </div>
-                    )}
-                    <div className="flex items-baseline gap-1 pt-0.5">
-                      <span
-                        className={`text-lg font-bold tabular-nums ${
-                          isOut ? "text-destructive" : "text-warning-foreground"
-                        }`}
-                      >
-                        {p.stock_quantity}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        / {p.low_stock_threshold} {lang === "ar" ? "حد أدنى" : "min"}
-                      </span>
                     </div>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => { setOrderInitialId(p.id); setOrderOpen(true); }}
+                  >
+                    <ShoppingCart className="me-1 h-3.5 w-3.5" />
+                    {lang === "ar" ? "طلبية" : "Order"}
+                  </Button>
                 </div>
               );
             })}
           </div>
         </div>
       )}
+
+      <RestockOrderDialog
+        open={orderOpen}
+        onOpenChange={setOrderOpen}
+        products={lowStock}
+        initialProductId={orderInitialId}
+      />
 
 
       <div className="card-premium rounded-2xl border bg-card p-5">
