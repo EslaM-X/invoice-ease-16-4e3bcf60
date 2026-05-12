@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang, setLang } = useI18n();
   const { theme, toggle } = useTheme();
-  const { isAdmin, isCallCenter } = useRole();
+  const { isAdmin, isCallCenter, isPurchasing, isCFO } = useRole();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
