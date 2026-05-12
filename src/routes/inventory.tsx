@@ -5,10 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import type { Product } from "@/lib/data";
-import { AlertTriangle, Boxes, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, Boxes, ShoppingCart, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { useRealtimeTable } from "@/lib/realtime";
 import { CardsSkeleton } from "@/components/skeletons";
+import { Button } from "@/components/ui/button";
+import { RestockOrderDialog } from "@/components/restock-order-dialog";
 
 export const Route = createFileRoute("/inventory")({ component: () => <AppShell><Inventory /></AppShell> });
 
