@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang, setLang } = useI18n();
   const { theme, toggle } = useTheme();
-  const { isAdmin, isCallCenter } = useRole();
+  const { isAdmin, isCallCenter, isPurchasing, isCFO } = useRole();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -170,6 +170,24 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <BarChart3 className="h-4 w-4" /> تقارير الاتصال
+            </Link>
+          </>
+        )}
+        {(isPurchasing || isCFO) && (
+          <>
+            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">
+              {lang === "ar" ? "المشتريات" : "Procurement"}
+            </div>
+            <Link
+              to="/purchase-orders"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                location.pathname.startsWith("/purchase-orders")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
             </Link>
           </>
         )}

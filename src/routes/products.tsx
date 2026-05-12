@@ -35,7 +35,7 @@ function Products() {
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
@@ -105,10 +105,10 @@ function Products() {
     setSelected(next);
   };
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "" }); setOpen(true); };
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "" });
+    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), cost_price_usd: String((p as any).cost_price_usd ?? 0), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "" });
     setOpen(true);
   };
 
@@ -120,6 +120,7 @@ function Products() {
       serial_number: form.serial_number || null,
       color: form.color || null,
       price: Number(form.price) || 0,
+      cost_price_usd: Number(form.cost_price_usd) || 0,
       stock_quantity: parseInt(form.stock_quantity || "0", 10),
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
       image_url: form.image_url || null,
@@ -297,6 +298,7 @@ function Products() {
                 <div><Label>{t("serial_number")}</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
                 <div><Label>{t("price")}</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+                <div><Label>{lang === "ar" ? "تكلفة الوحدة (USD)" : "Unit cost (USD)"}</Label><Input type="number" step="0.01" value={form.cost_price_usd} onChange={(e) => setForm({ ...form, cost_price_usd: e.target.value })} /></div>
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
                 <div><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
                 <div>
