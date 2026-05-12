@@ -94,8 +94,25 @@ function Inventory() {
               return (
                 <div key={p.id} className="rounded-lg border bg-background/50 p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <div className="truncate text-sm font-medium">{p.name}</div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                        {p.serial_number && (
+                          <span className="font-mono">
+                            {lang === "ar" ? "ت: " : "S/N: "}{p.serial_number}
+                          </span>
+                        )}
+                        {p.color && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full border"
+                              style={{ background: p.color }}
+                              aria-hidden
+                            />
+                            {p.color}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground tabular-nums">
                         {fmtMoney(Number(p.price ?? 0), "EGP", lang)} × {p.stock_quantity}
                       </div>
