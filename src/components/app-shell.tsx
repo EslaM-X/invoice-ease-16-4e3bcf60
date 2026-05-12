@@ -173,6 +173,24 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </>
         )}
+        {(isPurchasing || isCFO) && (
+          <>
+            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">
+              {lang === "ar" ? "المشتريات" : "Procurement"}
+            </div>
+            <Link
+              to="/purchase-orders"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                location.pathname.startsWith("/purchase-orders")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
+            </Link>
+          </>
+        )}
         {isAdmin && (
           <>
             <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">Admin</div>
