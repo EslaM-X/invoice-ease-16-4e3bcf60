@@ -18,6 +18,7 @@ import { Route as SalesRangeRouteImport } from './routes/sales-range'
 import { Route as SalesAuditRouteImport } from './routes/sales-audit'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as PurchaseOrdersRouteImport } from './routes/purchase-orders'
 import { Route as ProfitsRouteImport } from './routes/profits'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
@@ -85,6 +86,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchaseOrdersRoute = PurchaseOrdersRouteImport.update({
+  id: '/purchase-orders',
+  path: '/purchase-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfitsRoute = ProfitsRouteImport.update({
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/products': typeof ProductsRoute
   '/profits': typeof ProfitsRoute
+  '/purchase-orders': typeof PurchaseOrdersRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByTo {
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/products': typeof ProductsRoute
   '/profits': typeof ProfitsRoute
+  '/purchase-orders': typeof PurchaseOrdersRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/products': typeof ProductsRoute
   '/profits': typeof ProfitsRoute
+  '/purchase-orders': typeof PurchaseOrdersRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/invoices-system-notes'
     | '/products'
     | '/profits'
+    | '/purchase-orders'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/invoices-system-notes'
     | '/products'
     | '/profits'
+    | '/purchase-orders'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/invoices-system-notes'
     | '/products'
     | '/profits'
+    | '/purchase-orders'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -427,6 +439,7 @@ export interface RootRouteChildren {
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   ProductsRoute: typeof ProductsRoute
   ProfitsRoute: typeof ProfitsRoute
+  PurchaseOrdersRoute: typeof PurchaseOrdersRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SalesAuditRoute: typeof SalesAuditRoute
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchase-orders': {
+      id: '/purchase-orders'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders'
+      preLoaderRoute: typeof PurchaseOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profits': {
@@ -691,6 +711,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   ProductsRoute: ProductsRoute,
   ProfitsRoute: ProfitsRoute,
+  PurchaseOrdersRoute: PurchaseOrdersRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SalesAuditRoute: SalesAuditRoute,

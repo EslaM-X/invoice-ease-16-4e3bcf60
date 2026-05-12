@@ -46,6 +46,7 @@ type PO = {
   created_at: string;
   created_by_email: string | null;
   cfo_priced_at: string | null;
+  cfo_priced_by_email?: string | null;
 };
 
 type POItem = {
