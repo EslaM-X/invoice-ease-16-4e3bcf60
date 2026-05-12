@@ -89,6 +89,42 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Plus className="h-4 w-4" /> {t("new_invoice")}
         </Link>
         {items.map((it) => {
+          if ("group" in it) {
+            const GroupIcon = it.icon;
+            const anyActive = it.children.some(
+              (c) => location.pathname === c.to || location.pathname.startsWith(c.to + "/"),
+            );
+            return (
+              <GroupNav
+                key={it.key}
+                label={t(it.key)}
+                icon={GroupIcon}
+                defaultOpen={anyActive}
+              >
+                {it.children.map((c) => {
+                  const active = location.pathname === c.to || location.pathname.startsWith(c.to + "/");
+                  const Icon = c.icon;
+                  return (
+                    <Link
+                      key={c.to}
+                      to={c.to}
+                      onClick={() => setOpen(false)}
+                      className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+                        active
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                      }`}
+                    >
+                      {active && (
+                        <span className="absolute inset-y-2 start-0 w-[2px] rounded-full bg-sidebar-primary" />
+                      )}
+                      <Icon className="h-4 w-4" /> {t(c.key)}
+                    </Link>
+                  );
+                })}
+              </GroupNav>
+            );
+          }
           const active = location.pathname === it.to || location.pathname.startsWith(it.to + "/");
           const Icon = it.icon;
           return (
