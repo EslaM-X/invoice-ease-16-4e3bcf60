@@ -341,6 +341,7 @@ function CreatePODialog({
               <Checkbox checked={showOnlyLow} onCheckedChange={(v) => setShowOnlyLow(!!v)} />
               {isAr ? "الناقص فقط" : "Low only"}
             </label>
+          </div>
         </div>
 
         <BulkAdjustBar
