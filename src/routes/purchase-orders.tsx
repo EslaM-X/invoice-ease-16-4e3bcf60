@@ -341,8 +341,14 @@ function CreatePODialog({
               <Checkbox checked={showOnlyLow} onCheckedChange={(v) => setShowOnlyLow(!!v)} />
               {isAr ? "الناقص فقط" : "Low only"}
             </label>
-          </div>
         </div>
+
+        <BulkAdjustBar
+          isAr={isAr}
+          filteredIds={filtered.map((p) => p.id)}
+          rows={rows}
+          setRows={setRows}
+        />
 
         <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
           <table className="w-full text-xs">
