@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ArrowLeft, Save, FileCheck2 } from "lucide-react";
+import { ArrowLeft, Save, FileCheck2, Truck } from "lucide-react";
 import {
   createDeliveryReceipt,
   updateDeliveryReceipt,
@@ -144,7 +144,7 @@ export function DeliveryReceiptForm({
   const setRow = (idx: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
-  const submit = async (status: "draft" | "signed", andPrint = false) => {
+  const submit = async (status: "draft" | "signed" | "out_for_delivery", andPrint = false) => {
     const items = rows
       .filter((r) => r.selected && r.qty > 0)
       .map((r) => ({
@@ -226,6 +226,9 @@ export function DeliveryReceiptForm({
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" disabled={saving} onClick={() => submit("draft")} className="gap-2">
             <Save className="h-4 w-4" /> {isAr ? "حفظ كمسودة" : "Save draft"}
+          </Button>
+          <Button variant="outline" disabled={saving} onClick={() => submit("out_for_delivery")} className="gap-2 border-sky-500/40 text-sky-700 hover:bg-sky-500/10 dark:text-sky-400">
+            <Truck className="h-4 w-4" /> {isAr ? "في الطريق" : "Out for delivery"}
           </Button>
           <Button disabled={saving} onClick={() => submit("signed")} className="gap-2 shadow-glow">
             <FileCheck2 className="h-4 w-4" /> {isAr ? "حفظ وإنهاء" : "Save & finalize"}
