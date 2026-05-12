@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2 } from "lucide-react";
+import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/purchase-orders")({
@@ -104,23 +104,28 @@ function PurchaseOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <ShoppingCart className="h-6 w-6 text-primary" />
-            {isAr ? "أوامر الشراء" : "Purchase Orders"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isAr
-              ? "أنشئ أوامر شراء بالدولار، والمدير المالي يضيف سعر الصرف والجمارك والشحن لاحتساب التكلفة بالجنيه."
-              : "Create USD purchase orders. The CFO adds FX rate, customs, shipping & taxes to compute the EGP landed cost."}
-          </p>
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5">
+        <div className="absolute -end-12 -top-12 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary shadow-sm">
+                <ShoppingCart className="h-5 w-5" />
+              </span>
+              {isAr ? "أوامر الشراء" : "Purchase Orders"}
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {isAr
+                ? "أنشئ أوامر شراء بالدولار، والمدير المالي يضيف سعر الصرف والجمارك والشحن لاحتساب التكلفة بالجنيه."
+                : "Create USD purchase orders. The CFO adds FX rate, customs, shipping & taxes to compute the EGP landed cost."}
+            </p>
+          </div>
+          {(isAdmin || isPurchasing) && (
+            <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
+              <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
+            </Button>
+          )}
         </div>
-        {(isAdmin || isPurchasing) && (
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
-          </Button>
-        )}
       </div>
 
       <Card className="overflow-hidden">
@@ -338,6 +343,13 @@ function CreatePODialog({
             </label>
           </div>
         </div>
+
+        <BulkAdjustBar
+          isAr={isAr}
+          filteredIds={filtered.map((p) => p.id)}
+          rows={rows}
+          setRows={setRows}
+        />
 
         <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
           <table className="w-full text-xs">
@@ -743,6 +755,104 @@ function PricingRow({
         placeholder={mode === "percent" ? "0.00 %" : "0.00 EGP"} />
       <div className="mt-1 text-[10px] text-muted-foreground">
         ≈ {fmtMoney(computedEgp, "EGP", lang)} {mode === "percent" ? (isAr ? "(محسوبة من الأساس)" : "(of base)") : ""}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────── Bulk Qty Adjust Bar ─────────────────────── */
+
+function BulkAdjustBar({
+  isAr, filteredIds, rows, setRows,
+}: {
+  isAr: boolean;
+  filteredIds: string[];
+  rows: Record<string, Row>;
+  setRows: Dispatch<SetStateAction<Record<string, Row>>>;
+}) {
+  const [delta, setDelta] = useState<string>("5");
+  const [scope, setScope] = useState<"selected" | "visible">("selected");
+
+  const selectedIds = filteredIds.filter((id) => rows[id]?.selected);
+  const targetIds = scope === "selected" ? selectedIds : filteredIds;
+  const n = Math.max(0, Number(delta) || 0);
+
+  const apply = (sign: 1 | -1) => {
+    if (!n || targetIds.length === 0) return;
+    setRows((prev) => {
+      const next = { ...prev };
+      targetIds.forEach((id) => {
+        const r = next[id]; if (!r) return;
+        const newQty = Math.max(0, (r.qty || 0) + sign * n);
+        next[id] = { ...r, qty: newQty, selected: scope === "visible" ? newQty > 0 : r.selected };
+      });
+      return next;
+    });
+  };
+
+  const setAll = (val: number) => {
+    if (targetIds.length === 0) return;
+    setRows((prev) => {
+      const next = { ...prev };
+      targetIds.forEach((id) => {
+        const r = next[id]; if (!r) return;
+        next[id] = { ...r, qty: Math.max(0, val), selected: scope === "visible" ? val > 0 : r.selected };
+      });
+      return next;
+    });
+  };
+
+  const selectAllVisible = (on: boolean) => {
+    setRows((prev) => {
+      const next = { ...prev };
+      filteredIds.forEach((id) => {
+        const r = next[id]; if (!r) return;
+        next[id] = { ...r, selected: on };
+      });
+      return next;
+    });
+  };
+
+  return (
+    <div className="rounded-lg border bg-gradient-to-br from-primary/5 to-transparent p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-xs font-semibold text-muted-foreground">
+          {isAr ? "تعديل جماعي للكمية" : "Bulk qty adjust"}
+        </div>
+        <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
+          <button type="button" onClick={() => setScope("selected")}
+            className={`rounded px-2 py-0.5 text-[11px] ${scope === "selected" ? "bg-primary text-primary-foreground" : ""}`}>
+            {isAr ? `المختار (${selectedIds.length})` : `Selected (${selectedIds.length})`}
+          </button>
+          <button type="button" onClick={() => setScope("visible")}
+            className={`rounded px-2 py-0.5 text-[11px] ${scope === "visible" ? "bg-primary text-primary-foreground" : ""}`}>
+            {isAr ? `الظاهر (${filteredIds.length})` : `Visible (${filteredIds.length})`}
+          </button>
+        </div>
+        <Input type="number" min={0} value={delta} onChange={(e) => setDelta(e.target.value)}
+          className="h-8 w-20" />
+        <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => apply(1)}>
+          <Plus className="h-3 w-3" /> {isAr ? "زيادة" : "Add"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => apply(-1)}>
+          <Minus className="h-3 w-3" /> {isAr ? "نقصان" : "Subtract"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setAll(n)}>
+          {isAr ? "ضبط على" : "Set to"} {n}
+        </Button>
+        <div className="ms-auto flex items-center gap-1">
+          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1" onClick={() => selectAllVisible(true)}>
+            <CheckSquare className="h-3 w-3" /> {isAr ? "تحديد الكل" : "Select all"}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1" onClick={() => selectAllVisible(false)}>
+            <Square className="h-3 w-3" /> {isAr ? "إلغاء" : "Clear"}
+          </Button>
+        </div>
+      </div>
+      <div className="mt-1 text-[10px] text-muted-foreground">
+        {isAr
+          ? "اضبط الكمية بسرعة لكل المنتجات المختارة أو الظاهرة دفعة واحدة، وبعدها تقدر تعدل أي صف يدوي."
+          : "Quickly bump qty across selected or visible rows, then fine-tune individually."}
       </div>
     </div>
   );
