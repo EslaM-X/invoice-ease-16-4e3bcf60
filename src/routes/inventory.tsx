@@ -22,7 +22,7 @@ function Inventory() {
   const load = async () => {
     const [{ data: p }, { data: l }] = await Promise.all([
       supabase.from("products").select("*").order("name"),
-      supabase.from("inventory_logs").select("*, products(name)").order("created_at", { ascending: false }).limit(30),
+      supabase.from("inventory_logs").select("*, products(name, serial_number, color, image_url, collection, price)").order("created_at", { ascending: false }).limit(30),
     ]);
     setProducts((p ?? []) as Product[]);
     setLogs(l ?? []);
