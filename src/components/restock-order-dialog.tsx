@@ -97,9 +97,13 @@ export function RestockOrderDialog({
       const r = rows[p.id]!;
       const sn = p.serial_number ? ` [${p.serial_number}]` : "";
       const col = p.color ? ` (${p.color})` : "";
+      const prevCost = Number(p.cost_price ?? 0);
+      const denom = Math.max(0, p.stock_quantity) + Math.max(0, r.qty);
+      const newAvg = denom > 0 ? (Math.max(0, p.stock_quantity) * prevCost + Math.max(0, r.qty) * r.unitCost) / denom : r.unitCost;
       const priceLine =
         mode === "individual"
-          ? `  ${fmtMoney(r.unitCost, "EGP", lang)} × ${r.qty} = ${fmtMoney(r.qty * r.unitCost, "EGP", lang)}`
+          ? `  ${fmtMoney(r.unitCost, "EGP", lang)} × ${r.qty} = ${fmtMoney(r.qty * r.unitCost, "EGP", lang)}` +
+            (mode === "individual" ? `  |  ${isAr ? "متوسط جديد" : "New avg"}: ${fmtMoney(newAvg, "EGP", lang)}${prevCost ? ` (${isAr ? "سابق" : "prev"}: ${fmtMoney(prevCost, "EGP", lang)})` : ""}` : "")
           : `  ${isAr ? "الكمية" : "Qty"}: ${r.qty}`;
       lines.push(`${i + 1}. ${p.name}${sn}${col}`);
       lines.push(priceLine);
