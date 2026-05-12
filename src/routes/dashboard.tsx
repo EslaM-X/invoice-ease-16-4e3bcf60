@@ -31,8 +31,8 @@ function Dashboard() {
     const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
       supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").neq("status", "voided").order("created_at", { ascending: false }).limit(50),
       supabase.from("customers").select("*", { count: "exact", head: true }),
-      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold"),
-      supabase.from("invoice_items").select("product_name, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
+      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
+      supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
     ]);
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
@@ -44,12 +44,18 @@ function Dashboard() {
       lowStock,
     });
     setRecent((invs ?? []).slice(0, 5));
-    const map = new Map<string, { name: string; qty: number; total: number }>();
+    const prodMap = new Map<string, any>();
+    (prods ?? []).forEach((p: any) => prodMap.set(p.id, p));
+    const map = new Map<string, { key: string; name: string; serial?: string | null; color?: string | null; qty: number; total: number }>();
     (items ?? []).forEach((it: any) => {
-      const prev = map.get(it.product_name) ?? { name: it.product_name, qty: 0, total: 0 };
+      const prod = it.product_id ? prodMap.get(it.product_id) : null;
+      const serial = it.serial_number ?? prod?.serial_number ?? null;
+      const color = it.color ?? prod?.color ?? null;
+      const key = `${it.product_id ?? it.product_name}|${serial ?? ""}|${color ?? ""}`;
+      const prev = map.get(key) ?? { key, name: it.product_name, serial, color, qty: 0, total: 0 };
       prev.qty += Number(it.quantity ?? 0);
       prev.total += Number(it.line_total ?? 0);
-      map.set(it.product_name, prev);
+      map.set(key, prev);
     });
     setTop([...map.values()].sort((a, b) => b.total - a.total).slice(0, 5));
   };
