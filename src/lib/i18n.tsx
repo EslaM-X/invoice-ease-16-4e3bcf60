@@ -232,6 +232,7 @@ const ar: Dict = {
   all_collections: "كل الكولكشنات",
   filter_by_collection: "تصفية بالكولكشن",
   no_collection: "بدون كولكشن",
+  inventory_group: "المنتجات والمخزون",
 };
 
 const en: Dict = {
@@ -462,6 +463,7 @@ const en: Dict = {
   all_collections: "All collections",
   filter_by_collection: "Filter by collection",
   no_collection: "No collection",
+  inventory_group: "Products & Inventory",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };

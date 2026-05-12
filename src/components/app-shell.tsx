@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
-  Phone, Truck, TrendingUp, StickyNote, ClipboardCheck,
+  Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -17,12 +17,23 @@ import { useRole } from "@/lib/use-role";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LangStatusPill } from "@/components/lang-status-pill";
 
-const items = [
+type NavItem = { to: string; icon: any; key: any };
+type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
+type NavEntry = NavItem | NavGroup;
+
+const items: NavEntry[] = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
   { to: "/customers", icon: Users, key: "customers" as const },
-  { to: "/products", icon: Package, key: "products" as const },
-  { to: "/inventory", icon: Boxes, key: "inventory" as const },
-  { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
+  {
+    group: true,
+    key: "inventory_group" as const,
+    icon: Warehouse,
+    children: [
+      { to: "/products", icon: Package, key: "products" as const },
+      { to: "/inventory", icon: Boxes, key: "inventory" as const },
+      { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
+    ],
+  },
   { to: "/sales-today", icon: ShoppingCart, key: "sales_today" as const },
   { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
   { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
@@ -78,6 +89,42 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Plus className="h-4 w-4" /> {t("new_invoice")}
         </Link>
         {items.map((it) => {
+          if ("group" in it) {
+            const GroupIcon = it.icon;
+            const anyActive = it.children.some(
+              (c) => location.pathname === c.to || location.pathname.startsWith(c.to + "/"),
+            );
+            return (
+              <GroupNav
+                key={it.key}
+                label={t(it.key)}
+                icon={GroupIcon}
+                defaultOpen={anyActive}
+              >
+                {it.children.map((c) => {
+                  const active = location.pathname === c.to || location.pathname.startsWith(c.to + "/");
+                  const Icon = c.icon;
+                  return (
+                    <Link
+                      key={c.to}
+                      to={c.to}
+                      onClick={() => setOpen(false)}
+                      className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+                        active
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                      }`}
+                    >
+                      {active && (
+                        <span className="absolute inset-y-2 start-0 w-[2px] rounded-full bg-sidebar-primary" />
+                      )}
+                      <Icon className="h-4 w-4" /> {t(c.key)}
+                    </Link>
+                  );
+                })}
+              </GroupNav>
+            );
+          }
           const active = location.pathname === it.to || location.pathname.startsWith(it.to + "/");
           const Icon = it.icon;
           return (
@@ -194,6 +241,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+    </div>
+  );
+}
+
+function GroupNav({
+  label,
+  icon: Icon,
+  defaultOpen,
+  children,
+}: {
+  label: string;
+  icon: any;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="space-y-0.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+      >
+        <Icon className="h-4 w-4" />
+        <span className="flex-1 text-start">{label}</span>
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="space-y-0.5">{children}</div>}
     </div>
   );
 }
