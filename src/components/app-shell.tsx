@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
-  Phone, Truck, TrendingUp, StickyNote, ClipboardCheck,
+  Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -17,12 +17,23 @@ import { useRole } from "@/lib/use-role";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LangStatusPill } from "@/components/lang-status-pill";
 
-const items = [
+type NavItem = { to: string; icon: any; key: any };
+type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
+type NavEntry = NavItem | NavGroup;
+
+const items: NavEntry[] = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
   { to: "/customers", icon: Users, key: "customers" as const },
-  { to: "/products", icon: Package, key: "products" as const },
-  { to: "/inventory", icon: Boxes, key: "inventory" as const },
-  { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
+  {
+    group: true,
+    key: "inventory_group" as const,
+    icon: Warehouse,
+    children: [
+      { to: "/products", icon: Package, key: "products" as const },
+      { to: "/inventory", icon: Boxes, key: "inventory" as const },
+      { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
+    ],
+  },
   { to: "/sales-today", icon: ShoppingCart, key: "sales_today" as const },
   { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
   { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
