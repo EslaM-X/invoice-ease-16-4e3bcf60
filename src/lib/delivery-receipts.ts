@@ -16,7 +16,7 @@ export type DRPayload = {
   signature_customer?: string | null;
   signature_manager?: string | null;
   signature_accountant?: string | null;
-  status?: "draft" | "signed";
+  status?: "draft" | "signed" | "out_for_delivery";
   shipping_fees?: number | null;
   items: DRItemInput[];
 };
