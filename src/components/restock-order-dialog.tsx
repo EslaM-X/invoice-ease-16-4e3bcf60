@@ -97,9 +97,13 @@ export function RestockOrderDialog({
       const r = rows[p.id]!;
       const sn = p.serial_number ? ` [${p.serial_number}]` : "";
       const col = p.color ? ` (${p.color})` : "";
+      const prevCost = Number(p.cost_price ?? 0);
+      const denom = Math.max(0, p.stock_quantity) + Math.max(0, r.qty);
+      const newAvg = denom > 0 ? (Math.max(0, p.stock_quantity) * prevCost + Math.max(0, r.qty) * r.unitCost) / denom : r.unitCost;
       const priceLine =
         mode === "individual"
-          ? `  ${fmtMoney(r.unitCost, "EGP", lang)} × ${r.qty} = ${fmtMoney(r.qty * r.unitCost, "EGP", lang)}`
+          ? `  ${fmtMoney(r.unitCost, "EGP", lang)} × ${r.qty} = ${fmtMoney(r.qty * r.unitCost, "EGP", lang)}` +
+            (mode === "individual" ? `  |  ${isAr ? "متوسط جديد" : "New avg"}: ${fmtMoney(newAvg, "EGP", lang)}${prevCost ? ` (${isAr ? "سابق" : "prev"}: ${fmtMoney(prevCost, "EGP", lang)})` : ""}` : "")
           : `  ${isAr ? "الكمية" : "Qty"}: ${r.qty}`;
       lines.push(`${i + 1}. ${p.name}${sn}${col}`);
       lines.push(priceLine);
@@ -254,7 +258,10 @@ export function RestockOrderDialog({
                 <th className="p-2 text-start">{isAr ? "المخزون" : "Stock"}</th>
                 <th className="p-2 text-start">{isAr ? "الكمية" : "Qty"}</th>
                 {mode === "individual" && (
-                  <th className="p-2 text-start">{isAr ? "تكلفة الوحدة" : "Unit cost"}</th>
+                  <th className="p-2 text-start">{isAr ? "تكلفة الوحدة (قابلة للتعديل)" : "Unit cost (editable)"}</th>
+                )}
+                {mode === "individual" && (
+                  <th className="p-2 text-start">{isAr ? "متوسط جديد" : "New avg"}</th>
                 )}
                 {mode === "individual" && (
                   <th className="p-2 text-end">{isAr ? "إجمالي" : "Total"}</th>
@@ -315,18 +322,44 @@ export function RestockOrderDialog({
                         <Input
                           type="number"
                           min={0}
-                          step="0.01"
+                          step="any"
                           className="h-7 w-24"
-                          value={r.unitCost || ""}
-                          onChange={(e) =>
+                          value={Number.isFinite(r.unitCost) ? String(r.unitCost) : ""}
+                          placeholder={p.cost_price ? String(p.cost_price) : "0.00"}
+                          onChange={(e) => {
+                            const raw = e.target.value;
                             setRows((prev) => ({
                               ...prev,
-                              [p.id]: { ...prev[p.id], unitCost: Math.max(0, Number(e.target.value) || 0) },
-                            }))
-                          }
+                              [p.id]: { ...prev[p.id], unitCost: raw === "" ? 0 : Math.max(0, Number(raw) || 0) },
+                            }));
+                          }}
                         />
+                        {p.cost_price ? (
+                          <div className="mt-0.5 text-[10px] text-muted-foreground">
+                            {isAr ? "السابق: " : "Prev: "}
+                            {fmtMoney(Number(p.cost_price), "EGP", lang)}
+                          </div>
+                        ) : null}
                       </td>
                     )}
+                    {mode === "individual" && (() => {
+                      const prevCost = Number(p.cost_price ?? 0);
+                      const prevQty = Math.max(0, p.stock_quantity);
+                      const addQty = Math.max(0, r.qty);
+                      const denom = prevQty + addQty;
+                      const newAvg = denom > 0 ? (prevQty * prevCost + addQty * r.unitCost) / denom : r.unitCost;
+                      const diff = newAvg - prevCost;
+                      return (
+                        <td className="p-2 tabular-nums">
+                          <div className="font-semibold">{fmtMoney(newAvg, "EGP", lang)}</div>
+                          {prevCost > 0 && addQty > 0 && (
+                            <div className={`text-[10px] ${diff > 0 ? "text-destructive" : diff < 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
+                              {diff > 0 ? "▲" : diff < 0 ? "▼" : "="} {fmtMoney(Math.abs(diff), "EGP", lang)}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })()}
                     {mode === "individual" && (
                       <td className="p-2 text-end font-semibold tabular-nums">
                         {fmtMoney(r.qty * r.unitCost, "EGP", lang)}
