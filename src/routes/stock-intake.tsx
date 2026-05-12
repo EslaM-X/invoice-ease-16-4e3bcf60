@@ -442,9 +442,9 @@ function StockIntake() {
           className="w-full sm:w-auto"
         >
           <PackagePlus className="me-2 h-4 w-4" />
-          {submitting ? t("loading") : t("intake_saved").replace(/^تم |Recorded.*/, "") || t("save")}
-          {" "}
-          {!submitting && `· ${totalUnits} ${lang === "ar" ? "قطعة" : "units"} · ${fmtMoney(totalCost, "EGP", lang)}`}
+          {submitting
+            ? t("loading")
+            : `${lang === "ar" ? "تسجيل الاستلام" : "Record intake"} · ${totalUnits} ${lang === "ar" ? "قطعة" : "units"} · ${fmtMoney(totalCost, "EGP", lang)}`}
         </Button>
       </div>
 
