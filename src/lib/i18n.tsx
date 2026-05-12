@@ -232,6 +232,7 @@ const ar: Dict = {
   all_collections: "كل الكولكشنات",
   filter_by_collection: "تصفية بالكولكشن",
   no_collection: "بدون كولكشن",
+  inventory_group: "المنتجات والمخزون",
 };
 
 const en: Dict = {
