@@ -1187,6 +1187,110 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_intake_items: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          intake_id: string
+          line_total: number
+          new_avg_cost: number | null
+          previous_cost: number | null
+          previous_stock: number | null
+          product_id: string
+          product_name: string
+          quantity: number
+          serial_number: string | null
+          unit_cost: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          intake_id: string
+          line_total?: number
+          new_avg_cost?: number | null
+          previous_cost?: number | null
+          previous_stock?: number | null
+          product_id: string
+          product_name: string
+          quantity: number
+          serial_number?: string | null
+          unit_cost?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          intake_id?: string
+          line_total?: number
+          new_avg_cost?: number | null
+          previous_cost?: number | null
+          previous_stock?: number | null
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          serial_number?: string | null
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_intake_items_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "stock_intakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_intakes: {
+        Row: {
+          bulk_total: number | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          intake_number: string
+          invoice_reference: string | null
+          notes: string | null
+          pricing_mode: string
+          supplier_name: string | null
+          total_cost: number
+          total_qty: number
+          user_id: string
+        }
+        Insert: {
+          bulk_total?: number | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          intake_number: string
+          invoice_reference?: string | null
+          notes?: string | null
+          pricing_mode?: string
+          supplier_name?: string | null
+          total_cost?: number
+          total_qty?: number
+          user_id: string
+        }
+        Update: {
+          bulk_total?: number | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          intake_number?: string
+          invoice_reference?: string | null
+          notes?: string | null
+          pricing_mode?: string
+          supplier_name?: string | null
+          total_cost?: number
+          total_qty?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_counters: {
         Row: {
           receipt_seq: number
@@ -1446,6 +1550,17 @@ export type Database = {
       recalc_invoice_delivery_status: {
         Args: { _invoice_id: string }
         Returns: undefined
+      }
+      record_stock_intake: {
+        Args: {
+          _bulk_total: number
+          _invoice_reference: string
+          _items: Json
+          _notes: string
+          _pricing_mode: string
+          _supplier_name: string
+        }
+        Returns: string
       }
       update_delivery_receipt:
         | {

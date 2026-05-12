@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StockIntakeRouteImport } from './routes/stock-intake'
 import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
@@ -41,6 +42,11 @@ import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
+const StockIntakeRoute = StockIntakeRouteImport.update({
+  id: '/stock-intake',
+  path: '/stock-intake',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShippingOrderRoute = ShippingOrderRouteImport.update({
   id: '/shipping-order',
   path: '/shipping-order',
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/stock-intake': typeof StockIntakeRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/stock-intake': typeof StockIntakeRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/stock-intake': typeof StockIntakeRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
@@ -323,6 +332,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/stock-intake'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
@@ -356,6 +366,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/stock-intake'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/stock-intake'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
@@ -423,6 +435,7 @@ export interface RootRouteChildren {
   ScanAndSellRoute: typeof ScanAndSellRoute
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
+  StockIntakeRoute: typeof StockIntakeRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
@@ -436,6 +449,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/stock-intake': {
+      id: '/stock-intake'
+      path: '/stock-intake'
+      fullPath: '/stock-intake'
+      preLoaderRoute: typeof StockIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shipping-order': {
       id: '/shipping-order'
       path: '/shipping-order'
@@ -679,6 +699,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScanAndSellRoute: ScanAndSellRoute,
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
+  StockIntakeRoute: StockIntakeRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
   InvoicesIdRoute: InvoicesIdRoute,
