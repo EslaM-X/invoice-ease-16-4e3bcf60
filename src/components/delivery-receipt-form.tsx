@@ -144,7 +144,7 @@ export function DeliveryReceiptForm({
   const setRow = (idx: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
-  const submit = async (status: "draft" | "signed", andPrint = false) => {
+  const submit = async (status: "draft" | "signed" | "out_for_delivery", andPrint = false) => {
     const items = rows
       .filter((r) => r.selected && r.qty > 0)
       .map((r) => ({
