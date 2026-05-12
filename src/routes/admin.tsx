@@ -21,12 +21,14 @@ type Member = {
   roles: AppRole[];
 };
 
-const ROLE_OPTIONS: AppRole[] = ["admin", "manager", "cashier", "call_center", "user"];
+const ROLE_OPTIONS: AppRole[] = ["admin", "manager", "cashier", "call_center", "purchasing", "cfo", "user"];
 const ROLE_COLORS: Record<AppRole, string> = {
   admin: "bg-amber-500/15 text-amber-600 border-amber-500/30",
   manager: "bg-blue-500/15 text-blue-600 border-blue-500/30",
   cashier: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
   call_center: "bg-purple-500/15 text-purple-600 border-purple-500/30",
+  purchasing: "bg-cyan-500/15 text-cyan-600 border-cyan-500/30",
+  cfo: "bg-rose-500/15 text-rose-600 border-rose-500/30",
   user: "bg-muted text-muted-foreground border-border",
 };
 
