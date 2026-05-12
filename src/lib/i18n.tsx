@@ -65,7 +65,7 @@ const ar: Dict = {
   total_invoices: "عدد الفواتير",
   total_customers: "عدد العملاء",
   total_products: "عدد المنتجات",
-  top_products: "المنتجات الأكثر مبيعاً",
+  top_products: "المنتجات الأكثر مبيعًا",
   recent_invoices: "أحدث الفواتير",
   company_activity: "نشاط الشركة المباشر",
   profile_photo: "الصورة الشخصية",
