@@ -298,6 +298,7 @@ function Products() {
                 <div><Label>{t("serial_number")}</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
                 <div><Label>{t("price")}</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+                <div><Label>{lang === "ar" ? "تكلفة الوحدة (USD)" : "Unit cost (USD)"}</Label><Input type="number" step="0.01" value={form.cost_price_usd} onChange={(e) => setForm({ ...form, cost_price_usd: e.target.value })} /></div>
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
                 <div><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
                 <div>
