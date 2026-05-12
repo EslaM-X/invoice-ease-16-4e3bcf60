@@ -35,7 +35,7 @@ function Products() {
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
