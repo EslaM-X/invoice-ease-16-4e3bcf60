@@ -295,7 +295,7 @@ const en: Dict = {
   total_invoices: "Invoices",
   total_customers: "Customers",
   total_products: "Products",
-  top_products: "Top products",
+  top_products: "Top selling products",
   recent_invoices: "Recent invoices",
   company_activity: "Company Activity",
   profile_photo: "Profile photo",
