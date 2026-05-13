@@ -494,6 +494,7 @@ function PODetailDialog({
   const [shippingValue, setShippingValue] = useState<string>("");
   const [otherMode, setOtherMode] = useState<Mode>("percent");
   const [otherValue, setOtherValue] = useState<string>("");
+  const [discountMode, setDiscountMode] = useState<Mode>("percent");
   const [discountPct, setDiscountPct] = useState<string>("");
   const [cfoNotes, setCfoNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -516,7 +517,11 @@ function PODetailDialog({
       setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
       setOtherMode((p.other_mode as Mode) || "percent");
       setOtherValue(p.other_value != null ? String(p.other_value) : "");
-      setDiscountPct(p.final_discount_percent != null ? String(p.final_discount_percent) : "");
+      setDiscountMode(((p.final_discount_mode as Mode) || "percent"));
+      const dv = p.final_discount_value != null && Number(p.final_discount_value) > 0
+        ? Number(p.final_discount_value)
+        : (p.final_discount_percent != null ? Number(p.final_discount_percent) : 0);
+      setDiscountPct(dv ? String(dv) : "");
       setCfoNotes(p.cfo_notes ?? "");
     }
     setItems((itemsData as any) ?? []);
@@ -538,9 +543,12 @@ function PODetailDialog({
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
   const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
-  const discountVal = Math.max(0, Math.min(100, Number(discountPct) || 0));
-  const discountEgp = (totalEgp * discountVal) / 100;
-  const netEgp = totalEgp - discountEgp;
+  const discountInput = Math.max(0, Number(discountPct) || 0);
+  const discountVal = discountMode === "percent" ? Math.min(100, discountInput) : discountInput;
+  const discountEgp = discountMode === "percent"
+    ? (totalEgp * discountVal) / 100
+    : Math.min(totalEgp, discountVal);
+  const netEgp = Math.max(0, totalEgp - discountEgp);
 
   const savePricing = async () => {
     if (!rate) return toast.error(isAr ? "أدخل سعر الصرف أولاً" : "Enter the FX rate first");
@@ -554,7 +562,9 @@ function PODetailDialog({
           taxes_mode: taxesMode, taxes_value: Number(taxesValue) || 0,
           shipping_mode: shippingMode, shipping_value: Number(shippingValue) || 0,
           other_mode: otherMode, other_value: Number(otherValue) || 0,
-          final_discount_percent: discountVal,
+          final_discount_mode: discountMode,
+          final_discount_value: discountVal,
+          final_discount_percent: discountMode === "percent" ? discountVal : 0,
           total_egp: totalEgp,
           cfo_notes: cfoNotes || null,
           status: "priced",
@@ -724,16 +734,34 @@ function PODetailDialog({
                       <Percent className="h-3.5 w-3.5 text-emerald-600" />
                       {isAr ? "خصم نهائي على فاتورة المورد" : "Final invoice discount"}
                     </Label>
-                    <div className="relative w-28">
-                      <Input
-                        type="number" step="any" min={0} max={100}
-                        className="h-8 pe-7 text-end font-semibold tabular-nums"
-                        value={discountPct}
-                        onChange={(e) => setDiscountPct(e.target.value)}
-                        disabled={!canEditPricing}
-                        placeholder="0"
-                      />
-                      <Percent className="pointer-events-none absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="inline-flex overflow-hidden rounded-md border">
+                        <button
+                          type="button"
+                          disabled={!canEditPricing}
+                          onClick={() => setDiscountMode("percent")}
+                          className={`px-2 py-0.5 text-[11px] font-semibold transition ${discountMode === "percent" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+                        >%</button>
+                        <button
+                          type="button"
+                          disabled={!canEditPricing}
+                          onClick={() => setDiscountMode("fixed")}
+                          className={`px-2 py-0.5 text-[11px] font-semibold transition ${discountMode === "fixed" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+                        >EGP</button>
+                      </div>
+                      <div className="relative w-28">
+                        <Input
+                          type="number" step="any" min={0} max={discountMode === "percent" ? 100 : undefined}
+                          className="h-8 pe-9 text-end font-semibold tabular-nums"
+                          value={discountPct}
+                          onChange={(e) => setDiscountPct(e.target.value)}
+                          disabled={!canEditPricing}
+                          placeholder="0"
+                        />
+                        <span className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+                          {discountMode === "percent" ? "%" : "EGP"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-between text-[11px] text-muted-foreground">
