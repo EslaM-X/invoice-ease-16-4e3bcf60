@@ -1022,6 +1022,7 @@ export type Database = {
           created_by_email: string | null
           customs_mode: string | null
           customs_value: number | null
+          final_discount_percent: number
           id: string
           notes: string | null
           other_mode: string | null
@@ -1050,6 +1051,7 @@ export type Database = {
           created_by_email?: string | null
           customs_mode?: string | null
           customs_value?: number | null
+          final_discount_percent?: number
           id?: string
           notes?: string | null
           other_mode?: string | null
@@ -1078,6 +1080,7 @@ export type Database = {
           created_by_email?: string | null
           customs_mode?: string | null
           customs_value?: number | null
+          final_discount_percent?: number
           id?: string
           notes?: string | null
           other_mode?: string | null
