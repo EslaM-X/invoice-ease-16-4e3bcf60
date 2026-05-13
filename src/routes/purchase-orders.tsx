@@ -734,16 +734,34 @@ function PODetailDialog({
                       <Percent className="h-3.5 w-3.5 text-emerald-600" />
                       {isAr ? "خصم نهائي على فاتورة المورد" : "Final invoice discount"}
                     </Label>
-                    <div className="relative w-28">
-                      <Input
-                        type="number" step="any" min={0} max={100}
-                        className="h-8 pe-7 text-end font-semibold tabular-nums"
-                        value={discountPct}
-                        onChange={(e) => setDiscountPct(e.target.value)}
-                        disabled={!canEditPricing}
-                        placeholder="0"
-                      />
-                      <Percent className="pointer-events-none absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="inline-flex overflow-hidden rounded-md border">
+                        <button
+                          type="button"
+                          disabled={!canEditPricing}
+                          onClick={() => setDiscountMode("percent")}
+                          className={`px-2 py-0.5 text-[11px] font-semibold transition ${discountMode === "percent" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+                        >%</button>
+                        <button
+                          type="button"
+                          disabled={!canEditPricing}
+                          onClick={() => setDiscountMode("fixed")}
+                          className={`px-2 py-0.5 text-[11px] font-semibold transition ${discountMode === "fixed" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+                        >EGP</button>
+                      </div>
+                      <div className="relative w-28">
+                        <Input
+                          type="number" step="any" min={0} max={discountMode === "percent" ? 100 : undefined}
+                          className="h-8 pe-9 text-end font-semibold tabular-nums"
+                          value={discountPct}
+                          onChange={(e) => setDiscountPct(e.target.value)}
+                          disabled={!canEditPricing}
+                          placeholder="0"
+                        />
+                        <span className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+                          {discountMode === "percent" ? "%" : "EGP"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-between text-[11px] text-muted-foreground">
