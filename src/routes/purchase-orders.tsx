@@ -516,6 +516,7 @@ function PODetailDialog({
       setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
       setOtherMode((p.other_mode as Mode) || "percent");
       setOtherValue(p.other_value != null ? String(p.other_value) : "");
+      setDiscountPct(p.final_discount_percent != null ? String(p.final_discount_percent) : "");
       setCfoNotes(p.cfo_notes ?? "");
     }
     setItems((itemsData as any) ?? []);
