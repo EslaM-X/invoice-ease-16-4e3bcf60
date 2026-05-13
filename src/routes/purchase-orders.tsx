@@ -517,7 +517,11 @@ function PODetailDialog({
       setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
       setOtherMode((p.other_mode as Mode) || "percent");
       setOtherValue(p.other_value != null ? String(p.other_value) : "");
-      setDiscountPct(p.final_discount_percent != null ? String(p.final_discount_percent) : "");
+      setDiscountMode(((p.final_discount_mode as Mode) || "percent"));
+      const dv = p.final_discount_value != null && Number(p.final_discount_value) > 0
+        ? Number(p.final_discount_value)
+        : (p.final_discount_percent != null ? Number(p.final_discount_percent) : 0);
+      setDiscountPct(dv ? String(dv) : "");
       setCfoNotes(p.cfo_notes ?? "");
     }
     setItems((itemsData as any) ?? []);
