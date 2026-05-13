@@ -58,7 +58,10 @@ function AuthPage() {
   const [biometricError, setBiometricError] = useState<string | null>(null);
   const [enrollPromptOpen, setEnrollPromptOpen] = useState(false);
   const [pauseAuthRedirect, setPauseAuthRedirect] = useState(false);
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const [ua, setUa] = useState("");
+  useEffect(() => {
+    if (typeof navigator !== "undefined") setUa(navigator.userAgent);
+  }, []);
   const isApple = /iP(hone|ad|od)|Mac/i.test(ua);
   const isWindows = /Windows/i.test(ua);
   const isAndroid = /Android/i.test(ua);
