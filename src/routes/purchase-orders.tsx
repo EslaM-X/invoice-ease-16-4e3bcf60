@@ -543,9 +543,12 @@ function PODetailDialog({
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
   const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
-  const discountVal = Math.max(0, Math.min(100, Number(discountPct) || 0));
-  const discountEgp = (totalEgp * discountVal) / 100;
-  const netEgp = totalEgp - discountEgp;
+  const discountInput = Math.max(0, Number(discountPct) || 0);
+  const discountVal = discountMode === "percent" ? Math.min(100, discountInput) : discountInput;
+  const discountEgp = discountMode === "percent"
+    ? (totalEgp * discountVal) / 100
+    : Math.min(totalEgp, discountVal);
+  const netEgp = Math.max(0, totalEgp - discountEgp);
 
   const savePricing = async () => {
     if (!rate) return toast.error(isAr ? "أدخل سعر الصرف أولاً" : "Enter the FX rate first");
