@@ -554,6 +554,7 @@ function PODetailDialog({
           taxes_mode: taxesMode, taxes_value: Number(taxesValue) || 0,
           shipping_mode: shippingMode, shipping_value: Number(shippingValue) || 0,
           other_mode: otherMode, other_value: Number(otherValue) || 0,
+          final_discount_percent: discountVal,
           total_egp: totalEgp,
           cfo_notes: cfoNotes || null,
           status: "priced",
