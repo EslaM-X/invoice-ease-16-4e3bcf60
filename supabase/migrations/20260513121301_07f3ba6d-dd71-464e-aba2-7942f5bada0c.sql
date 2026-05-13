@@ -1,0 +1,1 @@
+ALTER TABLE public.purchase_orders ADD COLUMN IF NOT EXISTS final_discount_mode text NOT NULL DEFAULT 'percent', ADD COLUMN IF NOT EXISTS final_discount_value numeric NOT NULL DEFAULT 0;
