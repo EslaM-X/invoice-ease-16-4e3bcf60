@@ -14,11 +14,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square } from "lucide-react";
+import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Percent } from "lucide-react";
 import { toast } from "sonner";
+import { AppShell } from "@/components/app-shell";
 
 export const Route = createFileRoute("/purchase-orders")({
-  component: PurchaseOrdersPage,
+  component: () => (
+    <AppShell>
+      <PurchaseOrdersPage />
+    </AppShell>
+  ),
 });
 
 type Product = {
@@ -489,6 +494,7 @@ function PODetailDialog({
   const [shippingValue, setShippingValue] = useState<string>("");
   const [otherMode, setOtherMode] = useState<Mode>("percent");
   const [otherValue, setOtherValue] = useState<string>("");
+  const [discountPct, setDiscountPct] = useState<string>("");
   const [cfoNotes, setCfoNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -510,6 +516,7 @@ function PODetailDialog({
       setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
       setOtherMode((p.other_mode as Mode) || "percent");
       setOtherValue(p.other_value != null ? String(p.other_value) : "");
+      setDiscountPct(p.final_discount_percent != null ? String(p.final_discount_percent) : "");
       setCfoNotes(p.cfo_notes ?? "");
     }
     setItems((itemsData as any) ?? []);
@@ -531,6 +538,9 @@ function PODetailDialog({
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
   const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
+  const discountVal = Math.max(0, Math.min(100, Number(discountPct) || 0));
+  const discountEgp = (totalEgp * discountVal) / 100;
+  const netEgp = totalEgp - discountEgp;
 
   const savePricing = async () => {
     if (!rate) return toast.error(isAr ? "أدخل سعر الصرف أولاً" : "Enter the FX rate first");
@@ -544,6 +554,7 @@ function PODetailDialog({
           taxes_mode: taxesMode, taxes_value: Number(taxesValue) || 0,
           shipping_mode: shippingMode, shipping_value: Number(shippingValue) || 0,
           other_mode: otherMode, other_value: Number(otherValue) || 0,
+          final_discount_percent: discountVal,
           total_egp: totalEgp,
           cfo_notes: cfoNotes || null,
           status: "priced",
@@ -693,17 +704,61 @@ function PODetailDialog({
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg bg-background border p-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{isAr ? "إجمالي التكلفة بالجنيه" : "Total landed cost (EGP)"}</span>
-                  <span className="font-bold text-lg tabular-nums text-primary">{fmtMoney(totalEgp, "EGP", lang)}</span>
-                </div>
-                {po.total_qty > 0 && (
-                  <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                    <span>{isAr ? "متوسط تكلفة القطعة" : "Avg cost / unit"}</span>
-                    <span className="font-semibold tabular-nums">{fmtMoney(totalEgp / po.total_qty, "EGP", lang)}</span>
+              <div className="mt-4 space-y-2">
+                <div className="rounded-lg bg-background border p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{isAr ? "إجمالي التكلفة التقريبية (EGP)" : "Approx. landed cost (EGP)"}</span>
+                    <span className="font-bold text-base tabular-nums">{fmtMoney(totalEgp, "EGP", lang)}</span>
                   </div>
-                )}
+                  {po.total_qty > 0 && (
+                    <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                      <span>{isAr ? "متوسط تقريبي للقطعة" : "Approx. avg / unit"}</span>
+                      <span className="font-semibold tabular-nums">{fmtMoney(totalEgp / po.total_qty, "EGP", lang)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border-2 border-emerald-500/30 bg-emerald-500/5 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                      <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                      {isAr ? "خصم نهائي على فاتورة المورد" : "Final invoice discount"}
+                    </Label>
+                    <div className="relative w-28">
+                      <Input
+                        type="number" step="any" min={0} max={100}
+                        className="h-8 pe-7 text-end font-semibold tabular-nums"
+                        value={discountPct}
+                        onChange={(e) => setDiscountPct(e.target.value)}
+                        disabled={!canEditPricing}
+                        placeholder="0"
+                      />
+                      <Percent className="pointer-events-none absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-muted-foreground">
+                    <span>{isAr ? "قيمة الخصم" : "Discount amount"}</span>
+                    <span className="font-semibold tabular-nums text-emerald-700">− {fmtMoney(discountEgp, "EGP", lang)}</span>
+                  </div>
+                  <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                    {isAr
+                      ? "ملاحظة: التكاليف أعلاه تقريبية. الخصم بيتطبّق على الفاتورة النهائية للمورد ويُستخدم لحساب صافي الربح."
+                      : "Note: costs above are approximate. The discount is applied on the supplier's final invoice and used for net profit."}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border-2 border-primary/40 bg-primary/10 p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-semibold">{isAr ? "صافي التكلفة بعد الخصم" : "Net cost after discount"}</span>
+                    <span className="font-bold text-lg tabular-nums text-primary">{fmtMoney(netEgp, "EGP", lang)}</span>
+                  </div>
+                  {po.total_qty > 0 && (
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span>{isAr ? "صافي تكلفة القطعة" : "Net cost / unit"}</span>
+                      <span className="font-semibold tabular-nums">{fmtMoney(netEgp / po.total_qty, "EGP", lang)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {canEditPricing && (
