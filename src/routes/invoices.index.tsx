@@ -78,6 +78,7 @@ function InvoicesList() {
 
   const filtered = list
     .filter((i) => {
+      if (hideClosed && isClosed(i)) return false;
       if (statusFilter !== "all" && (i.status ?? "completed") !== statusFilter) return false;
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
