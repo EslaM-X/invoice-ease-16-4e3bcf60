@@ -160,7 +160,7 @@ function ProfitsPage() {
       .select(
         "invoice_id, product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(invoice_number, status, created_at, customer_name, subtotal, discount, total)"
       )
-      .neq("invoices.status", "voided");
+      .not("invoices.status", "in", "(voided,draft)");
     if (startISO) q = q.gte("invoices.created_at", startISO);
     if (endISO) q = q.lt("invoices.created_at", endISO);
     if (customerId) q = q.eq("invoices.customer_id", customerId);
