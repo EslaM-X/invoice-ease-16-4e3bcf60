@@ -465,29 +465,7 @@ function ScenarioPanel({
         </div>
       </Card>
 
-      {/* Result cards */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "صافي التكلفة (بعد الخصم)" : "Net cost (after discount)"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums">{fmtMoney(netCostEgp, "EGP", lang)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي البيع المتوقع" : "Expected total sales"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtMoney(totalSell, "EGP", lang)}</div>
-        </Card>
-        <Card className={`p-4 border-2 ${profitPositive ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{isAr ? "صافي الربح" : "Net profit"}</span>
-            {profitPositive ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
-          </div>
-          <div className={`mt-1 text-2xl font-extrabold tabular-nums ${profitPositive ? "text-emerald-700" : "text-destructive"}`}>
-            {fmtMoney(totalProfit, "EGP", lang)}
-          </div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {isAr ? "هامش" : "Margin"} {margin.toFixed(2)}%
-          </div>
-        </Card>
-      </div>
+      {/* Result cards moved up — see under discount card */}
 
       {/* Notes + save */}
       <Card className="p-4">
