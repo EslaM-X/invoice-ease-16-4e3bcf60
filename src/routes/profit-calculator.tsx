@@ -233,15 +233,21 @@ function ScenarioPanel({
     const its = (itemsData as any as POItem[]) ?? [];
     setItems(its);
 
-    // Fetch latest selling prices
+    // Fetch latest selling + cost prices
     const ids = its.map((i) => i.product_id).filter(Boolean);
     if (ids.length > 0) {
-      const { data: prods } = await supabase.from("products").select("id,price").in("id", ids);
-      const map: Record<string, number> = {};
-      (prods ?? []).forEach((p: any) => { map[p.id] = Number(p.price) || 0; });
-      setProductPrices(map);
+      const { data: prods } = await supabase.from("products").select("id,price,cost_price_usd").in("id", ids);
+      const priceMap: Record<string, number> = {};
+      const costMap: Record<string, number> = {};
+      (prods ?? []).forEach((p: any) => {
+        priceMap[p.id] = Number(p.price) || 0;
+        costMap[p.id] = Number(p.cost_price_usd) || 0;
+      });
+      setProductPrices(priceMap);
+      setProductCostUsd(costMap);
     } else {
       setProductPrices({});
+      setProductCostUsd({});
     }
 
     if (scData) {
