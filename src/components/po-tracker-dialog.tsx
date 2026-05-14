@@ -522,6 +522,13 @@ export function POTrackerDialog({
                   )}
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {receiveOpen && po && (
+        <ReceiveDialog
           po={po}
           items={items}
           open={receiveOpen}
