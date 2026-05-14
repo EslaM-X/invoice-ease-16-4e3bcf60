@@ -525,7 +525,7 @@ function ScenarioPanel({
                         </div>
                       )}
                     </td>
-                    <td className="p-2 text-end tabular-nums">{fmtMoney(unitCostEgp, "EGP", lang)}</td>
+                    <td className="p-2 text-end tabular-nums whitespace-nowrap">{fmtMoney(unitCostEgp, "EGP", lang)}</td>
                     <td className="p-2 text-end">
                       <div className="flex items-center justify-end gap-1">
                         <Input
