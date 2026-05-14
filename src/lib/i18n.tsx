@@ -286,6 +286,7 @@ const en: Dict = {
   remove: "Remove",
   search_product: "Search product...",
   invoices: "Invoices",
+  invoice_drafts: "Invoice drafts",
   new_invoice: "New Invoice",
   reports: "Reports",
   profits: "Profits",
