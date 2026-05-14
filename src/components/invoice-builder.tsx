@@ -692,11 +692,65 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
+          {isDraft && (
+            <span className="ms-2 align-middle rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-700 dark:text-amber-400">
+              {lang === "ar" ? "مسودة" : "Draft"}
+            </span>
+          )}
         </h1>
         <Button onClick={save} disabled={saving} className="gap-2 shadow-glow w-full sm:w-auto">
-          {t("save_invoice")}
+          {isDraft
+            ? (lang === "ar" ? "حفظ كمسودة" : "Save draft")
+            : (mode === "edit" && initial?.status === "draft"
+                ? (lang === "ar" ? "تحويل إلى فاتورة حقيقية" : "Convert to real invoice")
+                : t("save_invoice"))}
         </Button>
       </div>
+
+      {/* Draft / Real toggle */}
+      <div className="rounded-2xl border bg-card p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">
+              {lang === "ar" ? "نوع الفاتورة" : "Invoice type"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isDraft
+                ? (lang === "ar"
+                    ? "المسودة لا تُخصم من المخزون ولا تظهر في التقارير أو الأرباح. تظهر في صفحة المسودات فقط."
+                    : "Drafts do not affect stock and are excluded from analytics, reports, and profits. They live in the Drafts page.")
+                : (lang === "ar"
+                    ? "فاتورة حقيقية: تُخصم من المخزون فوراً وتدخل في كل التقارير والأرباح."
+                    : "Real invoice: deducts stock immediately and counts in analytics, reports and profits.")}
+            </p>
+          </div>
+          <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setIsDraft(true)}
+              className={`px-3 py-1.5 rounded-full transition-all ${
+                isDraft
+                  ? "bg-amber-500 text-white shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {lang === "ar" ? "مسودة" : "Draft"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDraft(false)}
+              className={`px-3 py-1.5 rounded-full transition-all ${
+                !isDraft
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {lang === "ar" ? "فاتورة حقيقية" : "Real invoice"}
+            </button>
+          </div>
+        </div>
+      </div>
+
 
       <DesktopPairWidget
         mode={mode}
