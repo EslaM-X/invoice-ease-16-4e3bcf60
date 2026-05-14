@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
   Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
-  CloudUpload, Activity,
+  CloudUpload, Activity, PackageOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -31,6 +31,7 @@ const items: NavEntry[] = [
     icon: Warehouse,
     children: [
       { to: "/products", icon: Package, key: "products" as const },
+      { to: "/in-transit", icon: PackageOpen, key: "in_transit" as const },
       { to: "/stock-intake", icon: Warehouse, key: "stock_intake" as const },
       { to: "/inventory", icon: Boxes, key: "inventory" as const },
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
