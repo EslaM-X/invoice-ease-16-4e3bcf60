@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { TableSkeleton } from "@/components/skeletons";
+import { cachedListFetch } from "@/lib/list-cache";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
@@ -35,11 +36,15 @@ function InvoicesList() {
 
   const load = async () => {
     if (!user) return;
-    let query = supabase.from("invoices").select("*").order("created_at", { ascending: false });
-    if (from) query = query.gte("created_at", from);
-    if (to) query = query.lte("created_at", to + "T23:59:59");
-    const { data } = await query;
-    setList(data ?? []);
+    const cacheKey = `invoices:${from || "_"}:${to || "_"}`;
+    const { data } = await cachedListFetch<any>(cacheKey, async () => {
+      let query = supabase.from("invoices").select("*").order("created_at", { ascending: false });
+      if (from) query = query.gte("created_at", from);
+      if (to) query = query.lte("created_at", to + "T23:59:59");
+      const { data } = await query;
+      return data ?? [];
+    });
+    setList(data);
     setLoading(false);
   };
   useEffect(() => { load(); }, [user, from, to]);
