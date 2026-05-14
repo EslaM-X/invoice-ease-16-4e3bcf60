@@ -281,6 +281,12 @@ export function POTrackerDialog({
               {isAr ? "تتبع أمر الشراء" : "PO Tracking"}
               <span className="font-mono text-sm text-muted-foreground">{po?.po_number}</span>
               {po && statusBadge(po.status, isAr)}
+              {po && isPartial && (
+                <Badge variant="outline" className="gap-1 bg-amber-500/15 text-amber-700 border-amber-500/40">
+                  <Package className="h-3 w-3" />
+                  {isAr ? `تسليم جزئي · متبقي ${totalRemaining}` : `Partial · ${totalRemaining} remaining`}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
 
