@@ -265,6 +265,20 @@ const ar: Dict = {
   call_center: "مركز الاتصال",
   call_center_reports: "تقارير مركز الاتصال",
   admin_panel: "لوحة الأدمن",
+  incoming_shipments: "الشحنات القادمة",
+  no_incoming_shipments: "لا توجد شحنات قادمة حالياً",
+  eta: "الوصول المتوقع",
+  shipped_on: "تاريخ الشحن",
+  units: "قطعة",
+  view_all: "عرض الكل",
+  status_ordered: "تم الطلب",
+  status_shipped: "في الشحن",
+  status_in_warehouse: "بمستودع الجمارك",
+  arriving_today: "يصل اليوم",
+  arriving_tomorrow: "يصل غداً",
+  arriving_in_days: "يصل خلال {n} يوم",
+  overdue_by_days: "متأخر {n} يوم",
+  no_eta: "موعد غير محدد",
 };
 
 const en: Dict = {
