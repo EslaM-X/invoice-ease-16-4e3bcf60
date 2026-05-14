@@ -1124,6 +1124,12 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           paid_by_email: string | null
+          payment_installment_1_amount: number | null
+          payment_installment_1_at: string | null
+          payment_installment_1_by_email: string | null
+          payment_installment_2_amount: number | null
+          payment_installment_2_at: string | null
+          payment_installment_2_by_email: string | null
           po_number: string
           received_at: string | null
           received_by: string | null
@@ -1164,6 +1170,12 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           paid_by_email?: string | null
+          payment_installment_1_amount?: number | null
+          payment_installment_1_at?: string | null
+          payment_installment_1_by_email?: string | null
+          payment_installment_2_amount?: number | null
+          payment_installment_2_at?: string | null
+          payment_installment_2_by_email?: string | null
           po_number: string
           received_at?: string | null
           received_by?: string | null
@@ -1204,6 +1216,12 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           paid_by_email?: string | null
+          payment_installment_1_amount?: number | null
+          payment_installment_1_at?: string | null
+          payment_installment_1_by_email?: string | null
+          payment_installment_2_amount?: number | null
+          payment_installment_2_at?: string | null
+          payment_installment_2_by_email?: string | null
           po_number?: string
           received_at?: string | null
           received_by?: string | null
