@@ -23,6 +23,7 @@ import { Route as ProfitsRouteImport } from './routes/profits'
 import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
 import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as PoTrackingRouteImport } from './routes/po-tracking'
 import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
@@ -114,6 +115,11 @@ const ProfitCalculatorRoute = ProfitCalculatorRouteImport.update({
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoTrackingRoute = PoTrackingRouteImport.update({
+  id: '/po-tracking',
+  path: '/po-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PendingOperationsRoute = PendingOperationsRouteImport.update({
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
+  '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
@@ -280,6 +287,7 @@ export interface FileRoutesByTo {
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
+  '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
@@ -319,6 +327,7 @@ export interface FileRoutesById {
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
+  '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/inventory-audit'
     | '/invoices-system-notes'
     | '/pending-operations'
+    | '/po-tracking'
     | '/products'
     | '/profit-calculator'
     | '/profit-scenarios'
@@ -397,6 +407,7 @@ export interface FileRouteTypes {
     | '/inventory-audit'
     | '/invoices-system-notes'
     | '/pending-operations'
+    | '/po-tracking'
     | '/products'
     | '/profit-calculator'
     | '/profit-scenarios'
@@ -435,6 +446,7 @@ export interface FileRouteTypes {
     | '/inventory-audit'
     | '/invoices-system-notes'
     | '/pending-operations'
+    | '/po-tracking'
     | '/products'
     | '/profit-calculator'
     | '/profit-scenarios'
@@ -474,6 +486,7 @@ export interface RootRouteChildren {
   InventoryAuditRoute: typeof InventoryAuditRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   PendingOperationsRoute: typeof PendingOperationsRoute
+  PoTrackingRoute: typeof PoTrackingRoute
   ProductsRoute: typeof ProductsRoute
   ProfitCalculatorRoute: typeof ProfitCalculatorRoute
   ProfitScenariosRoute: typeof ProfitScenariosRoute
@@ -597,6 +610,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/po-tracking': {
+      id: '/po-tracking'
+      path: '/po-tracking'
+      fullPath: '/po-tracking'
+      preLoaderRoute: typeof PoTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pending-operations': {
@@ -770,6 +790,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryAuditRoute: InventoryAuditRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   PendingOperationsRoute: PendingOperationsRoute,
+  PoTrackingRoute: PoTrackingRoute,
   ProductsRoute: ProductsRoute,
   ProfitCalculatorRoute: ProfitCalculatorRoute,
   ProfitScenariosRoute: ProfitScenariosRoute,

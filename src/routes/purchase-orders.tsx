@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square } from "lucide-react";
+import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
+import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components/po-tracker-dialog";
 
 export const Route = createFileRoute("/purchase-orders")({
   component: () => (
@@ -78,6 +79,7 @@ function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PO[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [trackId, setTrackId] = useState<string | null>(null);
 
   // Access guard
   useEffect(() => {
@@ -99,13 +101,7 @@ function PurchaseOrdersPage() {
   useEffect(() => { loadPOs(); }, []);
   useRealtimeTable("purchase_orders", loadPOs, []);
 
-  const statusBadge = (s: string) => {
-    if (s === "pending_cfo") return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">{isAr ? "بانتظار التسعير" : "Awaiting pricing"}</Badge>;
-    if (s === "priced") return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">{isAr ? "تم التسعير" : "Priced"}</Badge>;
-    if (s === "received") return <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">{isAr ? "تم الاستلام" : "Received"}</Badge>;
-    if (s === "cancelled") return <Badge variant="destructive">{isAr ? "ملغى" : "Cancelled"}</Badge>;
-    return <Badge>{s}</Badge>;
-  };
+  const statusBadge = (s: string) => trackerStatusBadge(s, isAr);
 
   return (
     <div className="space-y-6">
@@ -144,12 +140,11 @@ function PurchaseOrdersPage() {
             </div>
           )}
           {pos.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setDetailId(p.id)}
-              className="flex w-full flex-wrap items-center gap-3 p-4 text-start transition hover:bg-accent/40"
-            >
-              <div className="flex-1 min-w-[200px]">
+            <div key={p.id} className="flex w-full flex-wrap items-center gap-3 p-4 transition hover:bg-accent/40">
+              <button
+                onClick={() => setDetailId(p.id)}
+                className="flex flex-1 min-w-[200px] flex-col gap-1 text-start"
+              >
                 <div className="font-mono text-sm font-bold">{p.po_number}</div>
                 <div className="text-xs text-muted-foreground">
                   {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(p.created_at, lang)}
@@ -157,7 +152,7 @@ function PurchaseOrdersPage() {
                 {p.created_by_email && (
                   <div className="text-[10px] text-muted-foreground">{p.created_by_email}</div>
                 )}
-              </div>
+              </button>
               <div className="text-end">
                 <div className="text-xs text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</div>
                 <div className="font-bold tabular-nums">${(Number(p.total_usd) || 0).toFixed(2)}</div>
@@ -170,7 +165,16 @@ function PurchaseOrdersPage() {
                 </div>
               )}
               <div>{statusBadge(p.status)}</div>
-            </button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); setTrackId(p.id); }}
+                className="gap-1"
+              >
+                <Activity className="h-3.5 w-3.5" />
+                {isAr ? "تتبع" : "Track"}
+              </Button>
+            </div>
           ))}
         </div>
       </Card>
@@ -195,6 +199,15 @@ function PurchaseOrdersPage() {
           isPurchasing={isPurchasing}
           userEmail={user?.email || ""}
           userId={user?.id || ""}
+          onOpenTracker={(id) => setTrackId(id)}
+        />
+      )}
+
+      {trackId && (
+        <POTrackerDialog
+          poId={trackId}
+          open={!!trackId}
+          onOpenChange={(v) => { if (!v) setTrackId(null); }}
         />
       )}
     </div>
@@ -465,7 +478,7 @@ function CreatePODialog({
 /* ─────────────────────── PO Detail / CFO Pricing ─────────────────────── */
 
 function PODetailDialog({
-  poId, open, onOpenChange, isCFO, isAdmin, isPurchasing, userEmail, userId,
+  poId, open, onOpenChange, isCFO, isAdmin, isPurchasing, userEmail, userId, onOpenTracker,
 }: {
   poId: string;
   open: boolean;
@@ -475,6 +488,7 @@ function PODetailDialog({
   isPurchasing: boolean;
   userEmail: string;
   userId: string;
+  onOpenTracker?: (id: string) => void;
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
@@ -780,11 +794,19 @@ function PODetailDialog({
               <FileText className="h-5 w-5 text-primary" />
               {po?.po_number || (isAr ? "أمر شراء" : "Purchase Order")}
             </span>
-            {canDeletePO && (
-              <Button variant="ghost" size="sm" onClick={deletePO} className="text-destructive">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+            <span className="flex items-center gap-2">
+              {onOpenTracker && (
+                <Button variant="outline" size="sm" onClick={() => onOpenTracker(poId)} className="gap-1">
+                  <Activity className="h-3.5 w-3.5" />
+                  {isAr ? "تتبع" : "Track"}
+                </Button>
+              )}
+              {canDeletePO && (
+                <Button variant="ghost" size="sm" onClick={deletePO} className="text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </span>
           </DialogTitle>
         </DialogHeader>
 

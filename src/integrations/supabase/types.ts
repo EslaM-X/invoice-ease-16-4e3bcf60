@@ -861,6 +861,47 @@ export type Database = {
           },
         ]
       }
+      po_status_history: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          note: string | null
+          po_id: string
+          to_status: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          po_id: string
+          to_status: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          po_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_status_history_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_price_history: {
         Row: {
           changed_at: string
@@ -1072,6 +1113,7 @@ export type Database = {
           created_by_email: string | null
           customs_mode: string | null
           customs_value: number | null
+          expected_arrival_at: string | null
           final_discount_mode: string
           final_discount_percent: number
           final_discount_value: number
@@ -1079,10 +1121,18 @@ export type Database = {
           notes: string | null
           other_mode: string | null
           other_value: number | null
+          paid_at: string | null
+          paid_by: string | null
+          paid_by_email: string | null
           po_number: string
+          received_at: string | null
+          received_by: string | null
+          received_by_email: string | null
+          shipped_at: string | null
           shipping_mode: string | null
           shipping_value: number | null
           status: string
+          stock_applied_at: string | null
           supplier_name: string | null
           taxes_mode: string | null
           taxes_value: number | null
@@ -1103,6 +1153,7 @@ export type Database = {
           created_by_email?: string | null
           customs_mode?: string | null
           customs_value?: number | null
+          expected_arrival_at?: string | null
           final_discount_mode?: string
           final_discount_percent?: number
           final_discount_value?: number
@@ -1110,10 +1161,18 @@ export type Database = {
           notes?: string | null
           other_mode?: string | null
           other_value?: number | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_by_email?: string | null
           po_number: string
+          received_at?: string | null
+          received_by?: string | null
+          received_by_email?: string | null
+          shipped_at?: string | null
           shipping_mode?: string | null
           shipping_value?: number | null
           status?: string
+          stock_applied_at?: string | null
           supplier_name?: string | null
           taxes_mode?: string | null
           taxes_value?: number | null
@@ -1134,6 +1193,7 @@ export type Database = {
           created_by_email?: string | null
           customs_mode?: string | null
           customs_value?: number | null
+          expected_arrival_at?: string | null
           final_discount_mode?: string
           final_discount_percent?: number
           final_discount_value?: number
@@ -1141,10 +1201,18 @@ export type Database = {
           notes?: string | null
           other_mode?: string | null
           other_value?: number | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_by_email?: string | null
           po_number?: string
+          received_at?: string | null
+          received_by?: string | null
+          received_by_email?: string | null
+          shipped_at?: string | null
           shipping_mode?: string | null
           shipping_value?: number | null
           status?: string
+          stock_applied_at?: string | null
           supplier_name?: string | null
           taxes_mode?: string | null
           taxes_value?: number | null
@@ -1669,6 +1737,10 @@ export type Database = {
       adjust_stock: {
         Args: { _change: number; _product_id: string; _reason: string }
         Returns: string
+      }
+      apply_po_to_inventory: {
+        Args: { items_in: Json; p_actor_email: string; p_po_id: string }
+        Returns: Json
       }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
