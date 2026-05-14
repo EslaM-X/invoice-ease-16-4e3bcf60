@@ -17,6 +17,10 @@ type PO = {
   expected_arrival_at: string | null;
   shipped_at: string | null;
   total_qty: number;
+  received_qty: number;
+  remaining_qty: number;
+  has_partial: boolean;
+  open_lines: number;
 };
 
 const STATUS_META: Record<ShipStatus, { Icon: typeof Package; tone: string; ring: string }> = {
@@ -48,17 +52,46 @@ export function IncomingShipmentsStrip() {
   const [rows, setRows] = useState<PO[] | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data: pos } = await supabase
       .from("purchase_orders")
       .select("id, po_number, supplier_name, status, expected_arrival_at, shipped_at, total_qty")
       .in("status", IN_TRANSIT_STATUSES as any)
       .order("expected_arrival_at", { ascending: true, nullsFirst: false })
       .limit(8);
-    setRows((data ?? []) as PO[]);
+    const list = (pos ?? []) as any[];
+    if (list.length === 0) { setRows([]); return; }
+    const ids = list.map((p) => p.id);
+    const { data: items } = await supabase
+      .from("purchase_order_items")
+      .select("po_id, quantity, received_qty")
+      .in("po_id", ids);
+    const agg = new Map<string, { received: number; remaining: number; openLines: number }>();
+    for (const it of (items ?? []) as any[]) {
+      const cur = agg.get(it.po_id) ?? { received: 0, remaining: 0, openLines: 0 };
+      const rec = Number(it.received_qty || 0);
+      const rem = Math.max(0, Number(it.quantity || 0) - rec);
+      cur.received += rec;
+      cur.remaining += rem;
+      if (rem > 0) cur.openLines += 1;
+      agg.set(it.po_id, cur);
+    }
+    const enriched: PO[] = list.map((p) => {
+      const a = agg.get(p.id) ?? { received: 0, remaining: Number(p.total_qty || 0), openLines: 0 };
+      return {
+        ...p,
+        received_qty: a.received,
+        remaining_qty: a.remaining,
+        has_partial: a.received > 0 && a.remaining > 0,
+        open_lines: a.openLines,
+      } as PO;
+    });
+    setRows(enriched);
   };
 
   useEffect(() => { load(); }, []);
   useRealtimeTable("purchase_orders", load);
+  useRealtimeTable("purchase_order_items", load);
+
 
   const etaLabel = (iso: string | null) => {
     if (!iso) return { text: t("no_eta"), tone: "text-muted-foreground", overdue: false };
