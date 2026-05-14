@@ -382,7 +382,18 @@ function InvoicesList() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div>{i.customer_name || "—"}</div>
+                        <div className="flex items-center gap-2">
+                          <span>{i.customer_name || "—"}</span>
+                          {(drCounts[i.id] ?? 0) > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                              title={lang === "ar" ? "محاضر تسليم مرتبطة" : "Linked delivery receipts"}
+                            >
+                              <ClipboardCheck className="h-3 w-3" />
+                              {drCounts[i.id]}
+                            </span>
+                          )}
+                        </div>
                         <AuthorBadge email={i.created_by_email} label="created by" className="mt-0.5" />
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
