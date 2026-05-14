@@ -279,6 +279,9 @@ const ar: Dict = {
   arriving_in_days: "يصل خلال {n} يوم",
   overdue_by_days: "متأخر {n} يوم",
   no_eta: "موعد غير محدد",
+  partial_delivery: "تسليم جزئي",
+  received_label: "مستلم",
+  remaining_label: "متبقي",
 };
 
 const en: Dict = {
