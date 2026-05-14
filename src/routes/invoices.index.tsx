@@ -26,6 +26,7 @@ function InvoicesList() {
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
+  const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number }>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
