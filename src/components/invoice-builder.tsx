@@ -94,6 +94,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
   const [delivered, setDelivered] = useState<boolean>(initial?.delivery_status === "delivered");
+  const [isDraft, setIsDraft] = useState<boolean>(
+    mode === "edit" ? initial?.status === "draft" : !!defaultDraft,
+  );
   const [scanning, setScanning] = useState(false);
   const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
   const [continuous, setContinuous] = useState(false);
