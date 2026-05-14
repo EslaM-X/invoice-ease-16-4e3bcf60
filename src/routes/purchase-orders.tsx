@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Percent } from "lucide-react";
+import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 
@@ -494,8 +494,6 @@ function PODetailDialog({
   const [shippingValue, setShippingValue] = useState<string>("");
   const [otherMode, setOtherMode] = useState<Mode>("percent");
   const [otherValue, setOtherValue] = useState<string>("");
-  const [discountMode, setDiscountMode] = useState<Mode>("percent");
-  const [discountPct, setDiscountPct] = useState<string>("");
   const [cfoNotes, setCfoNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -517,11 +515,6 @@ function PODetailDialog({
       setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
       setOtherMode((p.other_mode as Mode) || "percent");
       setOtherValue(p.other_value != null ? String(p.other_value) : "");
-      setDiscountMode(((p.final_discount_mode as Mode) || "percent"));
-      const dv = p.final_discount_value != null && Number(p.final_discount_value) > 0
-        ? Number(p.final_discount_value)
-        : (p.final_discount_percent != null ? Number(p.final_discount_percent) : 0);
-      setDiscountPct(dv ? String(dv) : "");
       setCfoNotes(p.cfo_notes ?? "");
     }
     setItems((itemsData as any) ?? []);
@@ -543,12 +536,6 @@ function PODetailDialog({
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
   const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
-  const discountInput = Math.max(0, Number(discountPct) || 0);
-  const discountVal = discountMode === "percent" ? Math.min(100, discountInput) : discountInput;
-  const discountEgp = discountMode === "percent"
-    ? (totalEgp * discountVal) / 100
-    : Math.min(totalEgp, discountVal);
-  const netEgp = Math.max(0, totalEgp - discountEgp);
 
   const savePricing = async () => {
     if (!rate) return toast.error(isAr ? "أدخل سعر الصرف أولاً" : "Enter the FX rate first");
@@ -562,9 +549,6 @@ function PODetailDialog({
           taxes_mode: taxesMode, taxes_value: Number(taxesValue) || 0,
           shipping_mode: shippingMode, shipping_value: Number(shippingValue) || 0,
           other_mode: otherMode, other_value: Number(otherValue) || 0,
-          final_discount_mode: discountMode,
-          final_discount_value: discountVal,
-          final_discount_percent: discountMode === "percent" ? discountVal : 0,
           total_egp: totalEgp,
           cfo_notes: cfoNotes || null,
           status: "priced",
@@ -728,64 +712,10 @@ function PODetailDialog({
                   )}
                 </div>
 
-                <div className="rounded-lg border-2 border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold">
-                      <Percent className="h-3.5 w-3.5 text-emerald-600" />
-                      {isAr ? "خصم نهائي على فاتورة المورد" : "Final invoice discount"}
-                    </Label>
-                    <div className="flex items-center gap-1.5">
-                      <div className="inline-flex overflow-hidden rounded-md border">
-                        <button
-                          type="button"
-                          disabled={!canEditPricing}
-                          onClick={() => setDiscountMode("percent")}
-                          className={`px-2 py-0.5 text-[11px] font-semibold transition ${discountMode === "percent" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
-                        >%</button>
-                        <button
-                          type="button"
-                          disabled={!canEditPricing}
-                          onClick={() => setDiscountMode("fixed")}
-                          className={`px-2 py-0.5 text-[11px] font-semibold transition ${discountMode === "fixed" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
-                        >EGP</button>
-                      </div>
-                      <div className="relative w-28">
-                        <Input
-                          type="number" step="any" min={0} max={discountMode === "percent" ? 100 : undefined}
-                          className="h-8 pe-9 text-end font-semibold tabular-nums"
-                          value={discountPct}
-                          onChange={(e) => setDiscountPct(e.target.value)}
-                          disabled={!canEditPricing}
-                          placeholder="0"
-                        />
-                        <span className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
-                          {discountMode === "percent" ? "%" : "EGP"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-muted-foreground">
-                    <span>{isAr ? "قيمة الخصم" : "Discount amount"}</span>
-                    <span className="font-semibold tabular-nums text-emerald-700">− {fmtMoney(discountEgp, "EGP", lang)}</span>
-                  </div>
-                  <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                    {isAr
-                      ? "ملاحظة: التكاليف أعلاه تقريبية. الخصم بيتطبّق على الفاتورة النهائية للمورد ويُستخدم لحساب صافي الربح."
-                      : "Note: costs above are approximate. The discount is applied on the supplier's final invoice and used for net profit."}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border-2 border-primary/40 bg-primary/10 p-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-semibold">{isAr ? "صافي التكلفة بعد الخصم" : "Net cost after discount"}</span>
-                    <span className="font-bold text-lg tabular-nums text-primary">{fmtMoney(netEgp, "EGP", lang)}</span>
-                  </div>
-                  {po.total_qty > 0 && (
-                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                      <span>{isAr ? "صافي تكلفة القطعة" : "Net cost / unit"}</span>
-                      <span className="font-semibold tabular-nums">{fmtMoney(netEgp / po.total_qty, "EGP", lang)}</span>
-                    </div>
-                  )}
+                <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                  {isAr
+                    ? "لحساب صافي الربح وتجربة خصم نهائي على فاتورة المورد، افتح صفحة \"حاسبة الربح\" من القائمة الجانبية."
+                    : "To compute net profit and try a final supplier-invoice discount, open the \"Profit Calculator\" page from the sidebar."}
                 </div>
               </div>
 

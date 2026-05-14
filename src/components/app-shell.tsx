@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
-  Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse,
+  Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -189,6 +189,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
             </Link>
+            {isCFO && (
+              <Link
+                to="/profit-calculator"
+                onClick={() => setOpen(false)}
+                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                  location.pathname.startsWith("/profit-calculator")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                }`}
+              >
+                <Calculator className="h-4 w-4" /> {lang === "ar" ? "حاسبة الربح" : "Profit Calculator"}
+              </Link>
+            )}
           </>
         )}
         {isAdmin && (

@@ -811,6 +811,56 @@ export type Database = {
         }
         Relationships: []
       }
+      po_profit_scenarios: {
+        Row: {
+          created_at: string
+          discount_mode: string
+          discount_value: number
+          id: string
+          notes: string | null
+          po_id: string
+          selling_overrides: Json
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_mode?: string
+          discount_value?: number
+          id?: string
+          notes?: string | null
+          po_id: string
+          selling_overrides?: Json
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_mode?: string
+          discount_value?: number
+          id?: string
+          notes?: string | null
+          po_id?: string
+          selling_overrides?: Json
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_profit_scenarios_po_fk"
+            columns: ["po_id"]
+            isOneToOne: true
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_price_history: {
         Row: {
           changed_at: string
