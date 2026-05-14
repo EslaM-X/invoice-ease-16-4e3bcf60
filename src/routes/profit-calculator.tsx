@@ -476,9 +476,10 @@ function ScenarioPanel({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {itemCalc.map(({ it, unitCostEgp, sellPrice, lineSell, lineProfit }) => {
+              {itemCalc.map(({ it, poUnitUsd, currentUnitUsd, usedUnitUsd, unitCostEgp, sellPrice, lineSell, lineProfit }) => {
                 const ov = overrides[it.id];
                 const hasOverride = ov !== undefined && ov !== "";
+                const usdDiffer = Math.abs(poUnitUsd - currentUnitUsd) > 0.001;
                 return (
                   <tr key={it.id}>
                     <td className="p-2">
@@ -498,6 +499,16 @@ function ScenarioPanel({
                       </div>
                     </td>
                     <td className="p-2 text-end tabular-nums">{it.quantity}</td>
+                    <td className="p-2 text-end tabular-nums">
+                      <div className="font-semibold">${usedUnitUsd.toFixed(2)}</div>
+                      {usdDiffer && (
+                        <div className="text-[9px] text-muted-foreground">
+                          {usdSource === "current"
+                            ? <>PO: ${poUnitUsd.toFixed(2)}</>
+                            : <span className={currentUnitUsd > poUnitUsd ? "text-amber-600" : "text-emerald-600"}>{isAr ? "حالي" : "Now"}: ${currentUnitUsd.toFixed(2)}</span>}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-2 text-end tabular-nums">{fmtMoney(unitCostEgp, "EGP", lang)}</td>
                     <td className="p-2 text-end">
                       <div className="flex items-center justify-end gap-1">
