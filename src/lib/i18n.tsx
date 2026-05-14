@@ -279,6 +279,8 @@ const ar: Dict = {
   arriving_in_days: "يصل خلال {n} يوم",
   overdue_by_days: "متأخر {n} يوم",
   no_eta: "موعد غير محدد",
+  received_label: "مستلم",
+  remaining_label: "متبقي",
 };
 
 const en: Dict = {
@@ -556,6 +558,8 @@ const en: Dict = {
   arriving_in_days: "Arrives in {n} days",
   overdue_by_days: "Overdue by {n} days",
   no_eta: "No ETA set",
+  received_label: "Received",
+  remaining_label: "Remaining",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };

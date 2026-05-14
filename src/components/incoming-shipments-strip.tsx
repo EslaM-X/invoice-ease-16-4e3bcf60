@@ -17,6 +17,10 @@ type PO = {
   expected_arrival_at: string | null;
   shipped_at: string | null;
   total_qty: number;
+  received_qty: number;
+  remaining_qty: number;
+  has_partial: boolean;
+  open_lines: number;
 };
 
 const STATUS_META: Record<ShipStatus, { Icon: typeof Package; tone: string; ring: string }> = {
@@ -48,17 +52,46 @@ export function IncomingShipmentsStrip() {
   const [rows, setRows] = useState<PO[] | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data: pos } = await supabase
       .from("purchase_orders")
       .select("id, po_number, supplier_name, status, expected_arrival_at, shipped_at, total_qty")
       .in("status", IN_TRANSIT_STATUSES as any)
       .order("expected_arrival_at", { ascending: true, nullsFirst: false })
       .limit(8);
-    setRows((data ?? []) as PO[]);
+    const list = (pos ?? []) as any[];
+    if (list.length === 0) { setRows([]); return; }
+    const ids = list.map((p) => p.id);
+    const { data: items } = await supabase
+      .from("purchase_order_items")
+      .select("po_id, quantity, received_qty")
+      .in("po_id", ids);
+    const agg = new Map<string, { received: number; remaining: number; openLines: number }>();
+    for (const it of (items ?? []) as any[]) {
+      const cur = agg.get(it.po_id) ?? { received: 0, remaining: 0, openLines: 0 };
+      const rec = Number(it.received_qty || 0);
+      const rem = Math.max(0, Number(it.quantity || 0) - rec);
+      cur.received += rec;
+      cur.remaining += rem;
+      if (rem > 0) cur.openLines += 1;
+      agg.set(it.po_id, cur);
+    }
+    const enriched: PO[] = list.map((p) => {
+      const a = agg.get(p.id) ?? { received: 0, remaining: Number(p.total_qty || 0), openLines: 0 };
+      return {
+        ...p,
+        received_qty: a.received,
+        remaining_qty: a.remaining,
+        has_partial: a.received > 0 && a.remaining > 0,
+        open_lines: a.openLines,
+      } as PO;
+    });
+    setRows(enriched);
   };
 
   useEffect(() => { load(); }, []);
   useRealtimeTable("purchase_orders", load);
+  useRealtimeTable("purchase_order_items", load);
+
 
   const etaLabel = (iso: string | null) => {
     if (!iso) return { text: t("no_eta"), tone: "text-muted-foreground", overdue: false };
@@ -129,10 +162,18 @@ export function IncomingShipmentsStrip() {
                         {po.supplier_name || (isAr ? "بدون مورد" : "No supplier")}
                       </div>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.tone}`}>
-                      <Icon className="h-3 w-3" />
-                      {statusLabel(po.status)}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.tone}`}>
+                        <Icon className="h-3 w-3" />
+                        {statusLabel(po.status)}
+                      </span>
+                      {po.has_partial && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+                          <AlertCircle className="h-3 w-3" />
+                          {t("partial_delivery")}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 text-xs">
@@ -145,6 +186,25 @@ export function IncomingShipmentsStrip() {
                     </div>
                   </div>
 
+                  {(po.received_qty > 0 || po.has_partial) && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-medium tabular-nums">
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          {t("received_label")}: {po.received_qty}
+                        </span>
+                        <span className="text-orange-700 dark:text-orange-400">
+                          {t("remaining_label")}: {po.remaining_qty}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+                          style={{ width: `${po.total_qty > 0 ? Math.min(100, (po.received_qty / po.total_qty) * 100) : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
                     <span>
                       {po.expected_arrival_at
@@ -153,6 +213,11 @@ export function IncomingShipmentsStrip() {
                           ? `${t("shipped_on")}: ${fmtDate(po.shipped_at, lang)}`
                           : "—"}
                     </span>
+                    {po.has_partial && po.open_lines > 0 && (
+                      <span className="font-semibold text-orange-700 dark:text-orange-400">
+                        {po.open_lines} {isAr ? "بنود مفتوحة" : "open lines"}
+                      </span>
+                    )}
                   </div>
                 </Link>
               );
