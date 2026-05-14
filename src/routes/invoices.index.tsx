@@ -25,6 +25,7 @@ function InvoicesList() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
+  const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
@@ -32,6 +33,7 @@ function InvoicesList() {
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "voided">("all");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
+  const [hideClosed, setHideClosed] = useState(true);
   const navigate = useNavigate();
 
   const load = async () => {
