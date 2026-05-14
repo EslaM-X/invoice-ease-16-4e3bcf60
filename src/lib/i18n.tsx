@@ -542,6 +542,20 @@ const en: Dict = {
   call_center_reports: "Call Center Reports",
   admin_panel: "Admin Panel",
   partial_delivery: "Partial delivery",
+  incoming_shipments: "Incoming shipments",
+  no_incoming_shipments: "No incoming shipments right now",
+  eta: "ETA",
+  shipped_on: "Shipped",
+  units: "units",
+  view_all: "View all",
+  status_ordered: "Ordered",
+  status_shipped: "In transit",
+  status_in_warehouse: "At customs",
+  arriving_today: "Arrives today",
+  arriving_tomorrow: "Arrives tomorrow",
+  arriving_in_days: "Arrives in {n} days",
+  overdue_by_days: "Overdue by {n} days",
+  no_eta: "No ETA set",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };
