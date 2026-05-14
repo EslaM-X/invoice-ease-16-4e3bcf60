@@ -140,12 +140,11 @@ function PurchaseOrdersPage() {
             </div>
           )}
           {pos.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setDetailId(p.id)}
-              className="flex w-full flex-wrap items-center gap-3 p-4 text-start transition hover:bg-accent/40"
-            >
-              <div className="flex-1 min-w-[200px]">
+            <div key={p.id} className="flex w-full flex-wrap items-center gap-3 p-4 transition hover:bg-accent/40">
+              <button
+                onClick={() => setDetailId(p.id)}
+                className="flex flex-1 min-w-[200px] flex-col gap-1 text-start"
+              >
                 <div className="font-mono text-sm font-bold">{p.po_number}</div>
                 <div className="text-xs text-muted-foreground">
                   {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(p.created_at, lang)}
@@ -153,7 +152,7 @@ function PurchaseOrdersPage() {
                 {p.created_by_email && (
                   <div className="text-[10px] text-muted-foreground">{p.created_by_email}</div>
                 )}
-              </div>
+              </button>
               <div className="text-end">
                 <div className="text-xs text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</div>
                 <div className="font-bold tabular-nums">${(Number(p.total_usd) || 0).toFixed(2)}</div>
@@ -166,7 +165,16 @@ function PurchaseOrdersPage() {
                 </div>
               )}
               <div>{statusBadge(p.status)}</div>
-            </button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); setTrackId(p.id); }}
+                className="gap-1"
+              >
+                <Activity className="h-3.5 w-3.5" />
+                {isAr ? "تتبع" : "Track"}
+              </Button>
+            </div>
           ))}
         </div>
       </Card>
