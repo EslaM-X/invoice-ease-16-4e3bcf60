@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
   Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
+  CloudUpload,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -44,6 +45,7 @@ const items: NavEntry[] = [
   { to: "/reports", icon: BarChart3, key: "reports" as const },
   { to: "/profits", icon: TrendingUp, key: "profits" as const },
   { to: "/audit-log", icon: ShieldCheck, key: "audit_log" as const },
+  { to: "/pending-operations", icon: CloudUpload, key: "pending_operations" as const },
   { to: "/settings", icon: Settings, key: "settings" as const },
 ];
 

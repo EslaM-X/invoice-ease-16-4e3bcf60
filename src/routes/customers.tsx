@@ -18,6 +18,8 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { cachedListFetch } from "@/lib/list-cache";
 import { enqueueOrRun } from "@/lib/outbox";
+import { getPendingRowIds } from "@/lib/sync-state";
+import { CloudUpload } from "lucide-react";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
@@ -29,6 +31,7 @@ function Customers() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const load = async () => {
     if (!user) return;
@@ -38,8 +41,18 @@ function Customers() {
     });
     setList(data);
   };
-  useEffect(() => { load(); }, [user]);
-  useRealtimeTable("customers", () => { load(); });
+  const refreshPending = async () => setPendingIds(await getPendingRowIds("customers"));
+  useEffect(() => { load(); refreshPending(); }, [user]);
+  useEffect(() => {
+    const on = () => refreshPending();
+    window.addEventListener("app:outbox-changed", on);
+    window.addEventListener("app:sync-success", on);
+    return () => {
+      window.removeEventListener("app:outbox-changed", on);
+      window.removeEventListener("app:sync-success", on);
+    };
+  }, []);
+  useRealtimeTable("customers", () => { load(); refreshPending(); });
 
   const filtered = list.filter((c) => {
     const s = q.trim().toLowerCase();
@@ -183,7 +196,15 @@ function Customers() {
               {filtered.map((c) => (
                 <tr key={c.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium">
-                    <div>{c.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span>{c.name}</span>
+                      {pendingIds.has(c.id) ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
+                          <CloudUpload className="h-2.5 w-2.5" />
+                          {lang === "ar" ? "قيد المزامنة" : "Pending"}
+                        </span>
+                      ) : null}
+                    </div>
                     <AuthorBadge email={c.created_by_email} label="created by" className="mt-0.5" />
                   </td>
                   <td className="px-4 py-3">{c.phone || "—"}</td>
