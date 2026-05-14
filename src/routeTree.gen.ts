@@ -42,7 +42,6 @@ import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
 import { Route as DeliveryReceiptsIndexRouteImport } from './routes/delivery-receipts.index'
 import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
 import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
-import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
@@ -208,6 +207,11 @@ const DeliveryReceiptsIndexRoute = DeliveryReceiptsIndexRouteImport.update({
 const InvoicesNewRoute = InvoicesNewRouteImport.update({
   id: '/invoices/new',
   path: '/invoices/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
+  id: '/invoices/archive',
+  path: '/invoices/archive',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
