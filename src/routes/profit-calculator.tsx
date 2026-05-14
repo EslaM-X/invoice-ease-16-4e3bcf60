@@ -478,8 +478,8 @@ function ScenarioPanel({
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[860px] text-xs">
             <thead className="bg-muted/30">
               <tr>
                 <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
