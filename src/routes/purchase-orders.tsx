@@ -1,4 +1,5 @@
 import { swatchStyle } from "@/lib/color-swatch";
+import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
