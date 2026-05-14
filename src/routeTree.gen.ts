@@ -214,11 +214,6 @@ const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
   path: '/invoices/archive',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
-  id: '/invoices/archive',
-  path: '/invoices/archive',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const InvoicesIdRoute = InvoicesIdRouteImport.update({
   id: '/invoices/$id',
   path: '/invoices/$id',
@@ -290,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/invoices/': typeof InvoicesIndexRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
+  '/invoices/archive': typeof InvoicesArchiveRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
 export interface FileRoutesByTo {
