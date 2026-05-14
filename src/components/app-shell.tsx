@@ -185,6 +185,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               icon={ShoppingCart}
               defaultOpen={
                 location.pathname.startsWith("/purchase-orders") ||
+                location.pathname.startsWith("/po-tracking") ||
                 location.pathname.startsWith("/profit-calculator") ||
                 location.pathname.startsWith("/profit-scenarios")
               }
