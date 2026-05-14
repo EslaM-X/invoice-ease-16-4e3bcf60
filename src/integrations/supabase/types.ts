@@ -861,6 +861,92 @@ export type Database = {
           },
         ]
       }
+      po_receipt_items: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          po_item_id: string
+          product_id: string
+          product_name: string
+          quantity: number
+          receipt_id: string
+          serial_number: string | null
+          stock_after: number | null
+          stock_before: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          po_item_id: string
+          product_id: string
+          product_name: string
+          quantity: number
+          receipt_id: string
+          serial_number?: string | null
+          stock_after?: number | null
+          stock_before?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          po_item_id?: string
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          receipt_id?: string
+          serial_number?: string | null
+          stock_after?: number | null
+          stock_before?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "po_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      po_receipts: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          po_id: string
+          receipt_number: number
+          total_qty: number
+          user_id: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          po_id: string
+          receipt_number: number
+          total_qty?: number
+          user_id: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          po_id?: string
+          receipt_number?: number
+          total_qty?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       po_status_history: {
         Row: {
           actor_email: string | null
@@ -1063,6 +1149,7 @@ export type Database = {
           product_id: string
           product_name: string
           quantity: number
+          received_qty: number
           serial_number: string | null
           unit_cost_usd: number
         }
@@ -1076,6 +1163,7 @@ export type Database = {
           product_id: string
           product_name: string
           quantity: number
+          received_qty?: number
           serial_number?: string | null
           unit_cost_usd?: number
         }
@@ -1089,6 +1177,7 @@ export type Database = {
           product_id?: string
           product_name?: string
           quantity?: number
+          received_qty?: number
           serial_number?: string | null
           unit_cost_usd?: number
         }
@@ -1755,6 +1844,15 @@ export type Database = {
       adjust_stock: {
         Args: { _change: number; _product_id: string; _reason: string }
         Returns: string
+      }
+      apply_po_receipt: {
+        Args: {
+          items_in: Json
+          p_actor_email: string
+          p_notes: string
+          p_po_id: string
+        }
+        Returns: Json
       }
       apply_po_to_inventory: {
         Args: { items_in: Json; p_actor_email: string; p_po_id: string }

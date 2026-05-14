@@ -105,6 +105,7 @@ type POItem = {
   color: string | null;
   image_url: string | null;
   quantity: number;
+  received_qty: number;
   unit_cost_usd: number;
 };
 
@@ -115,6 +116,24 @@ type HistoryRow = {
   note: string | null;
   actor_email: string | null;
   created_at: string;
+};
+
+type ReceiptRow = {
+  id: string;
+  receipt_number: number;
+  total_qty: number;
+  notes: string | null;
+  actor_email: string | null;
+  created_at: string;
+  po_receipt_items: {
+    id: string;
+    product_name: string;
+    serial_number: string | null;
+    color: string | null;
+    quantity: number;
+    stock_before: number | null;
+    stock_after: number | null;
+  }[];
 };
 
 export function POTrackerDialog({
@@ -134,24 +153,38 @@ export function POTrackerDialog({
   const [po, setPo] = useState<PO | null>(null);
   const [items, setItems] = useState<POItem[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
 
   const load = async () => {
-    const [{ data: p }, { data: it }, { data: h }] = await Promise.all([
+    const [{ data: p }, { data: it }, { data: h }, { data: rc }] = await Promise.all([
       supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
       supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
+      (supabase as any)
+        .from("po_receipts")
+        .select("id,receipt_number,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .eq("po_id", poId)
+        .order("receipt_number", { ascending: false }),
     ]);
     setPo((p as any) ?? null);
     setItems((it as any) ?? []);
     setHistory((h as any) ?? []);
+    setReceipts((rc as any) ?? []);
   };
 
   useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open, poId]);
   useRealtimeTable("po_status_history", () => { if (open) load(); }, [open, poId]);
   useRealtimeTable("purchase_orders", () => { if (open) load(); }, [open, poId]);
+  useRealtimeTable("purchase_order_items", () => { if (open) load(); }, [open, poId]);
+
+  const totalOrdered = items.reduce((s, i) => s + i.quantity, 0);
+  const totalReceived = items.reduce((s, i) => s + (i.received_qty || 0), 0);
+  const totalRemaining = Math.max(0, totalOrdered - totalReceived);
+  const isPartial = totalReceived > 0 && totalRemaining > 0;
+  const canReceive = (po?.status === "shipped" || po?.status === "in_warehouse") && totalRemaining > 0 && (isAdmin || isPurchasing);
 
   const canTransition = isAdmin || isPurchasing || isCFO;
   const canCancel = isAdmin;
@@ -248,6 +281,12 @@ export function POTrackerDialog({
               {isAr ? "تتبع أمر الشراء" : "PO Tracking"}
               <span className="font-mono text-sm text-muted-foreground">{po?.po_number}</span>
               {po && statusBadge(po.status, isAr)}
+              {po && isPartial && (
+                <Badge variant="outline" className="gap-1 bg-amber-500/15 text-amber-700 border-amber-500/40">
+                  <Package className="h-3 w-3" />
+                  {isAr ? `تسليم جزئي · متبقي ${totalRemaining}` : `Partial · ${totalRemaining} remaining`}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -389,10 +428,12 @@ export function POTrackerDialog({
                         {isAr ? `تحديث إلى: ${statusLabel(nextStatus, true)}` : `Move to: ${statusLabel(nextStatus, false)}`}
                       </Button>
                     )}
-                    {po.status === "in_warehouse" && (isAdmin || isPurchasing) && (
+                    {canReceive && (
                       <Button onClick={() => setReceiveOpen(true)} disabled={busy} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                         <Package className="h-4 w-4" />
-                        {isAr ? "تأكيد الاستلام وإضافة للمخزون" : "Confirm Receive → Inventory"}
+                        {isAr
+                          ? (isPartial ? `استلام دفعة جديدة (متبقي ${totalRemaining})` : "تأكيد الاستلام وإضافة للمخزون")
+                          : (isPartial ? `Receive next batch (${totalRemaining} left)` : "Confirm Receive → Inventory")}
                       </Button>
                     )}
                     {canCancel && (
@@ -425,6 +466,62 @@ export function POTrackerDialog({
                   </ol>
                 )}
               </div>
+
+              {/* Receipts (batches) */}
+              {(receipts.length > 0 || isPartial) && (
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Package className="h-4 w-4 text-emerald-600" />
+                      {isAr ? "دفعات الاستلام" : "Receipt Batches"}
+                    </div>
+                    <div className="text-[11px] tabular-nums text-muted-foreground">
+                      {isAr
+                        ? `إجمالي مستلم: ${totalReceived} / ${totalOrdered} · متبقي ${totalRemaining}`
+                        : `Received: ${totalReceived} / ${totalOrdered} · ${totalRemaining} left`}
+                    </div>
+                  </div>
+                  {receipts.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">{isAr ? "لا توجد دفعات بعد." : "No batches yet."}</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {receipts.map((r) => (
+                        <div key={r.id} className="rounded-md border bg-muted/20 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">#{r.receipt_number}</span>
+                              {isAr ? "دفعة" : "Batch"}
+                              <span className="tabular-nums text-emerald-700">+{r.total_qty}</span>
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {fmtDateTime(r.created_at, lang)}
+                              {r.actor_email ? ` · ${r.actor_email}` : ""}
+                            </div>
+                          </div>
+                          {r.notes && <div className="mt-1 text-xs italic text-muted-foreground">{r.notes}</div>}
+                          <div className="mt-2 space-y-1">
+                            {r.po_receipt_items?.map((ri) => (
+                              <div key={ri.id} className="flex flex-wrap items-center gap-2 rounded border bg-background px-2 py-1 text-xs">
+                                <span className="flex-1 truncate font-medium">{ri.product_name}</span>
+                                {ri.color && (
+                                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                    <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(ri.color)} />
+                                    {ri.color}
+                                  </span>
+                                )}
+                                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold tabular-nums text-emerald-700">+{ri.quantity}</span>
+                                <span className="tabular-nums text-muted-foreground">
+                                  {ri.stock_before ?? 0} → <span className="font-semibold text-foreground">{ri.stock_after ?? 0}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -464,13 +561,47 @@ function ReceiveDialog({
   const { user } = useAuth();
   const { lang } = useI18n();
   const isAr = lang === "ar";
-  const [qty, setQty] = useState<Record<string, number>>(() =>
-    Object.fromEntries(items.map((i) => [i.id, i.quantity]))
+
+  // Only items that still have remaining qty
+  const openItems = useMemo(
+    () => items.filter((i) => (i.quantity - (i.received_qty || 0)) > 0),
+    [items],
   );
+  const remainingMap = useMemo(
+    () => Object.fromEntries(openItems.map((i) => [i.id, i.quantity - (i.received_qty || 0)] as const)),
+    [openItems],
+  );
+
+  // Default: receive all remaining
+  const [qty, setQty] = useState<Record<string, number>>(() =>
+    Object.fromEntries(openItems.map((i) => [i.id, i.quantity - (i.received_qty || 0)])),
+  );
+  const [notes, setNotes] = useState("");
+  const [stockNow, setStockNow] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
 
-  const total = items.reduce((s, i) => s + i.quantity, 0);
-  const totalRecv = items.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
+  // Live current stock per product (the "before" the user verifies against)
+  useEffect(() => {
+    if (!open) return;
+    const ids = Array.from(new Set(openItems.map((i) => i.product_id)));
+    if (ids.length === 0) { setStockNow({}); return; }
+    (async () => {
+      const { data } = await supabase.from("products").select("id,stock_quantity").in("id", ids);
+      const m: Record<string, number> = {};
+      (data ?? []).forEach((p: any) => { m[p.id] = p.stock_quantity; });
+      setStockNow(m);
+    })();
+  }, [open, openItems]);
+
+  const totalRemaining = openItems.reduce((s, i) => s + remainingMap[i.id], 0);
+  const totalRecv = openItems.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
+  const wouldFinish = openItems.every((i) => (qty[i.id] ?? 0) >= remainingMap[i.id]);
+
+  const setItemQty = (id: string, n: number) => {
+    const max = remainingMap[id] ?? 0;
+    const clamped = Math.max(0, Math.min(max, Math.floor(isFinite(n) ? n : 0)));
+    setQty((q) => ({ ...q, [id]: clamped }));
+  };
 
   const submit = async () => {
     if (!user) return;
@@ -480,17 +611,21 @@ function ReceiveDialog({
     }
     setBusy(true);
     try {
-      const payload = items.map((i) => ({ item_id: i.id, received_qty: Math.max(0, Math.min(i.quantity, Math.floor(qty[i.id] ?? 0))) }));
-      const { data, error } = await (supabase as any).rpc("apply_po_to_inventory", {
+      const payload = openItems
+        .map((i) => ({ item_id: i.id, received_qty: qty[i.id] ?? 0 }))
+        .filter((x) => x.received_qty > 0);
+      const { data, error } = await (supabase as any).rpc("apply_po_receipt", {
         p_po_id: po.id,
         items_in: payload,
+        p_notes: notes.trim(),
         p_actor_email: user.email ?? "",
       });
       if (error) throw error;
       const fully = data?.fully_received;
+      const batch = data?.receipt_number;
       toast.success(isAr
-        ? (fully ? "تم الاستلام وإضافته للمخزون بالكامل" : "تم استلام جزء وإضافته للمخزون")
-        : (fully ? "Received & inventory updated" : "Partial receipt applied to inventory"));
+        ? (fully ? `تم استلام الدفعة #${batch} وإغلاق الشحنة بالكامل` : `تم تسجيل الدفعة #${batch} · لا يزال هناك متبقي`)
+        : (fully ? `Batch #${batch} received · PO closed` : `Batch #${batch} saved · partial`));
       onDone();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed");
@@ -501,75 +636,133 @@ function ReceiveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <Package className="h-5 w-5 text-emerald-600" />
-            {isAr ? "تأكيد الاستلام" : "Confirm Receive"}
+            {isAr ? "تسجيل دفعة استلام" : "Record Receipt Batch"}
             <span className="font-mono text-sm text-muted-foreground">{po.po_number}</span>
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px]">
+              {isAr ? `متبقي ${totalRemaining}` : `${totalRemaining} remaining`}
+            </Badge>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 text-xs flex gap-2">
-          <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600" />
+        <div className="rounded-md bg-sky-500/10 border border-sky-500/30 p-3 text-xs flex gap-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-sky-600" />
           <span>{isAr
-            ? "سيتم إضافة الكميات المستلمة لمخزون كل منتج بدقة. هذه العملية لا يمكن تكرارها لنفس الأمر."
-            : "Received quantities will be added to each product's stock. This operation cannot be repeated for the same PO."}</span>
+            ? "راجع المخزون الحالي لكل منتج (المخزون قبل) وتأكد من الكمية المستلمة قبل التأكيد. يمكنك استلام الباقي على دفعات لاحقة."
+            : "Review each product's current stock (before) and confirm the received quantity. Remaining items can be received in later batches."}</span>
         </div>
 
         <div className="space-y-2">
-          {items.map((it) => (
-            <div key={it.id} className="flex items-center gap-3 rounded-lg border bg-card p-2">
-              <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
-                {it.image_url ? <img src={it.image_url} alt={it.product_name} className="h-full w-full object-cover" /> : null}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{it.product_name}</div>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                  {it.serial_number && <span className="font-mono">S/N: {it.serial_number}</span>}
-                  {it.color && (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(it.color)} />
-                      {it.color}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="text-end text-xs text-muted-foreground">
-                  <div>{isAr ? "المطلوب" : "Ordered"}</div>
-                  <div className="text-base font-bold tabular-nums text-foreground">{it.quantity}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-muted-foreground">{isAr ? "مستلم" : "Received"}</div>
-                  <Input
-                    type="number" min={0} max={it.quantity}
-                    value={qty[it.id] ?? 0}
-                    onChange={(e) => setQty((q) => ({ ...q, [it.id]: parseInt(e.target.value) || 0 }))}
-                    className="w-20 text-center tabular-nums"
-                  />
-                </div>
-              </div>
+          {openItems.length === 0 ? (
+            <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              {isAr ? "لا توجد بنود متبقية للاستلام." : "No items left to receive."}
             </div>
-          ))}
+          ) : openItems.map((it) => {
+            const remaining = remainingMap[it.id];
+            const recv = qty[it.id] ?? 0;
+            const before = stockNow[it.product_id];
+            const after = before != null ? before + recv : null;
+            const alreadyReceived = it.received_qty || 0;
+            return (
+              <div key={it.id} className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="flex items-start gap-3">
+                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
+                    {it.image_url ? <img src={it.image_url} alt={it.product_name} className="h-full w-full object-cover" /> : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{it.product_name}</div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      {it.serial_number && <span className="font-mono">S/N: {it.serial_number}</span>}
+                      {it.color && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(it.color)} />
+                          {it.color}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                  <Mini label={isAr ? "المطلوب" : "Ordered"} value={it.quantity} />
+                  <Mini label={isAr ? "سبق استلامه" : "Already received"} value={alreadyReceived} tone={alreadyReceived > 0 ? "text-emerald-700" : ""} />
+                  <Mini label={isAr ? "المتبقي" : "Remaining"} value={remaining} tone="text-amber-700" />
+                  <Mini label={isAr ? "المخزون قبل" : "Stock before"} value={before ?? "—"} tone="text-muted-foreground" />
+                  <Mini label={isAr ? "المخزون بعد" : "Stock after"} value={after ?? "—"} tone={recv > 0 ? "text-sky-700 font-bold" : "text-muted-foreground"} />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">{isAr ? "هذه الدفعة:" : "This batch:"}</span>
+                  <Button type="button" size="sm" variant="outline" className="h-7 px-2"
+                    onClick={() => setItemQty(it.id, recv - 1)} disabled={recv <= 0}>−</Button>
+                  <Input
+                    type="number" min={0} max={remaining}
+                    value={recv}
+                    onChange={(e) => setItemQty(it.id, parseInt(e.target.value))}
+                    className="w-20 text-center tabular-nums h-8"
+                  />
+                  <Button type="button" size="sm" variant="outline" className="h-7 px-2"
+                    onClick={() => setItemQty(it.id, recv + 1)} disabled={recv >= remaining}>+</Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px]"
+                    onClick={() => setItemQty(it.id, remaining)}>
+                    {isAr ? "كل المتبقي" : "All remaining"}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px]"
+                    onClick={() => setItemQty(it.id, 0)}>
+                    {isAr ? "صفر" : "Zero"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
+        {openItems.length > 0 && (
+          <Textarea
+            placeholder={isAr ? "ملاحظة على هذه الدفعة (اختياري) — رقم البوليصة، اسم الشاحنة..." : "Note on this batch (optional) — waybill, truck..."}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+          />
+        )}
+
         <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-          <span>{isAr ? "الإجمالي" : "Total"}</span>
-          <span className="font-bold tabular-nums">{totalRecv} / {total}</span>
+          <span>{isAr ? "إجمالي هذه الدفعة" : "Batch total"}</span>
+          <div className="flex items-center gap-3">
+            <span className="font-bold tabular-nums">{totalRecv} / {totalRemaining}</span>
+            <Badge variant="outline" className={wouldFinish && totalRecv > 0
+              ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+              : "bg-amber-500/15 text-amber-700 border-amber-500/30"}>
+              {wouldFinish && totalRecv > 0
+                ? (isAr ? "ستكتمل الشحنة" : "Will close PO")
+                : (isAr ? "سيظل متبقي" : "Will stay partial")}
+            </Badge>
+          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             {isAr ? "إلغاء" : "Cancel"}
           </Button>
-          <Button onClick={submit} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={submit} disabled={busy || totalRecv <= 0} className="bg-emerald-600 hover:bg-emerald-700">
             <Package className="me-2 h-4 w-4" />
-            {isAr ? "تأكيد وإضافة للمخزون" : "Confirm & Add to Inventory"}
+            {isAr ? "تأكيد الدفعة وإضافتها للمخزون" : "Confirm Batch → Add to Inventory"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Mini({ label, value, tone = "" }: { label: string; value: any; tone?: string }) {
+  return (
+    <div className="rounded border bg-muted/30 px-2 py-1">
+      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`text-sm font-semibold tabular-nums ${tone}`}>{value}</div>
+    </div>
   );
 }
 
