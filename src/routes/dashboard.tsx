@@ -81,6 +81,9 @@ function Dashboard() {
   const cards = [
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
     { label: t("total_invoices"), value: stats.invoices, Icon: FileText, sensitive: false },
+    { label: t("closed_invoices"), value: stats.closed, Icon: CheckCircle2, sensitive: false, accent: "text-emerald-700 dark:text-emerald-400" },
+    { label: t("partial_delivery_invoices"), value: stats.partial, Icon: Truck, sensitive: false, accent: "text-amber-700 dark:text-amber-400" },
+    { label: t("open_invoices"), value: stats.open, Icon: Clock, sensitive: false, accent: "text-sky-700 dark:text-sky-400" },
     { label: t("total_customers"), value: stats.customers, Icon: Users, sensitive: false },
   ];
 
