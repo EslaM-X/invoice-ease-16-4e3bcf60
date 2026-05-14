@@ -157,17 +157,19 @@ export function POTrackerDialog({
 
   const currentIdx = po ? PO_FLOW.indexOf(po.status as any) : -1;
 
-  const bothInstallmentsPaid = !!(po?.payment_installment_1_at && po?.payment_installment_2_at);
+  const installment1Paid = !!po?.payment_installment_1_at;
+  const installment2Paid = !!po?.payment_installment_2_at;
+  const bothInstallmentsPaid = installment1Paid && installment2Paid;
 
   const nextStatus = useMemo(() => {
     if (!po) return null;
     if (po.status === "cancelled" || po.status === "received") return null;
     if (po.status === "in_warehouse") return null; // handled via receive flow
-    if (po.status === "ordered" && !bothInstallmentsPaid) return null; // gate on installments
+    if (po.status === "priced" && !installment1Paid) return null; // gate on installment 1
     const i = PO_FLOW.indexOf(po.status as any);
     if (i < 0) return null;
     return PO_FLOW[i + 1] ?? null;
-  }, [po, bothInstallmentsPaid]);
+  }, [po, installment1Paid]);
 
   const allowedNext = (target: string) => {
     if (!canTransition || !po) return false;
