@@ -441,7 +441,7 @@ function ScenarioPanel({
       </div>
 
       {/* Items */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden max-w-full">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
           <span className="text-xs font-semibold uppercase tracking-wider">
             {isAr ? "البنود وأسعار البيع المتوقعة" : "Items & expected selling prices"}
