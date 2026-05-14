@@ -505,7 +505,7 @@ export function POTrackerDialog({
                                 <span className="flex-1 truncate font-medium">{ri.product_name}</span>
                                 {ri.color && (
                                   <span className="inline-flex items-center gap-1 text-muted-foreground">
-                                    <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(ri.color)} />
+                                    <ColorSwatch value={ri.color} size="sm" />
                                     {ri.color}
                                   </span>
                                 )}
@@ -678,7 +678,7 @@ function ReceiveDialog({
                       {it.serial_number && <span className="font-mono">S/N: {it.serial_number}</span>}
                       {it.color && (
                         <span className="inline-flex items-center gap-1">
-                          <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(it.color)} />
+                          <ColorSwatch value={it.color} size="sm" />
                           {it.color}
                         </span>
                       )}

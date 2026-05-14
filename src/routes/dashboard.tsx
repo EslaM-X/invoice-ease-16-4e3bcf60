@@ -187,7 +187,7 @@ function Dashboard() {
                       )}
                       {p.color && (
                         <span className="inline-flex items-center gap-1">
-                          <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(p.color)} aria-hidden />
+                          <ColorSwatch value={p.color} size="sm" />
                           {p.color}
                         </span>
                       )}

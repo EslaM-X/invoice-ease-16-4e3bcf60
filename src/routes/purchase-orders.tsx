@@ -408,7 +408,7 @@ function CreatePODialog({
                             {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
                             {p.color && (
                               <span className="inline-flex items-center gap-1">
-                                <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(p.color)} />
+                                <ColorSwatch value={p.color} size="sm" />
                                 {p.color}
                               </span>
                             )}
@@ -877,7 +877,7 @@ function PODetailDialog({
                                   {it.serial_number && <span className="font-mono">{it.serial_number}</span>}
                                   {it.color && (
                                     <span className="inline-flex items-center gap-1">
-                                      <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(it.color)} />
+                                      <ColorSwatch value={it.color} size="sm" />
                                       {it.color}
                                     </span>
                                   )}

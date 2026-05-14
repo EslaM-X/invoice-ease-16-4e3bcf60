@@ -572,7 +572,7 @@ function SalesToday() {
                           <td className="px-3 py-3">
                             {r.color ? (
                               <span className="inline-flex items-center gap-1.5 text-xs">
-                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(r.color)} aria-hidden />
+                                <ColorSwatch value={r.color} size="sm" />
                                 {r.color}
                               </span>
                             ) : (

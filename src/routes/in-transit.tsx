@@ -300,7 +300,7 @@ function InTransitPage() {
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted hover:bg-muted/70"}`}
                   title={color}
                 >
-                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(color)} />
+                  <ColorSwatch value={color} size="sm" />
                   <span className="max-w-[80px] truncate">{color}</span>
                   <span className="text-muted-foreground">({count})</span>
                 </button>
@@ -344,7 +344,7 @@ function InTransitPage() {
                     {r.serial_number && <span className="font-mono">S/N: {r.serial_number}</span>}
                     {r.color && (
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="inline-block h-3.5 w-3.5 rounded-sm border shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]" style={swatchStyle(r.color)} />
+                        <ColorSwatch value={r.color} size="md" />
                         {r.color}
                       </span>
                     )}
