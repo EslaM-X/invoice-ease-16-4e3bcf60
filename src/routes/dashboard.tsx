@@ -22,7 +22,7 @@ function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const { hidden, toggle, mask } = useHideNumbers();
-  const [stats, setStats] = useState({ sales: 0, invoices: 0, customers: 0, products: 0, lowStock: 0 });
+  const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
   const [top, setTop] = useState<any[]>([]);
   const navigate = useNavigate();
