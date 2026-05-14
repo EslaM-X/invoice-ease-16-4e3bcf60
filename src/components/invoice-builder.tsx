@@ -46,14 +46,17 @@ type Props = {
     system_notes?: string;
     paid_amount?: number | null;
     delivery_status?: string | null;
+    status?: string | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
   /** persist drafts under this key (only for new mode) */
   draftKey?: string;
+  /** force draft mode for new invoices */
+  defaultDraft?: boolean;
 };
 
-export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey }: Props) {
+export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, defaultDraft }: Props) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
