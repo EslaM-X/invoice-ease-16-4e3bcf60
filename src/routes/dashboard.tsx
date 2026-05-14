@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
-import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff } from "lucide-react";
+import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useRealtimeTable } from "@/lib/realtime";
@@ -22,23 +22,35 @@ function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const { hidden, toggle, mask } = useHideNumbers();
-  const [stats, setStats] = useState({ sales: 0, invoices: 0, customers: 0, products: 0, lowStock: 0 });
+  const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
   const [top, setTop] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const load = async () => {
     const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-      supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(50),
+      supabase.from("invoices").select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(500),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
       supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").not("invoices.status", "in", "(voided,draft)"),
     ]);
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
+    let closed = 0, partial = 0, open = 0;
+    (invs ?? []).forEach((i: any) => {
+      const total = Number(i.total ?? 0);
+      const paid = Number(i.paid_amount ?? 0);
+      const fullyPaid = total > 0 && paid >= total - 0.001;
+      if (fullyPaid && i.delivery_status === "delivered") closed++;
+      else if (i.delivery_status === "partial") partial++;
+      else open++;
+    });
     setStats({
       sales,
       invoices: invs?.length ?? 0,
+      closed,
+      partial,
+      open,
       customers: cust ?? 0,
       products: prods?.length ?? 0,
       lowStock,
@@ -69,6 +81,9 @@ function Dashboard() {
   const cards = [
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
     { label: t("total_invoices"), value: stats.invoices, Icon: FileText, sensitive: false },
+    { label: t("closed_invoices"), value: stats.closed, Icon: CheckCircle2, sensitive: false, accent: "text-emerald-700 dark:text-emerald-400" },
+    { label: t("partial_delivery_invoices"), value: stats.partial, Icon: Truck, sensitive: false, accent: "text-amber-700 dark:text-amber-400" },
+    { label: t("open_invoices"), value: stats.open, Icon: Clock, sensitive: false, accent: "text-sky-700 dark:text-sky-400" },
     { label: t("total_customers"), value: stats.customers, Icon: Users, sensitive: false },
   ];
 
@@ -115,13 +130,13 @@ function Dashboard() {
       )}
 
       <div className="stagger grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ label, value, Icon }) => (
+        {cards.map(({ label, value, Icon, accent }) => (
           <div key={label} className="group relative bg-card p-4 sm:p-6 transition-colors hover:bg-muted/40 min-w-0">
             <div className="flex items-start justify-between gap-3">
               <div className="eyebrow">{label}</div>
-              <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+              <Icon className={`h-4 w-4 transition-colors ${accent ?? "text-muted-foreground group-hover:text-foreground"}`} />
             </div>
-            <div className="ltr-nums mt-6 font-display text-2xl font-medium tracking-tight tabular-nums text-foreground sm:text-3xl break-words">{value}</div>
+            <div className={`ltr-nums mt-6 font-display text-2xl font-medium tracking-tight tabular-nums sm:text-3xl break-words ${accent ?? "text-foreground"}`}>{value}</div>
           </div>
         ))}
       </div>
