@@ -489,6 +489,99 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     }
   };
 
+  const saveDraftDirect = async (): Promise<string | null> => {
+    if (!user) return null;
+    const itemsPayload = items.map((it) => {
+      const base = it.quantity * it.unit_price;
+      const lineTotal = Math.max(0, base - (it.discount || 0));
+      return {
+        product_id: it.product_id,
+        product_name: it.product_name,
+        serial_number: it.serial_number || null,
+        color: it.color || null,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        discount: it.discount || 0,
+        line_total: lineTotal,
+      };
+    });
+    const subtotalCalc = items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
+    const totalCalc = Math.max(0, subtotalCalc - effectiveDiscount);
+
+    if (mode === "edit" && invoiceId) {
+      const { error: invErr } = await supabase
+        .from("invoices")
+        .update({
+          customer_id: customer?.id ?? null,
+          customer_name: customer?.name ?? null,
+          customer_phone: customer?.phone ?? null,
+          customer_address: customer?.address ?? null,
+          discount: effectiveDiscount,
+          subtotal: subtotalCalc,
+          total: totalCalc,
+          notes: notes || null,
+          system_notes: systemNotes || null,
+          paid_amount: paidMode === "custom" ? paidAmount : null,
+          language: lang,
+          status: "draft",
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+          updated_by_email: user.email ?? null,
+        } as any)
+        .eq("id", invoiceId);
+      if (invErr) {
+        toast.error(invErr.message);
+        return null;
+      }
+      await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+      const { error: itErr } = await supabase
+        .from("invoice_items")
+        .insert(itemsPayload.map((it) => ({ ...it, invoice_id: invoiceId })) as any);
+      if (itErr) {
+        toast.error(itErr.message);
+        return null;
+      }
+      return invoiceId;
+    }
+
+    const draftNumber = `DRAFT-${Date.now().toString(36).toUpperCase()}`;
+    const { data: ins, error } = await supabase
+      .from("invoices")
+      .insert({
+        user_id: user.id,
+        invoice_number: draftNumber,
+        customer_id: customer?.id ?? null,
+        customer_name: customer?.name ?? null,
+        customer_phone: customer?.phone ?? null,
+        customer_address: customer?.address ?? null,
+        discount: effectiveDiscount,
+        subtotal: subtotalCalc,
+        total: totalCalc,
+        notes: notes || null,
+        system_notes: systemNotes || null,
+        paid_amount: paidMode === "custom" ? paidAmount : null,
+        language: lang,
+        status: "draft",
+        created_by: user.id,
+        created_by_email: user.email ?? null,
+      } as any)
+      .select("id")
+      .single();
+    if (error || !ins) {
+      toast.error(error?.message ?? "Failed to save draft");
+      return null;
+    }
+    const newId = (ins as any).id as string;
+    const { error: itErr } = await supabase
+      .from("invoice_items")
+      .insert(itemsPayload.map((it) => ({ ...it, invoice_id: newId })) as any);
+    if (itErr) {
+      toast.error(itErr.message);
+      return null;
+    }
+    return newId;
+  };
+
   const save = async () => {
     if (!user || saving) return;
     if (items.length === 0) return toast.error(t("no_items"));
@@ -505,6 +598,45 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
 
     setSaving(true);
     try {
+      // DRAFT path — no stock changes, no real invoice number
+      if (isDraft) {
+        const id = await saveDraftDirect();
+        if (!id) return;
+        if (draftKey) localStorage.removeItem(draftKey);
+        toast.success(lang === "ar" ? "تم حفظ المسودة" : "Draft saved");
+        navigate({ to: "/invoices/drafts" });
+        return;
+      }
+
+      // Editing an existing DRAFT and switching to REAL → create real invoice via RPC, then delete draft
+      if (mode === "edit" && invoiceId && initial?.status === "draft") {
+        const { data: newId, error } = await supabase.rpc("create_invoice", {
+          _customer_id: customer?.id ?? null,
+          _discount: effectiveDiscount,
+          _notes: notes || null,
+          _language: lang,
+          _items: payload as any,
+          _paid_amount: paidMode === "custom" ? paidAmount : null,
+          _system_notes: systemNotes || null,
+        } as any);
+        if (error || !newId) {
+          handleRpcError(error?.message ?? "");
+          return;
+        }
+        // Best-effort delete of the draft (no stock to restore)
+        await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+        await supabase.from("invoices").delete().eq("id", invoiceId);
+        if (delivered) {
+          await supabase
+            .from("invoices")
+            .update({ delivery_status: "delivered" } as any)
+            .eq("id", newId as string);
+        }
+        toast.success(t("invoice_saved"));
+        navigate({ to: "/invoices/$id", params: { id: newId as string } });
+        return;
+      }
+
       if (mode === "edit" && invoiceId) {
         const { data, error } = await supabase.rpc("update_invoice", {
           _invoice_id: invoiceId,
