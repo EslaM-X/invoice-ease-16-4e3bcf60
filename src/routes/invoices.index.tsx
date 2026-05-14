@@ -26,6 +26,7 @@ function InvoicesList() {
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
+  const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number }>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
@@ -49,18 +50,57 @@ function InvoicesList() {
     setList(data);
     setLoading(false);
 
-    // Linked delivery receipts count per invoice (for the badge)
+    // Linked delivery receipts count + delivered quantity progress
     if (data.length) {
       const ids = data.map((i: any) => i.id);
-      const { data: drs } = await supabase
-        .from("delivery_receipts" as any)
-        .select("invoice_id")
-        .in("invoice_id", ids);
+      const [{ data: drs }, { data: invItems }] = await Promise.all([
+        supabase
+          .from("delivery_receipts" as any)
+          .select("id, invoice_id, status")
+          .in("invoice_id", ids),
+        supabase
+          .from("invoice_items")
+          .select("invoice_id, quantity")
+          .in("invoice_id", ids),
+      ]);
       const counts: Record<string, number> = {};
+      const drToInvoice: Record<string, string> = {};
+      const validReceiptIds: string[] = [];
       (drs ?? []).forEach((r: any) => {
-        if (r.invoice_id) counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
+        if (!r.invoice_id) return;
+        counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
+        // Exclude drafts from delivered-quantity calculation
+        if (r.status !== "draft") {
+          drToInvoice[r.id] = r.invoice_id;
+          validReceiptIds.push(r.id);
+        }
       });
       setDrCounts(counts);
+
+      const totals: Record<string, number> = {};
+      (invItems ?? []).forEach((it: any) => {
+        if (!it.invoice_id) return;
+        totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
+      });
+
+      const deliveredByInv: Record<string, number> = {};
+      if (validReceiptIds.length) {
+        const { data: drItems } = await supabase
+          .from("delivery_receipt_items" as any)
+          .select("receipt_id, quantity")
+          .in("receipt_id", validReceiptIds);
+        (drItems ?? []).forEach((di: any) => {
+          const invId = drToInvoice[di.receipt_id];
+          if (!invId) return;
+          deliveredByInv[invId] = (deliveredByInv[invId] ?? 0) + Number(di.quantity ?? 0);
+        });
+      }
+
+      const progress: Record<string, { delivered: number; total: number }> = {};
+      ids.forEach((id: string) => {
+        progress[id] = { delivered: deliveredByInv[id] ?? 0, total: totals[id] ?? 0 };
+      });
+      setDelivProgress(progress);
     }
   };
   useEffect(() => { load(); }, [user, from, to]);
@@ -379,11 +419,24 @@ function InvoicesList() {
                             }
                             return (
                               <>
-                                {delivered && (
+                                {delivered ? (
                                   <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
                                     {lang === "ar" ? "مُسلَّمة" : "Delivered"}
                                   </span>
-                                )}
+                                ) : (() => {
+                                  const p = delivProgress[i.id];
+                                  if (p && p.total > 0 && p.delivered > 0 && p.delivered < p.total) {
+                                    return (
+                                      <span
+                                        className="rounded-full border border-orange-500/40 bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-700 dark:text-orange-400"
+                                        title={`${p.delivered} / ${p.total}`}
+                                      >
+                                        {lang === "ar" ? `تسليم جزئي ${p.delivered}/${p.total}` : `Partial ${p.delivered}/${p.total}`}
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 {fullyPaid && (
                                   <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-400">
                                     {lang === "ar" ? "مدفوعة" : "Paid"}
