@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -299,7 +300,7 @@ function InTransitPage() {
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted hover:bg-muted/70"}`}
                   title={color}
                 >
-                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: color }} />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(color)} />
                   <span className="max-w-[80px] truncate">{color}</span>
                   <span className="text-muted-foreground">({count})</span>
                 </button>
@@ -343,7 +344,7 @@ function InTransitPage() {
                     {r.serial_number && <span className="font-mono">S/N: {r.serial_number}</span>}
                     {r.color && (
                       <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2 w-2 rounded-full border" style={{ background: r.color }} />
+                        <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(r.color)} />
                         {r.color}
                       </span>
                     )}

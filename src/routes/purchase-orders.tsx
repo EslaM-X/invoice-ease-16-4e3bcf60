@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -407,7 +408,7 @@ function CreatePODialog({
                             {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
                             {p.color && (
                               <span className="inline-flex items-center gap-1">
-                                <span className="inline-block h-2 w-2 rounded-full border" style={{ background: p.color }} />
+                                <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(p.color)} />
                                 {p.color}
                               </span>
                             )}
@@ -876,7 +877,7 @@ function PODetailDialog({
                                   {it.serial_number && <span className="font-mono">{it.serial_number}</span>}
                                   {it.color && (
                                     <span className="inline-flex items-center gap-1">
-                                      <span className="inline-block h-2 w-2 rounded-full border" style={{ background: it.color }} />
+                                      <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(it.color)} />
                                       {it.color}
                                     </span>
                                   )}

@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -1247,7 +1248,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                             {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
                             {p.color && (
                               <span className="inline-flex items-center gap-1">
-                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: p.color }} aria-hidden />
+                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(p.color)} aria-hidden />
                                 {p.color}
                               </span>
                             )}

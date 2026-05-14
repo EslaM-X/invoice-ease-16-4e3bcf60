@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
@@ -965,7 +966,7 @@ function ProfitsPage() {
                             {p?.serial_number && <span className="font-mono">{p.serial_number}</span>}
                             {p?.color && (
                               <span className="inline-flex items-center gap-1">
-                                <span className="inline-block h-2 w-2 rounded-full border" style={{ background: p.color }} />
+                                <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(p.color)} />
                                 {p.color}
                               </span>
                             )}

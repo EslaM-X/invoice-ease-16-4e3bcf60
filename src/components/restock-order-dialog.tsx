@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -290,7 +291,7 @@ export function RestockOrderDialog({
                           <span className="inline-flex items-center gap-1">
                             <span
                               className="inline-block h-2 w-2 rounded-full border"
-                              style={{ background: p.color }}
+                              style={swatchStyle(p.color)}
                             />
                             {p.color}
                           </span>

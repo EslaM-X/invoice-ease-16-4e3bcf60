@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -110,7 +111,7 @@ function Inventory() {
                           <span className="inline-flex items-center gap-1.5">
                             <span
                               className="inline-block h-2.5 w-2.5 rounded-full border"
-                              style={{ background: p.color }}
+                              style={swatchStyle(p.color)}
                               aria-hidden
                             />
                             {p.color}
@@ -190,7 +191,7 @@ function Inventory() {
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <span
                             className="inline-block h-2.5 w-2.5 rounded-full border"
-                            style={{ background: p.color }}
+                            style={swatchStyle(p.color)}
                             aria-hidden
                           />
                           {lang === "ar" ? "اللون: " : "Color: "}{p.color}
@@ -272,7 +273,7 @@ function Inventory() {
                       <td className="px-3 py-2 text-muted-foreground">
                         {p?.color ? (
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: p.color }} aria-hidden />
+                            <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(p.color)} aria-hidden />
                             {p.color}
                           </span>
                         ) : "—"}
