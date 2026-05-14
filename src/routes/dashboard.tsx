@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useRealtimeTable } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
+import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -141,6 +142,8 @@ function Dashboard() {
           </div>
         ))}
       </div>
+
+      <IncomingShipmentsStrip />
 
       <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border lg:grid-cols-2">
         <div className="bg-card p-6">

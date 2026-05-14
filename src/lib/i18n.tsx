@@ -265,6 +265,20 @@ const ar: Dict = {
   call_center: "مركز الاتصال",
   call_center_reports: "تقارير مركز الاتصال",
   admin_panel: "لوحة الأدمن",
+  incoming_shipments: "الشحنات القادمة",
+  no_incoming_shipments: "لا توجد شحنات قادمة حالياً",
+  eta: "الوصول المتوقع",
+  shipped_on: "تاريخ الشحن",
+  units: "قطعة",
+  view_all: "عرض الكل",
+  status_ordered: "تم الطلب",
+  status_shipped: "في الشحن",
+  status_in_warehouse: "بمستودع الجمارك",
+  arriving_today: "يصل اليوم",
+  arriving_tomorrow: "يصل غداً",
+  arriving_in_days: "يصل خلال {n} يوم",
+  overdue_by_days: "متأخر {n} يوم",
+  no_eta: "موعد غير محدد",
 };
 
 const en: Dict = {
@@ -528,6 +542,20 @@ const en: Dict = {
   call_center_reports: "Call Center Reports",
   admin_panel: "Admin Panel",
   partial_delivery: "Partial delivery",
+  incoming_shipments: "Incoming shipments",
+  no_incoming_shipments: "No incoming shipments right now",
+  eta: "ETA",
+  shipped_on: "Shipped",
+  units: "units",
+  view_all: "View all",
+  status_ordered: "Ordered",
+  status_shipped: "In transit",
+  status_in_warehouse: "At customs",
+  arriving_today: "Arrives today",
+  arriving_tomorrow: "Arrives tomorrow",
+  arriving_in_days: "Arrives in {n} days",
+  overdue_by_days: "Overdue by {n} days",
+  no_eta: "No ETA set",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };
