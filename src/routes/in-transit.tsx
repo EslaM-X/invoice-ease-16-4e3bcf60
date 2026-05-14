@@ -225,7 +225,7 @@ function InTransitPage() {
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-700 shadow-sm">
               <Truck className="h-5 w-5" />
             </span>
-            {isAr ? "المنتجات: المخزون والقادم" : "Products: Stock & In-Transit"}
+            {isAr ? "متتبع المخزون" : "Inventory Tracker"}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             {isAr
