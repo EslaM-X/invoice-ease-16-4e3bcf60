@@ -794,11 +794,19 @@ function PODetailDialog({
               <FileText className="h-5 w-5 text-primary" />
               {po?.po_number || (isAr ? "أمر شراء" : "Purchase Order")}
             </span>
-            {canDeletePO && (
-              <Button variant="ghost" size="sm" onClick={deletePO} className="text-destructive">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+            <span className="flex items-center gap-2">
+              {onOpenTracker && (
+                <Button variant="outline" size="sm" onClick={() => onOpenTracker(poId)} className="gap-1">
+                  <Activity className="h-3.5 w-3.5" />
+                  {isAr ? "تتبع" : "Track"}
+                </Button>
+              )}
+              {canDeletePO && (
+                <Button variant="ghost" size="sm" onClick={deletePO} className="text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
