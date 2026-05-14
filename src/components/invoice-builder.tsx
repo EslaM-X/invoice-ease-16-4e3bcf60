@@ -1247,9 +1247,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                           <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
                             {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
                             {p.color && (
-                              <span className="inline-flex items-center gap-1">
-                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(p.color)} aria-hidden />
-                                {p.color}
+                              <span className="inline-flex items-center gap-1.5">
+                                <span
+                                  className="inline-block h-4 w-4 rounded-[5px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.15),0_1px_2px_rgba(0,0,0,0.18)] ring-1 ring-black/10"
+                                  style={swatchStyle(p.color)}
+                                  aria-hidden
+                                  title={p.color}
+                                />
+                                <span className="font-medium">{p.color}</span>
                               </span>
                             )}
                             <span>{t("stock")}: <span className={out ? "text-destructive font-bold" : low ? "text-warning-foreground font-bold" : ""}>{p.stock_quantity}</span></span>
