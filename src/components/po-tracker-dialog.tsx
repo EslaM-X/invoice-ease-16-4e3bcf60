@@ -16,8 +16,6 @@ import { toast } from "sonner";
 export const PO_FLOW = [
   "pending_cfo",
   "priced",
-  "payment_pending",
-  "paid",
   "ordered",
   "shipped",
   "in_warehouse",
@@ -83,12 +81,19 @@ type PO = {
   supplier_name: string | null;
   total_qty: number;
   total_usd: number;
+  total_egp: number | null;
   user_id: string;
   paid_at: string | null;
   shipped_at: string | null;
   expected_arrival_at: string | null;
   received_at: string | null;
   stock_applied_at: string | null;
+  payment_installment_1_at: string | null;
+  payment_installment_1_amount: number | null;
+  payment_installment_1_by_email: string | null;
+  payment_installment_2_at: string | null;
+  payment_installment_2_amount: number | null;
+  payment_installment_2_by_email: string | null;
 };
 
 type POItem = {
@@ -152,14 +157,17 @@ export function POTrackerDialog({
 
   const currentIdx = po ? PO_FLOW.indexOf(po.status as any) : -1;
 
+  const bothInstallmentsPaid = !!(po?.payment_installment_1_at && po?.payment_installment_2_at);
+
   const nextStatus = useMemo(() => {
     if (!po) return null;
     if (po.status === "cancelled" || po.status === "received") return null;
     if (po.status === "in_warehouse") return null; // handled via receive flow
+    if (po.status === "ordered" && !bothInstallmentsPaid) return null; // gate on installments
     const i = PO_FLOW.indexOf(po.status as any);
     if (i < 0) return null;
     return PO_FLOW[i + 1] ?? null;
-  }, [po]);
+  }, [po, bothInstallmentsPaid]);
 
   const allowedNext = (target: string) => {
     if (!canTransition || !po) return false;
@@ -172,7 +180,6 @@ export function POTrackerDialog({
     setBusy(true);
     try {
       const updates: any = { status: target, updated_at: new Date().toISOString() };
-      if (target === "paid") { updates.paid_at = new Date().toISOString(); updates.paid_by = user.id; updates.paid_by_email = user.email; }
       if (target === "shipped") { updates.shipped_at = new Date().toISOString(); }
       const { error: upErr } = await supabase.from("purchase_orders").update(updates).eq("id", po.id);
       if (upErr) throw upErr;
@@ -189,6 +196,37 @@ export function POTrackerDialog({
     } finally {
       setBusy(false);
     }
+  };
+
+  const togglePayment = async (n: 1 | 2, paid: boolean, amount?: number) => {
+    if (!po || !user) return;
+    setBusy(true);
+    try {
+      const ts = paid ? new Date().toISOString() : null;
+      const upd: any =
+        n === 1
+          ? { payment_installment_1_at: ts, payment_installment_1_by_email: paid ? user.email : null, payment_installment_1_amount: paid ? (amount ?? po.payment_installment_1_amount ?? null) : null }
+          : { payment_installment_2_at: ts, payment_installment_2_by_email: paid ? user.email : null, payment_installment_2_amount: paid ? (amount ?? po.payment_installment_2_amount ?? null) : null };
+      const { error } = await supabase.from("purchase_orders").update(upd).eq("id", po.id);
+      if (error) throw error;
+      await supabase.from("po_status_history").insert({
+        po_id: po.id, from_status: po.status, to_status: po.status,
+        note: paid ? (isAr ? `تم سداد الدفعة ${n}` : `Installment ${n} paid`) : (isAr ? `إلغاء الدفعة ${n}` : `Installment ${n} unmarked`),
+        actor_id: user.id, actor_email: user.email,
+      });
+      toast.success(isAr ? "تم التحديث" : "Updated");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally { setBusy(false); }
+  };
+
+  const updateExpectedArrival = async (iso: string | null) => {
+    if (!po) return;
+    const { error } = await supabase.from("purchase_orders").update({ expected_arrival_at: iso }).eq("id", po.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? "تم تحديث الوصول المتوقع" : "Expected arrival updated");
+    await load();
   };
 
   const cancelPO = async () => {
@@ -243,10 +281,77 @@ export function POTrackerDialog({
 
               {/* Quick facts */}
               <div className="grid gap-2 text-xs sm:grid-cols-3">
-                <Fact label={isAr ? "تاريخ الدفع" : "Paid at"} value={po.paid_at ? fmtDateTime(po.paid_at, lang) : "—"} />
                 <Fact label={isAr ? "تاريخ الشحن" : "Shipped at"} value={po.shipped_at ? fmtDateTime(po.shipped_at, lang) : "—"} />
+                <Fact label={isAr ? "الوصول المتوقع" : "Expected arrival"} value={po.expected_arrival_at ? fmtDateTime(po.expected_arrival_at, lang) : "—"} />
                 <Fact label={isAr ? "تاريخ الاستلام" : "Received at"} value={po.received_at ? fmtDateTime(po.received_at, lang) : "—"} />
               </div>
+
+              {/* Payment installments — visible from "ordered" onwards */}
+              {(po.status === "ordered" || po.status === "shipped" || po.status === "in_warehouse" || po.status === "received") && (
+                <div className="rounded-lg border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    {isAr ? "الدفعات (دفعتان)" : "Payments (2 installments)"}
+                    {bothInstallmentsPaid && (
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[10px]">
+                        {isAr ? "مكتمل" : "Complete"}
+                      </Badge>
+                    )}
+                  </div>
+                  <InstallmentRow
+                    n={1}
+                    isAr={isAr}
+                    paidAt={po.payment_installment_1_at}
+                    amount={po.payment_installment_1_amount}
+                    byEmail={po.payment_installment_1_by_email}
+                    canEdit={canTransition && po.status !== "received"}
+                    onToggle={(paid, amt) => togglePayment(1, paid, amt)}
+                    busy={busy}
+                  />
+                  <InstallmentRow
+                    n={2}
+                    isAr={isAr}
+                    paidAt={po.payment_installment_2_at}
+                    amount={po.payment_installment_2_amount}
+                    byEmail={po.payment_installment_2_by_email}
+                    canEdit={canTransition && po.status !== "received"}
+                    onToggle={(paid, amt) => togglePayment(2, paid, amt)}
+                    busy={busy}
+                  />
+                  {po.status === "ordered" && !bothInstallmentsPaid && (
+                    <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2 text-xs text-amber-800">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                      {isAr
+                        ? "لا يمكن الانتقال إلى «تم الشحن» قبل تأكيد الدفعتين."
+                        : "Cannot move to Shipped until both installments are paid."}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Expected arrival — visible from shipped onwards */}
+              {(po.status === "shipped" || po.status === "in_warehouse") && (
+                <div className="rounded-lg border bg-card p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <Truck className="h-4 w-4 text-violet-600" />
+                    {isAr ? "الوصول المتوقع" : "Expected arrival"}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      type="date"
+                      value={po.expected_arrival_at ? new Date(po.expected_arrival_at).toISOString().slice(0, 10) : ""}
+                      onChange={(e) => updateExpectedArrival(e.target.value ? new Date(e.target.value).toISOString() : null)}
+                      disabled={busy || !canTransition}
+                      className="w-44"
+                    />
+                    {po.expected_arrival_at && (
+                      <span className="text-xs text-muted-foreground">
+                        {fmtDateTime(po.expected_arrival_at, lang)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               {po.status !== "cancelled" && po.status !== "received" && canTransition && (
@@ -445,5 +550,63 @@ function ReceiveDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InstallmentRow({
+  n, isAr, paidAt, amount, byEmail, canEdit, onToggle, busy,
+}: {
+  n: 1 | 2;
+  isAr: boolean;
+  paidAt: string | null;
+  amount: number | null;
+  byEmail: string | null;
+  canEdit: boolean;
+  onToggle: (paid: boolean, amount?: number) => void;
+  busy: boolean;
+}) {
+  const [amt, setAmt] = useState<string>(amount != null ? String(amount) : "");
+  useEffect(() => { setAmt(amount != null ? String(amount) : ""); }, [amount]);
+  const paid = !!paidAt;
+  return (
+    <div className={`flex flex-wrap items-center gap-3 rounded-md border p-2.5 ${paid ? "bg-emerald-500/5 border-emerald-500/30" : "bg-muted/30"}`}>
+      <div className={`grid h-8 w-8 place-items-center rounded-full ${paid ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}>
+        {paid ? <CheckCircle2 className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+      </div>
+      <div className="flex-1 min-w-[120px]">
+        <div className="text-sm font-medium">
+          {isAr ? `الدفعة ${n}` : `Installment ${n}`}
+        </div>
+        {paid && (
+          <div className="text-[11px] text-muted-foreground">
+            {paidAt ? new Date(paidAt).toLocaleString() : ""}
+            {byEmail ? ` · ${byEmail}` : ""}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-muted-foreground">USD</span>
+        <Input
+          type="number" min={0} step="0.01"
+          value={amt}
+          onChange={(e) => setAmt(e.target.value)}
+          disabled={!canEdit || busy}
+          className="w-24 text-end tabular-nums"
+          placeholder="0.00"
+        />
+      </div>
+      {canEdit && (
+        paid ? (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => onToggle(false)}>
+            {isAr ? "تراجع" : "Unmark"}
+          </Button>
+        ) : (
+          <Button size="sm" disabled={busy} onClick={() => onToggle(true, amt ? parseFloat(amt) : undefined)} className="bg-emerald-600 hover:bg-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5 me-1" />
+            {isAr ? "تأكيد الدفع" : "Mark Paid"}
+          </Button>
+        )
+      )}
+    </div>
   );
 }
