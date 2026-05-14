@@ -41,6 +41,7 @@ const items: NavEntry[] = [
   { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
   { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   { to: "/invoices", icon: FileText, key: "invoices" as const },
+  { to: "/invoices/drafts", icon: FileText, key: "invoice_drafts" as const },
   { to: "/delivery-receipts", icon: ClipboardCheck, key: "delivery_receipts" as const },
   { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
   { to: "/reports", icon: BarChart3, key: "reports" as const },
