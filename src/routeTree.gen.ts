@@ -285,7 +285,6 @@ export interface FileRoutesByFullPath {
   '/invoices/': typeof InvoicesIndexRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
-  '/invoices/archive': typeof InvoicesArchiveRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
 }
 export interface FileRoutesByTo {
