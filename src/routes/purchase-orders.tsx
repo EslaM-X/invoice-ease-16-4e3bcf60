@@ -79,6 +79,7 @@ function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PO[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [trackId, setTrackId] = useState<string | null>(null);
 
   // Access guard
   useEffect(() => {
