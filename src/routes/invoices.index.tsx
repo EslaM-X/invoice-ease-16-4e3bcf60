@@ -48,9 +48,33 @@ function InvoicesList() {
     });
     setList(data);
     setLoading(false);
+
+    // Linked delivery receipts count per invoice (for the badge)
+    if (data.length) {
+      const ids = data.map((i: any) => i.id);
+      const { data: drs } = await supabase
+        .from("delivery_receipts" as any)
+        .select("invoice_id")
+        .in("invoice_id", ids);
+      const counts: Record<string, number> = {};
+      (drs ?? []).forEach((r: any) => {
+        if (r.invoice_id) counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
+      });
+      setDrCounts(counts);
+    }
   };
   useEffect(() => { load(); }, [user, from, to]);
   useRealtimeTable("invoices", () => { load(); });
+  useRealtimeTable("delivery_receipts" as any, () => { load(); });
+
+  const isClosed = (i: any) => {
+    if (i.status === "voided") return false;
+    const total = Number(i.total ?? 0);
+    const paid = Number(i.paid_amount ?? 0);
+    const fullyPaid = total > 0 && paid >= total - 0.001;
+    return fullyPaid && i.delivery_status === "delivered";
+  };
+  const closedCount = list.filter(isClosed).length;
 
   const filtered = list
     .filter((i) => {
