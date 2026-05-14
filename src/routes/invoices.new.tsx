@@ -4,17 +4,18 @@ import { InvoiceBuilder } from "@/components/invoice-builder";
 
 const DRAFT_KEY = "invoice_draft_v1";
 
-type Search = { scan?: boolean };
+type Search = { scan?: boolean; draft?: boolean };
 
 export const Route = createFileRoute("/invoices/new")({
   validateSearch: (search: Record<string, unknown>): Search => ({
     scan: search.scan === true || search.scan === "true" || search.scan === "1",
+    draft: search.draft === true || search.draft === "true" || search.draft === "1",
   }),
   component: () => {
-    const { scan } = Route.useSearch();
+    const { scan, draft } = Route.useSearch();
     return (
       <AppShell>
-        <InvoiceBuilder mode="new" autoScan={!!scan} draftKey={DRAFT_KEY} />
+        <InvoiceBuilder mode="new" autoScan={!!scan} draftKey={DRAFT_KEY} defaultDraft={!!draft} />
       </AppShell>
     );
   },

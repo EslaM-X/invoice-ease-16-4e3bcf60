@@ -31,7 +31,7 @@ function NewReceipt() {
       const { data } = await supabase
         .from("invoices")
         .select("id, invoice_number, customer_name, total, delivery_status, status, created_at")
-        .neq("status", "voided")
+        .not("status", "in", "(voided,draft)")
         .neq("delivery_status", "delivered")
         .order("created_at", { ascending: false })
         .limit(200);

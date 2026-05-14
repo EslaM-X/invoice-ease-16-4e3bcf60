@@ -29,10 +29,10 @@ function Dashboard() {
 
   const load = async () => {
     const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-      supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").neq("status", "voided").order("created_at", { ascending: false }).limit(50),
+      supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(50),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
-      supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").neq("invoices.status", "voided"),
+      supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").not("invoices.status", "in", "(voided,draft)"),
     ]);
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;

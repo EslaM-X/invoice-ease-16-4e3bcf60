@@ -92,6 +92,7 @@ function ShippingOrder() {
         .from("invoices")
         .select("id, invoice_number, status, created_at")
         .neq("status", "voided")
+        .neq("status", "draft")
         .gte("created_at", start)
         .lt("created_at", end)
         .order("created_at", { ascending: true });
