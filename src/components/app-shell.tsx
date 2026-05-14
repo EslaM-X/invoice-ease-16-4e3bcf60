@@ -153,31 +153,37 @@ export function AppShell({ children }: { children: ReactNode }) {
           );
         })}
         {isCallCenter && (
-          <>
-            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">Call Center</div>
+          <GroupNav
+            label={t("call_center_group")}
+            icon={Phone}
+            defaultOpen={
+              location.pathname.startsWith("/call-center") ||
+              location.pathname.startsWith("/call-center-reports")
+            }
+          >
             <Link
               to="/call-center"
               onClick={() => setOpen(false)}
-              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
                 location.pathname === "/call-center"
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
-              <Phone className="h-4 w-4" /> مركز الاتصال
+              <Phone className="h-4 w-4" /> {t("call_center")}
             </Link>
             <Link
               to="/call-center-reports"
               onClick={() => setOpen(false)}
-              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
                 location.pathname === "/call-center-reports"
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
-              <BarChart3 className="h-4 w-4" /> تقارير الاتصال
+              <BarChart3 className="h-4 w-4" /> {t("call_center_reports")}
             </Link>
-          </>
+          </GroupNav>
         )}
         {(isPurchasing || isCFO) && (
           <>
@@ -245,22 +251,63 @@ export function AppShell({ children }: { children: ReactNode }) {
             </GroupNav>
           </>
         )}
-        {isAdmin && (
-          <>
-            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">Admin</div>
+        <GroupNav
+          label={t("settings")}
+          icon={Settings}
+          defaultOpen={
+            location.pathname.startsWith("/settings") ||
+            location.pathname.startsWith("/audit-log") ||
+            location.pathname.startsWith("/pending-operations") ||
+            location.pathname.startsWith("/admin")
+          }
+        >
+          <Link
+            to="/settings"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname === "/settings"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Settings className="h-4 w-4" /> {t("settings")}
+          </Link>
+          <Link
+            to="/audit-log"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/audit-log")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" /> {t("audit_log")}
+          </Link>
+          <Link
+            to="/pending-operations"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/pending-operations")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <CloudUpload className="h-4 w-4" /> {t("pending_operations")}
+          </Link>
+          {isAdmin && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}
-              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
                 location.pathname.startsWith("/admin")
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
-              <ShieldCheck className="h-4 w-4" /> لوحة الأدمن
+              <ShieldCheck className="h-4 w-4" /> {t("admin_panel")}
             </Link>
-          </>
-        )}
+          )}
+        </GroupNav>
       </nav>
       <div className="border-t border-sidebar-border p-3">
         <div className="mb-2 truncate px-2 text-[11px] tracking-wide text-sidebar-foreground/55">{user.email}</div>
