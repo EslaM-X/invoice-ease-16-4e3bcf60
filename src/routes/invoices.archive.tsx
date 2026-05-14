@@ -38,7 +38,7 @@ function ArchivePage() {
     let query = supabase
       .from("invoices")
       .select("*")
-      .neq("status", "voided")
+      .not("status", "in", "(voided,draft)")
       .eq("delivery_status", "delivered")
       .order("updated_at", { ascending: false })
       .limit(1000);
