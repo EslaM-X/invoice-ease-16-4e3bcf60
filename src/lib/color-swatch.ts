@@ -99,7 +99,7 @@ const KEYWORDS: Array<{ match: RegExp; swatch: Swatch }> = [
   { match: /matte\s*black|mat\s*black|أسود\s*مطفي|أسود\s*مطفأ|اسود\s*مطفي/, swatch: MATTE_BLACK },
   { match: /gloss\s*black|glossy\s*black|piano\s*black|أسود\s*لامع|اسود\s*لامع/, swatch: GLOSS_BLACK },
   // Gunmetal
-  { match: /metal\s*gun|gun\s*metal|gunmetal|رمادي\s*معدني/, swatch: GUNMETAL },
+  { match: /metal\s*gun|gun\s*metal|gunmetal|رمادي\s*معدني|رصاصي\s*غامق|رصاصي|رصاصى/, swatch: GUNMETAL },
   // Gold variants — order matters: more specific first
   { match: /coffee\s*gold|قهوة|كوفي\s*جولد|بني\s*ذهبي/, swatch: COFFEE_GOLD },
   { match: /brushed\s*gold|ذهبي\s*مفرش|مفرش\s*ذهبي/, swatch: BRUSHED_GOLD },
