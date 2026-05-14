@@ -552,3 +552,61 @@ function ReceiveDialog({
     </Dialog>
   );
 }
+
+function InstallmentRow({
+  n, isAr, paidAt, amount, byEmail, canEdit, onToggle, busy,
+}: {
+  n: 1 | 2;
+  isAr: boolean;
+  paidAt: string | null;
+  amount: number | null;
+  byEmail: string | null;
+  canEdit: boolean;
+  onToggle: (paid: boolean, amount?: number) => void;
+  busy: boolean;
+}) {
+  const [amt, setAmt] = useState<string>(amount != null ? String(amount) : "");
+  useEffect(() => { setAmt(amount != null ? String(amount) : ""); }, [amount]);
+  const paid = !!paidAt;
+  return (
+    <div className={`flex flex-wrap items-center gap-3 rounded-md border p-2.5 ${paid ? "bg-emerald-500/5 border-emerald-500/30" : "bg-muted/30"}`}>
+      <div className={`grid h-8 w-8 place-items-center rounded-full ${paid ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}>
+        {paid ? <CheckCircle2 className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+      </div>
+      <div className="flex-1 min-w-[120px]">
+        <div className="text-sm font-medium">
+          {isAr ? `الدفعة ${n}` : `Installment ${n}`}
+        </div>
+        {paid && (
+          <div className="text-[11px] text-muted-foreground">
+            {paidAt ? new Date(paidAt).toLocaleString() : ""}
+            {byEmail ? ` · ${byEmail}` : ""}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-muted-foreground">USD</span>
+        <Input
+          type="number" min={0} step="0.01"
+          value={amt}
+          onChange={(e) => setAmt(e.target.value)}
+          disabled={!canEdit || busy}
+          className="w-24 text-end tabular-nums"
+          placeholder="0.00"
+        />
+      </div>
+      {canEdit && (
+        paid ? (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => onToggle(false)}>
+            {isAr ? "تراجع" : "Unmark"}
+          </Button>
+        ) : (
+          <Button size="sm" disabled={busy} onClick={() => onToggle(true, amt ? parseFloat(amt) : undefined)} className="bg-emerald-600 hover:bg-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5 me-1" />
+            {isAr ? "تأكيد الدفع" : "Mark Paid"}
+          </Button>
+        )
+      )}
+    </div>
+  );
+}
