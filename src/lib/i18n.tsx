@@ -258,6 +258,10 @@ const ar: Dict = {
   inventory_group: "المنتجات والمخزون",
   documents_group: "الفواتير والمستندات",
   partial_delivery: "تسليم جزئي",
+  call_center_group: "مركز الاتصال",
+  call_center: "مركز الاتصال",
+  call_center_reports: "تقارير مركز الاتصال",
+  admin_panel: "لوحة الأدمن",
 };
 
 const en: Dict = {
@@ -513,6 +517,10 @@ const en: Dict = {
   no_collection: "No collection",
   inventory_group: "Products & Inventory",
   documents_group: "Invoices & Documents",
+  call_center_group: "Call Center",
+  call_center: "Call Center",
+  call_center_reports: "Call Center Reports",
+  admin_panel: "Admin Panel",
   partial_delivery: "Partial delivery",
 };
 
