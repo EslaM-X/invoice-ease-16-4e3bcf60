@@ -441,7 +441,7 @@ function ScenarioPanel({
       </div>
 
       {/* Items */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden max-w-full">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
           <span className="text-xs font-semibold uppercase tracking-wider">
             {isAr ? "البنود وأسعار البيع المتوقعة" : "Items & expected selling prices"}
@@ -478,17 +478,17 @@ function ScenarioPanel({
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[860px] text-xs">
             <thead className="bg-muted/30">
               <tr>
-                <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
-                <th className="p-2 text-end">{isAr ? "كمية" : "Qty"}</th>
-                <th className="p-2 text-end">{isAr ? "USD/وحدة" : "USD/unit"}</th>
-                <th className="p-2 text-end">{isAr ? "تكلفة الوحدة (EGP)" : "Unit cost EGP"}</th>
-                <th className="p-2 text-end">{isAr ? "سعر بيع الوحدة" : "Unit sell price"}</th>
-                <th className="p-2 text-end">{isAr ? "إجمالي البيع" : "Line sell"}</th>
-                <th className="p-2 text-end">{isAr ? "ربح البند" : "Line profit"}</th>
+                <th className="p-2 text-start whitespace-nowrap min-w-[220px]">{isAr ? "المنتج" : "Product"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "كمية" : "Qty"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "USD/وحدة" : "USD/unit"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "تكلفة الوحدة (EGP)" : "Unit cost EGP"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "سعر بيع الوحدة" : "Unit sell price"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "إجمالي البيع" : "Line sell"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "ربح البند" : "Line profit"}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -514,8 +514,8 @@ function ScenarioPanel({
                         </div>
                       </div>
                     </td>
-                    <td className="p-2 text-end tabular-nums">{it.quantity}</td>
-                    <td className="p-2 text-end tabular-nums">
+                    <td className="p-2 text-end tabular-nums whitespace-nowrap">{it.quantity}</td>
+                    <td className="p-2 text-end tabular-nums whitespace-nowrap">
                       <div className="font-semibold">${usedUnitUsd.toFixed(2)}</div>
                       {usdDiffer && (
                         <div className="text-[9px] text-muted-foreground">
@@ -525,7 +525,7 @@ function ScenarioPanel({
                         </div>
                       )}
                     </td>
-                    <td className="p-2 text-end tabular-nums">{fmtMoney(unitCostEgp, "EGP", lang)}</td>
+                    <td className="p-2 text-end tabular-nums whitespace-nowrap">{fmtMoney(unitCostEgp, "EGP", lang)}</td>
                     <td className="p-2 text-end">
                       <div className="flex items-center justify-end gap-1">
                         <Input
@@ -547,8 +547,8 @@ function ScenarioPanel({
                         {isAr ? "سعر المنتج الحالي:" : "Current price:"} {fmtMoney(productPrices[it.product_id] ?? 0, "EGP", lang)}
                       </div>
                     </td>
-                    <td className="p-2 text-end font-semibold tabular-nums">{fmtMoney(lineSell, "EGP", lang)}</td>
-                    <td className={`p-2 text-end font-bold tabular-nums ${lineProfit >= 0 ? "text-emerald-700" : "text-destructive"}`}>
+                    <td className="p-2 text-end font-semibold tabular-nums whitespace-nowrap">{fmtMoney(lineSell, "EGP", lang)}</td>
+                    <td className={`p-2 text-end font-bold tabular-nums whitespace-nowrap ${lineProfit >= 0 ? "text-emerald-700" : "text-destructive"}`}>
                       {fmtMoney(lineProfit, "EGP", lang)}
                     </td>
                   </tr>
