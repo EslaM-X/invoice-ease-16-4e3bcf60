@@ -26,6 +26,15 @@ import { ProductImageUpload } from "@/components/product-image-upload";
 
 export const Route = createFileRoute("/products")({ component: () => <AppShell><Products /></AppShell> });
 
+function etaShort(iso: string, lang: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  const days = Math.round(ms / 86400000);
+  if (days === 0) return lang === "ar" ? "اليوم" : "today";
+  if (days < 0) return lang === "ar" ? `متأخر ${-days}ي` : `${-days}d late`;
+  if (days === 1) return lang === "ar" ? "غداً" : "tomorrow";
+  return lang === "ar" ? `بعد ${days} يوم` : `in ${days}d`;
+}
+
 function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
