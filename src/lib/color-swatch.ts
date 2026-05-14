@@ -62,8 +62,8 @@ const ROSE_GOLD: Swatch = {
 };
 
 const MATTE_BLACK: Swatch = {
-  background: "linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)",
-  border: "1px solid rgba(255,255,255,0.18)",
+  background: "#000000",
+  border: "1px solid rgba(255,255,255,0.25)",
 };
 
 const GLOSS_BLACK: Swatch = {
