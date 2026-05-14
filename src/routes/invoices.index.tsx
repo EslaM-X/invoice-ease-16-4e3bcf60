@@ -75,6 +75,7 @@ function InvoicesList() {
     return fullyPaid && i.delivery_status === "delivered";
   };
   const closedCount = list.filter(isClosed).length;
+  const draftCount = list.filter((i) => i.status === "draft").length;
 
   const filtered = list
     .filter((i) => {
