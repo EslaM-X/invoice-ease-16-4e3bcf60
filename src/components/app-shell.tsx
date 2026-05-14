@@ -24,7 +24,6 @@ type NavEntry = NavItem | NavGroup;
 
 const items: NavEntry[] = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
-  { to: "/customers", icon: Users, key: "customers" as const },
   {
     group: true,
     key: "inventory_group" as const,
@@ -37,8 +36,6 @@ const items: NavEntry[] = [
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
     ],
   },
-  { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
-  { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   {
     group: true,
     key: "documents_group" as const,
@@ -48,9 +45,9 @@ const items: NavEntry[] = [
       { to: "/invoices/drafts", icon: FileText, key: "invoice_drafts" as const },
       { to: "/delivery-receipts", icon: ClipboardCheck, key: "delivery_receipts" as const },
       { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
+      { to: "/customers", icon: Users, key: "customers" as const },
     ],
   },
-  { to: "/profits", icon: TrendingUp, key: "profits" as const },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
