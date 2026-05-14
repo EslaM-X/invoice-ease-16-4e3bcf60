@@ -18,6 +18,8 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { cachedListFetch } from "@/lib/list-cache";
 import { enqueueOrRun } from "@/lib/outbox";
+import { getPendingRowIds } from "@/lib/sync-state";
+import { CloudUpload } from "lucide-react";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
