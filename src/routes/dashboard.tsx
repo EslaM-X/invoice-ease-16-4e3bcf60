@@ -1,3 +1,4 @@
+import { swatchStyle } from "@/lib/color-swatch";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
