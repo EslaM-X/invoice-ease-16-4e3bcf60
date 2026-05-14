@@ -29,16 +29,28 @@ function Dashboard() {
 
   const load = async () => {
     const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-      supabase.from("invoices").select("id, total, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(50),
+      supabase.from("invoices").select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(500),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
       supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").not("invoices.status", "in", "(voided,draft)"),
     ]);
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
+    let closed = 0, partial = 0, open = 0;
+    (invs ?? []).forEach((i: any) => {
+      const total = Number(i.total ?? 0);
+      const paid = Number(i.paid_amount ?? 0);
+      const fullyPaid = total > 0 && paid >= total - 0.001;
+      if (fullyPaid && i.delivery_status === "delivered") closed++;
+      else if (i.delivery_status === "partial") partial++;
+      else open++;
+    });
     setStats({
       sales,
       invoices: invs?.length ?? 0,
+      closed,
+      partial,
+      open,
       customers: cust ?? 0,
       products: prods?.length ?? 0,
       lowStock,
