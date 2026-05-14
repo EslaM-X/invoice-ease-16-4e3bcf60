@@ -904,7 +904,7 @@ function PODetailDialog({
                     {isAr ? "لديك تعديلات غير محفوظة" : "You have unsaved changes"}
                   </span>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={load} disabled={savingItems}>
+                    <Button size="sm" variant="ghost" onClick={() => load({ initial: true })} disabled={savingItems}>
                       {isAr ? "تجاهل" : "Discard"}
                     </Button>
                     <Button size="sm" onClick={saveItemChanges} disabled={savingItems}>
