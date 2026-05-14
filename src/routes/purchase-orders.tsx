@@ -511,38 +511,72 @@ function PODetailDialog({
   const [saving, setSaving] = useState(false);
   const [savingItems, setSavingItems] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  /**
+   * load(opts):
+   *  - initial=true (default on first open): shows loading skeleton, resets all edit buffers.
+   *  - initial=false (silent refresh after our own write or realtime): keeps the dialog
+   *    mounted (no scroll-to-top, no focus loss) and preserves any in-flight user edits
+   *    (qty/unit changes, supplier/notes typing) that haven't been saved yet.
+   */
+  const load = async (opts: { initial?: boolean } = {}) => {
+    const initial = opts.initial ?? false;
+    if (initial) setLoading(true);
     const [{ data: poData }, { data: itemsData }] = await Promise.all([
       supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
       supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
     ]);
     if (poData) {
       const p = poData as any as PO & any;
-      setPo(p);
-      setSupplierEdit(p.supplier_name ?? "");
-      setNotesEdit(p.notes ?? "");
-      setUsdRate(p.usd_rate != null ? String(p.usd_rate) : "");
-      setCustomsMode((p.customs_mode as Mode) || "percent");
-      setCustomsValue(p.customs_value != null ? String(p.customs_value) : "");
-      setTaxesMode((p.taxes_mode as Mode) || "percent");
-      setTaxesValue(p.taxes_value != null ? String(p.taxes_value) : "");
-      setShippingMode((p.shipping_mode as Mode) || "fixed");
-      setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
-      setOtherMode((p.other_mode as Mode) || "percent");
-      setOtherValue(p.other_value != null ? String(p.other_value) : "");
-      setCfoNotes(p.cfo_notes ?? "");
+      setPo((prev) => {
+        // On silent refresh, keep header edits the user is mid-typing
+        if (!initial && prev) return p;
+        return p;
+      });
+      if (initial) {
+        setSupplierEdit(p.supplier_name ?? "");
+        setNotesEdit(p.notes ?? "");
+        setUsdRate(p.usd_rate != null ? String(p.usd_rate) : "");
+        setCustomsMode((p.customs_mode as Mode) || "percent");
+        setCustomsValue(p.customs_value != null ? String(p.customs_value) : "");
+        setTaxesMode((p.taxes_mode as Mode) || "percent");
+        setTaxesValue(p.taxes_value != null ? String(p.taxes_value) : "");
+        setShippingMode((p.shipping_mode as Mode) || "fixed");
+        setShippingValue(p.shipping_value != null ? String(p.shipping_value) : "");
+        setOtherMode((p.other_mode as Mode) || "percent");
+        setOtherValue(p.other_value != null ? String(p.other_value) : "");
+        setCfoNotes(p.cfo_notes ?? "");
+      }
     }
     const list = (itemsData as any as POItem[]) ?? [];
     setItems(list);
-    const edits: Record<string, { qty: number; unit: number }> = {};
-    list.forEach((it) => { edits[it.id] = { qty: it.quantity, unit: Number(it.unit_cost_usd) }; });
-    setItemEdits(edits);
-    setLoading(false);
+    setItemEdits((prev) => {
+      const next: Record<string, { qty: number; unit: number }> = {};
+      list.forEach((it) => {
+        const existing = prev[it.id];
+        const serverEdit = { qty: it.quantity, unit: Number(it.unit_cost_usd) };
+        // Preserve a user's in-flight edit (silent refresh only) if still dirty
+        if (!initial && existing && (existing.qty !== it.quantity || Number(existing.unit) !== Number(it.unit_cost_usd))) {
+          next[it.id] = existing;
+        } else {
+          next[it.id] = serverEdit;
+        }
+      });
+      return next;
+    });
+    if (initial) setLoading(false);
   };
 
-  useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open, poId]);
-  useRealtimeTable("purchase_order_items", () => { if (open) load(); }, [open, poId]);
+  useEffect(() => { if (open) load({ initial: true }); /* eslint-disable-next-line */ }, [open, poId]);
+  // Realtime: skip refresh while the user has unsaved edits to avoid clobbering input.
+  useRealtimeTable(
+    "purchase_order_items",
+    () => {
+      if (!open) return;
+      // Defer to next tick so local optimistic state has settled
+      setTimeout(() => { void load({ initial: false }); }, 0);
+    },
+    [open, poId],
+  );
 
   // Live totals from current edit buffer
   const liveTotalUsd = items.reduce((s, it) => {
