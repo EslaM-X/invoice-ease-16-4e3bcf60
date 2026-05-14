@@ -9,6 +9,7 @@ const ar: Dict = {
   dashboard: "لوحة التحكم",
   customers: "العملاء",
   products: "المنتجات",
+  in_transit: "في الطريق",
   inventory: "تنبيهات المخزون",
   stock_intake: "المخزون",
   stock_intake_desc: "تسجيل القطع الواردة من الموردين والشحنات وتحديث الكميات والتكاليف",
