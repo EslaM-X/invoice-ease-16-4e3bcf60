@@ -1,89 +1,64 @@
 ## الهدف
-- إزالة قسم "الخصم النهائي" بالكامل من صفحة `/purchase-orders`.
-- إنشاء صفحة جديدة `/profit-calculator` (حاسبة الربح) منفصلة، يدخلها CFO + Admin فقط.
-- في الصفحة الجديدة: تختار أمر شراء جاهز، تجرب نسبة/قيمة خصم وأسعار بيع، ويظهر صافي الربح للطلبية.
-- البيانات تتحدث لحظياً (Realtime) لو أي حد عدّل أمر الشراء أو أسعار المنتجات.
+
+1. مزامنة سعر الدولار للمنتج لحظياً مع حاسبة الربح (مع إمكانية الاختيار بين سعر PO الأصلي وسعر المنتج الحالي).
+2. إصلاح ظهور الأرقام والنصوص خارج الكروت في حاسبة الربح.
+3. إضافة تعديل وحذف للسيناريوهات في صفحة "السيناريوهات المحفوظة"، لحظي ومتسجّل في قاعدة البيانات.
 
 ---
 
-## 1. قاعدة البيانات (Migration واحدة)
+## 1) حاسبة الربح — مزامنة سعر الدولار
 
-### جدول جديد `po_profit_scenarios` (سيناريو واحد لكل PO — UNIQUE على `po_id`)
-- `id` uuid PK
-- `po_id` uuid (UNIQUE) → purchase_orders(id) ON DELETE CASCADE
-- `user_id` uuid (نفس مالك الـ PO، للـ RLS عبر `can_access_user_data`)
-- `discount_mode` text default `'percent'` (`percent` | `fixed`)
-- `discount_value` numeric default 0
-- `selling_overrides` jsonb default `'{}'` — `{ [po_item_id]: { unit_sell_price: number } }` لتخصيص سعر البيع لكل بند
-- `notes` text
-- `updated_by`, `updated_by_email`, `created_at`, `updated_at`
+في `src/routes/profit-calculator.tsx`:
 
-### RLS
-- SELECT/INSERT/UPDATE/DELETE: مسموح فقط لـ `is_admin() OR has_role(auth.uid(), 'cfo')` **و** `can_access_user_data(user_id)`.
+- جلب `cost_price_usd` من جدول `products` (موجود فعلاً عبر `productPrices`، نضيف خريطة جديدة `productCostUsd`).
+- إضافة سويتش (Toggle) فوق جدول البنود:
+  - **سعر PO الأصلي** (الافتراضي — يستخدم `unit_cost_usd` المحفوظ في `purchase_order_items`).
+  - **سعر المنتج الحالي** (يستخدم `cost_price_usd` × `quantity` لحساب `line_total_usd` ديناميكياً).
+- إعادة حساب كل البنود + الإجماليات بناءً على الاختيار (totalUsdSum، حصة كل بند، تكلفة الوحدة بالجنيه، صافي الربح).
+- عمود إضافي صغير في الجدول يبيّن: `سعر USD المستخدم` و`سعر USD المنتج الحالي` (لو مختلفين، يظهر فرق ملوّن).
+- realtime على `products` موجود فعلاً — أي تعديل في صفحة المنتجات يُحدّث الحاسبة لحظياً.
 
-### إزالة من `purchase_orders` (اختياري — آمن نتركها)
-- نسيب الأعمدة `final_discount_mode` / `final_discount_value` / `final_discount_percent` موجودة (عشان البيانات القديمة) بس نوقف استخدامها من الـ UI. هنشيلها من صفحة `purchase-orders` بس.
+ملاحظة: الإجمالي بالجنيه (`total_egp`) يفضل ثابت من PO (لأنه يحتوي على جمارك/ضرائب/شحن متراكمة)، لكن في وضع "سعر المنتج الحالي" نعيد توزيع التكاليف بنسبة USD الجديدة على البنود فقط — `total_egp` لا يتغير.
 
 ---
 
-## 2. تعديل صفحة `src/routes/purchase-orders.tsx`
-- شيل كل state و UI و logic الخاص بـ `discountMode` / `discountPct` / `discountVal` / `Percent` icon / كروت "Net cost after discount".
-- شيل أي حقل `final_discount_*` من payload الحفظ.
-- باقي الصفحة (USD, customs, taxes, shipping, EGP totals) يفضل زي ما هو.
+## 2) إصلاح overflow الكروت
+
+من الصورة المرفوعة: الأرقام الكبيرة (EGP 5,005,214.38 إلخ) تخرج من الكروت في الشاشات المتوسطة.
+
+التعديلات:
+- إضافة `min-w-0` على عناصر الـ flex داخل الكروت.
+- استخدام `truncate` أو `break-all` + `text-base` بدل `text-xl/text-2xl` على الشاشات الصغيرة (responsive: `text-base sm:text-lg lg:text-xl`).
+- تقليل الـ padding للكروت الأربعة (`p-3 sm:p-4`).
+- في كرت "صافي الربح" نخلي السهم/الأيقونة `shrink-0` والنص `min-w-0 truncate`.
+- استخدام `tabular-nums` + `whitespace-nowrap` فقط مع overflow scroll بدل overflow visible.
+- إعادة تخطيط الـ grid من `lg:grid-cols-4` إلى `sm:grid-cols-2 xl:grid-cols-4` (في الفيوبورت الحالي 978px تكون عمودين بدل أربعة مزدحمين).
+
+نفس المعالجة لكرت ملخص PO وكرت الخصم.
 
 ---
 
-## 3. صفحة جديدة `src/routes/profit-calculator.tsx`
-بنفس روح UI أوامر الشراء (AppShell + شريط جانبي + ستايل نضيف).
+## 3) السيناريوهات المحفوظة — تعديل وحذف
 
-### الهيكل
-1. **Combobox اختيار أمر الشراء**: قائمة بكل الـ POs (آخر تحديث أولاً) — رقم PO + المورد + التاريخ + الإجمالي EGP.
-2. **ملخص PO** (read-only، يتحدث لحظياً):
-   - إجمالي USD، سعر الصرف، الجمارك، الضرائب، الشحن، الإجمالي EGP، عدد القطع.
-3. **جدول البنود**: لكل بند:
-   - الصورة | المنتج | الكود/اللون | الكمية | تكلفة الوحدة EGP (محسوبة من PO) | **سعر البيع المتوقع** (input — يبدأ بسعر `products.price` الحالي وتقدر تعدله) | إجمالي البيع | ربح البند.
-4. **شريط الخصم النهائي**:
-   - Toggle `%` / `EGP` (نفس النمط القديم).
-   - Input للقيمة.
-5. **كروت النتيجة**:
-   - إجمالي تكلفة PO بعد الخصم (EGP)
-   - إجمالي البيع المتوقع (EGP)
-   - **صافي الربح** (EGP) + هامش %
-6. **حفظ**: زر "حفظ السيناريو" → upsert على `po_profit_scenarios` بـ `po_id`. عند فتح نفس الـ PO تاني تلاقي قيمك محفوظة.
-7. **ملاحظات**: textarea للـ CFO.
+في `src/routes/profit-scenarios.tsx`:
 
-### Realtime
-- اشتراك Supabase channel على:
-  - `purchase_orders` (UPDATE للـ po_id الحالي) — يعيد جلب الـ PO فوراً.
-  - `purchase_order_items` (أي تغيير على البنود).
-  - `products` (للحصول على آخر سعر بيع).
-  - `po_profit_scenarios` (لو CFO تاني عدّل من جهاز تاني).
+- إضافة عمود "إجراءات" في آخر الجدول يحتوي على:
+  - **زر تعديل** (أيقونة قلم) — يفتح حوار `Dialog` فيه:
+    - وضع الخصم (% / EGP) + قيمة الخصم.
+    - حقل الملاحظات.
+    - زر حفظ → `update` على `po_profit_scenarios` بـ id السيناريو + `updated_by`/`updated_by_email`/`updated_at = now()`.
+  - **زر حذف** (أيقونة سلة) — يفتح `AlertDialog` للتأكيد، ثم `delete` على `po_profit_scenarios`.
+- منع نشر النقر على الصف عند الضغط على أزرار الإجراءات (`e.stopPropagation()`).
+- التحديث لحظي عبر `useRealtimeTable("po_profit_scenarios", load, [])` — موجود فعلاً.
+- تعديل أسعار البيع لكل بند يبقى فقط من داخل صفحة حاسبة الربح (تعديلها في الجدول هنا معقد جداً وغير مطلوب صراحة).
 
-### الصلاحيات
-- في أعلى الصفحة: لو `!isCFO && !isAdmin` → Redirect لـ `/` + toast "غير مصرح".
-- في الـ AppShell sidebar: link "حاسبة الربح" يظهر فقط لـ `isCFO || isAdmin`.
+RLS موجودة بالفعل (`cfo admin update/delete scenarios`) — لا حاجة لـ migration.
 
 ---
 
-## 4. تعديلات إضافية
-- `src/components/app-shell.tsx`: إضافة عنصر قائمة جديد "حاسبة الربح" (icon: `Calculator` من lucide) داخل الـ sidebar محصور بـ `isCFO || isAdmin`.
-- `src/routeTree.gen.ts`: يتحدث تلقائياً.
-- `src/integrations/supabase/types.ts`: يتحدث بعد الـ migration.
+## ملفات ستُعدَّل
 
----
+- `src/routes/profit-calculator.tsx` — إضافة سويتش مصدر USD، إعادة حساب البنود، إصلاح overflow.
+- `src/routes/profit-scenarios.tsx` — أزرار تعديل/حذف + حوارات.
 
-## الملفات
-**جديدة:**
-- `src/routes/profit-calculator.tsx`
-- migration واحدة لجدول `po_profit_scenarios` + RLS
-
-**تعديل:**
-- `src/routes/purchase-orders.tsx` (إزالة الخصم النهائي)
-- `src/components/app-shell.tsx` (لينك في القائمة)
-
----
-
-## ملاحظة مهمة
-بما اخترت "سيناريو واحد فقط (يتحدث)": كل مرة CFO يعدّل ويحفظ → الـ row القديم يتحدث (UPSERT). مش هنخزن سجل تاريخي. لو حبيت بعدين تشوف التاريخ نقدر نضيف جدول log منفصل.
-
-موافق أبدأ بالـ migration؟
+لا توجد تغييرات في قاعدة البيانات.

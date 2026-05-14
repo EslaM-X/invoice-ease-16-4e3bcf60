@@ -212,6 +212,8 @@ function ScenarioPanel({
   const [po, setPo] = useState<PO | null>(null);
   const [items, setItems] = useState<POItem[]>([]);
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+  const [productCostUsd, setProductCostUsd] = useState<Record<string, number>>({});
+  const [usdSource, setUsdSource] = useState<"po" | "current">("po");
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [discountMode, setDiscountMode] = useState<Mode>("percent");
   const [discountValue, setDiscountValue] = useState<string>("");
@@ -231,15 +233,21 @@ function ScenarioPanel({
     const its = (itemsData as any as POItem[]) ?? [];
     setItems(its);
 
-    // Fetch latest selling prices
+    // Fetch latest selling + cost prices
     const ids = its.map((i) => i.product_id).filter(Boolean);
     if (ids.length > 0) {
-      const { data: prods } = await supabase.from("products").select("id,price").in("id", ids);
-      const map: Record<string, number> = {};
-      (prods ?? []).forEach((p: any) => { map[p.id] = Number(p.price) || 0; });
-      setProductPrices(map);
+      const { data: prods } = await supabase.from("products").select("id,price,cost_price_usd").in("id", ids);
+      const priceMap: Record<string, number> = {};
+      const costMap: Record<string, number> = {};
+      (prods ?? []).forEach((p: any) => {
+        priceMap[p.id] = Number(p.price) || 0;
+        costMap[p.id] = Number(p.cost_price_usd) || 0;
+      });
+      setProductPrices(priceMap);
+      setProductCostUsd(costMap);
     } else {
       setProductPrices({});
+      setProductCostUsd({});
     }
 
     if (scData) {
@@ -274,12 +282,18 @@ function ScenarioPanel({
   const totalQty = po?.total_qty || 0;
   const costPerUnitEgp = totalQty > 0 ? totalEgp / totalQty : 0;
 
-  const itemCalc = items.map((it) => {
-    const usdLine = Number(it.line_total_usd) || 0;
-    const lineCostEgp =
-      totalUsdSum(items) > 0
-        ? totalEgp * (usdLine / totalUsdSum(items))
-        : 0;
+  // Effective USD per line based on source toggle
+  const effItems = items.map((it) => {
+    const poUnitUsd = Number(it.unit_cost_usd) || 0;
+    const currentUnitUsd = productCostUsd[it.product_id] ?? poUnitUsd;
+    const usedUnitUsd = usdSource === "current" ? currentUnitUsd : poUnitUsd;
+    const usedLineUsd = usedUnitUsd * (Number(it.quantity) || 0);
+    return { it, poUnitUsd, currentUnitUsd, usedUnitUsd, usedLineUsd };
+  });
+  const sumUsedUsd = effItems.reduce((s, e) => s + e.usedLineUsd, 0);
+
+  const itemCalc = effItems.map(({ it, poUnitUsd, currentUnitUsd, usedUnitUsd, usedLineUsd }) => {
+    const lineCostEgp = sumUsedUsd > 0 ? totalEgp * (usedLineUsd / sumUsedUsd) : 0;
     const unitCostEgp = it.quantity > 0 ? lineCostEgp / it.quantity : 0;
     const overrideStr = overrides[it.id];
     const sellPrice = overrideStr !== undefined && overrideStr !== ""
@@ -287,7 +301,7 @@ function ScenarioPanel({
       : (productPrices[it.product_id] ?? 0);
     const lineSell = sellPrice * it.quantity;
     const lineProfit = lineSell - lineCostEgp;
-    return { it, unitCostEgp, lineCostEgp, sellPrice, lineSell, lineProfit };
+    return { it, poUnitUsd, currentUnitUsd, usedUnitUsd, unitCostEgp, lineCostEgp, sellPrice, lineSell, lineProfit };
   });
 
   const totalSell = itemCalc.reduce((s, x) => s + x.lineSell, 0);
@@ -399,28 +413,28 @@ function ScenarioPanel({
       </Card>
 
       {/* Result cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي تكلفة PO (EGP)" : "PO total cost (EGP)"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums">{fmtMoney(totalEgp, "EGP", lang)}</div>
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="p-3 sm:p-4 min-w-0 overflow-hidden">
+          <div className="text-[11px] text-muted-foreground truncate">{isAr ? "إجمالي تكلفة PO (EGP)" : "PO total cost (EGP)"}</div>
+          <div className="mt-1 text-base sm:text-lg font-bold tabular-nums break-words">{fmtMoney(totalEgp, "EGP", lang)}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي البيع المتوقع" : "Expected total sales"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtMoney(totalSell, "EGP", lang)}</div>
+        <Card className="p-3 sm:p-4 min-w-0 overflow-hidden">
+          <div className="text-[11px] text-muted-foreground truncate">{isAr ? "إجمالي البيع المتوقع" : "Expected total sales"}</div>
+          <div className="mt-1 text-base sm:text-lg font-bold tabular-nums text-primary break-words">{fmtMoney(totalSell, "EGP", lang)}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي البيع المتوقع بعد الخصم" : "Expected sales after discount"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtMoney(salesAfterDiscount, "EGP", lang)}</div>
+        <Card className="p-3 sm:p-4 min-w-0 overflow-hidden">
+          <div className="text-[11px] text-muted-foreground truncate">{isAr ? "إجمالي البيع المتوقع بعد الخصم" : "Expected sales after discount"}</div>
+          <div className="mt-1 text-base sm:text-lg font-bold tabular-nums text-primary break-words">{fmtMoney(salesAfterDiscount, "EGP", lang)}</div>
         </Card>
-        <Card className={`p-4 border-2 ${profitPositive ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{isAr ? "صافي الربح" : "Net profit"}</span>
-            {profitPositive ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+        <Card className={`p-3 sm:p-4 min-w-0 overflow-hidden border-2 ${profitPositive ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+          <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+            <span className="truncate">{isAr ? "صافي الربح" : "Net profit"}</span>
+            {profitPositive ? <TrendingUp className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <TrendingDown className="h-3.5 w-3.5 shrink-0 text-destructive" />}
           </div>
-          <div className={`mt-1 text-2xl font-extrabold tabular-nums ${profitPositive ? "text-emerald-700" : "text-destructive"}`}>
+          <div className={`mt-1 text-lg sm:text-xl font-extrabold tabular-nums break-words ${profitPositive ? "text-emerald-700" : "text-destructive"}`}>
             {fmtMoney(totalProfit, "EGP", lang)}
           </div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
+          <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
             {isAr ? "هامش" : "Margin"} {margin.toFixed(2)}%
           </div>
         </Card>
@@ -428,8 +442,25 @@ function ScenarioPanel({
 
       {/* Items */}
       <Card className="overflow-hidden">
-        <div className="border-b bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-          {isAr ? "البنود وأسعار البيع المتوقعة" : "Items & expected selling prices"}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+          <span className="text-xs font-semibold uppercase tracking-wider">
+            {isAr ? "البنود وأسعار البيع المتوقعة" : "Items & expected selling prices"}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">{isAr ? "مصدر سعر USD:" : "USD cost source:"}</span>
+            <div className="inline-flex overflow-hidden rounded-md border">
+              <button
+                type="button"
+                onClick={() => setUsdSource("po")}
+                className={`px-2.5 py-1 text-[11px] font-semibold transition ${usdSource === "po" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+              >{isAr ? "سعر PO الأصلي" : "PO original"}</button>
+              <button
+                type="button"
+                onClick={() => setUsdSource("current")}
+                className={`px-2.5 py-1 text-[11px] font-semibold transition ${usdSource === "current" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+              >{isAr ? "سعر المنتج الحالي" : "Current product"}</button>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -437,6 +468,7 @@ function ScenarioPanel({
               <tr>
                 <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
                 <th className="p-2 text-end">{isAr ? "كمية" : "Qty"}</th>
+                <th className="p-2 text-end">{isAr ? "USD/وحدة" : "USD/unit"}</th>
                 <th className="p-2 text-end">{isAr ? "تكلفة الوحدة (EGP)" : "Unit cost EGP"}</th>
                 <th className="p-2 text-end">{isAr ? "سعر بيع الوحدة" : "Unit sell price"}</th>
                 <th className="p-2 text-end">{isAr ? "إجمالي البيع" : "Line sell"}</th>
@@ -444,9 +476,10 @@ function ScenarioPanel({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {itemCalc.map(({ it, unitCostEgp, sellPrice, lineSell, lineProfit }) => {
+              {itemCalc.map(({ it, poUnitUsd, currentUnitUsd, usedUnitUsd, unitCostEgp, lineSell, lineProfit }) => {
                 const ov = overrides[it.id];
                 const hasOverride = ov !== undefined && ov !== "";
+                const usdDiffer = Math.abs(poUnitUsd - currentUnitUsd) > 0.001;
                 return (
                   <tr key={it.id}>
                     <td className="p-2">
@@ -466,6 +499,16 @@ function ScenarioPanel({
                       </div>
                     </td>
                     <td className="p-2 text-end tabular-nums">{it.quantity}</td>
+                    <td className="p-2 text-end tabular-nums">
+                      <div className="font-semibold">${usedUnitUsd.toFixed(2)}</div>
+                      {usdDiffer && (
+                        <div className="text-[9px] text-muted-foreground">
+                          {usdSource === "current"
+                            ? <>PO: ${poUnitUsd.toFixed(2)}</>
+                            : <span className={currentUnitUsd > poUnitUsd ? "text-amber-600" : "text-emerald-600"}>{isAr ? "حالي" : "Now"}: ${currentUnitUsd.toFixed(2)}</span>}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-2 text-end tabular-nums">{fmtMoney(unitCostEgp, "EGP", lang)}</td>
                     <td className="p-2 text-end">
                       <div className="flex items-center justify-end gap-1">
@@ -520,8 +563,4 @@ function ScenarioPanel({
       </Card>
     </div>
   );
-}
-
-function totalUsdSum(items: POItem[]) {
-  return items.reduce((s, i) => s + (Number(i.line_total_usd) || 0), 0);
 }

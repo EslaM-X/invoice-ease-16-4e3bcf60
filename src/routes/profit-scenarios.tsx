@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRole } from "@/lib/use-role";
 import { useRealtimeTable } from "@/lib/realtime";
@@ -8,8 +9,13 @@ import { fmtMoney, fmtDateTime } from "@/lib/utils-money";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Search, TrendingUp, TrendingDown, ArrowUpRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Calculator, Search, TrendingUp, TrendingDown, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profit-scenarios")({
@@ -44,6 +50,7 @@ type Row = {
 };
 
 function SavedScenariosPage() {
+  const { user } = useAuth();
   const { lang } = useI18n();
   const { isAdmin, isCFO, loading: roleLoading } = useRole();
   const navigate = useNavigate();
@@ -51,6 +58,13 @@ function SavedScenariosPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [editMode, setEditMode] = useState<"percent" | "fixed">("percent");
+  const [editValue, setEditValue] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleting, setDeleting] = useState<Row | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isCFO) {
@@ -258,8 +272,41 @@ function SavedScenariosPage() {
                         <div>{fmtDateTime(r.updated_at, lang)}</div>
                         {r.updated_by_email && <div className="text-[10px] text-muted-foreground">{r.updated_by_email}</div>}
                       </td>
-                      <td className="p-2 text-end">
-                        <ArrowUpRight className="inline h-4 w-4 text-muted-foreground" />
+                      <td className="p-2 text-end" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title={isAr ? "فتح في الحاسبة" : "Open in calculator"}
+                            onClick={() => navigate({ to: "/profit-calculator", search: { po: r.po_id } as any })}
+                          >
+                            <ArrowUpRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title={isAr ? "تعديل" : "Edit"}
+                            onClick={() => {
+                              setEditing(r);
+                              setEditMode(r.discount_mode);
+                              setEditValue(r.discount_value ? String(r.discount_value) : "");
+                              setEditNotes(r.notes ?? "");
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            title={isAr ? "حذف" : "Delete"}
+                            onClick={() => setDeleting(r)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -269,6 +316,128 @@ function SavedScenariosPage() {
           </div>
         )}
       </Card>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isAr ? "تعديل السيناريو" : "Edit scenario"} — <span className="font-mono">{editing?.po_number}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">{isAr ? "وضع الخصم" : "Discount mode"}</Label>
+              <div className="mt-1 inline-flex overflow-hidden rounded-md border">
+                <button
+                  type="button"
+                  onClick={() => setEditMode("percent")}
+                  className={`px-3 py-1 text-xs font-semibold transition ${editMode === "percent" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+                >%</button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode("fixed")}
+                  className={`px-3 py-1 text-xs font-semibold transition ${editMode === "fixed" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
+                >EGP</button>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">{isAr ? "قيمة الخصم" : "Discount value"}</Label>
+              <Input
+                type="number" step="any" min={0}
+                max={editMode === "percent" ? 100 : undefined}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="mt-1 tabular-nums"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">{isAr ? "ملاحظات" : "Notes"}</Label>
+              <Textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="mt-1" />
+            </div>
+            <div className="rounded-md bg-muted/40 p-2 text-[11px] text-muted-foreground">
+              {isAr
+                ? "لتعديل أسعار البيع للبنود، افتح السيناريو في حاسبة الربح."
+                : "To edit per-item selling prices, open this scenario in the Profit Calculator."}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>{isAr ? "إلغاء" : "Cancel"}</Button>
+            <Button
+              disabled={savingEdit}
+              onClick={async () => {
+                if (!editing) return;
+                setSavingEdit(true);
+                try {
+                  const dInput = Math.max(0, Number(editValue) || 0);
+                  const dVal = editMode === "percent" ? Math.min(100, dInput) : dInput;
+                  const { error } = await (supabase.from as any)("po_profit_scenarios")
+                    .update({
+                      discount_mode: editMode,
+                      discount_value: dVal,
+                      notes: editNotes || null,
+                      updated_by: user?.id ?? null,
+                      updated_by_email: user?.email ?? null,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", editing.id);
+                  if (error) throw error;
+                  toast.success(isAr ? "تم الحفظ" : "Saved");
+                  setEditing(null);
+                  load();
+                } catch (e: any) {
+                  toast.error(e.message || "Error");
+                } finally {
+                  setSavingEdit(false);
+                }
+              }}
+            >
+              {savingEdit ? (isAr ? "جارٍ الحفظ…" : "Saving…") : (isAr ? "حفظ" : "Save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isAr ? "حذف السيناريو؟" : "Delete scenario?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAr
+                ? `سيتم حذف سيناريو الربح المرتبط بأمر الشراء ${deleting?.po_number} نهائياً.`
+                : `The profit scenario for PO ${deleting?.po_number} will be permanently deleted.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!deleting) return;
+                setDeletingBusy(true);
+                try {
+                  const { error } = await (supabase.from as any)("po_profit_scenarios")
+                    .delete()
+                    .eq("id", deleting.id);
+                  if (error) throw error;
+                  toast.success(isAr ? "تم الحذف" : "Deleted");
+                  setDeleting(null);
+                  load();
+                } catch (err: any) {
+                  toast.error(err.message || "Error");
+                } finally {
+                  setDeletingBusy(false);
+                }
+              }}
+            >
+              {deletingBusy ? (isAr ? "جارٍ الحذف…" : "Deleting…") : (isAr ? "حذف" : "Delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
