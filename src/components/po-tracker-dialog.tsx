@@ -466,13 +466,62 @@ export function POTrackerDialog({
                   </ol>
                 )}
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
-      {receiveOpen && po && (
-        <ReceiveDialog
+              {/* Receipts (batches) */}
+              {(receipts.length > 0 || isPartial) && (
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Package className="h-4 w-4 text-emerald-600" />
+                      {isAr ? "دفعات الاستلام" : "Receipt Batches"}
+                    </div>
+                    <div className="text-[11px] tabular-nums text-muted-foreground">
+                      {isAr
+                        ? `إجمالي مستلم: ${totalReceived} / ${totalOrdered} · متبقي ${totalRemaining}`
+                        : `Received: ${totalReceived} / ${totalOrdered} · ${totalRemaining} left`}
+                    </div>
+                  </div>
+                  {receipts.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">{isAr ? "لا توجد دفعات بعد." : "No batches yet."}</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {receipts.map((r) => (
+                        <div key={r.id} className="rounded-md border bg-muted/20 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">#{r.receipt_number}</span>
+                              {isAr ? "دفعة" : "Batch"}
+                              <span className="tabular-nums text-emerald-700">+{r.total_qty}</span>
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {fmtDateTime(r.created_at, lang)}
+                              {r.actor_email ? ` · ${r.actor_email}` : ""}
+                            </div>
+                          </div>
+                          {r.notes && <div className="mt-1 text-xs italic text-muted-foreground">{r.notes}</div>}
+                          <div className="mt-2 space-y-1">
+                            {r.po_receipt_items?.map((ri) => (
+                              <div key={ri.id} className="flex flex-wrap items-center gap-2 rounded border bg-background px-2 py-1 text-xs">
+                                <span className="flex-1 truncate font-medium">{ri.product_name}</span>
+                                {ri.color && (
+                                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                    <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(ri.color)} />
+                                    {ri.color}
+                                  </span>
+                                )}
+                                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold tabular-nums text-emerald-700">+{ri.quantity}</span>
+                                <span className="tabular-nums text-muted-foreground">
+                                  {ri.stock_before ?? 0} → <span className="font-semibold text-foreground">{ri.stock_after ?? 0}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
           po={po}
           items={items}
           open={receiveOpen}
