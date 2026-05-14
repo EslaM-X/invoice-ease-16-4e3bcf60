@@ -288,8 +288,8 @@ export function POTrackerDialog({
                 <Fact label={isAr ? "تاريخ الاستلام" : "Received at"} value={po.received_at ? fmtDateTime(po.received_at, lang) : "—"} />
               </div>
 
-              {/* Payment installments — visible from "ordered" onwards */}
-              {(po.status === "ordered" || po.status === "shipped" || po.status === "in_warehouse" || po.status === "received") && (
+              {/* Payments — installment 1 after Priced, installment 2 after Received */}
+              {(po.status === "priced" || po.status === "ordered" || po.status === "shipped" || po.status === "in_warehouse" || po.status === "received") && (
                 <div className="rounded-lg border bg-card p-4 space-y-3">
                   <div className="flex items-center gap-2 text-sm font-semibold">
                     <Wallet className="h-4 w-4 text-primary" />
@@ -300,32 +300,49 @@ export function POTrackerDialog({
                       </Badge>
                     )}
                   </div>
+
+                  <div className="text-[11px] text-muted-foreground">
+                    {isAr
+                      ? "الدفعة الأولى بعد التسعير وقبل الطلب · الدفعة الثانية بعد الاستلام."
+                      : "Installment 1 after Priced (before Ordered) · Installment 2 after Received."}
+                  </div>
+
                   <InstallmentRow
                     n={1}
                     isAr={isAr}
                     paidAt={po.payment_installment_1_at}
                     amount={po.payment_installment_1_amount}
                     byEmail={po.payment_installment_1_by_email}
-                    canEdit={canTransition && po.status !== "received"}
+                    canEdit={canTransition}
                     onToggle={(paid, amt) => togglePayment(1, paid, amt)}
                     busy={busy}
                   />
-                  <InstallmentRow
-                    n={2}
-                    isAr={isAr}
-                    paidAt={po.payment_installment_2_at}
-                    amount={po.payment_installment_2_amount}
-                    byEmail={po.payment_installment_2_by_email}
-                    canEdit={canTransition && po.status !== "received"}
-                    onToggle={(paid, amt) => togglePayment(2, paid, amt)}
-                    busy={busy}
-                  />
-                  {po.status === "ordered" && !bothInstallmentsPaid && (
+
+                  {po.status === "received" ? (
+                    <InstallmentRow
+                      n={2}
+                      isAr={isAr}
+                      paidAt={po.payment_installment_2_at}
+                      amount={po.payment_installment_2_amount}
+                      byEmail={po.payment_installment_2_by_email}
+                      canEdit={canTransition}
+                      onToggle={(paid, amt) => togglePayment(2, paid, amt)}
+                      busy={busy}
+                    />
+                  ) : (
+                    <div className="rounded-md border border-dashed bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
+                      {isAr
+                        ? "الدفعة الثانية ستُفعَّل بعد تأكيد الاستلام."
+                        : "Installment 2 unlocks after the PO is Received."}
+                    </div>
+                  )}
+
+                  {po.status === "priced" && !installment1Paid && (
                     <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2 text-xs text-amber-800">
                       <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                       {isAr
-                        ? "لا يمكن الانتقال إلى «تم الشحن» قبل تأكيد الدفعتين."
-                        : "Cannot move to Shipped until both installments are paid."}
+                        ? "لا يمكن الانتقال إلى «تم الطلب» قبل تأكيد الدفعة الأولى."
+                        : "Cannot move to Ordered until Installment 1 is paid."}
                     </div>
                   )}
                 </div>
