@@ -528,7 +528,7 @@ function ReceiveDialog({
                   {it.serial_number && <span className="font-mono">S/N: {it.serial_number}</span>}
                   {it.color && (
                     <span className="inline-flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full border" style={{ background: it.color }} />
+                      <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(it.color)} />
                       {it.color}
                     </span>
                   )}

@@ -571,7 +571,7 @@ function SalesToday() {
                           <td className="px-3 py-3">
                             {r.color ? (
                               <span className="inline-flex items-center gap-1.5 text-xs">
-                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: r.color }} aria-hidden />
+                                <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(r.color)} aria-hidden />
                                 {r.color}
                               </span>
                             ) : (
@@ -803,7 +803,7 @@ function PurchaseOrderModal({
                         <div className="mt-1.5 flex items-center gap-1.5 text-xs">
                           <span
                             className="inline-block h-4 w-4 rounded-full border-2 border-background ring-1 ring-border shadow-sm"
-                            style={{ background: r.color }}
+                            style={swatchStyle(r.color)}
                             aria-hidden
                           />
                           <span className="text-muted-foreground">{r.color}</span>

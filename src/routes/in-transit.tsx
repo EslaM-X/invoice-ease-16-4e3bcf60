@@ -343,7 +343,7 @@ function InTransitPage() {
                     {r.serial_number && <span className="font-mono">S/N: {r.serial_number}</span>}
                     {r.color && (
                       <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2 w-2 rounded-full border" style={{ background: r.color }} />
+                        <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(r.color)} />
                         {r.color}
                       </span>
                     )}
