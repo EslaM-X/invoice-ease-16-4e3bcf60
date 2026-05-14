@@ -494,8 +494,6 @@ function PODetailDialog({
   const [shippingValue, setShippingValue] = useState<string>("");
   const [otherMode, setOtherMode] = useState<Mode>("percent");
   const [otherValue, setOtherValue] = useState<string>("");
-  const [discountMode, setDiscountMode] = useState<Mode>("percent");
-  const [discountPct, setDiscountPct] = useState<string>("");
   const [cfoNotes, setCfoNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
