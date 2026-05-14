@@ -64,6 +64,8 @@ function InTransitPage() {
   const [items, setItems] = useState<POItem[]>([]);
   const [pos, setPos] = useState<Record<string, PO>>({});
   const [search, setSearch] = useState("");
+  const [collectionFilter, setCollectionFilter] = useState<string>("");
+  const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
 
   const load = async () => {
