@@ -213,7 +213,7 @@ function ScenarioPanel({
   const [items, setItems] = useState<POItem[]>([]);
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [productCostUsd, setProductCostUsd] = useState<Record<string, number>>({});
-  const [usdSource, setUsdSource] = useState<"po" | "current">("po");
+  const [usdSource, setUsdSource] = useState<"po" | "current">("current");
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [discountMode, setDiscountMode] = useState<Mode>("percent");
   const [discountValue, setDiscountValue] = useState<string>("");
