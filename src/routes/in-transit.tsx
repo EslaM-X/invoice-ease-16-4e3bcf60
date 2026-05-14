@@ -70,7 +70,7 @@ function InTransitPage() {
 
   const load = async () => {
     const [{ data: prods }, { data: posRows }] = await Promise.all([
-      supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity").limit(2000),
+      supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
     ]);
     setProducts((prods as any) ?? []);
