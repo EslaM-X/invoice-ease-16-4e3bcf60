@@ -17,6 +17,7 @@ import { exportCustomersToExcel, exportCustomersToCSV, type CustomerRow } from "
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { cachedListFetch } from "@/lib/list-cache";
+import { enqueueOrRun } from "@/lib/outbox";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
@@ -52,23 +53,58 @@ function Customers() {
   const save = async () => {
     if (!user) return;
     if (!form.name.trim()) return toast.error(t("required"));
-    if (editing) {
-      const { error } = await supabase.from("customers").update(form).eq("id", editing.id);
-      if (error) return toast.error(error.message);
-    } else {
-      const { error } = await supabase.from("customers").insert({ ...form, user_id: user.id });
-      if (error) return toast.error(error.message);
+    try {
+      if (editing) {
+        const r = await enqueueOrRun({
+          table: "customers",
+          op: "update",
+          row_id: editing.id,
+          payload: form,
+          run: async () => {
+            const { error } = await supabase.from("customers").update(form).eq("id", editing.id);
+            if (error) throw error;
+          },
+        });
+        toast.success(r.queued ? "تم الحفظ محلياً (سيُرفع عند رجوع الإنترنت)" : t("customer_saved"));
+      } else {
+        const newId = (typeof crypto !== "undefined" && "randomUUID" in crypto) ? crypto.randomUUID() : `${Date.now()}`;
+        const payload = { id: newId, ...form, user_id: user.id };
+        const r = await enqueueOrRun({
+          table: "customers",
+          op: "insert",
+          row_id: newId,
+          payload,
+          run: async () => {
+            const { error } = await supabase.from("customers").insert(payload);
+            if (error) throw error;
+          },
+        });
+        toast.success(r.queued ? "تم الحفظ محلياً (سيُرفع عند رجوع الإنترنت)" : t("customer_saved"));
+      }
+      setOpen(false);
+      load();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Save failed");
     }
-    toast.success(t("customer_saved"));
-    setOpen(false);
-    load();
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("customers").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(t("customer_deleted"));
-    load();
+    try {
+      const r = await enqueueOrRun({
+        table: "customers",
+        op: "delete",
+        row_id: id,
+        payload: {},
+        run: async () => {
+          const { error } = await supabase.from("customers").delete().eq("id", id);
+          if (error) throw error;
+        },
+      });
+      toast.success(r.queued ? "تم الحذف محلياً (سيُرفع عند رجوع الإنترنت)" : t("customer_deleted"));
+      load();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Delete failed");
+    }
   };
 
   const { lang } = useI18n();
