@@ -1,4 +1,5 @@
 import { swatchStyle } from "@/lib/color-swatch";
+import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -273,7 +274,7 @@ function Inventory() {
                       <td className="px-3 py-2 text-muted-foreground">
                         {p?.color ? (
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(p.color)} aria-hidden />
+                            <ColorSwatch value={p.color} size="sm" />
                             {p.color}
                           </span>
                         ) : "—"}
