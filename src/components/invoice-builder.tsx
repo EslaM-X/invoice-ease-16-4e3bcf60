@@ -708,48 +708,54 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       </div>
 
       {/* Draft / Real toggle */}
-      <div className="rounded-2xl border bg-card p-3 sm:p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="text-sm font-semibold">
-              {lang === "ar" ? "نوع الفاتورة" : "Invoice type"}
+      {(() => {
+        const lockedReal = mode === "edit" && initial?.status !== "draft";
+        if (lockedReal) return null;
+        return (
+          <div className="rounded-2xl border bg-card p-3 sm:p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-sm font-semibold">
+                  {lang === "ar" ? "نوع الفاتورة" : "Invoice type"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isDraft
+                    ? (lang === "ar"
+                        ? "المسودة لا تُخصم من المخزون ولا تظهر في التقارير أو الأرباح. تظهر في صفحة المسودات فقط."
+                        : "Drafts do not affect stock and are excluded from analytics, reports, and profits. They live in the Drafts page.")
+                    : (lang === "ar"
+                        ? "فاتورة حقيقية: تُخصم من المخزون فوراً وتدخل في كل التقارير والأرباح."
+                        : "Real invoice: deducts stock immediately and counts in analytics, reports and profits.")}
+                </p>
+              </div>
+              <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setIsDraft(true)}
+                  className={`px-3 py-1.5 rounded-full transition-all ${
+                    isDraft
+                      ? "bg-amber-500 text-white shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang === "ar" ? "مسودة" : "Draft"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDraft(false)}
+                  className={`px-3 py-1.5 rounded-full transition-all ${
+                    !isDraft
+                      ? "bg-emerald-600 text-white shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang === "ar" ? "فاتورة حقيقية" : "Real invoice"}
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {isDraft
-                ? (lang === "ar"
-                    ? "المسودة لا تُخصم من المخزون ولا تظهر في التقارير أو الأرباح. تظهر في صفحة المسودات فقط."
-                    : "Drafts do not affect stock and are excluded from analytics, reports, and profits. They live in the Drafts page.")
-                : (lang === "ar"
-                    ? "فاتورة حقيقية: تُخصم من المخزون فوراً وتدخل في كل التقارير والأرباح."
-                    : "Real invoice: deducts stock immediately and counts in analytics, reports and profits.")}
-            </p>
           </div>
-          <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setIsDraft(true)}
-              className={`px-3 py-1.5 rounded-full transition-all ${
-                isDraft
-                  ? "bg-amber-500 text-white shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {lang === "ar" ? "مسودة" : "Draft"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsDraft(false)}
-              className={`px-3 py-1.5 rounded-full transition-all ${
-                !isDraft
-                  ? "bg-emerald-600 text-white shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {lang === "ar" ? "فاتورة حقيقية" : "Real invoice"}
-            </button>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
 
       <DesktopPairWidget
