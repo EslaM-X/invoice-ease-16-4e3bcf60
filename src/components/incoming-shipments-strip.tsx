@@ -162,10 +162,18 @@ export function IncomingShipmentsStrip() {
                         {po.supplier_name || (isAr ? "بدون مورد" : "No supplier")}
                       </div>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.tone}`}>
-                      <Icon className="h-3 w-3" />
-                      {statusLabel(po.status)}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.tone}`}>
+                        <Icon className="h-3 w-3" />
+                        {statusLabel(po.status)}
+                      </span>
+                      {po.has_partial && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+                          <AlertCircle className="h-3 w-3" />
+                          {t("partial_delivery")}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 text-xs">
@@ -178,6 +186,25 @@ export function IncomingShipmentsStrip() {
                     </div>
                   </div>
 
+                  {(po.received_qty > 0 || po.has_partial) && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-medium tabular-nums">
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          {t("received_label")}: {po.received_qty}
+                        </span>
+                        <span className="text-orange-700 dark:text-orange-400">
+                          {t("remaining_label")}: {po.remaining_qty}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+                          style={{ width: `${po.total_qty > 0 ? Math.min(100, (po.received_qty / po.total_qty) * 100) : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
                     <span>
                       {po.expected_arrival_at
@@ -186,6 +213,11 @@ export function IncomingShipmentsStrip() {
                           ? `${t("shipped_on")}: ${fmtDate(po.shipped_at, lang)}`
                           : "—"}
                     </span>
+                    {po.has_partial && po.open_lines > 0 && (
+                      <span className="font-semibold text-orange-700 dark:text-orange-400">
+                        {po.open_lines} {isAr ? "بنود مفتوحة" : "open lines"}
+                      </span>
+                    )}
                   </div>
                 </Link>
               );
