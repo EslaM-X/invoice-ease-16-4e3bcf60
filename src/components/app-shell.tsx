@@ -51,16 +51,6 @@ const items: NavEntry[] = [
     ],
   },
   { to: "/profits", icon: TrendingUp, key: "profits" as const },
-  {
-    group: true,
-    key: "settings" as const,
-    icon: Settings,
-    children: [
-      { to: "/settings", icon: Settings, key: "settings" as const },
-      { to: "/audit-log", icon: ShieldCheck, key: "audit_log" as const },
-      { to: "/pending-operations", icon: CloudUpload, key: "pending_operations" as const },
-    ],
-  },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
