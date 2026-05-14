@@ -153,12 +153,22 @@ export function OfflineBanner() {
     };
   }, [runSync]);
 
-  const visible = !online || showRecovered || syncing;
+  const visible = !online || showRecovered || syncing || pending > 0;
   if (!visible) return null;
 
   const tone = !online
     ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
+    : pending > 0
+    ? "border-sky-500/40 bg-sky-500/15 text-sky-200"
     : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200";
+
+  const label = !online
+    ? `أنت غير متصل — التطبيق يعمل من الكاش${pending > 0 ? ` (${pending} عملية في الانتظار)` : ""}`
+    : syncing
+    ? "جاري مزامنة البيانات…"
+    : pending > 0
+    ? `جاري رفع ${pending} عملية محفوظة محلياً…`
+    : "تم استعادة الاتصال";
 
   return (
     <div
@@ -167,14 +177,8 @@ export function OfflineBanner() {
     >
       <div className={`pointer-events-auto mt-2 w-[min(92vw,520px)] overflow-hidden rounded-2xl border ${tone} shadow-lg backdrop-blur`}>
         <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium">
-          {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-          <span className="flex-1 truncate">
-            {!online
-              ? "أنت غير متصل — التطبيق يعمل من الكاش"
-              : syncing
-              ? "جاري مزامنة البيانات…"
-              : "تم استعادة الاتصال"}
-          </span>
+          {!online ? <WifiOff className="h-3.5 w-3.5" /> : pending > 0 ? <CloudUpload className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
+          <span className="flex-1 truncate">{label}</span>
           <button
             onClick={runSync}
             disabled={syncing || !online}
