@@ -343,8 +343,8 @@ function InTransitPage() {
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                     {r.serial_number && <span className="font-mono">S/N: {r.serial_number}</span>}
                     {r.color && (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(r.color)} />
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="inline-block h-3.5 w-3.5 rounded-sm border shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]" style={swatchStyle(r.color)} />
                         {r.color}
                       </span>
                     )}
