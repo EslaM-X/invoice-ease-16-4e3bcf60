@@ -201,6 +201,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
               </Link>
+              <Link
+                to="/po-tracking"
+                onClick={() => setOpen(false)}
+                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
+                  location.pathname.startsWith("/po-tracking")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                }`}
+              >
+                <Activity className="h-4 w-4" /> {lang === "ar" ? "تتبع أوامر الشراء" : "PO Tracking"}
+              </Link>
               {isCFO && (
                 <>
                   <Link
