@@ -131,7 +131,7 @@ function ProfitCalculatorPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         {/* PO list */}
         <Card className="overflow-hidden">
           <div className="border-b bg-muted/40 px-3 py-2">
@@ -184,7 +184,7 @@ function ProfitCalculatorPage() {
         </Card>
 
         {/* Detail */}
-        <div>
+        <div className="min-w-0">
           {selectedId ? (
             <ScenarioPanel poId={selectedId} userId={user?.id || ""} userEmail={user?.email || ""} lang={lang} />
           ) : (
@@ -352,7 +352,7 @@ function ScenarioPanel({
   const profitPositive = totalProfit >= 0;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* PO summary */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -441,7 +441,7 @@ function ScenarioPanel({
       </div>
 
       {/* Items */}
-      <Card className="overflow-hidden max-w-full">
+      <Card className="min-w-0 overflow-hidden max-w-full">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
           <span className="text-xs font-semibold uppercase tracking-wider">
             {isAr ? "البنود وأسعار البيع المتوقعة" : "Items & expected selling prices"}
@@ -478,8 +478,8 @@ function ScenarioPanel({
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-          <table className="w-full min-w-[860px] text-xs">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [touch-action:pan-x_pinch-zoom] [-webkit-overflow-scrolling:touch]">
+          <table className="w-max min-w-[980px] text-xs lg:min-w-full">
             <thead className="bg-muted/30">
               <tr>
                 <th className="p-2 text-start whitespace-nowrap min-w-[220px]">{isAr ? "المنتج" : "Product"}</th>
