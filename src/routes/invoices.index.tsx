@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil } from "lucide-react";
+import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil, Archive, ClipboardCheck } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -25,6 +25,7 @@ function InvoicesList() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
+  const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
@@ -32,6 +33,7 @@ function InvoicesList() {
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "voided">("all");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
+  const [hideClosed, setHideClosed] = useState(true);
   const navigate = useNavigate();
 
   const load = async () => {
@@ -46,12 +48,37 @@ function InvoicesList() {
     });
     setList(data);
     setLoading(false);
+
+    // Linked delivery receipts count per invoice (for the badge)
+    if (data.length) {
+      const ids = data.map((i: any) => i.id);
+      const { data: drs } = await supabase
+        .from("delivery_receipts" as any)
+        .select("invoice_id")
+        .in("invoice_id", ids);
+      const counts: Record<string, number> = {};
+      (drs ?? []).forEach((r: any) => {
+        if (r.invoice_id) counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
+      });
+      setDrCounts(counts);
+    }
   };
   useEffect(() => { load(); }, [user, from, to]);
   useRealtimeTable("invoices", () => { load(); });
+  useRealtimeTable("delivery_receipts" as any, () => { load(); });
+
+  const isClosed = (i: any) => {
+    if (i.status === "voided") return false;
+    const total = Number(i.total ?? 0);
+    const paid = Number(i.paid_amount ?? 0);
+    const fullyPaid = total > 0 && paid >= total - 0.001;
+    return fullyPaid && i.delivery_status === "delivered";
+  };
+  const closedCount = list.filter(isClosed).length;
 
   const filtered = list
     .filter((i) => {
+      if (hideClosed && isClosed(i)) return false;
       if (statusFilter !== "all" && (i.status ?? "completed") !== statusFilter) return false;
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
@@ -185,6 +212,17 @@ function InvoicesList() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("invoices")}</h1>
         <div className="flex flex-wrap gap-2">
+          <Link to="/invoices/archive">
+            <Button variant="outline" className="gap-2 rounded-full border-emerald-500/40 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">
+              <Archive className="h-4 w-4" />
+              {lang === "ar" ? "الأرشيف" : "Archive"}
+              {closedCount > 0 && (
+                <span className="ms-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                  {closedCount}
+                </span>
+              )}
+            </Button>
+          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={exporting} className="gap-2 rounded-full">
@@ -231,8 +269,26 @@ function InvoicesList() {
           <option value="total_desc">الأعلى قيمة</option>
           <option value="total_asc">الأقل قيمة</option>
         </select>
-        <div className="flex items-center justify-end text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
-          عرض {filtered.length} من {list.length} فاتورة
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
+          <label className="inline-flex items-center gap-2 text-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={hideClosed}
+              onChange={(e) => setHideClosed(e.target.checked)}
+            />
+            <span>
+              {lang === "ar"
+                ? "إخفاء الفواتير المُغلقة (مدفوعة + مُسلَّمة)"
+                : "Hide closed invoices (paid + delivered)"}
+            </span>
+            {closedCount > 0 && (
+              <Link to="/invoices/archive" className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20">
+                {closedCount} {lang === "ar" ? "في الأرشيف" : "in archive"} →
+              </Link>
+            )}
+          </label>
+          <span>عرض {filtered.length} من {list.length} فاتورة</span>
         </div>
       </div>
 
@@ -326,7 +382,18 @@ function InvoicesList() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div>{i.customer_name || "—"}</div>
+                        <div className="flex items-center gap-2">
+                          <span>{i.customer_name || "—"}</span>
+                          {(drCounts[i.id] ?? 0) > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                              title={lang === "ar" ? "محاضر تسليم مرتبطة" : "Linked delivery receipts"}
+                            >
+                              <ClipboardCheck className="h-3 w-3" />
+                              {drCounts[i.id]}
+                            </span>
+                          )}
+                        </div>
                         <AuthorBadge email={i.created_by_email} label="created by" className="mt-0.5" />
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{fmtDate(i.created_at, lang)}</td>
