@@ -94,7 +94,12 @@ function InTransitPage() {
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
 
-  // Aggregate per product
+  const productMap = useMemo(() => {
+    const m = new Map<string, Product>();
+    products.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [products]);
+
   const rows = useMemo(() => {
     const m = new Map<string, {
       product_id: string;
@@ -102,11 +107,11 @@ function InTransitPage() {
       serial_number: string | null;
       color: string | null;
       image_url: string | null;
+      collection: string | null;
       in_stock: number;
       in_transit: number;
       lines: { po: PO; qty: number; item: POItem }[];
     }>();
-    // Seed with all products that have either stock or in-transit
     products.forEach((p) => {
       m.set(p.id, {
         product_id: p.id,
@@ -114,6 +119,7 @@ function InTransitPage() {
         serial_number: p.serial_number,
         color: p.color,
         image_url: p.image_url,
+        collection: p.collection ?? null,
         in_stock: p.stock_quantity ?? 0,
         in_transit: 0,
         lines: [],
@@ -125,12 +131,14 @@ function InTransitPage() {
       const key = it.product_id;
       let r = m.get(key);
       if (!r) {
+        const prod = productMap.get(key);
         r = {
           product_id: key,
           name: it.product_name,
           serial_number: it.serial_number,
           color: it.color,
           image_url: it.image_url,
+          collection: prod?.collection ?? null,
           in_stock: 0,
           in_transit: 0,
           lines: [],
@@ -141,18 +149,62 @@ function InTransitPage() {
       r.lines.push({ po, qty: it.quantity || 0, item: it });
     });
     let arr = Array.from(m.values());
+    if (collectionFilter) {
+      if (collectionFilter === "__none__") arr = arr.filter((r) => !r.collection);
+      else arr = arr.filter((r) => r.collection === collectionFilter);
+    }
+    if (colorFilter) {
+      arr = arr.filter((r) => (r.color ?? "").toLowerCase() === colorFilter.toLowerCase());
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       arr = arr.filter((r) =>
         r.name.toLowerCase().includes(q) ||
         (r.serial_number ?? "").toLowerCase().includes(q) ||
-        (r.color ?? "").toLowerCase().includes(q)
+        (r.color ?? "").toLowerCase().includes(q) ||
+        (r.collection ?? "").toLowerCase().includes(q)
       );
     }
-    // Sort: in_transit first desc, then in_stock
     arr.sort((a, b) => (b.in_transit - a.in_transit) || (b.in_stock - a.in_stock));
     return arr;
-  }, [products, items, pos, search]);
+  }, [products, items, pos, productMap, search, collectionFilter, colorFilter]);
+
+  // Counts based on full set (after collection filter for color counts to make sense)
+  const collectionCounts = useMemo(() => {
+    const counts: Record<string, number> = { __all__: 0, __none__: 0 };
+    COLLECTIONS.forEach((c) => (counts[c] = 0));
+    const seen = new Set<string>();
+    products.forEach((p) => { seen.add(p.id); });
+    items.forEach((it) => seen.add(it.product_id));
+    seen.forEach((id) => {
+      const prod = productMap.get(id);
+      counts.__all__++;
+      const c = prod?.collection;
+      if (c && counts[c] !== undefined) counts[c]++;
+      else if (!c) counts.__none__++;
+    });
+    return counts;
+  }, [products, items, productMap]);
+
+  const colorOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    const consider = (color: string | null, collection: string | null) => {
+      if (!color) return;
+      if (collectionFilter) {
+        if (collectionFilter === "__none__" && collection) return;
+        if (collectionFilter !== "__none__" && collection !== collectionFilter) return;
+      }
+      map.set(color, (map.get(color) ?? 0) + 1);
+    };
+    products.forEach((p) => consider(p.color, p.collection ?? null));
+    items.forEach((it) => {
+      const prod = productMap.get(it.product_id);
+      // skip if already counted via products
+      if (prod) return;
+      consider(it.color, null);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).map(([color, count]) => ({ color, count }));
+  }, [products, items, productMap, collectionFilter]);
 
   const totals = useMemo(() => {
     let inStock = 0, inTransit = 0, transitProducts = 0;
