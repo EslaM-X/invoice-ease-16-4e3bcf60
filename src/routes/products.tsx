@@ -48,6 +48,7 @@ function Products() {
   const [bulkScope, setBulkScope] = useState<"filtered" | "all">("filtered");
   const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [inTransit, setInTransit] = useState<Record<string, { qty: number; eta: string | null }>>({});
 
   const load = async () => {
     if (!user) return;
@@ -61,10 +62,39 @@ function Products() {
       // Background revalidate already runs in cachedListFetch; refresh again on focus
     }
   };
-  useEffect(() => { load(); }, [user]);
 
-  // Realtime sync — refresh when any team member changes products
+  const loadInTransit = async () => {
+    if (!user) return;
+    const { data: pos } = await supabase
+      .from("purchase_orders")
+      .select("id,expected_arrival_at,status")
+      .in("status", ["ordered", "shipped", "in_warehouse"]);
+    const posMap: Record<string, string | null> = {};
+    (pos ?? []).forEach((p: any) => { posMap[p.id] = p.expected_arrival_at; });
+    const ids = Object.keys(posMap);
+    const agg: Record<string, { qty: number; eta: string | null }> = {};
+    if (ids.length > 0) {
+      const { data: its } = await supabase
+        .from("purchase_order_items")
+        .select("po_id,product_id,quantity")
+        .in("po_id", ids);
+      (its ?? []).forEach((it: any) => {
+        const cur = agg[it.product_id] ?? { qty: 0, eta: null };
+        cur.qty += it.quantity || 0;
+        const eta = posMap[it.po_id];
+        if (eta && (!cur.eta || new Date(eta) < new Date(cur.eta))) cur.eta = eta;
+        agg[it.product_id] = cur;
+      });
+    }
+    setInTransit(agg);
+  };
+
+  useEffect(() => { load(); loadInTransit(); }, [user]);
+
+  // Realtime sync — refresh when any team member changes products or POs
   useRealtimeTable("products", () => { load(); });
+  useRealtimeTable("purchase_orders", () => { loadInTransit(); });
+  useRealtimeTable("purchase_order_items", () => { loadInTransit(); });
 
   const filtered = useMemo(() => list.filter((p) => {
     if (collectionFilter) {
