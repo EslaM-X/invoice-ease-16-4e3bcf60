@@ -17,6 +17,7 @@ import { Calculator, TrendingUp, TrendingDown, Save, Search, Sparkles } from "lu
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profit-calculator")({
+  validateSearch: (s: Record<string, unknown>) => ({ po: typeof s.po === "string" ? s.po : undefined }),
   component: () => (
     <AppShell>
       <ProfitCalculatorPage />
