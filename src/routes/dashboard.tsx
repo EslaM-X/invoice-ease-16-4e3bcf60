@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
-import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff } from "lucide-react";
+import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useRealtimeTable } from "@/lib/realtime";
