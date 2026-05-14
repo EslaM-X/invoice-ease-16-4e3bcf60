@@ -10,8 +10,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X } from "lucide-react";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
+import { COLLECTIONS } from "@/lib/data";
+import { collectionPillClass, collectionDotClass } from "@/lib/collection-styles";
 
 export const Route = createFileRoute("/in-transit")({
   component: () => (
@@ -30,6 +32,7 @@ type Product = {
   color: string | null;
   image_url: string | null;
   stock_quantity: number;
+  collection: string | null;
 };
 
 type POItem = {
@@ -61,11 +64,13 @@ function InTransitPage() {
   const [items, setItems] = useState<POItem[]>([]);
   const [pos, setPos] = useState<Record<string, PO>>({});
   const [search, setSearch] = useState("");
+  const [collectionFilter, setCollectionFilter] = useState<string>("");
+  const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
 
   const load = async () => {
     const [{ data: prods }, { data: posRows }] = await Promise.all([
-      supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity").limit(2000),
+      supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
     ]);
     setProducts((prods as any) ?? []);
@@ -89,7 +94,12 @@ function InTransitPage() {
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
 
-  // Aggregate per product
+  const productMap = useMemo(() => {
+    const m = new Map<string, Product>();
+    products.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [products]);
+
   const rows = useMemo(() => {
     const m = new Map<string, {
       product_id: string;
@@ -97,11 +107,11 @@ function InTransitPage() {
       serial_number: string | null;
       color: string | null;
       image_url: string | null;
+      collection: string | null;
       in_stock: number;
       in_transit: number;
       lines: { po: PO; qty: number; item: POItem }[];
     }>();
-    // Seed with all products that have either stock or in-transit
     products.forEach((p) => {
       m.set(p.id, {
         product_id: p.id,
@@ -109,6 +119,7 @@ function InTransitPage() {
         serial_number: p.serial_number,
         color: p.color,
         image_url: p.image_url,
+        collection: p.collection ?? null,
         in_stock: p.stock_quantity ?? 0,
         in_transit: 0,
         lines: [],
@@ -120,12 +131,14 @@ function InTransitPage() {
       const key = it.product_id;
       let r = m.get(key);
       if (!r) {
+        const prod = productMap.get(key);
         r = {
           product_id: key,
           name: it.product_name,
           serial_number: it.serial_number,
           color: it.color,
           image_url: it.image_url,
+          collection: prod?.collection ?? null,
           in_stock: 0,
           in_transit: 0,
           lines: [],
@@ -136,18 +149,62 @@ function InTransitPage() {
       r.lines.push({ po, qty: it.quantity || 0, item: it });
     });
     let arr = Array.from(m.values());
+    if (collectionFilter) {
+      if (collectionFilter === "__none__") arr = arr.filter((r) => !r.collection);
+      else arr = arr.filter((r) => r.collection === collectionFilter);
+    }
+    if (colorFilter) {
+      arr = arr.filter((r) => (r.color ?? "").toLowerCase() === colorFilter.toLowerCase());
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       arr = arr.filter((r) =>
         r.name.toLowerCase().includes(q) ||
         (r.serial_number ?? "").toLowerCase().includes(q) ||
-        (r.color ?? "").toLowerCase().includes(q)
+        (r.color ?? "").toLowerCase().includes(q) ||
+        (r.collection ?? "").toLowerCase().includes(q)
       );
     }
-    // Sort: in_transit first desc, then in_stock
     arr.sort((a, b) => (b.in_transit - a.in_transit) || (b.in_stock - a.in_stock));
     return arr;
-  }, [products, items, pos, search]);
+  }, [products, items, pos, productMap, search, collectionFilter, colorFilter]);
+
+  // Counts based on full set (after collection filter for color counts to make sense)
+  const collectionCounts = useMemo(() => {
+    const counts: Record<string, number> = { __all__: 0, __none__: 0 };
+    COLLECTIONS.forEach((c) => (counts[c] = 0));
+    const seen = new Set<string>();
+    products.forEach((p) => { seen.add(p.id); });
+    items.forEach((it) => seen.add(it.product_id));
+    seen.forEach((id) => {
+      const prod = productMap.get(id);
+      counts.__all__++;
+      const c = prod?.collection;
+      if (c && counts[c] !== undefined) counts[c]++;
+      else if (!c) counts.__none__++;
+    });
+    return counts;
+  }, [products, items, productMap]);
+
+  const colorOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    const consider = (color: string | null, collection: string | null) => {
+      if (!color) return;
+      if (collectionFilter) {
+        if (collectionFilter === "__none__" && collection) return;
+        if (collectionFilter !== "__none__" && collection !== collectionFilter) return;
+      }
+      map.set(color, (map.get(color) ?? 0) + 1);
+    };
+    products.forEach((p) => consider(p.color, p.collection ?? null));
+    items.forEach((it) => {
+      const prod = productMap.get(it.product_id);
+      // skip if already counted via products
+      if (prod) return;
+      consider(it.color, null);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).map(([color, count]) => ({ color, count }));
+  }, [products, items, productMap, collectionFilter]);
 
   const totals = useMemo(() => {
     let inStock = 0, inTransit = 0, transitProducts = 0;
@@ -184,15 +241,83 @@ function InTransitPage() {
         <SummaryCard icon={Package} label={isAr ? "منتجات قادمة" : "Products incoming"} value={totals.transitProducts} color="text-primary" bg="bg-primary/10" />
       </div>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={isAr ? "ابحث باسم المنتج / السيريال / اللون..." : "Search by name / serial / color..."}
-          className="ps-9"
-        />
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isAr ? "ابحث باسم المنتج / السيريال / اللون / الكولكشن..." : "Search by name / serial / color / collection..."}
+            className="ps-9"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setCollectionFilter("")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+          >
+            {isAr ? "كل الكولكشن" : "All collections"} ({collectionCounts.__all__})
+          </button>
+          {COLLECTIONS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCollectionFilter(c)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
+            >
+              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+              {c} ({collectionCounts[c] ?? 0})
+            </button>
+          ))}
+          {collectionCounts.__none__ > 0 && (
+            <button
+              onClick={() => setCollectionFilter("__none__")}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {isAr ? "بدون كولكشن" : "No collection"} ({collectionCounts.__none__})
+            </button>
+          )}
+        </div>
+
+        {colorOptions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {isAr ? "اللون" : "Color"}
+            </span>
+            <button
+              onClick={() => setColorFilter("")}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {isAr ? "الكل" : "All"}
+            </button>
+            {colorOptions.map(({ color, count }) => {
+              const active = colorFilter.toLowerCase() === color.toLowerCase();
+              return (
+                <button
+                  key={color}
+                  onClick={() => setColorFilter(active ? "" : color)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted hover:bg-muted/70"}`}
+                  title={color}
+                >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: color }} />
+                  <span className="max-w-[80px] truncate">{color}</span>
+                  <span className="text-muted-foreground">({count})</span>
+                </button>
+              );
+            })}
+            {colorFilter && (
+              <button
+                onClick={() => setColorFilter("")}
+                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] hover:bg-muted/70"
+                aria-label="clear"
+              >
+                <X className="h-3 w-3" /> {isAr ? "مسح" : "Clear"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
 
       <Card className="overflow-hidden">
         <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
