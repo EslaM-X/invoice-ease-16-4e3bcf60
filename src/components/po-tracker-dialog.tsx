@@ -153,24 +153,38 @@ export function POTrackerDialog({
   const [po, setPo] = useState<PO | null>(null);
   const [items, setItems] = useState<POItem[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
 
   const load = async () => {
-    const [{ data: p }, { data: it }, { data: h }] = await Promise.all([
+    const [{ data: p }, { data: it }, { data: h }, { data: rc }] = await Promise.all([
       supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
       supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
+      (supabase as any)
+        .from("po_receipts")
+        .select("id,receipt_number,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .eq("po_id", poId)
+        .order("receipt_number", { ascending: false }),
     ]);
     setPo((p as any) ?? null);
     setItems((it as any) ?? []);
     setHistory((h as any) ?? []);
+    setReceipts((rc as any) ?? []);
   };
 
   useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open, poId]);
   useRealtimeTable("po_status_history", () => { if (open) load(); }, [open, poId]);
   useRealtimeTable("purchase_orders", () => { if (open) load(); }, [open, poId]);
+  useRealtimeTable("purchase_order_items", () => { if (open) load(); }, [open, poId]);
+
+  const totalOrdered = items.reduce((s, i) => s + i.quantity, 0);
+  const totalReceived = items.reduce((s, i) => s + (i.received_qty || 0), 0);
+  const totalRemaining = Math.max(0, totalOrdered - totalReceived);
+  const isPartial = totalReceived > 0 && totalRemaining > 0;
+  const canReceive = (po?.status === "shipped" || po?.status === "in_warehouse") && totalRemaining > 0 && (isAdmin || isPurchasing);
 
   const canTransition = isAdmin || isPurchasing || isCFO;
   const canCancel = isAdmin;
