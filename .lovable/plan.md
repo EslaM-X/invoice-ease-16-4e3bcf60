@@ -1,64 +1,92 @@
-## الهدف
+# خطة العمل: Realtime كامل + Offline PWA
 
-1. مزامنة سعر الدولار للمنتج لحظياً مع حاسبة الربح (مع إمكانية الاختيار بين سعر PO الأصلي وسعر المنتج الحالي).
-2. إصلاح ظهور الأرقام والنصوص خارج الكروت في حاسبة الربح.
-3. إضافة تعديل وحذف للسيناريوهات في صفحة "السيناريوهات المحفوظة"، لحظي ومتسجّل في قاعدة البيانات.
+غيرت بالفعل **حاسبة الربح** عشان تفتح بـ "السعر الحالي" افتراضياً (مع إمكانية الرجوع لسعر الـ PO من الـ toggle).
 
----
+الباقي (offline + sync لحظي شامل) حجمه كبير، فهنقسمه على 3 مراحل عشان نضمن الجودة وما نكسرش حاجة شغالة.
 
-## 1) حاسبة الربح — مزامنة سعر الدولار
+## ⚠️ تنبيه مهم عن الـ PWA
 
-في `src/routes/profit-calculator.tsx`:
-
-- جلب `cost_price_usd` من جدول `products` (موجود فعلاً عبر `productPrices`، نضيف خريطة جديدة `productCostUsd`).
-- إضافة سويتش (Toggle) فوق جدول البنود:
-  - **سعر PO الأصلي** (الافتراضي — يستخدم `unit_cost_usd` المحفوظ في `purchase_order_items`).
-  - **سعر المنتج الحالي** (يستخدم `cost_price_usd` × `quantity` لحساب `line_total_usd` ديناميكياً).
-- إعادة حساب كل البنود + الإجماليات بناءً على الاختيار (totalUsdSum، حصة كل بند، تكلفة الوحدة بالجنيه، صافي الربح).
-- عمود إضافي صغير في الجدول يبيّن: `سعر USD المستخدم` و`سعر USD المنتج الحالي` (لو مختلفين، يظهر فرق ملوّن).
-- realtime على `products` موجود فعلاً — أي تعديل في صفحة المنتجات يُحدّث الحاسبة لحظياً.
-
-ملاحظة: الإجمالي بالجنيه (`total_egp`) يفضل ثابت من PO (لأنه يحتوي على جمارك/ضرائب/شحن متراكمة)، لكن في وضع "سعر المنتج الحالي" نعيد توزيع التكاليف بنسبة USD الجديدة على البنود فقط — `total_egp` لا يتغير.
+- الـ Service Worker و offline mode **مش هيشتغلوا داخل preview الـ Lovable** (عشان الـ iframe). هيشتغلوا فقط على الموقع المنشور (`admin.steinheim-eg.com` و `invoice-ease-16.lovable.app`).
+- لازم نختبر بعد كل publish من جهاز حقيقي (موبايل/متصفح خارجي).
 
 ---
 
-## 2) إصلاح overflow الكروت
+## المرحلة 1: مراجعة وتقوية Realtime (أولوية أولى)
 
-من الصورة المرفوعة: الأرقام الكبيرة (EGP 5,005,214.38 إلخ) تخرج من الكروت في الشاشات المتوسطة.
+**الهدف**: أي تعديل في DB يظهر فوراً عند كل المستخدمين بدون refresh.
 
-التعديلات:
-- إضافة `min-w-0` على عناصر الـ flex داخل الكروت.
-- استخدام `truncate` أو `break-all` + `text-base` بدل `text-xl/text-2xl` على الشاشات الصغيرة (responsive: `text-base sm:text-lg lg:text-xl`).
-- تقليل الـ padding للكروت الأربعة (`p-3 sm:p-4`).
-- في كرت "صافي الربح" نخلي السهم/الأيقونة `shrink-0` والنص `min-w-0 truncate`.
-- استخدام `tabular-nums` + `whitespace-nowrap` فقط مع overflow scroll بدل overflow visible.
-- إعادة تخطيط الـ grid من `lg:grid-cols-4` إلى `sm:grid-cols-2 xl:grid-cols-4` (في الفيوبورت الحالي 978px تكون عمودين بدل أربعة مزدحمين).
-
-نفس المعالجة لكرت ملخص PO وكرت الخصم.
-
----
-
-## 3) السيناريوهات المحفوظة — تعديل وحذف
-
-في `src/routes/profit-scenarios.tsx`:
-
-- إضافة عمود "إجراءات" في آخر الجدول يحتوي على:
-  - **زر تعديل** (أيقونة قلم) — يفتح حوار `Dialog` فيه:
-    - وضع الخصم (% / EGP) + قيمة الخصم.
-    - حقل الملاحظات.
-    - زر حفظ → `update` على `po_profit_scenarios` بـ id السيناريو + `updated_by`/`updated_by_email`/`updated_at = now()`.
-  - **زر حذف** (أيقونة سلة) — يفتح `AlertDialog` للتأكيد، ثم `delete` على `po_profit_scenarios`.
-- منع نشر النقر على الصف عند الضغط على أزرار الإجراءات (`e.stopPropagation()`).
-- التحديث لحظي عبر `useRealtimeTable("po_profit_scenarios", load, [])` — موجود فعلاً.
-- تعديل أسعار البيع لكل بند يبقى فقط من داخل صفحة حاسبة الربح (تعديلها في الجدول هنا معقد جداً وغير مطلوب صراحة).
-
-RLS موجودة بالفعل (`cfo admin update/delete scenarios`) — لا حاجة لـ migration.
+### الخطوات
+1. مراجعة الـ Supabase Realtime publication والتأكد إن الجداول دي مفعلة:
+   - `products`, `invoices`, `invoice_items`, `purchase_orders`, `purchase_order_items`, `po_profit_scenarios`, `customers`, `delivery_receipts`, `delivery_receipt_items`, `notifications`, `inventory_logs`, `stock_intakes`
+2. عمل hook موحد `useRealtimeTable(table, queryKey)` يستخدم `supabase.channel().on('postgres_changes')` ويعمل invalidate لـ React Query تلقائياً.
+3. تطبيق الـ hook على كل الصفحات الرئيسية:
+   - Products list
+   - Invoices list & detail
+   - Purchase Orders
+   - Profit Calculator (موجود جزئياً)
+   - Profit Scenarios (موجود)
+   - Delivery Receipts
+   - Customers
+   - Notifications
+4. اختبار من جهازين: تعديل من جهاز ⇒ يظهر فوراً عند التاني.
 
 ---
 
-## ملفات ستُعدَّل
+## المرحلة 2: PWA Shell + Offline Read
 
-- `src/routes/profit-calculator.tsx` — إضافة سويتش مصدر USD، إعادة حساب البنود، إصلاح overflow.
-- `src/routes/profit-scenarios.tsx` — أزرار تعديل/حذف + حوارات.
+**الهدف**: المستخدم يقدر يفتح التطبيق ويتصفح المنتجات/الفواتير/الـ POs حتى من غير نت.
 
-لا توجد تغييرات في قاعدة البيانات.
+### الخطوات
+1. إضافة `vite-plugin-pwa` بإعدادات آمنة:
+   - `devOptions.enabled: false` (مش يشتغل في preview)
+   - guard في `main.tsx` يمنع التسجيل في الـ iframe وعلى hosts الـ preview
+   - `NetworkFirst` للـ HTML, `StaleWhileRevalidate` للـ assets
+2. عمل `manifest.webmanifest` بـ:
+   - app name, icons (192, 512), theme color, display: standalone
+   - زر "Install App" يظهر لما المتصفح يدعمه
+3. تخزين البيانات الأساسية في **IndexedDB** عبر `dexie` (أخف من supabase-js cache):
+   - cache آخر نسخة من products/invoices/customers/POs محلياً
+   - عند الفتح offline: نقرأ من IndexedDB ونعرض banner "أنت غير متصل"
+4. QR codes: يتولدوا client-side (موجود فعلاً), فهيشتغلوا offline تلقائياً.
+
+---
+
+## المرحلة 3: Offline Write + Sync Queue
+
+**الهدف**: تقدر تعمل فاتورة/تعدل منتج وانت offline، ولما النت يرجع كل حاجة تترفع تلقائياً.
+
+### الخطوات
+1. عمل `outbox` table في IndexedDB يخزن أي mutation فشلت بسبب الانترنت:
+   ```
+   { id, table, op (insert/update/delete), payload, created_at, retry_count }
+   ```
+2. wrapper حول كل supabase mutations:
+   - يحاول الـ DB
+   - لو فشل بسبب network → يحفظ في outbox + يحدث IndexedDB cache محلياً (optimistic)
+   - يعرض badge "X تغييرات في انتظار المزامنة"
+3. Background sync:
+   - listener على `window.online` event
+   - لما النت يرجع → يعالج الـ outbox بالترتيب
+   - في حالة conflict (نفس الصف اتعدل من جهاز تاني) → نطبق "last-write-wins" مع log في audit
+4. حماية حالات حرجة:
+   - **invoice numbers / receipt numbers**: مش نولدها offline (نسيب server يولدها)؛ لو الفاتورة اتعملت offline، نعطيها رقم temp ونستبدله لما تترفع.
+   - **stock_quantity**: نطبق التغيير optimistically لكن نحذر من oversell عند الـ sync.
+5. UI feedback:
+   - أيقونة في الـ header: 🟢 online / 🟡 syncing / 🔴 offline (X pending)
+   - toast لما sync ينجح/يفشل
+
+---
+
+## ملاحظات تقنية
+
+- **مش هنغير** schema أو RLS الحالي — الـ realtime publication بس محتاج تأكيد.
+- **مكتبات جديدة**: `vite-plugin-pwa`, `dexie`, `workbox-window` (كلها صغيرة).
+- **التيستينج**: بعد كل مرحلة، publish + اختبار من موبايل + متصفح ثاني عشان نضمن الـ realtime/offline.
+
+---
+
+## ايه اللي محتاجه منك دلوقتي
+
+أبدأ بـ **المرحلة 1 (Realtime)** فوراً لأنها الأساس وأقل خطر. لما أخلصها وتختبرها وتأكدها، نعدي للمرحلة 2 ثم 3.
+
+موافق نمشي بالترتيب ده، ولا تحب نبدأ بحاجة معينة الأول؟
