@@ -1104,3 +1104,134 @@ function BulkAdjustBar({
     </div>
   );
 }
+
+/* ─────────────────────── Add Item Picker (for existing PO) ─────────────────────── */
+
+function AddItemPicker({
+  open, onOpenChange, existingProductIds, onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  existingProductIds: string[];
+  onAdd: (p: Product, qty: number, unitUsd: number) => Promise<void> | void;
+}) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
+  const [picked, setPicked] = useState<Product | null>(null);
+  const [qty, setQty] = useState<string>("1");
+  const [unit, setUnit] = useState<string>("0");
+
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("products")
+      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price")
+      .order("name")
+      .limit(1000)
+      .then(({ data }) => setProducts((data as any) ?? []));
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products.filter((p) => {
+      if (existingProductIds.includes(p.id)) return false;
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.serial_number ?? "").toLowerCase().includes(q) ||
+        (p.color ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [products, search, existingProductIds]);
+
+  const choose = (p: Product) => {
+    setPicked(p);
+    setQty("1");
+    setUnit(String(Number(p.cost_price_usd) || 0));
+  };
+
+  const submit = async () => {
+    if (!picked) return;
+    const q = Math.max(0, Number(qty) || 0);
+    const u = Math.max(0, Number(unit) || 0);
+    if (q <= 0) { toast.error(isAr ? "أدخل كمية" : "Enter quantity"); return; }
+    await onAdd(picked, q, u);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isAr ? "إضافة منتج لأمر الشراء" : "Add product to PO"}</DialogTitle>
+        </DialogHeader>
+
+        {!picked ? (
+          <>
+            <div className="relative">
+              <Search className="absolute start-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input className="ps-8" placeholder={isAr ? "ابحث…" : "Search…"} value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div className="max-h-[55vh] overflow-y-auto rounded-lg border divide-y">
+              {filtered.length === 0 && (
+                <div className="p-6 text-center text-xs text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</div>
+              )}
+              {filtered.map((p) => (
+                <button key={p.id} onClick={() => choose(p)} className="flex w-full items-center gap-3 p-2 text-start hover:bg-accent/40">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded border object-cover" />
+                  ) : (
+                    <div className="h-10 w-10 rounded border bg-muted" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{p.name}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {p.serial_number || "—"} {p.color ? `· ${p.color}` : ""} · ${Number(p.cost_price_usd).toFixed(2)}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 rounded-lg border p-3">
+              {picked.image_url ? (
+                <img src={picked.image_url} alt={picked.name} className="h-12 w-12 rounded border object-cover" />
+              ) : (
+                <div className="h-12 w-12 rounded border bg-muted" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{picked.name}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {picked.serial_number || "—"} {picked.color ? `· ${picked.color}` : ""}
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setPicked(null)}>{isAr ? "تغيير" : "Change"}</Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">{isAr ? "الكمية" : "Quantity"}</Label>
+                <Input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">{isAr ? "سعر الوحدة USD" : "Unit USD"}</Label>
+                <Input type="number" min={0} step="any" value={unit} onChange={(e) => setUnit(e.target.value)} />
+              </div>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm flex justify-between">
+              <span className="text-muted-foreground">{isAr ? "إجمالي السطر" : "Line total"}</span>
+              <span className="font-bold tabular-nums">${((Number(qty) || 0) * (Number(unit) || 0)).toFixed(2)}</span>
+            </div>
+          </>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
+          {picked && <Button onClick={submit}>{isAr ? "إضافة" : "Add"}</Button>}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
