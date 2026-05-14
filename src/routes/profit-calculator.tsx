@@ -267,18 +267,11 @@ function ScenarioPanel({
   const totalQty = po?.total_qty || 0;
   const costPerUnitEgp = totalQty > 0 ? totalEgp / totalQty : 0;
 
-  const dInput = Math.max(0, Number(discountValue) || 0);
-  const dVal = discountMode === "percent" ? Math.min(100, dInput) : dInput;
-  const discountEgp = discountMode === "percent" ? (totalEgp * dVal) / 100 : Math.min(totalEgp, dVal);
-  const netCostEgp = Math.max(0, totalEgp - discountEgp);
-  // distribute discount proportionally per unit to derive item cost share
-  const discountRatio = totalEgp > 0 ? netCostEgp / totalEgp : 1;
-
   const itemCalc = items.map((it) => {
     const usdLine = Number(it.line_total_usd) || 0;
     const lineCostEgp =
       totalUsdSum(items) > 0
-        ? totalEgp * (usdLine / totalUsdSum(items)) * discountRatio
+        ? totalEgp * (usdLine / totalUsdSum(items))
         : 0;
     const unitCostEgp = it.quantity > 0 ? lineCostEgp / it.quantity : 0;
     const overrideStr = overrides[it.id];
@@ -291,8 +284,16 @@ function ScenarioPanel({
   });
 
   const totalSell = itemCalc.reduce((s, x) => s + x.lineSell, 0);
-  const totalProfit = totalSell - netCostEgp;
-  const margin = totalSell > 0 ? (totalProfit / totalSell) * 100 : 0;
+
+  // Discount applies to EXPECTED SALES, not to PO cost.
+  const dInput = Math.max(0, Number(discountValue) || 0);
+  const dVal = discountMode === "percent" ? Math.min(100, dInput) : dInput;
+  const discountEgp = discountMode === "percent"
+    ? (totalSell * dVal) / 100
+    : Math.min(totalSell, dVal);
+  const salesAfterDiscount = Math.max(0, totalSell - discountEgp);
+  const totalProfit = salesAfterDiscount - totalEgp;
+  const margin = salesAfterDiscount > 0 ? (totalProfit / salesAfterDiscount) * 100 : 0;
 
   const save = async () => {
     if (!po) return;
