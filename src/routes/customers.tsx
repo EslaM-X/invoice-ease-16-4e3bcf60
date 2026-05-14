@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { exportCustomersToExcel, exportCustomersToCSV, type CustomerRow } from "@/lib/invoice-export";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
+import { cachedListFetch } from "@/lib/list-cache";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
@@ -30,8 +31,11 @@ function Customers() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
-    setList((data ?? []) as Customer[]);
+    const { data } = await cachedListFetch<Customer>("customers", async () => {
+      const { data } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
+      return (data ?? []) as Customer[];
+    });
+    setList(data);
   };
   useEffect(() => { load(); }, [user]);
   useRealtimeTable("customers", () => { load(); });
