@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { WifiOff, Wifi, RefreshCw, Loader2 } from "lucide-react";
+import { WifiOff, Wifi, RefreshCw, Loader2, CloudUpload } from "lucide-react";
+import { getPendingCount } from "@/lib/offline-db";
 
 const PROBE_URL =
   (import.meta as any).env?.VITE_SUPABASE_URL
@@ -35,11 +36,31 @@ export function OfflineBanner() {
   const [showRecovered, setShowRecovered] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [pending, setPending] = useState(0);
   const wasOnlineRef = useRef(true);
   const recoverTimer = useRef<number | null>(null);
   const syncingRef = useRef(false);
   const lastRecoveredAt = useRef<number>(0);
   const RECOVERED_DEDUPE_MS = 60_000;
+
+  useEffect(() => {
+    let alive = true;
+    const refresh = async () => {
+      const c = await getPendingCount();
+      if (alive) setPending(c);
+    };
+    refresh();
+    const onChange = () => refresh();
+    window.addEventListener("app:outbox-changed", onChange);
+    window.addEventListener("app:resync", onChange);
+    const iv = setInterval(refresh, 10_000);
+    return () => {
+      alive = false;
+      window.removeEventListener("app:outbox-changed", onChange);
+      window.removeEventListener("app:resync", onChange);
+      clearInterval(iv);
+    };
+  }, []);
 
   const runSync = useCallback(async () => {
     if (syncingRef.current) return;
