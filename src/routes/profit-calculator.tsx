@@ -547,8 +547,8 @@ function ScenarioPanel({
                         {isAr ? "سعر المنتج الحالي:" : "Current price:"} {fmtMoney(productPrices[it.product_id] ?? 0, "EGP", lang)}
                       </div>
                     </td>
-                    <td className="p-2 text-end font-semibold tabular-nums">{fmtMoney(lineSell, "EGP", lang)}</td>
-                    <td className={`p-2 text-end font-bold tabular-nums ${lineProfit >= 0 ? "text-emerald-700" : "text-destructive"}`}>
+                    <td className="p-2 text-end font-semibold tabular-nums whitespace-nowrap">{fmtMoney(lineSell, "EGP", lang)}</td>
+                    <td className={`p-2 text-end font-bold tabular-nums whitespace-nowrap ${lineProfit >= 0 ? "text-emerald-700" : "text-destructive"}`}>
                       {fmtMoney(lineProfit, "EGP", lang)}
                     </td>
                   </tr>
