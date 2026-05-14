@@ -267,18 +267,11 @@ function ScenarioPanel({
   const totalQty = po?.total_qty || 0;
   const costPerUnitEgp = totalQty > 0 ? totalEgp / totalQty : 0;
 
-  const dInput = Math.max(0, Number(discountValue) || 0);
-  const dVal = discountMode === "percent" ? Math.min(100, dInput) : dInput;
-  const discountEgp = discountMode === "percent" ? (totalEgp * dVal) / 100 : Math.min(totalEgp, dVal);
-  const netCostEgp = Math.max(0, totalEgp - discountEgp);
-  // distribute discount proportionally per unit to derive item cost share
-  const discountRatio = totalEgp > 0 ? netCostEgp / totalEgp : 1;
-
   const itemCalc = items.map((it) => {
     const usdLine = Number(it.line_total_usd) || 0;
     const lineCostEgp =
       totalUsdSum(items) > 0
-        ? totalEgp * (usdLine / totalUsdSum(items)) * discountRatio
+        ? totalEgp * (usdLine / totalUsdSum(items))
         : 0;
     const unitCostEgp = it.quantity > 0 ? lineCostEgp / it.quantity : 0;
     const overrideStr = overrides[it.id];
@@ -291,8 +284,16 @@ function ScenarioPanel({
   });
 
   const totalSell = itemCalc.reduce((s, x) => s + x.lineSell, 0);
-  const totalProfit = totalSell - netCostEgp;
-  const margin = totalSell > 0 ? (totalProfit / totalSell) * 100 : 0;
+
+  // Discount applies to EXPECTED SALES, not to PO cost.
+  const dInput = Math.max(0, Number(discountValue) || 0);
+  const dVal = discountMode === "percent" ? Math.min(100, dInput) : dInput;
+  const discountEgp = discountMode === "percent"
+    ? (totalSell * dVal) / 100
+    : Math.min(totalSell, dVal);
+  const salesAfterDiscount = Math.max(0, totalSell - discountEgp);
+  const totalProfit = salesAfterDiscount - totalEgp;
+  const margin = salesAfterDiscount > 0 ? (totalProfit / salesAfterDiscount) * 100 : 0;
 
   const save = async () => {
     if (!po) return;
@@ -385,10 +386,38 @@ function ScenarioPanel({
           </div>
         </div>
         <div className="mt-2 flex justify-between text-xs">
-          <span className="text-muted-foreground">{isAr ? "قيمة الخصم" : "Discount value"}</span>
+          <span className="text-muted-foreground">{isAr ? "قيمة الخصم على البيع" : "Discount on sales"}</span>
           <span className="font-semibold tabular-nums text-emerald-700">− {fmtMoney(discountEgp, "EGP", lang)}</span>
         </div>
       </Card>
+
+      {/* Result cards */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي تكلفة PO (EGP)" : "PO total cost (EGP)"}</div>
+          <div className="mt-1 text-xl font-bold tabular-nums">{fmtMoney(totalEgp, "EGP", lang)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي البيع المتوقع" : "Expected total sales"}</div>
+          <div className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtMoney(totalSell, "EGP", lang)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي البيع المتوقع بعد الخصم" : "Expected sales after discount"}</div>
+          <div className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtMoney(salesAfterDiscount, "EGP", lang)}</div>
+        </Card>
+        <Card className={`p-4 border-2 ${profitPositive ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{isAr ? "صافي الربح" : "Net profit"}</span>
+            {profitPositive ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+          </div>
+          <div className={`mt-1 text-2xl font-extrabold tabular-nums ${profitPositive ? "text-emerald-700" : "text-destructive"}`}>
+            {fmtMoney(totalProfit, "EGP", lang)}
+          </div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            {isAr ? "هامش" : "Margin"} {margin.toFixed(2)}%
+          </div>
+        </Card>
+      </div>
 
       {/* Items */}
       <Card className="overflow-hidden">
@@ -464,29 +493,7 @@ function ScenarioPanel({
         </div>
       </Card>
 
-      {/* Result cards */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "صافي التكلفة (بعد الخصم)" : "Net cost (after discount)"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums">{fmtMoney(netCostEgp, "EGP", lang)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{isAr ? "إجمالي البيع المتوقع" : "Expected total sales"}</div>
-          <div className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtMoney(totalSell, "EGP", lang)}</div>
-        </Card>
-        <Card className={`p-4 border-2 ${profitPositive ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{isAr ? "صافي الربح" : "Net profit"}</span>
-            {profitPositive ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
-          </div>
-          <div className={`mt-1 text-2xl font-extrabold tabular-nums ${profitPositive ? "text-emerald-700" : "text-destructive"}`}>
-            {fmtMoney(totalProfit, "EGP", lang)}
-          </div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {isAr ? "هامش" : "Margin"} {margin.toFixed(2)}%
-          </div>
-        </Card>
-      </div>
+      {/* Result cards moved up — see under discount card */}
 
       {/* Notes + save */}
       <Card className="p-4">
