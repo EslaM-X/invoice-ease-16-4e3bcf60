@@ -514,8 +514,8 @@ function ScenarioPanel({
                         </div>
                       </div>
                     </td>
-                    <td className="p-2 text-end tabular-nums">{it.quantity}</td>
-                    <td className="p-2 text-end tabular-nums">
+                    <td className="p-2 text-end tabular-nums whitespace-nowrap">{it.quantity}</td>
+                    <td className="p-2 text-end tabular-nums whitespace-nowrap">
                       <div className="font-semibold">${usedUnitUsd.toFixed(2)}</div>
                       {usdDiffer && (
                         <div className="text-[9px] text-muted-foreground">
