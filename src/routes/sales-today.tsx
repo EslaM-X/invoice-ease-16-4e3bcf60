@@ -162,7 +162,7 @@ function SalesToday() {
           "id,invoice_number,status,created_at," +
             "invoice_items(id,product_id,product_name,serial_number,color,quantity,unit_price)"
         )
-        .neq("status", "voided")
+        .not("status", "in", "(voided,draft)")
         .gte("created_at", start)
         .lt("created_at", end)
         .limit(10000),
