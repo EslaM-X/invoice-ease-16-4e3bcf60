@@ -512,7 +512,7 @@ function ScenarioPanel({
         </div>
         <div className="w-full max-w-full overflow-x-scroll overscroll-x-contain px-0 pb-2 [scrollbar-width:auto] [touch-action:pan-x_pinch-zoom] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-muted/40">
           <div className="inline-block min-w-full align-top">
-          <table className="w-max min-w-[1120px] text-xs lg:min-w-full">
+            <table className="w-max min-w-[1120px] text-xs lg:min-w-full">
             <thead className="bg-muted/30">
               <tr>
                 <th className="p-2 text-start whitespace-nowrap min-w-[220px]">{isAr ? "المنتج" : "Product"}</th>
@@ -588,7 +588,7 @@ function ScenarioPanel({
                 );
               })}
             </tbody>
-          </table>
+            </table>
           </div>
         </div>
       </Card>
