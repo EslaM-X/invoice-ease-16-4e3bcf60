@@ -478,7 +478,7 @@ function CreatePODialog({
 /* ─────────────────────── PO Detail / CFO Pricing ─────────────────────── */
 
 function PODetailDialog({
-  poId, open, onOpenChange, isCFO, isAdmin, isPurchasing, userEmail, userId,
+  poId, open, onOpenChange, isCFO, isAdmin, isPurchasing, userEmail, userId, onOpenTracker,
 }: {
   poId: string;
   open: boolean;
@@ -488,6 +488,7 @@ function PODetailDialog({
   isPurchasing: boolean;
   userEmail: string;
   userId: string;
+  onOpenTracker?: (id: string) => void;
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
