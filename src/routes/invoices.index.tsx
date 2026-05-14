@@ -269,8 +269,26 @@ function InvoicesList() {
           <option value="total_desc">الأعلى قيمة</option>
           <option value="total_asc">الأقل قيمة</option>
         </select>
-        <div className="flex items-center justify-end text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
-          عرض {filtered.length} من {list.length} فاتورة
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
+          <label className="inline-flex items-center gap-2 text-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={hideClosed}
+              onChange={(e) => setHideClosed(e.target.checked)}
+            />
+            <span>
+              {lang === "ar"
+                ? "إخفاء الفواتير المُغلقة (مدفوعة + مُسلَّمة)"
+                : "Hide closed invoices (paid + delivered)"}
+            </span>
+            {closedCount > 0 && (
+              <Link to="/invoices/archive" className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20">
+                {closedCount} {lang === "ar" ? "في الأرشيف" : "in archive"} →
+              </Link>
+            )}
+          </label>
+          <span>عرض {filtered.length} من {list.length} فاتورة</span>
         </div>
       </div>
 
