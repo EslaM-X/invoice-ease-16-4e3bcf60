@@ -37,7 +37,6 @@ const items: NavEntry[] = [
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
     ],
   },
-  { to: "/sales-today", icon: ShoppingCart, key: "sales_today" as const },
   { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
   { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   {
@@ -51,7 +50,6 @@ const items: NavEntry[] = [
       { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
     ],
   },
-  { to: "/reports", icon: BarChart3, key: "reports" as const },
   { to: "/profits", icon: TrendingUp, key: "profits" as const },
   { to: "/audit-log", icon: ShieldCheck, key: "audit_log" as const },
   { to: "/pending-operations", icon: CloudUpload, key: "pending_operations" as const },
