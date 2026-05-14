@@ -256,6 +256,8 @@ const ar: Dict = {
   filter_by_collection: "تصفية بالكولكشن",
   no_collection: "بدون كولكشن",
   inventory_group: "المنتجات والمخزون",
+  documents_group: "الفواتير والمستندات",
+  partial_delivery: "تسليم جزئي",
 };
 
 const en: Dict = {
