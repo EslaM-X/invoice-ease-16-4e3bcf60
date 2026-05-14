@@ -564,7 +564,3 @@ function ScenarioPanel({
     </div>
   );
 }
-
-function totalUsdSum(items: POItem[]) {
-  return items.reduce((s, i) => s + (Number(i.line_total_usd) || 0), 0);
-}
