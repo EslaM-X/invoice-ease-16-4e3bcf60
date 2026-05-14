@@ -53,9 +53,9 @@ export function SyncStatusPill() {
     };
   }, []);
 
-  if (!mounted) return null;
   const effectiveOnline = online;
   const Icon = useMemo(() => (!effectiveOnline ? CloudOff : pending > 0 ? CloudUpload : Cloud), [effectiveOnline, pending]);
+  if (!mounted) return null;
   const tone = !effectiveOnline
     ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
     : pending > 0
