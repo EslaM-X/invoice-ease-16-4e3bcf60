@@ -476,7 +476,7 @@ function ScenarioPanel({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {itemCalc.map(({ it, poUnitUsd, currentUnitUsd, usedUnitUsd, unitCostEgp, sellPrice, lineSell, lineProfit }) => {
+              {itemCalc.map(({ it, poUnitUsd, currentUnitUsd, usedUnitUsd, unitCostEgp, lineSell, lineProfit }) => {
                 const ov = overrides[it.id];
                 const hasOverride = ov !== undefined && ov !== "";
                 const usdDiffer = Math.abs(poUnitUsd - currentUnitUsd) > 0.001;
