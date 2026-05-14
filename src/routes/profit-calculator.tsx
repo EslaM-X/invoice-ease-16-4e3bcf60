@@ -468,6 +468,7 @@ function ScenarioPanel({
               <tr>
                 <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
                 <th className="p-2 text-end">{isAr ? "كمية" : "Qty"}</th>
+                <th className="p-2 text-end">{isAr ? "USD/وحدة" : "USD/unit"}</th>
                 <th className="p-2 text-end">{isAr ? "تكلفة الوحدة (EGP)" : "Unit cost EGP"}</th>
                 <th className="p-2 text-end">{isAr ? "سعر بيع الوحدة" : "Unit sell price"}</th>
                 <th className="p-2 text-end">{isAr ? "إجمالي البيع" : "Line sell"}</th>
