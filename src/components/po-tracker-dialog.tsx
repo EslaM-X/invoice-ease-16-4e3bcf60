@@ -16,8 +16,6 @@ import { toast } from "sonner";
 export const PO_FLOW = [
   "pending_cfo",
   "priced",
-  "payment_pending",
-  "paid",
   "ordered",
   "shipped",
   "in_warehouse",
@@ -83,12 +81,19 @@ type PO = {
   supplier_name: string | null;
   total_qty: number;
   total_usd: number;
+  total_egp: number | null;
   user_id: string;
   paid_at: string | null;
   shipped_at: string | null;
   expected_arrival_at: string | null;
   received_at: string | null;
   stock_applied_at: string | null;
+  payment_installment_1_at: string | null;
+  payment_installment_1_amount: number | null;
+  payment_installment_1_by_email: string | null;
+  payment_installment_2_at: string | null;
+  payment_installment_2_amount: number | null;
+  payment_installment_2_by_email: string | null;
 };
 
 type POItem = {
