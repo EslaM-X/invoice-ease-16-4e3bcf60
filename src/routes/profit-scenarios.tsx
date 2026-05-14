@@ -50,6 +50,7 @@ type Row = {
 };
 
 function SavedScenariosPage() {
+  const { user } = useAuth();
   const { lang } = useI18n();
   const { isAdmin, isCFO, loading: roleLoading } = useRole();
   const navigate = useNavigate();
@@ -57,6 +58,13 @@ function SavedScenariosPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [editMode, setEditMode] = useState<"percent" | "fixed">("percent");
+  const [editValue, setEditValue] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleting, setDeleting] = useState<Row | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isCFO) {
