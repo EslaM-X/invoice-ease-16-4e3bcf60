@@ -428,10 +428,12 @@ export function POTrackerDialog({
                         {isAr ? `تحديث إلى: ${statusLabel(nextStatus, true)}` : `Move to: ${statusLabel(nextStatus, false)}`}
                       </Button>
                     )}
-                    {po.status === "in_warehouse" && (isAdmin || isPurchasing) && (
+                    {canReceive && (
                       <Button onClick={() => setReceiveOpen(true)} disabled={busy} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                         <Package className="h-4 w-4" />
-                        {isAr ? "تأكيد الاستلام وإضافة للمخزون" : "Confirm Receive → Inventory"}
+                        {isAr
+                          ? (isPartial ? `استلام دفعة جديدة (متبقي ${totalRemaining})` : "تأكيد الاستلام وإضافة للمخزون")
+                          : (isPartial ? `Receive next batch (${totalRemaining} left)` : "Confirm Receive → Inventory")}
                       </Button>
                     )}
                     {canCancel && (
