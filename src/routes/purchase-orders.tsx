@@ -199,6 +199,15 @@ function PurchaseOrdersPage() {
           isPurchasing={isPurchasing}
           userEmail={user?.email || ""}
           userId={user?.id || ""}
+          onOpenTracker={(id) => setTrackId(id)}
+        />
+      )}
+
+      {trackId && (
+        <POTrackerDialog
+          poId={trackId}
+          open={!!trackId}
+          onOpenChange={(v) => { if (!v) setTrackId(null); }}
         />
       )}
     </div>
