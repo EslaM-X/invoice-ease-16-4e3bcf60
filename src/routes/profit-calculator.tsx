@@ -282,12 +282,18 @@ function ScenarioPanel({
   const totalQty = po?.total_qty || 0;
   const costPerUnitEgp = totalQty > 0 ? totalEgp / totalQty : 0;
 
-  const itemCalc = items.map((it) => {
-    const usdLine = Number(it.line_total_usd) || 0;
-    const lineCostEgp =
-      totalUsdSum(items) > 0
-        ? totalEgp * (usdLine / totalUsdSum(items))
-        : 0;
+  // Effective USD per line based on source toggle
+  const effItems = items.map((it) => {
+    const poUnitUsd = Number(it.unit_cost_usd) || 0;
+    const currentUnitUsd = productCostUsd[it.product_id] ?? poUnitUsd;
+    const usedUnitUsd = usdSource === "current" ? currentUnitUsd : poUnitUsd;
+    const usedLineUsd = usedUnitUsd * (Number(it.quantity) || 0);
+    return { it, poUnitUsd, currentUnitUsd, usedUnitUsd, usedLineUsd };
+  });
+  const sumUsedUsd = effItems.reduce((s, e) => s + e.usedLineUsd, 0);
+
+  const itemCalc = effItems.map(({ it, poUnitUsd, currentUnitUsd, usedUnitUsd, usedLineUsd }) => {
+    const lineCostEgp = sumUsedUsd > 0 ? totalEgp * (usedLineUsd / sumUsedUsd) : 0;
     const unitCostEgp = it.quantity > 0 ? lineCostEgp / it.quantity : 0;
     const overrideStr = overrides[it.id];
     const sellPrice = overrideStr !== undefined && overrideStr !== ""
@@ -295,7 +301,7 @@ function ScenarioPanel({
       : (productPrices[it.product_id] ?? 0);
     const lineSell = sellPrice * it.quantity;
     const lineProfit = lineSell - lineCostEgp;
-    return { it, unitCostEgp, lineCostEgp, sellPrice, lineSell, lineProfit };
+    return { it, poUnitUsd, currentUnitUsd, usedUnitUsd, unitCostEgp, lineCostEgp, sellPrice, lineSell, lineProfit };
   });
 
   const totalSell = itemCalc.reduce((s, x) => s + x.lineSell, 0);
