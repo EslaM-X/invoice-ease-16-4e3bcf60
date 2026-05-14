@@ -105,6 +105,7 @@ type POItem = {
   color: string | null;
   image_url: string | null;
   quantity: number;
+  received_qty: number;
   unit_cost_usd: number;
 };
 
@@ -115,6 +116,24 @@ type HistoryRow = {
   note: string | null;
   actor_email: string | null;
   created_at: string;
+};
+
+type ReceiptRow = {
+  id: string;
+  receipt_number: number;
+  total_qty: number;
+  notes: string | null;
+  actor_email: string | null;
+  created_at: string;
+  po_receipt_items: {
+    id: string;
+    product_name: string;
+    serial_number: string | null;
+    color: string | null;
+    quantity: number;
+    stock_before: number | null;
+    stock_after: number | null;
+  }[];
 };
 
 export function POTrackerDialog({
