@@ -143,7 +143,7 @@ function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border lg:grid-cols-2">
+      <IncomingShipmentsStrip />
         <div className="bg-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="eyebrow">{t("recent_invoices")}</h3>
