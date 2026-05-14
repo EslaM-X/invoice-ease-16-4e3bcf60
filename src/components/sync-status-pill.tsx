@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Cloud, CloudOff, CloudUpload, Loader2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -13,12 +13,15 @@ import { getPendingCount } from "@/lib/offline-db";
  */
 export function SyncStatusPill() {
   const { lang } = useI18n();
+  const [mounted, setMounted] = useState(false);
   const [lastSync, setLast] = useState<number | null>(null);
   const [pending, setPending] = useState(0);
-  const [online, setOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [online, setOnline] = useState(true);
   const [, force] = useState(0);
 
   useEffect(() => {
+    setMounted(true);
+    setOnline(navigator.onLine);
     let alive = true;
     const refresh = async () => {
       if (!alive) return;
@@ -50,14 +53,15 @@ export function SyncStatusPill() {
     };
   }, []);
 
-  const Icon = !online ? CloudOff : pending > 0 ? CloudUpload : Cloud;
-  const tone = !online
+  const effectiveOnline = mounted ? online : true;
+  const Icon = useMemo(() => (!effectiveOnline ? CloudOff : pending > 0 ? CloudUpload : Cloud), [effectiveOnline, pending]);
+  const tone = !effectiveOnline
     ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
     : pending > 0
     ? "border-sky-500/40 bg-sky-500/15 text-sky-200"
     : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
 
-  const labelMain = !online
+  const labelMain = !effectiveOnline
     ? lang === "ar" ? "غير متصل" : "Offline"
     : pending > 0
     ? lang === "ar" ? `${pending} قيد الرفع` : `${pending} pending`
@@ -80,7 +84,7 @@ export function SyncStatusPill() {
       }`}
       style={{ insetInlineEnd: "0.75rem" }}
     >
-      {pending > 0 && online ? (
+      {pending > 0 && effectiveOnline ? (
         <Loader2 className="h-3 w-3 animate-spin" />
       ) : (
         <Icon className="h-3 w-3" />

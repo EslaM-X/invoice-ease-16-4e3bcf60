@@ -131,7 +131,7 @@ function ProfitCalculatorPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         {/* PO list */}
         <Card className="overflow-hidden">
           <div className="border-b bg-muted/40 px-3 py-2">
@@ -184,7 +184,7 @@ function ProfitCalculatorPage() {
         </Card>
 
         {/* Detail */}
-        <div>
+        <div className="min-w-0">
           {selectedId ? (
             <ScenarioPanel poId={selectedId} userId={user?.id || ""} userEmail={user?.email || ""} lang={lang} />
           ) : (
@@ -221,54 +221,68 @@ function ScenarioPanel({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: poData }, { data: itemsData }, { data: scData }] = await Promise.all([
-      supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
-      supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
-      (supabase.from as any)("po_profit_scenarios").select("*").eq("po_id", poId).maybeSingle(),
-    ]);
-    setPo((poData as any) ?? null);
-    const its = (itemsData as any as POItem[]) ?? [];
-    setItems(its);
+    setLoadError(null);
+    try {
+      const [{ data: poData, error: poError }, { data: itemsData, error: itemsError }, { data: scData, error: scError }] = await Promise.all([
+        supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
+        supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
+        (supabase.from as any)("po_profit_scenarios").select("*").eq("po_id", poId).maybeSingle(),
+      ]);
+      if (poError) throw poError;
+      if (itemsError) throw itemsError;
+      if (scError) throw scError;
 
-    // Fetch latest selling + cost prices
-    const ids = its.map((i) => i.product_id).filter(Boolean);
-    if (ids.length > 0) {
-      const { data: prods } = await supabase.from("products").select("id,price,cost_price_usd").in("id", ids);
-      const priceMap: Record<string, number> = {};
-      const costMap: Record<string, number> = {};
-      (prods ?? []).forEach((p: any) => {
-        priceMap[p.id] = Number(p.price) || 0;
-        costMap[p.id] = Number(p.cost_price_usd) || 0;
-      });
-      setProductPrices(priceMap);
-      setProductCostUsd(costMap);
-    } else {
-      setProductPrices({});
-      setProductCostUsd({});
-    }
+      setPo((poData as any) ?? null);
+      const its = (itemsData as any as POItem[]) ?? [];
+      setItems(its);
 
-    if (scData) {
-      const sc = scData as any as Scenario;
-      setScenario(sc);
-      setDiscountMode((sc.discount_mode as Mode) || "percent");
-      setDiscountValue(sc.discount_value ? String(sc.discount_value) : "");
-      const ovStr: Record<string, string> = {};
-      Object.entries(sc.selling_overrides || {}).forEach(([k, v]) => {
-        if (v?.unit_sell_price != null) ovStr[k] = String(v.unit_sell_price);
-      });
-      setOverrides(ovStr);
-      setNotes(sc.notes || "");
-    } else {
-      setScenario(null);
-      setDiscountMode("percent");
-      setDiscountValue("");
-      setOverrides({});
-      setNotes("");
+      const ids = its.map((i) => i.product_id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: prods, error: productsError } = await supabase.from("products").select("id,price,cost_price_usd").in("id", ids);
+        if (productsError) throw productsError;
+        const priceMap: Record<string, number> = {};
+        const costMap: Record<string, number> = {};
+        (prods ?? []).forEach((p: any) => {
+          priceMap[p.id] = Number(p.price) || 0;
+          costMap[p.id] = Number(p.cost_price_usd) || 0;
+        });
+        setProductPrices(priceMap);
+        setProductCostUsd(costMap);
+      } else {
+        setProductPrices({});
+        setProductCostUsd({});
+      }
+
+      if (scData) {
+        const sc = scData as any as Scenario;
+        setScenario(sc);
+        setDiscountMode((sc.discount_mode as Mode) || "percent");
+        setDiscountValue(sc.discount_value ? String(sc.discount_value) : "");
+        const ovStr: Record<string, string> = {};
+        Object.entries(sc.selling_overrides || {}).forEach(([k, v]) => {
+          if (v?.unit_sell_price != null) ovStr[k] = String(v.unit_sell_price);
+        });
+        setOverrides(ovStr);
+        setNotes(sc.notes || "");
+      } else {
+        setScenario(null);
+        setDiscountMode("percent");
+        setDiscountValue("");
+        setOverrides({});
+        setNotes("");
+      }
+    } catch (error: any) {
+      console.error("profit-calculator load failed", error);
+      setLoadError(error?.message || (isAr ? "تعذر تحميل البيانات" : "Failed to load data"));
+      setPo(null);
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [poId]);
@@ -345,14 +359,32 @@ function ScenarioPanel({
     }
   };
 
-  if (loading || !po) {
+  if (loading) {
     return <Card className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جارٍ التحميل…" : "Loading…"}</Card>;
+  }
+
+  if (loadError) {
+    return (
+      <Card className="space-y-3 p-6 text-center">
+        <div className="text-sm font-medium text-destructive">{loadError}</div>
+        <div className="text-xs text-muted-foreground">{isAr ? "يمكنك إعادة المحاولة الآن." : "You can retry now."}</div>
+        <div>
+          <Button type="button" variant="outline" onClick={() => void load()}>
+            {isAr ? "إعادة التحميل" : "Retry"}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!po) {
+    return <Card className="p-8 text-center text-sm text-muted-foreground">{isAr ? "لم يتم العثور على أمر الشراء" : "Purchase order not found"}</Card>;
   }
 
   const profitPositive = totalProfit >= 0;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* PO summary */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -441,7 +473,7 @@ function ScenarioPanel({
       </div>
 
       {/* Items */}
-      <Card className="overflow-hidden max-w-full">
+      <Card className="min-w-0 overflow-hidden max-w-full">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
           <span className="text-xs font-semibold uppercase tracking-wider">
             {isAr ? "البنود وأسعار البيع المتوقعة" : "Items & expected selling prices"}
@@ -478,8 +510,9 @@ function ScenarioPanel({
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-          <table className="w-full min-w-[860px] text-xs">
+        <div className="w-full max-w-full overflow-x-scroll overscroll-x-contain px-0 pb-2 [scrollbar-width:auto] [touch-action:pan-x_pinch-zoom] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-muted/40">
+          <div className="inline-block min-w-full align-top">
+            <table className="w-max min-w-[1120px] text-xs lg:min-w-full">
             <thead className="bg-muted/30">
               <tr>
                 <th className="p-2 text-start whitespace-nowrap min-w-[220px]">{isAr ? "المنتج" : "Product"}</th>
@@ -555,7 +588,8 @@ function ScenarioPanel({
                 );
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </Card>
 
