@@ -32,6 +32,7 @@ type Product = {
   color: string | null;
   image_url: string | null;
   stock_quantity: number;
+  collection: string | null;
 };
 
 type POItem = {
