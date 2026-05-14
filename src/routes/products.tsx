@@ -443,9 +443,23 @@ function Products() {
                       </td>
                       <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
-                          {p.stock_quantity}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
+                            {p.stock_quantity}
+                          </span>
+                          {inTransit[p.id]?.qty > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                              title={inTransit[p.id].eta ? `${lang === "ar" ? "وصول متوقع" : "ETA"}: ${new Date(inTransit[p.id].eta!).toLocaleDateString()}` : undefined}
+                            >
+                              <Truck className="h-3 w-3" />
+                              +{inTransit[p.id].qty} {lang === "ar" ? "في الطريق" : "in transit"}
+                              {inTransit[p.id].eta && (
+                                <span className="font-normal opacity-80">· {etaShort(inTransit[p.id].eta!, lang)}</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
