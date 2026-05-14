@@ -221,54 +221,68 @@ function ScenarioPanel({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: poData }, { data: itemsData }, { data: scData }] = await Promise.all([
-      supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
-      supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
-      (supabase.from as any)("po_profit_scenarios").select("*").eq("po_id", poId).maybeSingle(),
-    ]);
-    setPo((poData as any) ?? null);
-    const its = (itemsData as any as POItem[]) ?? [];
-    setItems(its);
+    setLoadError(null);
+    try {
+      const [{ data: poData, error: poError }, { data: itemsData, error: itemsError }, { data: scData, error: scError }] = await Promise.all([
+        supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
+        supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
+        (supabase.from as any)("po_profit_scenarios").select("*").eq("po_id", poId).maybeSingle(),
+      ]);
+      if (poError) throw poError;
+      if (itemsError) throw itemsError;
+      if (scError) throw scError;
 
-    // Fetch latest selling + cost prices
-    const ids = its.map((i) => i.product_id).filter(Boolean);
-    if (ids.length > 0) {
-      const { data: prods } = await supabase.from("products").select("id,price,cost_price_usd").in("id", ids);
-      const priceMap: Record<string, number> = {};
-      const costMap: Record<string, number> = {};
-      (prods ?? []).forEach((p: any) => {
-        priceMap[p.id] = Number(p.price) || 0;
-        costMap[p.id] = Number(p.cost_price_usd) || 0;
-      });
-      setProductPrices(priceMap);
-      setProductCostUsd(costMap);
-    } else {
-      setProductPrices({});
-      setProductCostUsd({});
-    }
+      setPo((poData as any) ?? null);
+      const its = (itemsData as any as POItem[]) ?? [];
+      setItems(its);
 
-    if (scData) {
-      const sc = scData as any as Scenario;
-      setScenario(sc);
-      setDiscountMode((sc.discount_mode as Mode) || "percent");
-      setDiscountValue(sc.discount_value ? String(sc.discount_value) : "");
-      const ovStr: Record<string, string> = {};
-      Object.entries(sc.selling_overrides || {}).forEach(([k, v]) => {
-        if (v?.unit_sell_price != null) ovStr[k] = String(v.unit_sell_price);
-      });
-      setOverrides(ovStr);
-      setNotes(sc.notes || "");
-    } else {
-      setScenario(null);
-      setDiscountMode("percent");
-      setDiscountValue("");
-      setOverrides({});
-      setNotes("");
+      const ids = its.map((i) => i.product_id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: prods, error: productsError } = await supabase.from("products").select("id,price,cost_price_usd").in("id", ids);
+        if (productsError) throw productsError;
+        const priceMap: Record<string, number> = {};
+        const costMap: Record<string, number> = {};
+        (prods ?? []).forEach((p: any) => {
+          priceMap[p.id] = Number(p.price) || 0;
+          costMap[p.id] = Number(p.cost_price_usd) || 0;
+        });
+        setProductPrices(priceMap);
+        setProductCostUsd(costMap);
+      } else {
+        setProductPrices({});
+        setProductCostUsd({});
+      }
+
+      if (scData) {
+        const sc = scData as any as Scenario;
+        setScenario(sc);
+        setDiscountMode((sc.discount_mode as Mode) || "percent");
+        setDiscountValue(sc.discount_value ? String(sc.discount_value) : "");
+        const ovStr: Record<string, string> = {};
+        Object.entries(sc.selling_overrides || {}).forEach(([k, v]) => {
+          if (v?.unit_sell_price != null) ovStr[k] = String(v.unit_sell_price);
+        });
+        setOverrides(ovStr);
+        setNotes(sc.notes || "");
+      } else {
+        setScenario(null);
+        setDiscountMode("percent");
+        setDiscountValue("");
+        setOverrides({});
+        setNotes("");
+      }
+    } catch (error: any) {
+      console.error("profit-calculator load failed", error);
+      setLoadError(error?.message || (isAr ? "تعذر تحميل البيانات" : "Failed to load data"));
+      setPo(null);
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [poId]);
@@ -345,8 +359,26 @@ function ScenarioPanel({
     }
   };
 
-  if (loading || !po) {
+  if (loading) {
     return <Card className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جارٍ التحميل…" : "Loading…"}</Card>;
+  }
+
+  if (loadError) {
+    return (
+      <Card className="space-y-3 p-6 text-center">
+        <div className="text-sm font-medium text-destructive">{loadError}</div>
+        <div className="text-xs text-muted-foreground">{isAr ? "يمكنك إعادة المحاولة الآن." : "You can retry now."}</div>
+        <div>
+          <Button type="button" variant="outline" onClick={() => void load()}>
+            {isAr ? "إعادة التحميل" : "Retry"}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!po) {
+    return <Card className="p-8 text-center text-sm text-muted-foreground">{isAr ? "لم يتم العثور على أمر الشراء" : "Purchase order not found"}</Card>;
   }
 
   const profitPositive = totalProfit >= 0;
@@ -478,7 +510,7 @@ function ScenarioPanel({
             </button>
           </div>
         </div>
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [touch-action:pan-x_pinch-zoom] [-webkit-overflow-scrolling:touch]">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain px-0 [touch-action:pan-x_pinch-zoom] [-webkit-overflow-scrolling:touch]">
           <table className="w-max min-w-[980px] text-xs lg:min-w-full">
             <thead className="bg-muted/30">
               <tr>
