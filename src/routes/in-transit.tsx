@@ -299,7 +299,7 @@ function InTransitPage() {
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted hover:bg-muted/70"}`}
                   title={color}
                 >
-                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: color }} />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={swatchStyle(color)} />
                   <span className="max-w-[80px] truncate">{color}</span>
                   <span className="text-muted-foreground">({count})</span>
                 </button>
