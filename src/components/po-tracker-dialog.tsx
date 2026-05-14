@@ -157,14 +157,17 @@ export function POTrackerDialog({
 
   const currentIdx = po ? PO_FLOW.indexOf(po.status as any) : -1;
 
+  const bothInstallmentsPaid = !!(po?.payment_installment_1_at && po?.payment_installment_2_at);
+
   const nextStatus = useMemo(() => {
     if (!po) return null;
     if (po.status === "cancelled" || po.status === "received") return null;
     if (po.status === "in_warehouse") return null; // handled via receive flow
+    if (po.status === "ordered" && !bothInstallmentsPaid) return null; // gate on installments
     const i = PO_FLOW.indexOf(po.status as any);
     if (i < 0) return null;
     return PO_FLOW[i + 1] ?? null;
-  }, [po]);
+  }, [po, bothInstallmentsPaid]);
 
   const allowedNext = (target: string) => {
     if (!canTransition || !po) return false;
@@ -177,7 +180,6 @@ export function POTrackerDialog({
     setBusy(true);
     try {
       const updates: any = { status: target, updated_at: new Date().toISOString() };
-      if (target === "paid") { updates.paid_at = new Date().toISOString(); updates.paid_by = user.id; updates.paid_by_email = user.email; }
       if (target === "shipped") { updates.shipped_at = new Date().toISOString(); }
       const { error: upErr } = await supabase.from("purchase_orders").update(updates).eq("id", po.id);
       if (upErr) throw upErr;
@@ -194,6 +196,37 @@ export function POTrackerDialog({
     } finally {
       setBusy(false);
     }
+  };
+
+  const togglePayment = async (n: 1 | 2, paid: boolean, amount?: number) => {
+    if (!po || !user) return;
+    setBusy(true);
+    try {
+      const ts = paid ? new Date().toISOString() : null;
+      const upd: any =
+        n === 1
+          ? { payment_installment_1_at: ts, payment_installment_1_by_email: paid ? user.email : null, payment_installment_1_amount: paid ? (amount ?? po.payment_installment_1_amount ?? null) : null }
+          : { payment_installment_2_at: ts, payment_installment_2_by_email: paid ? user.email : null, payment_installment_2_amount: paid ? (amount ?? po.payment_installment_2_amount ?? null) : null };
+      const { error } = await supabase.from("purchase_orders").update(upd).eq("id", po.id);
+      if (error) throw error;
+      await supabase.from("po_status_history").insert({
+        po_id: po.id, from_status: po.status, to_status: po.status,
+        note: paid ? (isAr ? `تم سداد الدفعة ${n}` : `Installment ${n} paid`) : (isAr ? `إلغاء الدفعة ${n}` : `Installment ${n} unmarked`),
+        actor_id: user.id, actor_email: user.email,
+      });
+      toast.success(isAr ? "تم التحديث" : "Updated");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally { setBusy(false); }
+  };
+
+  const updateExpectedArrival = async (iso: string | null) => {
+    if (!po) return;
+    const { error } = await supabase.from("purchase_orders").update({ expected_arrival_at: iso }).eq("id", po.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? "تم تحديث الوصول المتوقع" : "Expected arrival updated");
+    await load();
   };
 
   const cancelPO = async () => {
