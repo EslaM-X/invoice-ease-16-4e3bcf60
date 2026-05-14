@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
   Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
-} from "lucide-react";
+  CloudUpload,
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
