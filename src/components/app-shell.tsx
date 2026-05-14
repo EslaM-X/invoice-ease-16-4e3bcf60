@@ -189,6 +189,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
             </Link>
+            {isCFO && (
+              <Link
+                to="/profit-calculator"
+                onClick={() => setOpen(false)}
+                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                  location.pathname.startsWith("/profit-calculator")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                }`}
+              >
+                <Calculator className="h-4 w-4" /> {lang === "ar" ? "حاسبة الربح" : "Profit Calculator"}
+              </Link>
+            )}
           </>
         )}
         {isAdmin && (
