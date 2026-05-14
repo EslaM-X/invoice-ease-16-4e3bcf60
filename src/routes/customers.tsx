@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { exportCustomersToExcel, exportCustomersToCSV, type CustomerRow } from "@/lib/invoice-export";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
+import { cachedListFetch } from "@/lib/list-cache";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
