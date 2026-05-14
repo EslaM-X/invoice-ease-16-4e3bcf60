@@ -17,6 +17,7 @@ import { Calculator, TrendingUp, TrendingDown, Save, Search, Sparkles } from "lu
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profit-calculator")({
+  validateSearch: (s: Record<string, unknown>) => ({ po: typeof s.po === "string" ? s.po : undefined }),
   component: () => (
     <AppShell>
       <ProfitCalculatorPage />
@@ -72,9 +73,15 @@ function ProfitCalculatorPage() {
   const navigate = useNavigate();
   const isAr = lang === "ar";
 
+  const search_ = Route.useSearch();
   const [pos, setPos] = useState<PO[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(search_.po ?? null);
+
+  useEffect(() => {
+    if (search_.po && search_.po !== selectedId) setSelectedId(search_.po);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search_.po]);
 
   // Access guard
   useEffect(() => {

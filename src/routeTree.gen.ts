@@ -20,6 +20,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PurchaseOrdersRouteImport } from './routes/purchase-orders'
 import { Route as ProfitsRouteImport } from './routes/profits'
+import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
 import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
@@ -97,6 +98,11 @@ const PurchaseOrdersRoute = PurchaseOrdersRouteImport.update({
 const ProfitsRoute = ProfitsRouteImport.update({
   id: '/profits',
   path: '/profits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitScenariosRoute = ProfitScenariosRouteImport.update({
+  id: '/profit-scenarios',
+  path: '/profit-scenarios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfitCalculatorRoute = ProfitCalculatorRouteImport.update({
@@ -231,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
+  '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
   '/reports': typeof ReportsRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
+  '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
   '/reports': typeof ReportsRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
+  '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
   '/reports': typeof ReportsRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/invoices-system-notes'
     | '/products'
     | '/profit-calculator'
+    | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
     | '/reports'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/invoices-system-notes'
     | '/products'
     | '/profit-calculator'
+    | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
     | '/reports'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/invoices-system-notes'
     | '/products'
     | '/profit-calculator'
+    | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
     | '/reports'
@@ -451,6 +463,7 @@ export interface RootRouteChildren {
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   ProductsRoute: typeof ProductsRoute
   ProfitCalculatorRoute: typeof ProfitCalculatorRoute
+  ProfitScenariosRoute: typeof ProfitScenariosRoute
   ProfitsRoute: typeof ProfitsRoute
   PurchaseOrdersRoute: typeof PurchaseOrdersRoute
   ReportsRoute: typeof ReportsRoute
@@ -550,6 +563,13 @@ declare module '@tanstack/react-router' {
       path: '/profits'
       fullPath: '/profits'
       preLoaderRoute: typeof ProfitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profit-scenarios': {
+      id: '/profit-scenarios'
+      path: '/profit-scenarios'
+      fullPath: '/profit-scenarios'
+      preLoaderRoute: typeof ProfitScenariosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profit-calculator': {
@@ -731,6 +751,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   ProductsRoute: ProductsRoute,
   ProfitCalculatorRoute: ProfitCalculatorRoute,
+  ProfitScenariosRoute: ProfitScenariosRoute,
   ProfitsRoute: ProfitsRoute,
   PurchaseOrdersRoute: PurchaseOrdersRoute,
   ReportsRoute: ReportsRoute,
