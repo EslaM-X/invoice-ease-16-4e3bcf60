@@ -23,6 +23,7 @@ import { Route as ProfitsRouteImport } from './routes/profits'
 import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
 import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -113,6 +114,11 @@ const ProfitCalculatorRoute = ProfitCalculatorRouteImport.update({
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendingOperationsRoute = PendingOperationsRouteImport.update({
+  id: '/pending-operations',
+  path: '/pending-operations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
+  '/pending-operations': typeof PendingOperationsRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
+  '/pending-operations': typeof PendingOperationsRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
+  '/pending-operations': typeof PendingOperationsRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/invoices-system-notes'
+    | '/pending-operations'
     | '/products'
     | '/profit-calculator'
     | '/profit-scenarios'
@@ -386,6 +396,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/invoices-system-notes'
+    | '/pending-operations'
     | '/products'
     | '/profit-calculator'
     | '/profit-scenarios'
@@ -423,6 +434,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/invoices-system-notes'
+    | '/pending-operations'
     | '/products'
     | '/profit-calculator'
     | '/profit-scenarios'
@@ -461,6 +473,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   InventoryAuditRoute: typeof InventoryAuditRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
+  PendingOperationsRoute: typeof PendingOperationsRoute
   ProductsRoute: typeof ProductsRoute
   ProfitCalculatorRoute: typeof ProfitCalculatorRoute
   ProfitScenariosRoute: typeof ProfitScenariosRoute
@@ -584,6 +597,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pending-operations': {
+      id: '/pending-operations'
+      path: '/pending-operations'
+      fullPath: '/pending-operations'
+      preLoaderRoute: typeof PendingOperationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices-system-notes': {
@@ -749,6 +769,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   InventoryAuditRoute: InventoryAuditRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
+  PendingOperationsRoute: PendingOperationsRoute,
   ProductsRoute: ProductsRoute,
   ProfitCalculatorRoute: ProfitCalculatorRoute,
   ProfitScenariosRoute: ProfitScenariosRoute,
