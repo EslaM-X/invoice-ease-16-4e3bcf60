@@ -1822,6 +1822,7 @@ export type Database = {
             }
             Returns: string
           }
+      current_user_email: { Args: never; Returns: string }
       delete_invoice: { Args: { _invoice_id: string }; Returns: string }
       get_my_role: { Args: never; Returns: string }
       has_role: {
@@ -1850,6 +1851,10 @@ export type Database = {
           _supplier_name: string
         }
         Returns: string
+      }
+      revert_po_inventory: {
+        Args: { p_actor_email: string; p_po_id: string }
+        Returns: undefined
       }
       update_delivery_receipt:
         | {
