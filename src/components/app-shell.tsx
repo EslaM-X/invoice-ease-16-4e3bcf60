@@ -24,7 +24,6 @@ type NavEntry = NavItem | NavGroup;
 
 const items: NavEntry[] = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
-  { to: "/customers", icon: Users, key: "customers" as const },
   {
     group: true,
     key: "inventory_group" as const,
@@ -37,8 +36,6 @@ const items: NavEntry[] = [
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
     ],
   },
-  { to: "/sales-range", icon: BarChart3, key: "sales_range" as const },
-  { to: "/shipping-order", icon: Truck, key: "shipping_order" as const },
   {
     group: true,
     key: "documents_group" as const,
@@ -48,9 +45,9 @@ const items: NavEntry[] = [
       { to: "/invoices/drafts", icon: FileText, key: "invoice_drafts" as const },
       { to: "/delivery-receipts", icon: ClipboardCheck, key: "delivery_receipts" as const },
       { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
+      { to: "/customers", icon: Users, key: "customers" as const },
     ],
   },
-  { to: "/profits", icon: TrendingUp, key: "profits" as const },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -152,6 +149,110 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+        {(isPurchasing || isCFO) && (
+          <GroupNav
+            label={lang === "ar" ? "المشتريات والربح" : "Procurement & Profit"}
+            icon={ShoppingCart}
+            defaultOpen={
+              location.pathname.startsWith("/purchase-orders") ||
+              location.pathname.startsWith("/po-tracking") ||
+              location.pathname.startsWith("/profit-calculator") ||
+              location.pathname.startsWith("/profit-scenarios")
+            }
+          >
+            <Link
+              to="/purchase-orders"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
+                location.pathname.startsWith("/purchase-orders")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
+            </Link>
+            <Link
+              to="/po-tracking"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
+                location.pathname.startsWith("/po-tracking")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <Activity className="h-4 w-4" /> {lang === "ar" ? "تتبع أوامر الشراء" : "PO Tracking"}
+            </Link>
+            {isCFO && (
+              <>
+                <Link
+                  to="/profit-calculator"
+                  onClick={() => setOpen(false)}
+                  className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
+                    location.pathname.startsWith("/profit-calculator")
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                  }`}
+                >
+                  <Calculator className="h-4 w-4" /> {lang === "ar" ? "حاسبة الربح" : "Profit Calculator"}
+                </Link>
+                <Link
+                  to="/profit-scenarios"
+                  onClick={() => setOpen(false)}
+                  className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
+                    location.pathname.startsWith("/profit-scenarios")
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                  }`}
+                >
+                  <ClipboardList className="h-4 w-4" /> {lang === "ar" ? "السيناريوهات المحفوظة" : "Saved Scenarios"}
+                </Link>
+              </>
+            )}
+          </GroupNav>
+        )}
+        <GroupNav
+          label={t("reports")}
+          icon={BarChart3}
+          defaultOpen={
+            location.pathname.startsWith("/sales-range") ||
+            location.pathname.startsWith("/shipping-order") ||
+            location.pathname.startsWith("/profits")
+          }
+        >
+          <Link
+            to="/sales-range"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/sales-range")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" /> {t("sales_range")}
+          </Link>
+          <Link
+            to="/shipping-order"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/shipping-order")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Truck className="h-4 w-4" /> {t("shipping_order")}
+          </Link>
+          <Link
+            to="/profits"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/profits")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <TrendingUp className="h-4 w-4" /> {t("profits")}
+          </Link>
+        </GroupNav>
         {isCallCenter && (
           <GroupNav
             label={t("call_center_group")}
@@ -184,72 +285,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <BarChart3 className="h-4 w-4" /> {t("call_center_reports")}
             </Link>
           </GroupNav>
-        )}
-        {(isPurchasing || isCFO) && (
-          <>
-            <div className="mt-4 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-sidebar-foreground/40">
-              {lang === "ar" ? "المشتريات" : "Procurement"}
-            </div>
-            <GroupNav
-              label={lang === "ar" ? "المشتريات والربح" : "Procurement & Profit"}
-              icon={ShoppingCart}
-              defaultOpen={
-                location.pathname.startsWith("/purchase-orders") ||
-                location.pathname.startsWith("/po-tracking") ||
-                location.pathname.startsWith("/profit-calculator") ||
-                location.pathname.startsWith("/profit-scenarios")
-              }
-            >
-              <Link
-                to="/purchase-orders"
-                onClick={() => setOpen(false)}
-                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
-                  location.pathname.startsWith("/purchase-orders")
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                }`}
-              >
-                <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
-              </Link>
-              <Link
-                to="/po-tracking"
-                onClick={() => setOpen(false)}
-                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
-                  location.pathname.startsWith("/po-tracking")
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                }`}
-              >
-                <Activity className="h-4 w-4" /> {lang === "ar" ? "تتبع أوامر الشراء" : "PO Tracking"}
-              </Link>
-              {isCFO && (
-                <>
-                  <Link
-                    to="/profit-calculator"
-                    onClick={() => setOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
-                      location.pathname.startsWith("/profit-calculator")
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                    }`}
-                  >
-                    <Calculator className="h-4 w-4" /> {lang === "ar" ? "حاسبة الربح" : "Profit Calculator"}
-                  </Link>
-                  <Link
-                    to="/profit-scenarios"
-                    onClick={() => setOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
-                      location.pathname.startsWith("/profit-scenarios")
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                    }`}
-                  >
-                    <ClipboardList className="h-4 w-4" /> {lang === "ar" ? "السيناريوهات المحفوظة" : "Saved Scenarios"}
-                  </Link>
-                </>
-              )}
-            </GroupNav>
-          </>
         )}
         <GroupNav
           label={t("settings")}
