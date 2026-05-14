@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus, PackagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus, PackagePlus, Truck } from "lucide-react";
 import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { TableSkeleton } from "@/components/skeletons";
 import { toast } from "sonner";
@@ -25,6 +25,15 @@ import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
 
 export const Route = createFileRoute("/products")({ component: () => <AppShell><Products /></AppShell> });
+
+function etaShort(iso: string, lang: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  const days = Math.round(ms / 86400000);
+  if (days === 0) return lang === "ar" ? "اليوم" : "today";
+  if (days < 0) return lang === "ar" ? `متأخر ${-days}ي` : `${-days}d late`;
+  if (days === 1) return lang === "ar" ? "غداً" : "tomorrow";
+  return lang === "ar" ? `بعد ${days} يوم` : `in ${days}d`;
+}
 
 function Products() {
   const { user } = useAuth();
@@ -48,6 +57,7 @@ function Products() {
   const [bulkScope, setBulkScope] = useState<"filtered" | "all">("filtered");
   const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [inTransit, setInTransit] = useState<Record<string, { qty: number; eta: string | null }>>({});
 
   const load = async () => {
     if (!user) return;
@@ -61,10 +71,39 @@ function Products() {
       // Background revalidate already runs in cachedListFetch; refresh again on focus
     }
   };
-  useEffect(() => { load(); }, [user]);
 
-  // Realtime sync — refresh when any team member changes products
+  const loadInTransit = async () => {
+    if (!user) return;
+    const { data: pos } = await supabase
+      .from("purchase_orders")
+      .select("id,expected_arrival_at,status")
+      .in("status", ["ordered", "shipped", "in_warehouse"]);
+    const posMap: Record<string, string | null> = {};
+    (pos ?? []).forEach((p: any) => { posMap[p.id] = p.expected_arrival_at; });
+    const ids = Object.keys(posMap);
+    const agg: Record<string, { qty: number; eta: string | null }> = {};
+    if (ids.length > 0) {
+      const { data: its } = await supabase
+        .from("purchase_order_items")
+        .select("po_id,product_id,quantity")
+        .in("po_id", ids);
+      (its ?? []).forEach((it: any) => {
+        const cur = agg[it.product_id] ?? { qty: 0, eta: null };
+        cur.qty += it.quantity || 0;
+        const eta = posMap[it.po_id];
+        if (eta && (!cur.eta || new Date(eta) < new Date(cur.eta))) cur.eta = eta;
+        agg[it.product_id] = cur;
+      });
+    }
+    setInTransit(agg);
+  };
+
+  useEffect(() => { load(); loadInTransit(); }, [user]);
+
+  // Realtime sync — refresh when any team member changes products or POs
   useRealtimeTable("products", () => { load(); });
+  useRealtimeTable("purchase_orders", () => { loadInTransit(); });
+  useRealtimeTable("purchase_order_items", () => { loadInTransit(); });
 
   const filtered = useMemo(() => list.filter((p) => {
     if (collectionFilter) {
@@ -413,9 +452,23 @@ function Products() {
                       </td>
                       <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
-                          {p.stock_quantity}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
+                            {p.stock_quantity}
+                          </span>
+                          {inTransit[p.id]?.qty > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                              title={inTransit[p.id].eta ? `${lang === "ar" ? "وصول متوقع" : "ETA"}: ${new Date(inTransit[p.id].eta!).toLocaleDateString()}` : undefined}
+                            >
+                              <Truck className="h-3 w-3" />
+                              +{inTransit[p.id].qty} {lang === "ar" ? "في الطريق" : "in transit"}
+                              {inTransit[p.id].eta && (
+                                <span className="font-normal opacity-80">· {etaShort(inTransit[p.id].eta!, lang)}</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
