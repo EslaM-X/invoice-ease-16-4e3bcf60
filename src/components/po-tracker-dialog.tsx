@@ -281,10 +281,77 @@ export function POTrackerDialog({
 
               {/* Quick facts */}
               <div className="grid gap-2 text-xs sm:grid-cols-3">
-                <Fact label={isAr ? "تاريخ الدفع" : "Paid at"} value={po.paid_at ? fmtDateTime(po.paid_at, lang) : "—"} />
                 <Fact label={isAr ? "تاريخ الشحن" : "Shipped at"} value={po.shipped_at ? fmtDateTime(po.shipped_at, lang) : "—"} />
+                <Fact label={isAr ? "الوصول المتوقع" : "Expected arrival"} value={po.expected_arrival_at ? fmtDateTime(po.expected_arrival_at, lang) : "—"} />
                 <Fact label={isAr ? "تاريخ الاستلام" : "Received at"} value={po.received_at ? fmtDateTime(po.received_at, lang) : "—"} />
               </div>
+
+              {/* Payment installments — visible from "ordered" onwards */}
+              {(po.status === "ordered" || po.status === "shipped" || po.status === "in_warehouse" || po.status === "received") && (
+                <div className="rounded-lg border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    {isAr ? "الدفعات (دفعتان)" : "Payments (2 installments)"}
+                    {bothInstallmentsPaid && (
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[10px]">
+                        {isAr ? "مكتمل" : "Complete"}
+                      </Badge>
+                    )}
+                  </div>
+                  <InstallmentRow
+                    n={1}
+                    isAr={isAr}
+                    paidAt={po.payment_installment_1_at}
+                    amount={po.payment_installment_1_amount}
+                    byEmail={po.payment_installment_1_by_email}
+                    canEdit={canTransition && po.status !== "received"}
+                    onToggle={(paid, amt) => togglePayment(1, paid, amt)}
+                    busy={busy}
+                  />
+                  <InstallmentRow
+                    n={2}
+                    isAr={isAr}
+                    paidAt={po.payment_installment_2_at}
+                    amount={po.payment_installment_2_amount}
+                    byEmail={po.payment_installment_2_by_email}
+                    canEdit={canTransition && po.status !== "received"}
+                    onToggle={(paid, amt) => togglePayment(2, paid, amt)}
+                    busy={busy}
+                  />
+                  {po.status === "ordered" && !bothInstallmentsPaid && (
+                    <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2 text-xs text-amber-800">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                      {isAr
+                        ? "لا يمكن الانتقال إلى «تم الشحن» قبل تأكيد الدفعتين."
+                        : "Cannot move to Shipped until both installments are paid."}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Expected arrival — visible from shipped onwards */}
+              {(po.status === "shipped" || po.status === "in_warehouse") && (
+                <div className="rounded-lg border bg-card p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <Truck className="h-4 w-4 text-violet-600" />
+                    {isAr ? "الوصول المتوقع" : "Expected arrival"}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      type="date"
+                      value={po.expected_arrival_at ? new Date(po.expected_arrival_at).toISOString().slice(0, 10) : ""}
+                      onChange={(e) => updateExpectedArrival(e.target.value ? new Date(e.target.value).toISOString() : null)}
+                      disabled={busy || !canTransition}
+                      className="w-44"
+                    />
+                    {po.expected_arrival_at && (
+                      <span className="text-xs text-muted-foreground">
+                        {fmtDateTime(po.expected_arrival_at, lang)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               {po.status !== "cancelled" && po.status !== "received" && canTransition && (
