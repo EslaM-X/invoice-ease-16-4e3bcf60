@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Percent } from "lucide-react";
+import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 
