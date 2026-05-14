@@ -212,6 +212,17 @@ function InvoicesList() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("invoices")}</h1>
         <div className="flex flex-wrap gap-2">
+          <Link to="/invoices/archive">
+            <Button variant="outline" className="gap-2 rounded-full border-emerald-500/40 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">
+              <Archive className="h-4 w-4" />
+              {lang === "ar" ? "الأرشيف" : "Archive"}
+              {closedCount > 0 && (
+                <span className="ms-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                  {closedCount}
+                </span>
+              )}
+            </Button>
+          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={exporting} className="gap-2 rounded-full">
