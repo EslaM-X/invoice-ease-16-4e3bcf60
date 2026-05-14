@@ -93,6 +93,7 @@ function ArchivePage() {
 
   const exportXlsx = () => {
     const rows: InvoiceRow[] = filtered.map((i) => ({
+      id: i.id,
       invoice_number: i.invoice_number,
       receipt_number: i.receipt_number,
       created_at: i.created_at,

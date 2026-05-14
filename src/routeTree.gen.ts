@@ -41,6 +41,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
 import { Route as DeliveryReceiptsIndexRouteImport } from './routes/delivery-receipts.index'
 import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
+import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
@@ -208,6 +209,11 @@ const InvoicesNewRoute = InvoicesNewRouteImport.update({
   path: '/invoices/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
+  id: '/invoices/archive',
+  path: '/invoices/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InvoicesIdRoute = InvoicesIdRouteImport.update({
   id: '/invoices/$id',
   path: '/invoices/$id',
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
+  '/invoices/archive': typeof InvoicesArchiveRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
@@ -313,6 +320,7 @@ export interface FileRoutesByTo {
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
+  '/invoices/archive': typeof InvoicesArchiveRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts': typeof DeliveryReceiptsIndexRoute
   '/invoices': typeof InvoicesIndexRoute
@@ -354,6 +362,7 @@ export interface FileRoutesById {
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/invoices/$id': typeof InvoicesIdRoute
+  '/invoices/archive': typeof InvoicesArchiveRoute
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
@@ -396,6 +405,7 @@ export interface FileRouteTypes {
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
+    | '/invoices/archive'
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
+    | '/invoices/archive'
     | '/invoices/new'
     | '/delivery-receipts'
     | '/invoices'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/invoices/$id'
+    | '/invoices/archive'
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
@@ -517,6 +529,7 @@ export interface RootRouteChildren {
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
+  InvoicesArchiveRoute: typeof InvoicesArchiveRoute
   InvoicesNewRoute: typeof InvoicesNewRoute
   DeliveryReceiptsIndexRoute: typeof DeliveryReceiptsIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
@@ -751,6 +764,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvoicesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invoices/archive': {
+      id: '/invoices/archive'
+      path: '/invoices/archive'
+      fullPath: '/invoices/archive'
+      preLoaderRoute: typeof InvoicesArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invoices/$id': {
       id: '/invoices/$id'
       path: '/invoices/$id'
@@ -829,6 +849,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
   InvoicesIdRoute: InvoicesIdRoute,
+  InvoicesArchiveRoute: InvoicesArchiveRoute,
   InvoicesNewRoute: InvoicesNewRoute,
   DeliveryReceiptsIndexRoute: DeliveryReceiptsIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
