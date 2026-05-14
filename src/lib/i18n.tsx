@@ -32,6 +32,7 @@ const ar: Dict = {
   remove: "حذف",
   search_product: "ابحث عن منتج...",
   invoices: "الفواتير",
+  invoice_drafts: "مسودات الفواتير",
   new_invoice: "فاتورة جديدة",
   reports: "التقارير",
   profits: "الأرباح",
