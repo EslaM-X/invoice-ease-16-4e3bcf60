@@ -479,10 +479,23 @@ function PODetailDialog({
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const canEditPricing = isCFO || isAdmin;
+  const canEditItems = isAdmin || isPurchasing;
+  const canDeleteItems = isAdmin;
+  const canDeletePO = isAdmin;
 
   const [po, setPo] = useState<PO | null>(null);
   const [items, setItems] = useState<POItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Header edit
+  const [supplierEdit, setSupplierEdit] = useState("");
+  const [notesEdit, setNotesEdit] = useState("");
+
+  // Item edits (local buffer keyed by item id) — { qty, unit }
+  const [itemEdits, setItemEdits] = useState<Record<string, { qty: number; unit: number }>>({});
+
+  // Add-product picker
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Pricing form
   const [usdRate, setUsdRate] = useState<string>("");
@@ -496,6 +509,7 @@ function PODetailDialog({
   const [otherValue, setOtherValue] = useState<string>("");
   const [cfoNotes, setCfoNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingItems, setSavingItems] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -506,6 +520,8 @@ function PODetailDialog({
     if (poData) {
       const p = poData as any as PO & any;
       setPo(p);
+      setSupplierEdit(p.supplier_name ?? "");
+      setNotesEdit(p.notes ?? "");
       setUsdRate(p.usd_rate != null ? String(p.usd_rate) : "");
       setCustomsMode((p.customs_mode as Mode) || "percent");
       setCustomsValue(p.customs_value != null ? String(p.customs_value) : "");
@@ -517,16 +533,35 @@ function PODetailDialog({
       setOtherValue(p.other_value != null ? String(p.other_value) : "");
       setCfoNotes(p.cfo_notes ?? "");
     }
-    setItems((itemsData as any) ?? []);
+    const list = (itemsData as any as POItem[]) ?? [];
+    setItems(list);
+    const edits: Record<string, { qty: number; unit: number }> = {};
+    list.forEach((it) => { edits[it.id] = { qty: it.quantity, unit: Number(it.unit_cost_usd) }; });
+    setItemEdits(edits);
     setLoading(false);
   };
 
   useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open, poId]);
+  useRealtimeTable("purchase_order_items", () => { if (open) load(); }, [open, poId]);
 
-  const totalUsd = po?.total_usd ?? 0;
+  // Live totals from current edit buffer
+  const liveTotalUsd = items.reduce((s, it) => {
+    const e = itemEdits[it.id] ?? { qty: it.quantity, unit: Number(it.unit_cost_usd) };
+    return s + e.qty * e.unit;
+  }, 0);
+  const liveTotalQty = items.reduce((s, it) => {
+    const e = itemEdits[it.id] ?? { qty: it.quantity, unit: Number(it.unit_cost_usd) };
+    return s + e.qty;
+  }, 0);
+
+  const itemsDirty = items.some((it) => {
+    const e = itemEdits[it.id]; if (!e) return false;
+    return e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
+  });
+  const headerDirty = (po?.supplier_name ?? "") !== supplierEdit || (po?.notes ?? "") !== notesEdit;
+
   const rate = Number(usdRate) || 0;
-  const baseEgp = totalUsd * rate;
-
+  const baseEgp = liveTotalUsd * rate;
   const calc = (mode: Mode, val: string) => {
     const v = Number(val) || 0;
     return mode === "percent" ? (baseEgp * v) / 100 : v;
@@ -536,6 +571,121 @@ function PODetailDialog({
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
   const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
+
+  const audit = async (action: string, details: any) => {
+    try {
+      await supabase.from("audit_log").insert({
+        entity_type: "purchase_order",
+        entity_id: poId,
+        action,
+        actor_id: userId,
+        actor_email: userEmail,
+        details,
+      } as any);
+    } catch {}
+  };
+
+  const recomputePOTotals = async (nextItemsTotals?: { qty: number; usd: number }) => {
+    const usd = nextItemsTotals?.usd ?? liveTotalUsd;
+    const qty = nextItemsTotals?.qty ?? liveTotalQty;
+    await supabase
+      .from("purchase_orders")
+      .update({ total_usd: usd, total_qty: qty } as any)
+      .eq("id", poId);
+  };
+
+  const saveItemChanges = async () => {
+    if (!itemsDirty && !headerDirty) return;
+    setSavingItems(true);
+    try {
+      const changes: any[] = [];
+      // Update changed items
+      for (const it of items) {
+        const e = itemEdits[it.id]; if (!e) continue;
+        if (e.qty === it.quantity && Number(e.unit) === Number(it.unit_cost_usd)) continue;
+        const lineTotal = e.qty * e.unit;
+        const { error } = await supabase
+          .from("purchase_order_items")
+          .update({ quantity: e.qty, unit_cost_usd: e.unit, line_total_usd: lineTotal } as any)
+          .eq("id", it.id);
+        if (error) throw error;
+        changes.push({ item_id: it.id, name: it.product_name, before: { qty: it.quantity, unit: Number(it.unit_cost_usd) }, after: { qty: e.qty, unit: e.unit } });
+      }
+      // Header edits
+      const headerPatch: any = {};
+      if (headerDirty) {
+        headerPatch.supplier_name = supplierEdit || null;
+        headerPatch.notes = notesEdit || null;
+      }
+      // Recompute totals
+      headerPatch.total_usd = liveTotalUsd;
+      headerPatch.total_qty = liveTotalQty;
+      const { error: e2 } = await supabase
+        .from("purchase_orders")
+        .update(headerPatch)
+        .eq("id", poId);
+      if (e2) throw e2;
+      if (changes.length) await audit("po_items_updated", { changes });
+      if (headerDirty) await audit("po_header_updated", { supplier: supplierEdit, notes: notesEdit });
+      toast.success(isAr ? "تم حفظ التعديلات" : "Changes saved");
+      load();
+    } catch (err: any) {
+      toast.error(err.message || "Error");
+    } finally {
+      setSavingItems(false);
+    }
+  };
+
+  const removeItem = async (it: POItem) => {
+    if (!confirm(isAr ? `حذف "${it.product_name}" من الأمر؟` : `Remove "${it.product_name}" from PO?`)) return;
+    try {
+      const { error } = await supabase.from("purchase_order_items").delete().eq("id", it.id);
+      if (error) throw error;
+      await audit("po_item_removed", { item_id: it.id, name: it.product_name, qty: it.quantity, unit_cost_usd: Number(it.unit_cost_usd) });
+      // Recompute totals after deletion
+      const remaining = items.filter((x) => x.id !== it.id);
+      const usd = remaining.reduce((s, x) => {
+        const e = itemEdits[x.id] ?? { qty: x.quantity, unit: Number(x.unit_cost_usd) };
+        return s + e.qty * e.unit;
+      }, 0);
+      const qty = remaining.reduce((s, x) => {
+        const e = itemEdits[x.id] ?? { qty: x.quantity, unit: Number(x.unit_cost_usd) };
+        return s + e.qty;
+      }, 0);
+      await recomputePOTotals({ qty, usd });
+      toast.success(isAr ? "تم الحذف" : "Removed");
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Error");
+    }
+  };
+
+  const addProductToPO = async (p: Product, qty: number, unitUsd: number) => {
+    try {
+      const { error } = await supabase.from("purchase_order_items").insert({
+        po_id: poId,
+        product_id: p.id,
+        product_name: p.name,
+        serial_number: p.serial_number,
+        color: p.color,
+        image_url: p.image_url,
+        quantity: qty,
+        unit_cost_usd: unitUsd,
+        line_total_usd: qty * unitUsd,
+      } as any);
+      if (error) throw error;
+      await audit("po_item_added", { product_id: p.id, name: p.name, qty, unit_cost_usd: unitUsd });
+      // Recompute totals
+      const newUsd = liveTotalUsd + qty * unitUsd;
+      const newQty = liveTotalQty + qty;
+      await recomputePOTotals({ qty: newQty, usd: newUsd });
+      toast.success(isAr ? "تمت الإضافة" : "Added");
+      setPickerOpen(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Error");
+    }
+  };
 
   const savePricing = async () => {
     if (!rate) return toast.error(isAr ? "أدخل سعر الصرف أولاً" : "Enter the FX rate first");
@@ -558,8 +708,8 @@ function PODetailDialog({
         } as any)
         .eq("id", poId);
       if (error) throw error;
+      await audit("po_priced", { total_egp: totalEgp, usd_rate: rate });
 
-      // Notify purchasing role
       await supabase.from("notifications").insert({
         recipient_role: "purchasing",
         type: "purchase_order_priced",
@@ -582,6 +732,7 @@ function PODetailDialog({
     if (!confirm(isAr ? "حذف أمر الشراء نهائيًا؟" : "Delete this PO permanently?")) return;
     const { error } = await supabase.from("purchase_orders").delete().eq("id", poId);
     if (error) return toast.error(error.message);
+    await audit("po_deleted", { po_number: po?.po_number });
     toast.success(isAr ? "تم الحذف" : "Deleted");
     onOpenChange(false);
   };
@@ -595,7 +746,7 @@ function PODetailDialog({
               <FileText className="h-5 w-5 text-primary" />
               {po?.po_number || (isAr ? "أمر شراء" : "Purchase Order")}
             </span>
-            {isAdmin && (
+            {canDeletePO && (
               <Button variant="ghost" size="sm" onClick={deletePO} className="text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -607,16 +758,20 @@ function PODetailDialog({
           <div className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جارٍ التحميل…" : "Loading…"}</div>
         ) : (
           <>
-            {/* Header info */}
+            {/* Header info — supplier editable */}
             <div className="grid gap-3 sm:grid-cols-3 text-sm">
               <div className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground">{isAr ? "المورد" : "Supplier"}</div>
-                <div className="font-semibold">{po.supplier_name || "—"}</div>
+                <div className="text-xs text-muted-foreground mb-1">{isAr ? "المورد" : "Supplier"}</div>
+                {canEditItems ? (
+                  <Input className="h-8" value={supplierEdit} onChange={(e) => setSupplierEdit(e.target.value)} placeholder={isAr ? "اسم المورد" : "Supplier name"} />
+                ) : (
+                  <div className="font-semibold">{po.supplier_name || "—"}</div>
+                )}
               </div>
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</div>
-                <div className="font-bold text-primary tabular-nums">${(Number(po.total_usd) || 0).toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground">{po.total_qty} {isAr ? "قطعة" : "units"}</div>
+                <div className="font-bold text-primary tabular-nums">${liveTotalUsd.toFixed(2)}</div>
+                <div className="text-[10px] text-muted-foreground">{liveTotalQty} {isAr ? "قطعة" : "units"}</div>
               </div>
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">{isAr ? "أُنشئ بواسطة" : "Created by"}</div>
@@ -625,38 +780,115 @@ function PODetailDialog({
               </div>
             </div>
 
-            {/* Items */}
+            {/* Items — editable */}
             <div className="rounded-lg border overflow-hidden">
-              <div className="bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                {isAr ? "البنود" : "Items"}
+              <div className="flex items-center justify-between bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                <span>{isAr ? "البنود" : "Items"} ({items.length})</span>
+                {canEditItems && (
+                  <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setPickerOpen(true)}>
+                    <Plus className="h-3 w-3" />{isAr ? "إضافة منتج" : "Add product"}
+                  </Button>
+                )}
               </div>
-              <div className="divide-y">
-                {items.map((it) => (
-                  <div key={it.id} className="flex items-center gap-3 p-3 text-sm">
-                    {it.image_url ? (
-                      <img src={it.image_url} alt={it.product_name} className="h-12 w-12 rounded border object-cover" />
-                    ) : (
-                      <div className="h-12 w-12 rounded border bg-muted" />
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-xs">
+                  <thead className="bg-muted/30">
+                    <tr>
+                      <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
+                      <th className="p-2 text-start whitespace-nowrap">{isAr ? "الكمية" : "Qty"}</th>
+                      <th className="p-2 text-start whitespace-nowrap">{isAr ? "سعر الوحدة USD" : "Unit USD"}</th>
+                      <th className="p-2 text-end whitespace-nowrap">{isAr ? "إجمالي USD" : "Line USD"}</th>
+                      {canDeleteItems && <th className="p-2"></th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {items.map((it) => {
+                      const e = itemEdits[it.id] ?? { qty: it.quantity, unit: Number(it.unit_cost_usd) };
+                      const dirty = e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
+                      return (
+                        <tr key={it.id} className={dirty ? "bg-amber-500/5" : ""}>
+                          <td className="p-2">
+                            <div className="flex items-center gap-2">
+                              {it.image_url ? (
+                                <img src={it.image_url} alt={it.product_name} className="h-10 w-10 rounded border object-cover" />
+                              ) : (
+                                <div className="h-10 w-10 rounded border bg-muted" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="font-medium truncate">{it.product_name}</div>
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                                  {it.serial_number && <span className="font-mono">{it.serial_number}</span>}
+                                  {it.color && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="inline-block h-2 w-2 rounded-full border" style={{ background: it.color }} />
+                                      {it.color}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number" min={0} className="h-7 w-20"
+                              disabled={!canEditItems}
+                              value={e.qty || ""}
+                              onChange={(ev) => setItemEdits((prev) => ({ ...prev, [it.id]: { ...e, qty: Math.max(0, Number(ev.target.value) || 0) } }))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <div className="relative">
+                              <DollarSign className="absolute start-1 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                type="number" min={0} step="any" className="h-7 w-24 ps-5"
+                                disabled={!canEditItems}
+                                value={Number.isFinite(e.unit) ? String(e.unit) : ""}
+                                onChange={(ev) => setItemEdits((prev) => ({ ...prev, [it.id]: { ...e, unit: Math.max(0, Number(ev.target.value) || 0) } }))}
+                              />
+                            </div>
+                          </td>
+                          <td className="p-2 text-end font-semibold tabular-nums whitespace-nowrap">${(e.qty * e.unit).toFixed(2)}</td>
+                          {canDeleteItems && (
+                            <td className="p-2">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeItem(it)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {items.length === 0 && (
+                      <tr><td colSpan={canDeleteItems ? 5 : 4} className="p-6 text-center text-muted-foreground">{isAr ? "لا توجد بنود" : "No items"}</td></tr>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{it.product_name}</div>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-                        {it.serial_number && <span className="font-mono">{it.serial_number}</span>}
-                        {it.color && (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="inline-block h-2 w-2 rounded-full border" style={{ background: it.color }} />
-                            {it.color}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-end text-xs">
-                      <div>${Number(it.unit_cost_usd).toFixed(2)} × {it.quantity}</div>
-                      <div className="font-bold tabular-nums">${Number(it.line_total_usd).toFixed(2)}</div>
-                    </div>
-                  </div>
-                ))}
+                  </tbody>
+                </table>
               </div>
+              {canEditItems && (itemsDirty || headerDirty) && (
+                <div className="flex items-center justify-between gap-3 border-t bg-amber-500/5 px-3 py-2">
+                  <span className="text-[11px] text-amber-700">
+                    {isAr ? "لديك تعديلات غير محفوظة" : "You have unsaved changes"}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={load} disabled={savingItems}>
+                      {isAr ? "تجاهل" : "Discard"}
+                    </Button>
+                    <Button size="sm" onClick={saveItemChanges} disabled={savingItems}>
+                      {savingItems ? (isAr ? "جارٍ الحفظ…" : "Saving…") : (isAr ? "حفظ التعديلات" : "Save changes")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Purchasing notes — editable */}
+            <div className="rounded-lg border p-3 text-xs">
+              <div className="font-semibold text-muted-foreground mb-1">{isAr ? "ملاحظات المشتريات" : "Purchasing notes"}</div>
+              {canEditItems ? (
+                <Textarea rows={2} value={notesEdit} onChange={(e) => setNotesEdit(e.target.value)} />
+              ) : (
+                <div className="whitespace-pre-wrap">{po.notes || "—"}</div>
+              )}
             </div>
 
             {/* CFO pricing */}
@@ -704,10 +936,10 @@ function PODetailDialog({
                     <span className="text-muted-foreground">{isAr ? "إجمالي التكلفة التقريبية (EGP)" : "Approx. landed cost (EGP)"}</span>
                     <span className="font-bold text-base tabular-nums">{fmtMoney(totalEgp, "EGP", lang)}</span>
                   </div>
-                  {po.total_qty > 0 && (
+                  {liveTotalQty > 0 && (
                     <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
                       <span>{isAr ? "متوسط تقريبي للقطعة" : "Approx. avg / unit"}</span>
-                      <span className="font-semibold tabular-nums">{fmtMoney(totalEgp / po.total_qty, "EGP", lang)}</span>
+                      <span className="font-semibold tabular-nums">{fmtMoney(totalEgp / liveTotalQty, "EGP", lang)}</span>
                     </div>
                   )}
                 </div>
@@ -727,19 +959,21 @@ function PODetailDialog({
                 </div>
               )}
             </div>
-
-            {po.notes && (
-              <div className="rounded-lg border p-3 text-xs">
-                <div className="font-semibold text-muted-foreground mb-1">{isAr ? "ملاحظات المشتريات" : "Purchasing notes"}</div>
-                <div className="whitespace-pre-wrap">{po.notes}</div>
-              </div>
-            )}
           </>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{isAr ? "إغلاق" : "Close"}</Button>
         </DialogFooter>
       </DialogContent>
+
+      {pickerOpen && (
+        <AddItemPicker
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          existingProductIds={items.map((i) => i.product_id)}
+          onAdd={addProductToPO}
+        />
+      )}
     </Dialog>
   );
 }
