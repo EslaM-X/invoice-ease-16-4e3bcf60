@@ -101,13 +101,7 @@ function PurchaseOrdersPage() {
   useEffect(() => { loadPOs(); }, []);
   useRealtimeTable("purchase_orders", loadPOs, []);
 
-  const statusBadge = (s: string) => {
-    if (s === "pending_cfo") return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">{isAr ? "بانتظار التسعير" : "Awaiting pricing"}</Badge>;
-    if (s === "priced") return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">{isAr ? "تم التسعير" : "Priced"}</Badge>;
-    if (s === "received") return <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">{isAr ? "تم الاستلام" : "Received"}</Badge>;
-    if (s === "cancelled") return <Badge variant="destructive">{isAr ? "ملغى" : "Cancelled"}</Badge>;
-    return <Badge>{s}</Badge>;
-  };
+  const statusBadge = (s: string) => trackerStatusBadge(s, isAr);
 
   return (
     <div className="space-y-6">
