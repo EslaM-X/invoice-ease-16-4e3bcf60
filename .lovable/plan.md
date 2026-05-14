@@ -1,92 +1,69 @@
-# خطة العمل: Realtime كامل + Offline PWA
 
-غيرت بالفعل **حاسبة الربح** عشان تفتح بـ "السعر الحالي" افتراضياً (مع إمكانية الرجوع لسعر الـ PO من الـ toggle).
+## الهدف
+نظام تتبّع متقدم لكل أمر شراء (PO) بمراحل واضحة، صفحة سجل/تتبع لكل الـ POs، وعند الاستلام تتم إضافة الكميات تلقائياً للمخزون بدقة وبدون تكرار.
 
-الباقي (offline + sync لحظي شامل) حجمه كبير، فهنقسمه على 3 مراحل عشان نضمن الجودة وما نكسرش حاجة شغالة.
+## 1) مراحل الحالة الجديدة
+نوسّع `purchase_orders.status` لتشمل سير عمل كامل:
 
-## ⚠️ تنبيه مهم عن الـ PWA
+```
+draft → pending_cfo → priced → payment_pending → paid 
+      → ordered → shipped → in_warehouse → received → cancelled
+```
 
-- الـ Service Worker و offline mode **مش هيشتغلوا داخل preview الـ Lovable** (عشان الـ iframe). هيشتغلوا فقط على الموقع المنشور (`admin.steinheim-eg.com` و `invoice-ease-16.lovable.app`).
-- لازم نختبر بعد كل publish من جهاز حقيقي (موبايل/متصفح خارجي).
+- كل تغيير حالة يسجَّل في جدول جديد `po_status_history` (المرحلة، التاريخ، المستخدم، ملاحظة اختيارية).
+- إضافة أعمدة على `purchase_orders`:
+  - `paid_at`, `paid_by`, `paid_by_email`
+  - `shipped_at`, `expected_arrival_at`
+  - `received_at`, `received_by`, `received_by_email`
+  - `stock_applied_at` (Timestamp — يُستخدم كحارس لمنع إضافة المخزون مرتين)
 
----
+## 2) صفحة "تتبع أوامر الشراء" — `/po-tracking`
+تظهر في نفس تاب المشتريات/الربح في الـ Sidebar.
 
-## المرحلة 1: مراجعة وتقوية Realtime (أولوية أولى)
+تعرض:
+- جدول/كروت بكل POs مع: رقم، مورد، تاريخ، إجمالي USD/EGP، الحالة الحالية كـ Stepper مرئي، عدد القطع، المستلم منها فعلياً.
+- فلاتر: حسب الحالة، المورد، التاريخ، بحث برقم PO.
+- نقر على PO يفتح Drawer/Dialog فيه:
+  - **Timeline كامل** من `po_status_history` (مَن/متى/ملاحظة).
+  - تفاصيل كل المنتجات (صورة، اسم، سيريال، لون، كمية مطلوبة، كمية مستلمة).
+  - أزرار الانتقال للمرحلة التالية حسب الصلاحية (admin/purchasing/cfo).
 
-**الهدف**: أي تعديل في DB يظهر فوراً عند كل المستخدمين بدون refresh.
+## 3) زر التتبع داخل صفحة `/purchase-orders`
+- في كل صف PO وفي رأس الـ Detail Dialog: زر **«التتبع»** (أيقونة Route/Activity) يفتح نفس الـ Tracker Dialog (مكوّن مشترك `POTrackerDialog`).
+- داخل الـ Dialog: Stepper أفقي + Timeline + أزرار تغيير الحالة + حقل ملاحظة لكل انتقال.
 
-### الخطوات
-1. مراجعة الـ Supabase Realtime publication والتأكد إن الجداول دي مفعلة:
-   - `products`, `invoices`, `invoice_items`, `purchase_orders`, `purchase_order_items`, `po_profit_scenarios`, `customers`, `delivery_receipts`, `delivery_receipt_items`, `notifications`, `inventory_logs`, `stock_intakes`
-2. عمل hook موحد `useRealtimeTable(table, queryKey)` يستخدم `supabase.channel().on('postgres_changes')` ويعمل invalidate لـ React Query تلقائياً.
-3. تطبيق الـ hook على كل الصفحات الرئيسية:
-   - Products list
-   - Invoices list & detail
-   - Purchase Orders
-   - Profit Calculator (موجود جزئياً)
-   - Profit Scenarios (موجود)
-   - Delivery Receipts
-   - Customers
-   - Notifications
-4. اختبار من جهازين: تعديل من جهاز ⇒ يظهر فوراً عند التاني.
+## 4) منطق الاستلام (Receive → Inventory)
+- داخل الـ Tracker زر **«تم الاستلام»**:
+  1. يفتح شاشة تأكيد تعرض كل بنود الـ PO مع حقل "الكمية المستلمة" لكل صف (Default = الكمية المطلوبة، يمكن للمستخدم تعديلها لو الاستلام جزئي).
+  2. عند التأكيد، Server Function (`receivePurchaseOrder`) تنفّذ بشكل ذرّي:
+     - تتحقق أن `stock_applied_at IS NULL` (حارس ضد التكرار).
+     - تطابق كل بند بـ `product_id` (لو السيريال/اللون مختلف → يحدّث/ينشئ منتج بنفس البيانات والصورة).
+     - تزيد `products.stock_quantity` بالكمية المستلمة.
+     - تكتب صفّاً في `inventory_logs` (change موجب، reason="PO {رقم}", invoice_id=null, مرتبط بـ PO عبر reason/metadata).
+     - تكتب `po_status_history` بحالة `received`.
+     - تضع `status='received'`, `received_at=now()`, `stock_applied_at=now()`.
+  3. لو حصل خطأ في أي خطوة → Rollback كامل (Postgres function داخل migration للأمان الذرّي).
+- استلام جزئي: الـ PO يبقى في حالة `in_warehouse` لو لم تُستلم كل القطع، وتظهر بوضوح كميات متبقية.
 
----
+## 5) تغييرات قاعدة البيانات (Migration)
+- جدول `po_status_history` (po_id, from_status, to_status, note, actor_id, actor_email, created_at) + RLS.
+- أعمدة جديدة على `purchase_orders` (انظر §1).
+- دالة `apply_po_to_inventory(po_id uuid, items jsonb)` — SECURITY DEFINER، تتحقق من الحارس وتؤدي الزيادات + اللوجز ذرياً.
+- RLS: قراءة لكل أعضاء الشركة، كتابة لـ admin/purchasing/cfo فقط.
 
-## المرحلة 2: PWA Shell + Offline Read
+## 6) ملفات الكود المتأثرة
+- جديد: `src/routes/po-tracking.tsx`, `src/components/po-tracker-dialog.tsx`, `src/lib/po-tracking.functions.ts` (server fns: `transitionPOStatus`, `receivePurchaseOrder`).
+- تعديل: `src/routes/purchase-orders.tsx` (زر التتبع + statusBadge موسّع), `src/components/app-shell.tsx` (إضافة عنصر القائمة), `src/lib/i18n.tsx` (مفاتيح الترجمة), `src/routeTree.gen.ts` (تلقائي).
 
-**الهدف**: المستخدم يقدر يفتح التطبيق ويتصفح المنتجات/الفواتير/الـ POs حتى من غير نت.
+## 7) i18n & UX
+- جميع النصوص بالعربية والإنجليزية.
+- Stepper متجاوب على الموبايل (يتحول رأسي تحت `sm`).
+- إشعار `toast` + `notifications` لكل انتقال حالة (خاصة الاستلام).
+- لا Reload للصفحة — كل التحديثات Realtime عبر `useRealtimeTable`.
 
-### الخطوات
-1. إضافة `vite-plugin-pwa` بإعدادات آمنة:
-   - `devOptions.enabled: false` (مش يشتغل في preview)
-   - guard في `main.tsx` يمنع التسجيل في الـ iframe وعلى hosts الـ preview
-   - `NetworkFirst` للـ HTML, `StaleWhileRevalidate` للـ assets
-2. عمل `manifest.webmanifest` بـ:
-   - app name, icons (192, 512), theme color, display: standalone
-   - زر "Install App" يظهر لما المتصفح يدعمه
-3. تخزين البيانات الأساسية في **IndexedDB** عبر `dexie` (أخف من supabase-js cache):
-   - cache آخر نسخة من products/invoices/customers/POs محلياً
-   - عند الفتح offline: نقرأ من IndexedDB ونعرض banner "أنت غير متصل"
-4. QR codes: يتولدوا client-side (موجود فعلاً), فهيشتغلوا offline تلقائياً.
+## 8) أمان وذرّية
+- منع إضافة المخزون مرتين عبر `stock_applied_at` + شرط داخل الـ DB function.
+- كل Server Function محمية بـ `requireSupabaseAuth` + فحص الدور.
+- تسجيل في `audit_log` لكل تغيير حالة وكل عملية استلام.
 
----
-
-## المرحلة 3: Offline Write + Sync Queue
-
-**الهدف**: تقدر تعمل فاتورة/تعدل منتج وانت offline، ولما النت يرجع كل حاجة تترفع تلقائياً.
-
-### الخطوات
-1. عمل `outbox` table في IndexedDB يخزن أي mutation فشلت بسبب الانترنت:
-   ```
-   { id, table, op (insert/update/delete), payload, created_at, retry_count }
-   ```
-2. wrapper حول كل supabase mutations:
-   - يحاول الـ DB
-   - لو فشل بسبب network → يحفظ في outbox + يحدث IndexedDB cache محلياً (optimistic)
-   - يعرض badge "X تغييرات في انتظار المزامنة"
-3. Background sync:
-   - listener على `window.online` event
-   - لما النت يرجع → يعالج الـ outbox بالترتيب
-   - في حالة conflict (نفس الصف اتعدل من جهاز تاني) → نطبق "last-write-wins" مع log في audit
-4. حماية حالات حرجة:
-   - **invoice numbers / receipt numbers**: مش نولدها offline (نسيب server يولدها)؛ لو الفاتورة اتعملت offline، نعطيها رقم temp ونستبدله لما تترفع.
-   - **stock_quantity**: نطبق التغيير optimistically لكن نحذر من oversell عند الـ sync.
-5. UI feedback:
-   - أيقونة في الـ header: 🟢 online / 🟡 syncing / 🔴 offline (X pending)
-   - toast لما sync ينجح/يفشل
-
----
-
-## ملاحظات تقنية
-
-- **مش هنغير** schema أو RLS الحالي — الـ realtime publication بس محتاج تأكيد.
-- **مكتبات جديدة**: `vite-plugin-pwa`, `dexie`, `workbox-window` (كلها صغيرة).
-- **التيستينج**: بعد كل مرحلة، publish + اختبار من موبايل + متصفح ثاني عشان نضمن الـ realtime/offline.
-
----
-
-## ايه اللي محتاجه منك دلوقتي
-
-أبدأ بـ **المرحلة 1 (Realtime)** فوراً لأنها الأساس وأقل خطر. لما أخلصها وتختبرها وتأكدها، نعدي للمرحلة 2 ثم 3.
-
-موافق نمشي بالترتيب ده، ولا تحب نبدأ بحاجة معينة الأول؟
+بعد موافقتك أبدأ التنفيذ على الفور.
