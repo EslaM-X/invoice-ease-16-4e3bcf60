@@ -31,6 +31,7 @@ function Customers() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const load = async () => {
     if (!user) return;
@@ -40,8 +41,18 @@ function Customers() {
     });
     setList(data);
   };
-  useEffect(() => { load(); }, [user]);
-  useRealtimeTable("customers", () => { load(); });
+  const refreshPending = async () => setPendingIds(await getPendingRowIds("customers"));
+  useEffect(() => { load(); refreshPending(); }, [user]);
+  useEffect(() => {
+    const on = () => refreshPending();
+    window.addEventListener("app:outbox-changed", on);
+    window.addEventListener("app:sync-success", on);
+    return () => {
+      window.removeEventListener("app:outbox-changed", on);
+      window.removeEventListener("app:sync-success", on);
+    };
+  }, []);
+  useRealtimeTable("customers", () => { load(); refreshPending(); });
 
   const filtered = list.filter((c) => {
     const s = q.trim().toLowerCase();
