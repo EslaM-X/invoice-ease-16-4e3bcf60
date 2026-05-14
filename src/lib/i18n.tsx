@@ -262,6 +262,7 @@ const en: Dict = {
   dashboard: "Dashboard",
   customers: "Customers",
   products: "Products",
+  in_transit: "In Transit",
   inventory: "Stock Alerts",
   stock_intake: "Inventory",
   stock_intake_desc: "Record incoming units from suppliers, update quantities and costs",
