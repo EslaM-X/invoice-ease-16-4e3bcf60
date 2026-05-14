@@ -482,13 +482,13 @@ function ScenarioPanel({
           <table className="w-full min-w-[860px] text-xs">
             <thead className="bg-muted/30">
               <tr>
-                <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
-                <th className="p-2 text-end">{isAr ? "كمية" : "Qty"}</th>
-                <th className="p-2 text-end">{isAr ? "USD/وحدة" : "USD/unit"}</th>
-                <th className="p-2 text-end">{isAr ? "تكلفة الوحدة (EGP)" : "Unit cost EGP"}</th>
-                <th className="p-2 text-end">{isAr ? "سعر بيع الوحدة" : "Unit sell price"}</th>
-                <th className="p-2 text-end">{isAr ? "إجمالي البيع" : "Line sell"}</th>
-                <th className="p-2 text-end">{isAr ? "ربح البند" : "Line profit"}</th>
+                <th className="p-2 text-start whitespace-nowrap min-w-[220px]">{isAr ? "المنتج" : "Product"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "كمية" : "Qty"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "USD/وحدة" : "USD/unit"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "تكلفة الوحدة (EGP)" : "Unit cost EGP"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "سعر بيع الوحدة" : "Unit sell price"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "إجمالي البيع" : "Line sell"}</th>
+                <th className="p-2 text-end whitespace-nowrap">{isAr ? "ربح البند" : "Line profit"}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
