@@ -458,8 +458,24 @@ function ScenarioPanel({
                 type="button"
                 onClick={() => setUsdSource("current")}
                 className={`px-2.5 py-1 text-[11px] font-semibold transition ${usdSource === "current" ? "bg-emerald-600 text-white" : "bg-background hover:bg-accent"}`}
-              >{isAr ? "سعر المنتج الحالي" : "Current product"}</button>
+           >{isAr ? "سعر المنتج الحالي" : "Current product"}</button>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                const next: Record<string, string> = {};
+                items.forEach((it) => {
+                  const p = productPrices[it.product_id];
+                  if (p != null) next[it.id] = String(p);
+                });
+                setOverrides(next);
+                toast.success(isAr ? "تم تطبيق سعر المنتج الحالي على كل البنود" : "Applied current product price to all items");
+              }}
+              className="rounded-md border bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground transition hover:opacity-90"
+              title={isAr ? "املأ كل بنود البيع بسعر المنتج الحالي (يمكن التعديل بعدها)" : "Fill all sell prices with current product price (editable after)"}
+            >
+              {isAr ? "تطبيق سعر المنتج على الكل" : "Apply product price to all"}
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
