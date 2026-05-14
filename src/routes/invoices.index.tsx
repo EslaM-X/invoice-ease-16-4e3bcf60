@@ -419,11 +419,24 @@ function InvoicesList() {
                             }
                             return (
                               <>
-                                {delivered && (
+                                {delivered ? (
                                   <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
                                     {lang === "ar" ? "مُسلَّمة" : "Delivered"}
                                   </span>
-                                )}
+                                ) : (() => {
+                                  const p = delivProgress[i.id];
+                                  if (p && p.total > 0 && p.delivered > 0 && p.delivered < p.total) {
+                                    return (
+                                      <span
+                                        className="rounded-full border border-orange-500/40 bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-700 dark:text-orange-400"
+                                        title={`${p.delivered} / ${p.total}`}
+                                      >
+                                        {lang === "ar" ? `تسليم جزئي ${p.delivered}/${p.total}` : `Partial ${p.delivered}/${p.total}`}
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 {fullyPaid && (
                                   <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-400">
                                     {lang === "ar" ? "مدفوعة" : "Paid"}
