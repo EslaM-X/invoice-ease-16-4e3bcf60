@@ -1,5 +1,7 @@
 
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { startSyncEngine } from "@/lib/sync-engine";
 import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
@@ -81,6 +83,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  useEffect(() => { startSyncEngine(); }, []);
   return (
     <ThemeProvider>
       <I18nProvider>
