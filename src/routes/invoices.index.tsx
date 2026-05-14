@@ -50,18 +50,57 @@ function InvoicesList() {
     setList(data);
     setLoading(false);
 
-    // Linked delivery receipts count per invoice (for the badge)
+    // Linked delivery receipts count + delivered quantity progress
     if (data.length) {
       const ids = data.map((i: any) => i.id);
-      const { data: drs } = await supabase
-        .from("delivery_receipts" as any)
-        .select("invoice_id")
-        .in("invoice_id", ids);
+      const [{ data: drs }, { data: invItems }] = await Promise.all([
+        supabase
+          .from("delivery_receipts" as any)
+          .select("id, invoice_id, status")
+          .in("invoice_id", ids),
+        supabase
+          .from("invoice_items")
+          .select("invoice_id, quantity")
+          .in("invoice_id", ids),
+      ]);
       const counts: Record<string, number> = {};
+      const drToInvoice: Record<string, string> = {};
+      const validReceiptIds: string[] = [];
       (drs ?? []).forEach((r: any) => {
-        if (r.invoice_id) counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
+        if (!r.invoice_id) return;
+        counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
+        // Exclude drafts from delivered-quantity calculation
+        if (r.status !== "draft") {
+          drToInvoice[r.id] = r.invoice_id;
+          validReceiptIds.push(r.id);
+        }
       });
       setDrCounts(counts);
+
+      const totals: Record<string, number> = {};
+      (invItems ?? []).forEach((it: any) => {
+        if (!it.invoice_id) return;
+        totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
+      });
+
+      const deliveredByInv: Record<string, number> = {};
+      if (validReceiptIds.length) {
+        const { data: drItems } = await supabase
+          .from("delivery_receipt_items" as any)
+          .select("receipt_id, quantity")
+          .in("receipt_id", validReceiptIds);
+        (drItems ?? []).forEach((di: any) => {
+          const invId = drToInvoice[di.receipt_id];
+          if (!invId) return;
+          deliveredByInv[invId] = (deliveredByInv[invId] ?? 0) + Number(di.quantity ?? 0);
+        });
+      }
+
+      const progress: Record<string, { delivered: number; total: number }> = {};
+      ids.forEach((id: string) => {
+        progress[id] = { delivered: deliveredByInv[id] ?? 0, total: totals[id] ?? 0 };
+      });
+      setDelivProgress(progress);
     }
   };
   useEffect(() => { load(); }, [user, from, to]);
