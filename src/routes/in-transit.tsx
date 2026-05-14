@@ -241,15 +241,83 @@ function InTransitPage() {
         <SummaryCard icon={Package} label={isAr ? "منتجات قادمة" : "Products incoming"} value={totals.transitProducts} color="text-primary" bg="bg-primary/10" />
       </div>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={isAr ? "ابحث باسم المنتج / السيريال / اللون..." : "Search by name / serial / color..."}
-          className="ps-9"
-        />
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isAr ? "ابحث باسم المنتج / السيريال / اللون / الكولكشن..." : "Search by name / serial / color / collection..."}
+            className="ps-9"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setCollectionFilter("")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+          >
+            {isAr ? "كل الكولكشن" : "All collections"} ({collectionCounts.__all__})
+          </button>
+          {COLLECTIONS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCollectionFilter(c)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
+            >
+              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+              {c} ({collectionCounts[c] ?? 0})
+            </button>
+          ))}
+          {collectionCounts.__none__ > 0 && (
+            <button
+              onClick={() => setCollectionFilter("__none__")}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {isAr ? "بدون كولكشن" : "No collection"} ({collectionCounts.__none__})
+            </button>
+          )}
+        </div>
+
+        {colorOptions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {isAr ? "اللون" : "Color"}
+            </span>
+            <button
+              onClick={() => setColorFilter("")}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {isAr ? "الكل" : "All"}
+            </button>
+            {colorOptions.map(({ color, count }) => {
+              const active = colorFilter.toLowerCase() === color.toLowerCase();
+              return (
+                <button
+                  key={color}
+                  onClick={() => setColorFilter(active ? "" : color)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted hover:bg-muted/70"}`}
+                  title={color}
+                >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border" style={{ background: color }} />
+                  <span className="max-w-[80px] truncate">{color}</span>
+                  <span className="text-muted-foreground">({count})</span>
+                </button>
+              );
+            })}
+            {colorFilter && (
+              <button
+                onClick={() => setColorFilter("")}
+                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] hover:bg-muted/70"
+                aria-label="clear"
+              >
+                <X className="h-3 w-3" /> {isAr ? "مسح" : "Clear"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
 
       <Card className="overflow-hidden">
         <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
