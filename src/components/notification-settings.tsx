@@ -1,10 +1,13 @@
-import { Bell, BellOff, Loader2, Volume2, Vibrate, Sparkles } from "lucide-react";
+import { Bell, BellOff, Loader2, Volume2, Vibrate, Sparkles, Upload, Trash2, Play } from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
-import { SOUND_PRESETS, VIBRATION_PRESETS, type SoundPreset, type VibrationPreset, playSoundPreset } from "@/lib/push";
+import { SOUND_PRESETS, VIBRATION_PRESETS, type SoundPreset, type VibrationPreset, playSoundPreset, playCustomSound } from "@/lib/push";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export function NotificationSettings() {
@@ -12,6 +15,53 @@ export function NotificationSettings() {
     supported, permission, subscribed, prefs, loading,
     enablePush, disablePush, savePrefs, testNotification,
   } = usePushNotifications();
+  const { user } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (file: File) => {
+    if (!user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("الحد الأقصى لحجم الملف 5 ميجا");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "mp3";
+      const path = `${user.id}/ringtone-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("notification-sounds")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("notification-sounds").getPublicUrl(path);
+      await savePrefs({ sound: "custom", custom_sound_url: pub.publicUrl, custom_sound_name: file.name });
+      toast.success("تم رفع النغمة");
+      void playCustomSound(pub.publicUrl);
+    } catch (e: any) {
+      toast.error(e?.message || "فشل رفع الملف");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removeCustom = async () => {
+    if (!prefs.custom_sound_url) return;
+    try {
+      const url = new URL(prefs.custom_sound_url);
+      const idx = url.pathname.indexOf("/notification-sounds/");
+      if (idx >= 0) {
+        const path = url.pathname.slice(idx + "/notification-sounds/".length);
+        await supabase.storage.from("notification-sounds").remove([path]);
+      }
+    } catch { /* ignore */ }
+    await savePrefs({
+      custom_sound_url: null,
+      custom_sound_name: null,
+      sound: prefs.sound === "custom" ? "default" : prefs.sound,
+    });
+    toast.success("تم حذف النغمة المخصصة");
+  };
 
   if (!supported) {
     return (
@@ -23,8 +73,12 @@ export function NotificationSettings() {
   }
 
   const onSound = async (v: SoundPreset) => {
+    if (v === "custom" && !prefs.custom_sound_url) {
+      fileRef.current?.click();
+      return;
+    }
     await savePrefs({ sound: v });
-    playSoundPreset(v);
+    playSoundPreset(v, prefs.custom_sound_url);
   };
   const onVib = async (v: VibrationPreset) => {
     await savePrefs({ vibration: v });
