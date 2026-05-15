@@ -122,13 +122,21 @@ self.addEventListener("push", (event) => {
     tag: data.tag || data.id || undefined,
     renotify: true,
     vibrate,
+    silent: false,
+    requireInteraction: data.requireInteraction !== false,
+    timestamp: Date.now(),
+    dir: "rtl",
+    lang: "ar",
+    actions: [
+      { action: "open", title: "فتح" },
+      { action: "dismiss", title: "إغلاق" },
+    ],
     data: {
       url: data.url || "/",
       sound: data.sound || "default",
       customUrl: data.customUrl || null,
       id: data.id,
     },
-    requireInteraction: !!data.requireInteraction,
   };
 
   event.waitUntil((async () => {
