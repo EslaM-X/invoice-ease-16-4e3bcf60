@@ -48,6 +48,7 @@ import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-recei
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
+import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
@@ -246,6 +247,11 @@ const DeliveryReceiptsIdEditRoute = DeliveryReceiptsIdEditRouteImport.update({
   path: '/delivery-receipts/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
+  id: '/api/public/push-dispatch',
+  path: '/api/public/push-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
@@ -340,6 +347,7 @@ export interface FileRoutesByTo {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts': typeof DeliveryReceiptsIndexRoute
   '/invoices': typeof InvoicesIndexRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
@@ -384,6 +392,7 @@ export interface FileRoutesById {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts_/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
@@ -429,6 +438,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
+    | '/api/public/push-dispatch'
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
     | '/api/public/hooks/daily-backup'
@@ -472,6 +482,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts'
     | '/invoices'
+    | '/api/public/push-dispatch'
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
     | '/api/public/hooks/daily-backup'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
+    | '/api/public/push-dispatch'
     | '/delivery-receipts_/$id/edit'
     | '/invoices_/$id/edit'
     | '/api/public/hooks/daily-backup'
@@ -559,6 +571,7 @@ export interface RootRouteChildren {
   InvoicesNewRoute: typeof InvoicesNewRoute
   DeliveryReceiptsIndexRoute: typeof DeliveryReceiptsIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
+  ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
   DeliveryReceiptsIdEditRoute: typeof DeliveryReceiptsIdEditRoute
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
   ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
@@ -840,6 +853,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryReceiptsIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/push-dispatch': {
+      id: '/api/public/push-dispatch'
+      path: '/api/public/push-dispatch'
+      fullPath: '/api/public/push-dispatch'
+      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -895,6 +915,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesNewRoute: InvoicesNewRoute,
   DeliveryReceiptsIndexRoute: DeliveryReceiptsIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
+  ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
   DeliveryReceiptsIdEditRoute: DeliveryReceiptsIdEditRoute,
   InvoicesIdEditRoute: InvoicesIdEditRoute,
   ApiPublicHooksDailyBackupRoute: ApiPublicHooksDailyBackupRoute,
