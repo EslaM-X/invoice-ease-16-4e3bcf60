@@ -170,7 +170,7 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="bg-card p-6">
+        <div className="ios-card p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="eyebrow">{t("top_products")}</h3>
             <div className="h-px flex-1 mx-4 bg-border" />
