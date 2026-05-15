@@ -103,6 +103,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
                 icon: "https://admin.steinheim-eg.com/icon-512.png",
                 badge: "https://admin.steinheim-eg.com/icon-192.png",
                 meta: notif.meta ?? null,
+                requireInteraction: true,
               });
               try {
                 await webpush.sendNotification(
