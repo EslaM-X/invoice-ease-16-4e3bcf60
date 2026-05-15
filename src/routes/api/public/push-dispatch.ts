@@ -100,6 +100,8 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
                 sound: p.sound || "default",
                 customUrl: p.custom_sound_url || null,
                 vibration: p.vibration || "default",
+                icon: "https://admin.steinheim-eg.com/icon-512.png",
+                badge: "https://admin.steinheim-eg.com/icon-192.png",
                 meta: notif.meta ?? null,
               });
               try {
