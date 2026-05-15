@@ -73,7 +73,7 @@ const GLOSS_BLACK: Swatch = {
 };
 
 const GUNMETAL: Swatch = {
-  background: "linear-gradient(135deg, #3e4348 0%, #1f2226 55%, #4a5057 100%)",
+  background: "#2A3439",
   border: "1px solid rgba(255,255,255,0.15)",
 };
 
