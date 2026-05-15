@@ -118,7 +118,7 @@ function Dashboard() {
           >
             <ScanLine className="h-4 w-4" /> {t("scan_and_sell")}
           </Button>
-          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5">
+          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 press-spring">
             <Plus className="h-4 w-4" /> {t("new_invoice")}
           </Button>
         </div>
