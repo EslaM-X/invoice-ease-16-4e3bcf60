@@ -94,3 +94,62 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// ───────────── Push Notifications ─────────────
+const VIBRATION_PATTERNS = {
+  default: [200, 100, 200],
+  short: [80],
+  long: [600],
+  pulse: [120, 80, 120, 80, 120, 80, 400],
+  off: [],
+};
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { title: event.data?.text?.() || "إشعار جديد" }; }
+
+  const title = data.title || "إشعار جديد";
+  const vibrationKey = data.vibration || "default";
+  const vibrate = VIBRATION_PATTERNS[vibrationKey] ?? VIBRATION_PATTERNS.default;
+
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icon-192.png",
+    badge: "/icon-192.png",
+    tag: data.tag || data.id || undefined,
+    renotify: true,
+    vibrate,
+    data: {
+      url: data.url || "/",
+      sound: data.sound || "default",
+      id: data.id,
+    },
+    requireInteraction: !!data.requireInteraction,
+  };
+
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title, options);
+    // Ask any open clients to play the user's chosen sound
+    const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of clientsList) {
+      client.postMessage({ type: "PUSH_SOUND", sound: options.data.sound, payload: data });
+    }
+  })());
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil((async () => {
+    const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of allClients) {
+      const cu = new URL(client.url);
+      if (cu.origin === self.location.origin) {
+        client.focus();
+        client.postMessage({ type: "NAVIGATE", url });
+        return;
+      }
+    }
+    await self.clients.openWindow(url);
+  })());
+});
