@@ -44,11 +44,15 @@ import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
 import { Route as InvoicesDraftsRouteImport } from './routes/invoices.drafts'
 import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
 import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
@@ -227,6 +231,11 @@ const InvoicesIdRoute = InvoicesIdRouteImport.update({
   path: '/invoices/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeliveryReceiptsNewRoute = DeliveryReceiptsNewRouteImport.update({
   id: '/delivery-receipts/new',
   path: '/delivery-receipts/new',
@@ -235,6 +244,11 @@ const DeliveryReceiptsNewRoute = DeliveryReceiptsNewRouteImport.update({
 const DeliveryReceiptsIdRoute = DeliveryReceiptsIdRouteImport.update({
   id: '/delivery-receipts/$id',
   path: '/delivery-receipts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
@@ -252,6 +266,18 @@ const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
   path: '/api/public/push-dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -297,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/stock-intake': typeof StockIntakeRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/archive': typeof InvoicesArchiveRoute
   '/invoices/drafts': typeof InvoicesDraftsRoute
@@ -306,8 +333,11 @@ export interface FileRoutesByFullPath {
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -341,6 +371,7 @@ export interface FileRoutesByTo {
   '/stock-intake': typeof StockIntakeRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/archive': typeof InvoicesArchiveRoute
   '/invoices/drafts': typeof InvoicesDraftsRoute
@@ -350,8 +381,11 @@ export interface FileRoutesByTo {
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -386,6 +420,7 @@ export interface FileRoutesById {
   '/stock-intake': typeof StockIntakeRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invoices/$id': typeof InvoicesIdRoute
   '/invoices/archive': typeof InvoicesArchiveRoute
   '/invoices/drafts': typeof InvoicesDraftsRoute
@@ -395,8 +430,11 @@ export interface FileRoutesById {
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts_/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -432,6 +470,7 @@ export interface FileRouteTypes {
     | '/stock-intake'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
+    | '/email/unsubscribe'
     | '/invoices/$id'
     | '/invoices/archive'
     | '/invoices/drafts'
@@ -441,8 +480,11 @@ export interface FileRouteTypes {
     | '/api/public/push-dispatch'
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
+    | '/lovable/email/suppression'
     | '/api/public/hooks/daily-backup'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -476,6 +518,7 @@ export interface FileRouteTypes {
     | '/stock-intake'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
+    | '/email/unsubscribe'
     | '/invoices/$id'
     | '/invoices/archive'
     | '/invoices/drafts'
@@ -485,8 +528,11 @@ export interface FileRouteTypes {
     | '/api/public/push-dispatch'
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
+    | '/lovable/email/suppression'
     | '/api/public/hooks/daily-backup'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
@@ -520,6 +566,7 @@ export interface FileRouteTypes {
     | '/stock-intake'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
+    | '/email/unsubscribe'
     | '/invoices/$id'
     | '/invoices/archive'
     | '/invoices/drafts'
@@ -529,8 +576,11 @@ export interface FileRouteTypes {
     | '/api/public/push-dispatch'
     | '/delivery-receipts_/$id/edit'
     | '/invoices_/$id/edit'
+    | '/lovable/email/suppression'
     | '/api/public/hooks/daily-backup'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -565,6 +615,7 @@ export interface RootRouteChildren {
   StockIntakeRoute: typeof StockIntakeRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
   InvoicesArchiveRoute: typeof InvoicesArchiveRoute
   InvoicesDraftsRoute: typeof InvoicesDraftsRoute
@@ -574,8 +625,11 @@ export interface RootRouteChildren {
   ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
   DeliveryReceiptsIdEditRoute: typeof DeliveryReceiptsIdEditRoute
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -825,6 +879,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvoicesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/delivery-receipts/new': {
       id: '/delivery-receipts/new'
       path: '/delivery-receipts/new'
@@ -837,6 +898,13 @@ declare module '@tanstack/react-router' {
       path: '/delivery-receipts/$id'
       fullPath: '/delivery-receipts/$id'
       preLoaderRoute: typeof DeliveryReceiptsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices_/$id/edit': {
@@ -858,6 +926,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/push-dispatch'
       fullPath: '/api/public/push-dispatch'
       preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
@@ -909,6 +991,7 @@ const rootRouteChildren: RootRouteChildren = {
   StockIntakeRoute: StockIntakeRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InvoicesIdRoute: InvoicesIdRoute,
   InvoicesArchiveRoute: InvoicesArchiveRoute,
   InvoicesDraftsRoute: InvoicesDraftsRoute,
@@ -918,8 +1001,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
   DeliveryReceiptsIdEditRoute: DeliveryReceiptsIdEditRoute,
   InvoicesIdEditRoute: InvoicesIdEditRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksDailyBackupRoute: ApiPublicHooksDailyBackupRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
