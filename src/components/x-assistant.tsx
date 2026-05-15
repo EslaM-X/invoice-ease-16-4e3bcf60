@@ -150,7 +150,7 @@ export function XAssistant() {
       <SheetTrigger asChild>
         <button
           aria-label="X Assistant"
-          className="no-print group fixed bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-amber-400 text-white shadow-[0_10px_30px_-8px_rgba(168,85,247,0.6)] ring-1 ring-white/30 backdrop-blur transition-transform hover:scale-110 active:scale-95 sm:bottom-6 lg:bottom-8"
+          className="no-print group fixed bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-amber-400 text-white shadow-[0_10px_30px_-8px_rgba(168,85,247,0.6)] ring-1 ring-white/30 backdrop-blur transition-transform hover:scale-110 active:scale-95 sm:bottom-14 lg:bottom-16"
           style={{ insetInlineEnd: "1.25rem" }}
         >
           <span className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-400 opacity-0 blur-xl transition-opacity group-hover:opacity-70" />
