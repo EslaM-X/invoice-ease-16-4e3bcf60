@@ -79,17 +79,17 @@ export function SyncStatusPill() {
       to={href}
       title={tip}
       aria-label={tip}
-      className={`no-print fixed bottom-2 z-40 flex items-center gap-1 rounded-full border ${tone} px-1.5 py-0.5 text-[9px] font-medium shadow-sm backdrop-blur transition hover:scale-105 hover:shadow-md sm:bottom-3 sm:px-2 sm:py-1 sm:text-[10px] md:text-[11px]`}
-      style={{ insetInlineEnd: "0.5rem" }}
+      className={`no-print fixed bottom-1.5 z-40 flex items-center gap-0.5 rounded-full border ${tone} px-1 py-[2px] text-[8px] font-medium shadow-sm backdrop-blur transition hover:scale-105 hover:shadow-md sm:bottom-2 sm:gap-1 sm:px-1.5 sm:py-0.5 sm:text-[9px] md:text-[10px]`}
+      style={{ insetInlineEnd: "0.35rem" }}
     >
       {pending > 0 && effectiveOnline ? (
-        <Loader2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" />
+        <Loader2 className="h-2 w-2 sm:h-2.5 sm:w-2.5 animate-spin" />
       ) : (
-        <Icon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+        <Icon className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
       )}
-      <span className="hidden xs:inline sm:inline">{labelMain}</span>
-      <span className="text-foreground/55 hidden lg:inline">·</span>
-      <span className="hidden lg:inline text-[10px] opacity-80">
+      <span className="hidden sm:inline">{labelMain}</span>
+      <span className="text-foreground/55 hidden xl:inline">·</span>
+      <span className="hidden xl:inline text-[9px] opacity-80">
         {formatRelativeTime(lastSync, lang as any)}
       </span>
     </Link>
