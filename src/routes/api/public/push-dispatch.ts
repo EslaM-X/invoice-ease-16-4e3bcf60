@@ -108,7 +108,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
                 await webpush.sendNotification(
                   { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
                   payload,
-                  { TTL: 60 * 60 * 24 },
+                  { TTL: 60 * 60 * 24, urgency: "high", headers: { Urgency: "high" } },
                 );
               } catch (err: any) {
                 if (err?.statusCode === 404 || err?.statusCode === 410) expired.push(s.id);
