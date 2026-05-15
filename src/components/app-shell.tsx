@@ -373,12 +373,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/40 glass px-4 pt-safe no-print">
-          <Button variant="ghost" size="icon" className="lg:hidden tap-scale" onClick={() => setOpen(!open)}>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/40 ios-material px-4 pt-safe no-print">
+          <Button variant="ghost" size="icon" className="lg:hidden press-spring ios-tap" onClick={() => setOpen(!open)}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
           <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
-            <span className="rounded-md bg-[oklch(0.11_0.004_60)] px-2 py-1">
+            <span className="rounded-xl bg-[oklch(0.11_0.004_60)] px-2 py-1">
               <img src={brandLogo} alt="Steinheim" className="h-6 w-auto object-contain" />
             </span>
           </Link>
@@ -386,16 +386,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <LangStatusPill />
           <NotificationsBell />
           <LowStockAlerts />
-          <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
+          <Button variant="ghost" size="icon" className="rounded-full press-spring ios-tap" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
             <Languages className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full tap-scale" onClick={toggle} aria-label="theme">
+          <Button variant="ghost" size="icon" className="rounded-full press-spring ios-tap" onClick={toggle} aria-label="theme">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-visible px-3 py-6 pb-safe sm:px-6 sm:py-8 lg:px-8">
+        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-visible px-3 py-6 pb-tabbar sm:px-6 sm:py-8 lg:px-8 lg:pb-safe">
           <PageTransition>{children}</PageTransition>
         </main>
+        <MobileTabBar onMore={() => setOpen(true)} />
       </div>
     </div>
   );
