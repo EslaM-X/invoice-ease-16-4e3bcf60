@@ -64,7 +64,7 @@ export function playSoundPreset(preset: SoundPreset, customUrl?: string | null) 
     const now = ctx.currentTime;
 
     type Note = { f: number; t: number; d: number; type?: OscillatorType; vol?: number };
-    const presets: Record<Exclude<SoundPreset, "none">, Note[]> = {
+    const presets: Record<Exclude<SoundPreset, "none" | "custom">, Note[]> = {
       default: [
         { f: 880, t: 0, d: 0.12 },
         { f: 1320, t: 0.13, d: 0.18 },
@@ -83,7 +83,7 @@ export function playSoundPreset(preset: SoundPreset, customUrl?: string | null) 
         { f: 740, t: 0.36, d: 0.18, type: "square", vol: 0.18 },
       ],
     };
-    const notes = presets[preset as Exclude<SoundPreset, "none">] ?? presets.default;
+    const notes = presets[preset as Exclude<SoundPreset, "none" | "custom">] ?? presets.default;
     for (const n of notes) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
