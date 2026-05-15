@@ -347,6 +347,106 @@ html, body {
   text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
 }
+
+/* === iOS 18 inspired polish === */
+@layer utilities {
+  /* Springy easing matching SwiftUI default */
+  .ease-ios { transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+
+  /* iOS translucent material - light + dark adaptive */
+  .ios-material {
+    background: color-mix(in oklab, var(--background) 72%, transparent);
+    backdrop-filter: saturate(180%) blur(28px);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    border: 1px solid color-mix(in oklab, var(--foreground) 6%, transparent);
+  }
+  .ios-material-thick {
+    background: color-mix(in oklab, var(--card) 88%, transparent);
+    backdrop-filter: saturate(200%) blur(40px);
+    -webkit-backdrop-filter: saturate(200%) blur(40px);
+  }
+
+  /* iOS-style large rounded cards */
+  .ios-card {
+    border-radius: 1.25rem;
+    background: var(--card);
+    border: 1px solid color-mix(in oklab, var(--foreground) 6%, transparent);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
+                0 8px 24px -12px color-mix(in oklab, var(--foreground) 10%, transparent);
+    transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
+                box-shadow 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .ios-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent),
+                0 14px 36px -14px color-mix(in oklab, var(--foreground) 18%, transparent);
+  }
+  .ios-card:active { transform: scale(0.985); }
+
+  /* iOS Dynamic Island-like pill */
+  .ios-pill {
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    background: color-mix(in oklab, var(--card) 88%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+  }
+
+  /* Bottom tab bar (iPhone) */
+  .ios-tabbar {
+    background: color-mix(in oklab, var(--background) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(30px);
+    -webkit-backdrop-filter: saturate(180%) blur(30px);
+    border-top: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+  }
+
+  /* Touch target safety (Apple HIG: 44pt min) */
+  .ios-tap { min-height: 44px; min-width: 44px; }
+
+  /* Spring scale press */
+  .press-spring {
+    transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .press-spring:active { transform: scale(0.94); }
+
+  /* Soft inset shadow for grouped lists */
+  .ios-grouped {
+    border-radius: 1rem;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid color-mix(in oklab, var(--foreground) 6%, transparent);
+  }
+  .ios-grouped > * + * {
+    border-top: 1px solid color-mix(in oklab, var(--foreground) 5%, transparent);
+  }
+
+  /* Frosted FAB */
+  .ios-fab {
+    border-radius: 999px;
+    background: var(--gradient-primary);
+    color: var(--primary-foreground);
+    box-shadow: 0 12px 32px -8px color-mix(in oklab, var(--foreground) 35%, transparent),
+                0 2px 6px color-mix(in oklab, var(--foreground) 15%, transparent);
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+                box-shadow 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .ios-fab:hover { transform: translateY(-2px) scale(1.03); }
+  .ios-fab:active { transform: scale(0.94); }
+
+  /* Dynamic type scale on small screens */
+  @media (max-width: 640px) {
+    .display-xl { font-size: clamp(1.6rem, 7vw, 2.4rem); line-height: 1.08; }
+  }
+
+  /* Hide scrollbars on horizontal scrollers (iOS-style) */
+  .scroll-hide::-webkit-scrollbar { display: none; }
+  .scroll-hide { scrollbar-width: none; -ms-overflow-style: none; }
+
+  /* Safe-area aware bottom nav padding */
+  .pb-tabbar { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4.75rem); }
+  @media (min-width: 1024px) { .pb-tabbar { padding-bottom: 0; } }
+}
 @supports (padding: max(0px)) {
   body {
     padding-left: env(safe-area-inset-left);
