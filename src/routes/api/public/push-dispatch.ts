@@ -118,30 +118,38 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
             await (supabaseAdmin as any).from("push_subscriptions").delete().in("id", expired);
           }
 
-          // ───── Also email each recipient (uses transactional queue) ─────
+          // ───── Also email each recipient via transactional send route ─────
           try {
             const { data: emailUsers } = await (supabaseAdmin as any).auth.admin.listUsers({ perPage: 200 });
             const emailById = new Map<string, string>();
             (emailUsers?.users ?? []).forEach((u: any) => { if (u?.email) emailById.set(u.id, u.email); });
             const link = notif.link?.startsWith("http") ? notif.link : `https://admin.steinheim-eg.com${notif.link || "/"}`;
+            const origin = new URL(request.url).origin;
             await Promise.all(
               enabledIds.map(async (uid) => {
                 const email = emailById.get(uid);
                 if (!email) return;
-                const templateData = {
-                  title: notif.title || titlePrefix,
-                  body: notif.body ?? "",
-                  actionUrl: link,
-                };
-                await (supabaseAdmin as any).rpc("enqueue_email", {
-                  p_queue: "transactional_emails",
-                  p_payload: {
-                    template_name: "notification",
-                    recipient_email: email,
-                    template_data: templateData,
-                    idempotency_key: `notif-${notif.id}-${uid}`,
-                  },
-                });
+                try {
+                  await fetch(`${origin}/lovable/email/transactional/send`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    },
+                    body: JSON.stringify({
+                      templateName: "notification",
+                      recipientEmail: email,
+                      idempotencyKey: `notif-${notif.id}-${uid}`,
+                      templateData: {
+                        title: notif.title || titlePrefix,
+                        body: notif.body ?? "",
+                        actionUrl: link,
+                      },
+                    }),
+                  });
+                } catch (e) {
+                  console.error("[push-dispatch] email send failed", e);
+                }
               }),
             );
           } catch (mailErr) {
