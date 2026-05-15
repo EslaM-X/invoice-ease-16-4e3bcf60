@@ -48,6 +48,7 @@ import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-recei
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
 const StockIntakeRoute = StockIntakeRouteImport.update({
@@ -245,6 +246,12 @@ const DeliveryReceiptsIdEditRoute = DeliveryReceiptsIdEditRouteImport.update({
   path: '/delivery-receipts/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyBackupRoute =
   ApiPublicHooksDailyBackupRouteImport.update({
     id: '/api/public/hooks/daily-backup',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -335,6 +343,7 @@ export interface FileRoutesByTo {
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -378,6 +387,7 @@ export interface FileRoutesById {
   '/delivery-receipts_/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
     | '/api/public/hooks/daily-backup'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
     | '/api/public/hooks/daily-backup'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -506,6 +518,7 @@ export interface FileRouteTypes {
     | '/delivery-receipts_/$id/edit'
     | '/invoices_/$id/edit'
     | '/api/public/hooks/daily-backup'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -549,6 +562,7 @@ export interface RootRouteChildren {
   DeliveryReceiptsIdEditRoute: typeof DeliveryReceiptsIdEditRoute
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
   ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -826,6 +840,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryReceiptsIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-backup': {
       id: '/api/public/hooks/daily-backup'
       path: '/api/public/hooks/daily-backup'
@@ -877,16 +898,8 @@ const rootRouteChildren: RootRouteChildren = {
   DeliveryReceiptsIdEditRoute: DeliveryReceiptsIdEditRoute,
   InvoicesIdEditRoute: InvoicesIdEditRoute,
   ApiPublicHooksDailyBackupRoute: ApiPublicHooksDailyBackupRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
