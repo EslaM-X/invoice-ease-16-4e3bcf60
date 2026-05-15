@@ -398,6 +398,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <PageTransition>{children}</PageTransition>
         </main>
         <MobileTabBar onMore={() => setOpen(true)} />
+        <XAssistant />
       </div>
     </div>
   );
