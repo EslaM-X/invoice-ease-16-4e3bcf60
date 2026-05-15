@@ -16,6 +16,7 @@ import { exportFullBackupExcel, exportFullBackupCSV } from "@/lib/backup-export"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { AppearanceSettings } from "@/components/appearance-settings";
+import { NotificationSettings } from "@/components/notification-settings";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
@@ -82,6 +83,8 @@ function SettingsPage() {
       <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("settings")}</h1>
 
       <AppearanceSettings />
+
+      <NotificationSettings />
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <h3 className="mb-4 font-semibold">{t("profile_photo")}</h3>
