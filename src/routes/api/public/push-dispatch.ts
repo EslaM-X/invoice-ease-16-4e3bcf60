@@ -61,7 +61,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
           // Fetch prefs (filter disabled)
           const { data: prefsRows } = await (supabaseAdmin as any)
             .from("user_notification_preferences")
-            .select("user_id, push_enabled, sound, vibration")
+            .select("user_id, push_enabled, sound, vibration, custom_sound_url")
             .in("user_id", recipientIds);
           const prefsMap = new Map<string, any>();
           (prefsRows ?? []).forEach((r: any) => prefsMap.set(r.user_id, r));
@@ -98,6 +98,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
                 url: notif.link || "/",
                 tag: notif.id,
                 sound: p.sound || "default",
+                customUrl: p.custom_sound_url || null,
                 vibration: p.vibration || "default",
                 meta: notif.meta ?? null,
               });
