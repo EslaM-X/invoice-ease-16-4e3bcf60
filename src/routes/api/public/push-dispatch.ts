@@ -118,6 +118,36 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
             await (supabaseAdmin as any).from("push_subscriptions").delete().in("id", expired);
           }
 
+          // ───── Also email each recipient (uses transactional queue) ─────
+          try {
+            const { data: emailUsers } = await (supabaseAdmin as any).auth.admin.listUsers({ perPage: 200 });
+            const emailById = new Map<string, string>();
+            (emailUsers?.users ?? []).forEach((u: any) => { if (u?.email) emailById.set(u.id, u.email); });
+            const link = notif.link?.startsWith("http") ? notif.link : `https://admin.steinheim-eg.com${notif.link || "/"}`;
+            await Promise.all(
+              enabledIds.map(async (uid) => {
+                const email = emailById.get(uid);
+                if (!email) return;
+                const templateData = {
+                  title: notif.title || titlePrefix,
+                  body: notif.body ?? "",
+                  actionUrl: link,
+                };
+                await (supabaseAdmin as any).rpc("enqueue_email", {
+                  p_queue: "transactional_emails",
+                  p_payload: {
+                    template_name: "notification",
+                    recipient_email: email,
+                    template_data: templateData,
+                    idempotency_key: `notif-${notif.id}-${uid}`,
+                  },
+                });
+              }),
+            );
+          } catch (mailErr) {
+            console.error("[push-dispatch] email enqueue failed", mailErr);
+          }
+
           return new Response(JSON.stringify({ ok: true, sent: subs.length - expired.length }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
