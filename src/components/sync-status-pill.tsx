@@ -83,13 +83,13 @@ export function SyncStatusPill() {
       style={{ insetInlineEnd: "0.5rem" }}
     >
       {pending > 0 && effectiveOnline ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
+        <Loader2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" />
       ) : (
-        <Icon className="h-3 w-3" />
+        <Icon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
       )}
-      <span className="hidden sm:inline">{labelMain}</span>
-      <span className="text-foreground/55 hidden md:inline">·</span>
-      <span className="hidden md:inline text-[10px] opacity-80">
+      <span className="hidden xs:inline sm:inline">{labelMain}</span>
+      <span className="text-foreground/55 hidden lg:inline">·</span>
+      <span className="hidden lg:inline text-[10px] opacity-80">
         {formatRelativeTime(lastSync, lang as any)}
       </span>
     </Link>
