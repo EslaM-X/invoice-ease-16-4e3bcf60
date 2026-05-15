@@ -79,11 +79,8 @@ export function SyncStatusPill() {
       to={href}
       title={tip}
       aria-label={tip}
-      className={`no-print fixed bottom-3 z-40 flex items-center gap-1.5 rounded-full border ${tone} px-2.5 py-1 text-[10px] font-medium shadow-md backdrop-blur transition hover:scale-105 hover:shadow-lg sm:bottom-4 sm:text-[11px] ${
-        // bottom-end so it sits opposite the chat/help in both LTR & RTL
-        "end-3 sm:end-4"
-      }`}
-      style={{ insetInlineEnd: "0.75rem" }}
+      className={`no-print fixed bottom-2 z-40 flex items-center gap-1 rounded-full border ${tone} px-1.5 py-0.5 text-[9px] font-medium shadow-sm backdrop-blur transition hover:scale-105 hover:shadow-md sm:bottom-3 sm:px-2 sm:py-1 sm:text-[10px] md:text-[11px]`}
+      style={{ insetInlineEnd: "0.5rem" }}
     >
       {pending > 0 && effectiveOnline ? (
         <Loader2 className="h-3 w-3 animate-spin" />
