@@ -18,6 +18,7 @@ import { useRole } from "@/lib/use-role";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LangStatusPill } from "@/components/lang-status-pill";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { XAssistant } from "@/components/x-assistant";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
