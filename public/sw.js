@@ -111,11 +111,14 @@ self.addEventListener("push", (event) => {
   const title = data.title || "إشعار جديد";
   const vibrationKey = data.vibration || "default";
   const vibrate = VIBRATION_PATTERNS[vibrationKey] ?? VIBRATION_PATTERNS.default;
+  const iconUrl = data.icon || new URL("/icon-512.png", self.location.origin).toString();
+  const badgeUrl = data.badge || new URL("/icon-192.png", self.location.origin).toString();
 
   const options = {
     body: data.body || "",
-    icon: data.icon || "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: iconUrl,
+    badge: badgeUrl,
+    image: data.image || iconUrl,
     tag: data.tag || data.id || undefined,
     renotify: true,
     vibrate,
