@@ -140,6 +140,40 @@ export function NotificationSettings() {
             </SelectContent>
           </Select>
           <p className="text-[11px] text-muted-foreground">يتم تشغيل النغمة تلقائياً للمعاينة.</p>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac,audio/x-m4a,audio/mp4,audio/webm"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }}
+          />
+
+          {prefs.custom_sound_url ? (
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+              <span className="flex-1 truncate text-xs" title={prefs.custom_sound_name || ""}>
+                🎵 {prefs.custom_sound_name || "نغمة مخصصة"}
+              </span>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7"
+                onClick={() => playCustomSound(prefs.custom_sound_url!)} title="تشغيل">
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7"
+                onClick={() => fileRef.current?.click()} disabled={uploading} title="استبدال">
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              </Button>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                onClick={removeCustom} title="حذف">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className="w-full gap-2"
+              onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              رفع نغمة من جهازي (MP3/WAV حتى 5MB)
+            </Button>
+          )}
         </div>
 
         <div className="space-y-2">
