@@ -1,10 +1,13 @@
-import { Bell, BellOff, Loader2, Volume2, Vibrate, Sparkles } from "lucide-react";
+import { Bell, BellOff, Loader2, Volume2, Vibrate, Sparkles, Upload, Trash2, Play } from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
-import { SOUND_PRESETS, VIBRATION_PRESETS, type SoundPreset, type VibrationPreset, playSoundPreset } from "@/lib/push";
+import { SOUND_PRESETS, VIBRATION_PRESETS, type SoundPreset, type VibrationPreset, playSoundPreset, playCustomSound } from "@/lib/push";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export function NotificationSettings() {
@@ -12,6 +15,53 @@ export function NotificationSettings() {
     supported, permission, subscribed, prefs, loading,
     enablePush, disablePush, savePrefs, testNotification,
   } = usePushNotifications();
+  const { user } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (file: File) => {
+    if (!user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("الحد الأقصى لحجم الملف 5 ميجا");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "mp3";
+      const path = `${user.id}/ringtone-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("notification-sounds")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("notification-sounds").getPublicUrl(path);
+      await savePrefs({ sound: "custom", custom_sound_url: pub.publicUrl, custom_sound_name: file.name });
+      toast.success("تم رفع النغمة");
+      void playCustomSound(pub.publicUrl);
+    } catch (e: any) {
+      toast.error(e?.message || "فشل رفع الملف");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removeCustom = async () => {
+    if (!prefs.custom_sound_url) return;
+    try {
+      const url = new URL(prefs.custom_sound_url);
+      const idx = url.pathname.indexOf("/notification-sounds/");
+      if (idx >= 0) {
+        const path = url.pathname.slice(idx + "/notification-sounds/".length);
+        await supabase.storage.from("notification-sounds").remove([path]);
+      }
+    } catch { /* ignore */ }
+    await savePrefs({
+      custom_sound_url: null,
+      custom_sound_name: null,
+      sound: prefs.sound === "custom" ? "default" : prefs.sound,
+    });
+    toast.success("تم حذف النغمة المخصصة");
+  };
 
   if (!supported) {
     return (
@@ -23,8 +73,12 @@ export function NotificationSettings() {
   }
 
   const onSound = async (v: SoundPreset) => {
+    if (v === "custom" && !prefs.custom_sound_url) {
+      fileRef.current?.click();
+      return;
+    }
     await savePrefs({ sound: v });
-    playSoundPreset(v);
+    playSoundPreset(v, prefs.custom_sound_url);
   };
   const onVib = async (v: VibrationPreset) => {
     await savePrefs({ vibration: v });
@@ -86,6 +140,40 @@ export function NotificationSettings() {
             </SelectContent>
           </Select>
           <p className="text-[11px] text-muted-foreground">يتم تشغيل النغمة تلقائياً للمعاينة.</p>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac,audio/x-m4a,audio/mp4,audio/webm"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }}
+          />
+
+          {prefs.custom_sound_url ? (
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+              <span className="flex-1 truncate text-xs" title={prefs.custom_sound_name || ""}>
+                🎵 {prefs.custom_sound_name || "نغمة مخصصة"}
+              </span>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7"
+                onClick={() => playCustomSound(prefs.custom_sound_url!)} title="تشغيل">
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7"
+                onClick={() => fileRef.current?.click()} disabled={uploading} title="استبدال">
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              </Button>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                onClick={removeCustom} title="حذف">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className="w-full gap-2"
+              onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              رفع نغمة من جهازي (MP3/WAV حتى 5MB)
+            </Button>
+          )}
         </div>
 
         <div className="space-y-2">

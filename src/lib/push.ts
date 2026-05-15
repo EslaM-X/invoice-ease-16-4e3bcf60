@@ -7,6 +7,7 @@ export const SOUND_PRESETS = [
   { value: "chime", label: "نغمة" },
   { value: "ding", label: "رنين خفيف" },
   { value: "alert", label: "تنبيه" },
+  { value: "custom", label: "نغمة مخصصة من جهازي" },
   { value: "none", label: "بدون صوت" },
 ] as const;
 
@@ -30,9 +31,32 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return arr;
 }
 
+// Play a custom uploaded ringtone (mp3/wav/ogg/m4a). Falls back silently on error.
+export function playCustomSound(url: string, volume = 0.9): Promise<void> {
+  return new Promise((resolve) => {
+    if (!url || typeof window === "undefined") return resolve();
+    try {
+      const audio = new Audio(url);
+      audio.volume = Math.min(1, Math.max(0, volume));
+      audio.crossOrigin = "anonymous";
+      audio.play().then(() => {
+        audio.onended = () => resolve();
+        // safety stop after 8s
+        setTimeout(() => { try { audio.pause(); } catch {} resolve(); }, 8000);
+      }).catch(() => resolve());
+    } catch {
+      resolve();
+    }
+  });
+}
+
 // Synthesize a short, pleasant alert with WebAudio — no audio assets needed.
-export function playSoundPreset(preset: SoundPreset) {
+export function playSoundPreset(preset: SoundPreset, customUrl?: string | null) {
   if (preset === "none" || typeof window === "undefined") return;
+  if (preset === "custom" && customUrl) {
+    void playCustomSound(customUrl);
+    return;
+  }
   try {
     const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
     if (!Ctx) return;
@@ -40,7 +64,7 @@ export function playSoundPreset(preset: SoundPreset) {
     const now = ctx.currentTime;
 
     type Note = { f: number; t: number; d: number; type?: OscillatorType; vol?: number };
-    const presets: Record<Exclude<SoundPreset, "none">, Note[]> = {
+    const presets: Record<Exclude<SoundPreset, "none" | "custom">, Note[]> = {
       default: [
         { f: 880, t: 0, d: 0.12 },
         { f: 1320, t: 0.13, d: 0.18 },
@@ -59,7 +83,7 @@ export function playSoundPreset(preset: SoundPreset) {
         { f: 740, t: 0.36, d: 0.18, type: "square", vol: 0.18 },
       ],
     };
-    const notes = presets[preset as Exclude<SoundPreset, "none">] ?? presets.default;
+    const notes = presets[preset as Exclude<SoundPreset, "none" | "custom">] ?? presets.default;
     for (const n of notes) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();

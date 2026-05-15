@@ -122,6 +122,7 @@ self.addEventListener("push", (event) => {
     data: {
       url: data.url || "/",
       sound: data.sound || "default",
+      customUrl: data.customUrl || null,
       id: data.id,
     },
     requireInteraction: !!data.requireInteraction,
@@ -132,7 +133,7 @@ self.addEventListener("push", (event) => {
     // Ask any open clients to play the user's chosen sound
     const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of clientsList) {
-      client.postMessage({ type: "PUSH_SOUND", sound: options.data.sound, payload: data });
+      client.postMessage({ type: "PUSH_SOUND", sound: options.data.sound, customUrl: options.data.customUrl, payload: data });
     }
   })());
 });
