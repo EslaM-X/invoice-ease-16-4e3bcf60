@@ -2110,6 +2110,17 @@ export type Database = {
         }
         Returns: number
       }
+      notify_company: {
+        Args: {
+          p_body: string
+          p_link: string
+          p_meta: Json
+          p_only_roles?: Database["public"]["Enums"]["app_role"][]
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
+      }
       pair_scan_session: { Args: { _pair_code: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
