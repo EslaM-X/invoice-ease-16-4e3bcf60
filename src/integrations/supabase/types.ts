@@ -1818,6 +1818,8 @@ export type Database = {
       user_notification_preferences: {
         Row: {
           created_at: string
+          custom_sound_name: string | null
+          custom_sound_url: string | null
           push_enabled: boolean
           sound: string
           updated_at: string
@@ -1826,6 +1828,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_sound_name?: string | null
+          custom_sound_url?: string | null
           push_enabled?: boolean
           sound?: string
           updated_at?: string
@@ -1834,6 +1838,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_sound_name?: string | null
+          custom_sound_url?: string | null
           push_enabled?: boolean
           sound?: string
           updated_at?: string
