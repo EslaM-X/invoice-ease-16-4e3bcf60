@@ -47,6 +47,7 @@ import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
+import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
@@ -246,6 +247,11 @@ const DeliveryReceiptsIdRoute = DeliveryReceiptsIdRouteImport.update({
   path: '/delivery-receipts/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiXChatRoute = ApiXChatRouteImport.update({
+  id: '/api/x-chat',
+  path: '/api/x-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -321,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -369,6 +376,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -418,6 +426,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -468,6 +477,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/email/unsubscribe'
@@ -516,6 +526,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/email/unsubscribe'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
     | '/email/unsubscribe'
@@ -613,6 +625,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
   StockIntakeRoute: typeof StockIntakeRoute
+  ApiXChatRoute: typeof ApiXChatRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -900,6 +913,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryReceiptsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/x-chat': {
+      id: '/api/x-chat'
+      path: '/api/x-chat'
+      fullPath: '/api/x-chat'
+      preLoaderRoute: typeof ApiXChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -989,6 +1009,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
   StockIntakeRoute: StockIntakeRoute,
+  ApiXChatRoute: ApiXChatRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
