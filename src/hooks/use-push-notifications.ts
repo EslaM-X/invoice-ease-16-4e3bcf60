@@ -13,9 +13,17 @@ export type NotifPrefs = {
   push_enabled: boolean;
   sound: SoundPreset;
   vibration: VibrationPreset;
+  custom_sound_url: string | null;
+  custom_sound_name: string | null;
 };
 
-const DEFAULTS: NotifPrefs = { push_enabled: true, sound: "default", vibration: "default" };
+const DEFAULTS: NotifPrefs = {
+  push_enabled: true,
+  sound: "default",
+  vibration: "default",
+  custom_sound_url: null,
+  custom_sound_name: null,
+};
 
 export function usePushNotifications() {
   const { user } = useAuth();
@@ -38,10 +46,10 @@ export function usePushNotifications() {
     (async () => {
       const { data } = await supabase
         .from("user_notification_preferences")
-        .select("push_enabled, sound, vibration")
+        .select("push_enabled, sound, vibration, custom_sound_url, custom_sound_name")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data) setPrefs(data as NotifPrefs);
+      if (data) setPrefs({ ...DEFAULTS, ...(data as Partial<NotifPrefs>) });
 
       if (supported) {
         const reg = await navigator.serviceWorker.getRegistration();
@@ -56,7 +64,7 @@ export function usePushNotifications() {
     if (!supported) return;
     const onMsg = (e: MessageEvent) => {
       const d = e.data;
-      if (d?.type === "PUSH_SOUND") playSoundPreset((d.sound as SoundPreset) || prefs.sound);
+      if (d?.type === "PUSH_SOUND") playSoundPreset((d.sound as SoundPreset) || prefs.sound, d.customUrl ?? prefs.custom_sound_url);
       if (d?.type === "NAVIGATE" && d.url) window.location.href = d.url;
     };
     navigator.serviceWorker.addEventListener("message", onMsg);
@@ -141,7 +149,7 @@ export function usePushNotifications() {
         };
         navigator.vibrate(pattern[prefs.vibration] ?? []);
       }
-      playSoundPreset(prefs.sound);
+      playSoundPreset(prefs.sound, prefs.custom_sound_url);
       if (permission === "granted") {
         navigator.serviceWorker.getRegistration().then((reg) => {
           reg?.showNotification(title, { body, icon: "/icon-192.png" });
