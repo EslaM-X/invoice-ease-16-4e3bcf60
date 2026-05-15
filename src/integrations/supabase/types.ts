@@ -859,6 +859,27 @@ export type Database = {
           },
         ]
       }
+      notification_dispatch_config: {
+        Row: {
+          dispatch_url: string
+          hmac_secret: string
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          dispatch_url: string
+          hmac_secret: string
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          dispatch_url?: string
+          hmac_secret?: string
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -1791,6 +1812,33 @@ export type Database = {
           receipt_seq?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_notification_preferences: {
+        Row: {
+          created_at: string
+          push_enabled: boolean
+          sound: string
+          updated_at: string
+          user_id: string
+          vibration: string
+        }
+        Insert: {
+          created_at?: string
+          push_enabled?: boolean
+          sound?: string
+          updated_at?: string
+          user_id: string
+          vibration?: string
+        }
+        Update: {
+          created_at?: string
+          push_enabled?: boolean
+          sound?: string
+          updated_at?: string
+          user_id?: string
+          vibration?: string
         }
         Relationships: []
       }
