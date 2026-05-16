@@ -1866,6 +1866,42 @@ export type Database = {
         }
         Relationships: []
       }
+      x_activity_log: {
+        Row: {
+          action_type: string
+          actor_job_title: string | null
+          actor_name: string
+          actor_user_id: string
+          created_at: string
+          description: string
+          id: string
+          metadata: Json
+          route: string | null
+        }
+        Insert: {
+          action_type: string
+          actor_job_title?: string | null
+          actor_name: string
+          actor_user_id: string
+          created_at?: string
+          description: string
+          id?: string
+          metadata?: Json
+          route?: string | null
+        }
+        Update: {
+          action_type?: string
+          actor_job_title?: string | null
+          actor_name?: string
+          actor_user_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json
+          route?: string | null
+        }
+        Relationships: []
+      }
       x_calendar_events: {
         Row: {
           all_day: boolean
@@ -2038,7 +2074,9 @@ export type Database = {
       x_user_profile: {
         Row: {
           frequent_topics: Json
+          job_title: string | null
           message_count: number
+          nickname: string | null
           preferences: Json
           summary: string | null
           tone: string | null
@@ -2047,7 +2085,9 @@ export type Database = {
         }
         Insert: {
           frequent_topics?: Json
+          job_title?: string | null
           message_count?: number
+          nickname?: string | null
           preferences?: Json
           summary?: string | null
           tone?: string | null
@@ -2056,7 +2096,9 @@ export type Database = {
         }
         Update: {
           frequent_topics?: Json
+          job_title?: string | null
           message_count?: number
+          nickname?: string | null
           preferences?: Json
           summary?: string | null
           tone?: string | null
