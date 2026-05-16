@@ -97,6 +97,30 @@ export function XAssistant() {
     return () => window.removeEventListener("x:assistant:open", onOpen);
   }, []);
 
+  // Realtime: when ANY other account's X performs an action, show a toast
+  // so the whole team sees what's happening live.
+  useEffect(() => {
+    let myId: string | null = null;
+    supabase.auth.getUser().then(({ data }) => { myId = data.user?.id ?? null; });
+    const channel = supabase
+      .channel("x-activity-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "x_activity_log" },
+        async (payload) => {
+          const row: any = payload.new;
+          if (!row || row.actor_user_id === myId) return;
+          const { toast } = await import("sonner");
+          toast(`${row.actor_name}${row.actor_job_title ? ` · ${row.actor_job_title}` : ""}`, {
+            description: row.description,
+          });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+
   // Load messages for a conversation
   const openConv = async (c: Conv | null) => {
     setConv(c);
