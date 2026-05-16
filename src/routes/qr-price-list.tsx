@@ -250,7 +250,7 @@ function ProductCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: Math.min(idx * 0.02, 0.6) }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.6) }}
       whileHover={{ y: -4 }}
       className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[oklch(0.13_0.005_60_/_0.9)] to-[oklch(0.1_0.004_60_/_0.95)] backdrop-blur-xl transition-shadow hover:border-[oklch(0.78_0.11_82_/_0.4)] hover:shadow-[0_20px_60px_-20px_oklch(0.78_0.11_82_/_0.3)]"
       style={{ animationDelay: `${index * 20}ms` }}
