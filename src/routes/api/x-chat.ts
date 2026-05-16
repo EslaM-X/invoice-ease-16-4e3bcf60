@@ -153,9 +153,18 @@ export const Route = createFileRoute("/api/x-chat")({
 
         const { data: profile } = await supabaseAdmin
           .from("x_user_profile")
-          .select("summary, tone, frequent_topics, message_count, preferences")
+          .select("summary, tone, frequent_topics, message_count, preferences, job_title, nickname")
           .eq("user_id", userId)
           .maybeSingle();
+
+        const { data: appProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("display_name, email")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const identityName = profile?.nickname || appProfile?.display_name || appProfile?.email?.split("@")[0] || null;
+        const identityJob = profile?.job_title || null;
 
         // Build a live usage snapshot so the bot can give SMART, contextual
         // suggestions. Everything below respects the user_id scope already.
