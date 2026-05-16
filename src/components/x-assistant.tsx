@@ -525,3 +525,59 @@ function Bubble({ role, content, streaming }: { role: "user" | "assistant"; cont
     </div>
   );
 }
+
+type AssistantAction =
+  | {
+      type: "create_event";
+      title: string;
+      starts_at: string;
+      notes?: string;
+      kind?: string;
+      remind_before_minutes?: number[];
+    }
+  | { type: string; [k: string]: any };
+
+/**
+ * Extracts ```x-action JSON blocks from an assistant reply and returns the
+ * cleaned text (with blocks removed) plus the parsed actions.
+ */
+function extractActions(text: string): { cleaned: string; actions: AssistantAction[] } {
+  const actions: AssistantAction[] = [];
+  const cleaned = text.replace(/```x-action\s*([\s\S]*?)```/g, (_, body) => {
+    try {
+      const parsed = JSON.parse(body.trim());
+      if (Array.isArray(parsed)) actions.push(...parsed);
+      else actions.push(parsed);
+    } catch {
+      /* ignore bad json */
+    }
+    return "";
+  }).trim();
+  return { cleaned, actions };
+}
+
+async function runAssistantAction(a: AssistantAction, ar: boolean) {
+  try {
+    if (a.type === "create_event" && a.title && a.starts_at) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from("x_calendar_events").insert({
+        user_id: user.id,
+        title: String(a.title).slice(0, 200),
+        notes: a.notes ? String(a.notes).slice(0, 2000) : null,
+        kind: a.kind || "event",
+        starts_at: new Date(a.starts_at).toISOString(),
+        remind_before_minutes: Array.isArray(a.remind_before_minutes) && a.remind_before_minutes.length
+          ? a.remind_before_minutes
+          : [60, 1440],
+      });
+      if (error) throw error;
+      window.dispatchEvent(new CustomEvent("x:calendar:refresh"));
+      const { toast } = await import("sonner");
+      toast.success(ar ? "اتسجّل في الكلندر ✨" : "Saved to calendar ✨");
+    }
+  } catch (e: any) {
+    const { toast } = await import("sonner");
+    toast.error(e?.message ?? "Action failed");
+  }
+}
