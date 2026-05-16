@@ -21,6 +21,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -49,6 +50,12 @@ export function XAssistant() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const ar = lang === "ar";
   const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
+
+  const openAssistant = (event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    window.setTimeout(() => setOpen(true), 0);
+  };
 
   // Load conversations list when opening
   useEffect(() => {
@@ -196,7 +203,7 @@ export function XAssistant() {
       <button
         type="button"
         aria-label="X Assistant"
-        onClick={() => setOpen(true)}
+        onClick={openAssistant}
         className="x-orb no-print group fixed bottom-24 z-[60] flex h-14 w-14 items-center justify-center rounded-full sm:bottom-14 lg:bottom-16"
         style={{ insetInlineEnd: "1.25rem" }}
       >
@@ -228,6 +235,11 @@ export function XAssistant() {
         className="x-sheet flex w-full flex-col gap-0 border-0 p-0 sm:max-w-md"
       >
         <SheetHeader className="x-sheet-header px-4 py-3">
+          <SheetDescription className="sr-only">
+            {ar
+              ? "مساعد ذكي للمحادثة بالعربية والإنجليزية داخل التطبيق."
+              : "A smart in-app assistant for Arabic and English conversations."}
+          </SheetDescription>
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="flex items-center gap-3 text-base text-white">
               <span className="x-header-orb">
