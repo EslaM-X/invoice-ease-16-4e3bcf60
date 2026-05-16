@@ -404,25 +404,14 @@ export function XAssistant() {
               className="x-sheet-footer p-3"
             >
               <div className="x-input-shell flex items-end gap-2 rounded-2xl px-3 py-2">
-                <button
-                  type="button"
-                  title={ar ? "محادثة صوتية (قريباً)" : "Voice chat (coming soon)"}
-                  className="x-mic flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
-                  onClick={() =>
-                    setMessages((m) => [
-                      ...m,
-                      {
-                        id: crypto.randomUUID(),
-                        role: "assistant",
-                        content: ar
-                          ? "🎤 المحادثة الصوتية في الطريق — هتتفعل خلال يوم أو اتنين بإذن الله."
-                          : "🎤 Voice chat is on the way — landing in the next update.",
-                      },
-                    ])
-                  }
-                >
-                  <Mic className="h-4 w-4" />
-                </button>
+                <VoiceMic
+                  ar={ar}
+                  onTranscript={(t) => {
+                    setInput((prev) => (prev ? prev + " " : "") + t);
+                  }}
+                  onAutoSend={(t) => send(t)}
+                />
+
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
