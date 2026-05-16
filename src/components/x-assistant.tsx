@@ -814,7 +814,10 @@ function VoiceMic({
     try {
       const cap: any = (window as any).Capacitor;
       if (!cap?.isNativePlatform?.()) return false;
-      const mod: any = await import(/* @vite-ignore */ "@capacitor-community/speech-recognition");
+      // Resolved at runtime only on native; avoids TS/Vite resolution on web
+      const pkg = "@capacitor-community/speech-recognition";
+      const mod: any = await import(/* @vite-ignore */ /* webpackIgnore: true */ pkg).catch(() => null);
+      if (!mod) return false;
       const SR = mod.SpeechRecognition;
       if (!SR) return false;
       const avail = await SR.available();
