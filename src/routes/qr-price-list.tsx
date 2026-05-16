@@ -37,18 +37,32 @@ type CollectionFilter = (typeof COLLECTIONS)[number];
 function PriceListPage() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
-  const [items, setItems] = useState<PriceListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed from cache so the page renders instantly even offline.
+  const [items, setItems] = useState<PriceListItem[]>(() => getCachedPriceItems());
+  const [loading, setLoading] = useState(() => getCachedPriceItems().length === 0);
+  const [offline, setOffline] = useState(false);
   const [search, setSearch] = useState("");
   const [collection, setCollection] = useState<CollectionFilter>("ALL");
   const [category, setCategory] = useState<string>("ALL");
+  const [colorFilter, setColorFilter] = useState<string>("ALL");
   const [editItem, setEditItem] = useState<PriceListItem | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    const onOff = () => setOffline(!navigator.onLine);
+    onOff();
+    window.addEventListener("online", onOff);
+    window.addEventListener("offline", onOff);
+
     listPriceItems()
       .then((rows) => { if (mounted) setItems(rows); })
-      .catch((e) => toast.error(e?.message ?? "Failed to load"))
+      .catch((e) => {
+        // If cache exists we already rendered — don't block the UI.
+        if (getCachedPriceItems().length === 0) {
+          toast.error(e?.message ?? "Failed to load");
+        }
+      })
       .finally(() => { if (mounted) setLoading(false); });
 
     const channel = supabase
@@ -62,6 +76,8 @@ function PriceListPage() {
 
     return () => {
       mounted = false;
+      window.removeEventListener("online", onOff);
+      window.removeEventListener("offline", onOff);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -72,11 +88,23 @@ function PriceListPage() {
     return ["ALL", ...Array.from(set).sort()];
   }, [items]);
 
+  // Distinct colors across the active dataset, with their hex for the swatch.
+  const colors = useMemo(() => {
+    const map = new Map<string, string | null>();
+    items.forEach((i) => {
+      if (i.color) {
+        if (!map.has(i.color)) map.set(i.color, i.color_hex ?? null);
+      }
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [items]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((i) => {
       if (collection !== "ALL" && i.collection !== collection) return false;
       if (category !== "ALL" && i.category !== category) return false;
+      if (colorFilter !== "ALL" && (i.color ?? "") !== colorFilter) return false;
       if (!q) return true;
       return (
         i.sku.toLowerCase().includes(q) ||
@@ -85,7 +113,7 @@ function PriceListPage() {
         (i.color ?? "").toLowerCase().includes(q)
       );
     });
-  }, [items, search, collection, category]);
+  }, [items, search, collection, category, colorFilter]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
