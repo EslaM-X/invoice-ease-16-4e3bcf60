@@ -8,7 +8,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-2.5-flash"; // fast + capable; user wanted "Gemini-like, fast & strong"
 
-const SYSTEM_PROMPT = `You are "X" — a luxury-grade smart assistant living inside Steinheim Egypt, an Arabic-first sales & inventory management app.
+const SYSTEM_PROMPT = `You are "X" — a luxury-grade smart assistant living inside Steinheim Egypt, an Arabic-first sales & inventory management app. You are PERSISTENT: every conversation, every event the user schedules, every preference you learn — all of it is stored permanently in the database and never deleted. You build up real memory of this user over time.
 
 # Personality
 - Confident, warm, professional. You sound like a sharp business partner, not a chatbot.
@@ -58,8 +58,18 @@ When you mention a page, link it with markdown: [Page name](/route) — same in 
 The user's local time is approximately: {{NOW_ISO}} (Africa/Cairo). Use this to resolve relative phrases like "بكرة", "tomorrow", "الخميس الجاي".
 
 # Honesty
-- Never invent numbers, invoice IDs, customer names, or stock levels. If you don't have the real data, tell the user which page to open to see it.
+- Never invent numbers, invoice IDs, customer names, or stock levels. If you don't have the real data, use the live usage snapshot below — or tell the user which page to open to see it.
 - If you're unsure, say so briefly and offer the closest helpful answer.
+
+# Smart suggestions & learning (CRITICAL)
+You actively LEARN this user's style — what pages they use, what they ignore, when they work, what they care about. The "Learned about this user" + "Live usage snapshot" sections below are injected fresh every turn. Use them to:
+- Open with a relevant pulse when it fits (e.g. "شفت إن مبيعات اليوم لسه ٢ فواتير بس، تحب نراجع المخزون الناقص؟").
+- Proactively surface 1 (max 2) helpful suggestions at the end of replies — short, actionable, contextual. Examples:
+  - "اقتراح: ٣ منتجات مخزونها قرّب يخلّص — تفتح [المخزون](/inventory)؟"
+  - "Heads-up: PO-2026-014 expected to arrive tomorrow — want me to set a reminder?"
+- Suggest workflow improvements when you spot a pattern ("لاحظت إنك بتعمل ٣ فواتير لنفس العميل في اليوم — تحب تفعّل عميل دائم بخصم تلقائي؟").
+- Never spam suggestions — skip them when the user is in the middle of a focused question.
+- Everything is persistent: you remember between sessions. Don't say "I have no memory".
 
 # Tone examples
 AR (light humor): "تمام، أنا تحت أمرك. تفتح الفواتير ولا أفتحلك التقارير الأول؟ 😉 (بس أنا مش بقترح حاجة غلط، عشان سمعتي)"
@@ -143,13 +153,66 @@ export const Route = createFileRoute("/api/x-chat")({
 
         const { data: profile } = await supabaseAdmin
           .from("x_user_profile")
-          .select("summary, tone")
+          .select("summary, tone, frequent_topics, message_count, preferences")
           .eq("user_id", userId)
           .maybeSingle();
 
-        const sysExtra = profile?.summary
-          ? `\n\nملخص شخصية المستخدم (يرشدك في النبرة): ${profile.summary}${profile.tone ? ` — النبرة المفضلة: ${profile.tone}` : ""}`
-          : "";
+        // Build a live usage snapshot so the bot can give SMART, contextual
+        // suggestions. Everything below respects the user_id scope already.
+        const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
+        const weekAgo = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const upcomingEnd = new Date(Date.now() + 14 * 24 * 3600_000).toISOString();
+
+        const [
+          invToday, invWeek, lowStock, customersWeek, upcomingEvents, recentPOs,
+        ] = await Promise.all([
+          supabaseAdmin.from("invoices").select("id,total", { count: "exact" })
+            .eq("user_id", userId).gte("created_at", todayStart.toISOString()),
+          supabaseAdmin.from("invoices").select("id,total", { count: "exact", head: false })
+            .eq("user_id", userId).gte("created_at", weekAgo),
+          supabaseAdmin.from("products").select("name,stock_quantity,low_stock_threshold")
+            .eq("user_id", userId).limit(500),
+          supabaseAdmin.from("customers").select("id", { count: "exact", head: true })
+            .eq("user_id", userId).gte("created_at", weekAgo),
+          supabaseAdmin.from("x_calendar_events").select("title,starts_at,kind")
+            .eq("user_id", userId).gte("starts_at", new Date().toISOString())
+            .lte("starts_at", upcomingEnd).order("starts_at").limit(8),
+          supabaseAdmin.from("purchase_orders").select("po_number,status,expected_arrival_at")
+            .eq("user_id", userId).gte("created_at", weekAgo).limit(10),
+        ]);
+
+        const todayCount = invToday.count ?? (invToday.data?.length ?? 0);
+        const todayTotal = (invToday.data ?? []).reduce((s: number, r: any) => s + Number(r.total || 0), 0);
+        const weekCount = invWeek.count ?? (invWeek.data?.length ?? 0);
+        const weekTotal = (invWeek.data ?? []).reduce((s: number, r: any) => s + Number(r.total || 0), 0);
+        const lowStockList = (lowStock.data ?? [])
+          .filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold ?? 5))
+          .slice(0, 8)
+          .map((p: any) => `${p.name} (${p.stock_quantity})`);
+
+        const usageSnapshot = [
+          `# Live usage snapshot for THIS user (do not share these raw numbers unless asked; use them to give smart, contextual suggestions)`,
+          `- Invoices today: ${todayCount} (total ≈ ${todayTotal.toFixed(2)} EGP)`,
+          `- Invoices last 7 days: ${weekCount} (total ≈ ${weekTotal.toFixed(2)} EGP)`,
+          `- New customers last 7 days: ${customersWeek.count ?? 0}`,
+          `- Low-stock products (≤ threshold): ${lowStockList.length ? lowStockList.join(", ") : "none 🎉"}`,
+          `- Upcoming calendar (next 14 days): ${(upcomingEvents.data ?? []).length
+            ? (upcomingEvents.data ?? []).map((e: any) => `${e.title} @ ${new Date(e.starts_at).toLocaleString("en-GB", { timeZone: "Africa/Cairo" })}`).join("; ")
+            : "nothing scheduled"}`,
+          `- Recent POs: ${(recentPOs.data ?? []).length
+            ? (recentPOs.data ?? []).map((p: any) => `${p.po_number}(${p.status}${p.expected_arrival_at ? `, arr ${new Date(p.expected_arrival_at).toLocaleDateString("en-GB")}` : ""})`).join("; ")
+            : "none recent"}`,
+        ].join("\n");
+
+        const sysExtra =
+          (profile?.summary
+            ? `\n\n# Learned about this user (from past chats — guide tone & suggestions)\n${profile.summary}${profile.tone ? `\nPreferred tone: ${profile.tone}` : ""}`
+            : "") +
+          (Array.isArray(profile?.frequent_topics) && profile!.frequent_topics.length
+            ? `\n# Frequent topics: ${(profile!.frequent_topics as any[]).join(", ")}`
+            : "") +
+          `\n\n${usageSnapshot}`;
 
         const nowIso = new Date().toLocaleString("sv-SE", { timeZone: "Africa/Cairo" });
         const messages = [
@@ -221,6 +284,28 @@ export const Route = createFileRoute("/api/x-chat")({
                   .from("x_conversations")
                   .update({ last_message_at: new Date().toISOString() })
                   .eq("id", conversationId);
+
+                // Learning loop: increment message_count, and every 6 turns
+                // run a quick summarization to refresh the persistent profile.
+                const newCount = (profile?.message_count ?? 0) + 1;
+                await supabaseAdmin
+                  .from("x_user_profile")
+                  .upsert({ user_id: userId, message_count: newCount, updated_at: new Date().toISOString() });
+
+                if (newCount % 6 === 0) {
+                  // fire-and-forget — don't block the response
+                  void updateUserMemory({
+                    userId,
+                    apiKey,
+                    history: [
+                      ...((history ?? []) as any[]),
+                      { role: "user", content: userMessage },
+                      { role: "assistant", content: full },
+                    ],
+                    previousSummary: profile?.summary ?? null,
+                    previousTopics: (profile?.frequent_topics as string[] | undefined) ?? [],
+                  });
+                }
               }
               controller.enqueue(sse({ type: "done" }));
             } catch (e: any) {
@@ -243,3 +328,63 @@ export const Route = createFileRoute("/api/x-chat")({
     },
   },
 });
+
+/**
+ * Lightweight "memory keeper": every few turns, asks the gateway to summarize
+ * the user's style, preferences, and frequent topics, then persists into
+ * x_user_profile. The result feeds back into the next conversation as system
+ * context — that's how X "learns" the user.
+ */
+async function updateUserMemory(args: {
+  userId: string;
+  apiKey: string;
+  history: { role: string; content: string }[];
+  previousSummary: string | null;
+  previousTopics: string[];
+}) {
+  try {
+    const tail = args.history.slice(-20)
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n");
+    const prompt = `Update a long-lived memory profile for an app user, based on their chat with the assistant.
+Previous summary: ${args.previousSummary ?? "(none)"}
+Previous frequent topics: ${args.previousTopics.join(", ") || "(none)"}
+Recent dialog:
+${tail}
+
+Return STRICT JSON with this shape (no prose, no fences):
+{"summary": "<= 600 chars, 1-2 short paragraphs in English describing how this user works, what they care about, their preferred tone, recurring goals, recent context worth remembering",
+ "tone": "<= 40 chars, e.g. 'casual Arabic, dry humor'",
+ "frequent_topics": ["topic1","topic2","topic3"]  // max 8
+}`;
+
+    const res = await fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${args.apiKey}` },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: "You output ONLY valid JSON. No commentary." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    const text: string = json?.choices?.[0]?.message?.content ?? "";
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+    let parsed: any;
+    try { parsed = JSON.parse(cleaned); } catch { return; }
+    if (!parsed || typeof parsed !== "object") return;
+
+    await supabaseAdmin.from("x_user_profile").upsert({
+      user_id: args.userId,
+      summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 2000) : args.previousSummary,
+      tone: typeof parsed.tone === "string" ? parsed.tone.slice(0, 120) : null,
+      frequent_topics: Array.isArray(parsed.frequent_topics) ? parsed.frequent_topics.slice(0, 8) : args.previousTopics,
+      updated_at: new Date().toISOString(),
+    });
+  } catch {
+    // best-effort; never break the chat reply
+  }
+}
