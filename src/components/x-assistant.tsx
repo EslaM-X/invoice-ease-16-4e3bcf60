@@ -8,6 +8,9 @@ import {
   MessageSquare,
   X as XIcon,
   Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
   ChevronRight,
   Wand2,
   TrendingUp,
@@ -25,6 +28,10 @@ import { Link } from "@tanstack/react-router";
 type Msg = { id: string; role: "user" | "assistant"; content: string };
 type Conv = { id: string; title: string; last_message_at: string };
 type Status = "idle" | "thinking" | "speaking";
+type Accent = "ar-EG" | "en-US" | "en-GB";
+
+const ACCENT_STORAGE = "x:accent";
+const TTS_STORAGE = "x:tts-enabled";
 
 /**
  * X Assistant — luxury floating orb FAB that opens a polished chat sheet.
@@ -42,9 +49,33 @@ export function XAssistant() {
   const [streaming, setStreaming] = useState(false);
   const [streamBuf, setStreamBuf] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const [accent, setAccentState] = useState<Accent>("ar-EG");
+  const [ttsOn, setTtsOnState] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const ar = lang === "ar";
   const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
+
+  // Hydrate accent + tts from localStorage on mount
+  useEffect(() => {
+    try {
+      const a = localStorage.getItem(ACCENT_STORAGE) as Accent | null;
+      if (a === "ar-EG" || a === "en-US" || a === "en-GB") setAccentState(a);
+      else setAccentState(ar ? "ar-EG" : "en-US");
+      setTtsOnState(localStorage.getItem(TTS_STORAGE) === "1");
+    } catch { /* ignore */ }
+  }, [ar]);
+
+  const setAccent = (a: Accent) => {
+    setAccentState(a);
+    try { localStorage.setItem(ACCENT_STORAGE, a); } catch { /* ignore */ }
+  };
+  const setTtsOn = (v: boolean) => {
+    setTtsOnState(v);
+    try { localStorage.setItem(TTS_STORAGE, v ? "1" : "0"); } catch { /* ignore */ }
+    if (!v) {
+      try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -205,6 +236,7 @@ export function XAssistant() {
 
       const { cleaned, actions } = extractActions(acc);
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: cleaned }]);
+      if (ttsOn) speakText(cleaned, accent);
       setStreamBuf("");
       if (newConvId && !conv) {
         setConv({ id: newConvId, title: text.slice(0, 60), last_message_at: new Date().toISOString() });
@@ -307,6 +339,25 @@ export function XAssistant() {
               </span>
             </div>
             <div className="flex items-center gap-1">
+              <select
+                value={accent}
+                onChange={(e) => setAccent(e.target.value as Accent)}
+                title={ar ? "اللهجة" : "Accent"}
+                className="h-8 cursor-pointer rounded-md border border-white/15 bg-white/5 px-2 text-[11px] font-medium text-white/80 outline-none hover:bg-white/10"
+              >
+                <option value="ar-EG" className="bg-black">🇪🇬 مصري</option>
+                <option value="en-US" className="bg-black">🇺🇸 US</option>
+                <option value="en-GB" className="bg-black">🇬🇧 UK</option>
+              </select>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => setTtsOn(!ttsOn)}
+                title={ar ? (ttsOn ? "إيقاف القراءة الصوتية" : "تشغيل القراءة الصوتية") : ttsOn ? "Mute voice" : "Read aloud"}
+              >
+                {ttsOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -329,7 +380,7 @@ export function XAssistant() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
-                onClick={() => setOpen(false)}
+                onClick={() => { try { window.speechSynthesis?.cancel(); } catch {} setOpen(false); }}
                 title={ar ? "إغلاق" : "Close"}
               >
                 <XIcon className="h-4 w-4" />
@@ -430,6 +481,7 @@ export function XAssistant() {
               <div className="x-input-shell flex items-end gap-2 rounded-2xl px-3 py-2">
                 <VoiceMic
                   ar={ar}
+                  lang={accent}
                   onTranscript={(t) => {
                     setInput((prev) => (prev ? prev + " " : "") + t);
                   }}
@@ -664,18 +716,72 @@ async function logActivity(args: {
 
 type SR = any;
 
+/**
+ * Strip markdown, code fences, x-action blocks, links — keep clean prose for TTS.
+ */
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/```x-action[\s\S]*?```/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Speak using the best matching system voice for the requested locale.
+ * Falls back gracefully if voices haven't loaded yet.
+ */
+export function speakText(rawText: string, lang: Accent) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const text = cleanForSpeech(rawText);
+  if (!text) return;
+  const synth = window.speechSynthesis;
+  const doSpeak = () => {
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang;
+      u.rate = lang.startsWith("ar") ? 0.95 : 1.0;
+      u.pitch = 1;
+      const voices = synth.getVoices();
+      // Prefer exact lang, then prefix match, then any Arabic/English
+      const exact = voices.find((v) => v.lang === lang);
+      const prefix = voices.find((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
+      u.voice = exact ?? prefix ?? null;
+      synth.speak(u);
+    } catch { /* ignore */ }
+  };
+  // Some browsers load voices async
+  if (synth.getVoices().length === 0) {
+    const handler = () => { synth.removeEventListener("voiceschanged", handler); doSpeak(); };
+    synth.addEventListener("voiceschanged", handler);
+    // Trigger
+    synth.getVoices();
+    setTimeout(doSpeak, 250);
+  } else {
+    doSpeak();
+  }
+}
+
 function VoiceMic({
   ar,
+  lang,
   onTranscript,
   onAutoSend,
 }: {
   ar: boolean;
+  lang: Accent;
   onTranscript: (t: string) => void;
   onAutoSend: (t: string) => void;
 }) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(true);
   const recRef = useRef<SR | null>(null);
+  const finalRef = useRef<string>("");
 
   useEffect(() => {
     const W = window as any;
@@ -683,35 +789,64 @@ function VoiceMic({
     if (!SR) setSupported(false);
   }, []);
 
-  const start = () => {
+  const start = async () => {
     const W = window as any;
     const SR = W.SpeechRecognition || W.webkitSpeechRecognition;
     if (!SR) {
-      import("sonner").then(({ toast }) =>
-        toast.error(ar ? "متصفحك لا يدعم الميكروفون — جرّب Chrome" : "Browser doesn't support voice — try Chrome"),
-      );
+      const { toast } = await import("sonner");
+      toast.error(ar ? "متصفحك لا يدعم الميكروفون — جرّب Chrome أو Edge" : "Browser doesn't support voice — try Chrome or Edge");
       return;
     }
+
+    // Pre-request mic permission for clearer UX (helps on iOS Safari too)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      const { toast } = await import("sonner");
+      toast.error(ar ? "محتاج إذن الميكروفون — افتح إعدادات المتصفح" : "Microphone permission denied — enable it in browser settings");
+      return;
+    }
+
     try {
       const r = new SR();
-      r.lang = ar ? "ar-EG" : "en-US";
+      r.lang = lang;
       r.interimResults = true;
       r.continuous = false;
-      let finalText = "";
+      finalRef.current = "";
+      let liveInterim = "";
+
       r.onresult = (e: any) => {
         let interim = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const txt = e.results[i][0].transcript;
-          if (e.results[i].isFinal) finalText += txt;
+          if (e.results[i].isFinal) finalRef.current += txt;
           else interim += txt;
         }
-        if (interim) onTranscript("");
+        liveInterim = interim;
+        // Show running interim in input (replacing previous interim)
+        if (interim) onTranscript(interim.trim());
       };
       r.onend = () => {
         setListening(false);
-        if (finalText.trim()) onAutoSend(finalText.trim());
+        const finalText = (finalRef.current || liveInterim).trim();
+        if (finalText) onAutoSend(finalText);
       };
-      r.onerror = () => setListening(false);
+      r.onerror = async (e: any) => {
+        setListening(false);
+        const code = e?.error;
+        if (code && code !== "no-speech" && code !== "aborted") {
+          const { toast } = await import("sonner");
+          const map: Record<string, { ar: string; en: string }> = {
+            "not-allowed": { ar: "محتاج إذن الميكروفون", en: "Microphone permission denied" },
+            "audio-capture": { ar: "مفيش ميكروفون متاح", en: "No microphone available" },
+            "network": { ar: "مفيش انترنت للتعرف على الصوت", en: "Network required for speech recognition" },
+            "language-not-supported": { ar: "اللهجة دي مش مدعومة في متصفحك", en: "This accent isn't supported in your browser" },
+          };
+          const msg = map[code];
+          if (msg) toast.error(ar ? msg.ar : msg.en);
+        }
+      };
       r.start();
       recRef.current = r;
       setListening(true);
@@ -723,9 +858,7 @@ function VoiceMic({
   const stop = () => {
     try {
       recRef.current?.stop();
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     setListening(false);
   };
 
@@ -740,7 +873,7 @@ function VoiceMic({
       } ${!supported ? "opacity-50" : ""}`}
       onClick={listening ? stop : start}
     >
-      <Mic className="h-4 w-4" />
+      {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
     </button>
   );
 }
