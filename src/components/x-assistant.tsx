@@ -90,6 +90,13 @@ export function XAssistant() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // External open trigger (e.g., reminder toast → "Open X")
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("x:assistant:open", onOpen);
+    return () => window.removeEventListener("x:assistant:open", onOpen);
+  }, []);
+
   // Load messages for a conversation
   const openConv = async (c: Conv | null) => {
     setConv(c);
