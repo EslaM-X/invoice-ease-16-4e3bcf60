@@ -583,6 +583,12 @@ async function runAssistantAction(a: AssistantAction, ar: boolean) {
       });
       if (error) throw error;
       window.dispatchEvent(new CustomEvent("x:calendar:refresh"));
+      await logActivity({
+        user_id: user.id,
+        action_type: "calendar_event_created",
+        description: ar ? `سجّل في الكلندر: ${a.title}` : `Scheduled: ${a.title}`,
+        metadata: { starts_at: a.starts_at, kind: a.kind ?? "event" },
+      });
       const { toast } = await import("sonner");
       toast.success(ar ? "اتسجّل في الكلندر ✨" : "Saved to calendar ✨");
     }
@@ -591,3 +597,127 @@ async function runAssistantAction(a: AssistantAction, ar: boolean) {
     toast.error(e?.message ?? "Action failed");
   }
 }
+
+/**
+ * Logs an action X performed on behalf of a user to a shared, realtime feed
+ * so every signed-in account sees what's happening across the company.
+ */
+async function logActivity(args: {
+  user_id: string;
+  action_type: string;
+  description: string;
+  metadata?: Record<string, any>;
+  route?: string;
+}) {
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("display_name, email")
+      .eq("user_id", args.user_id)
+      .maybeSingle();
+    const { data: xprof } = await supabase
+      .from("x_user_profile")
+      .select("nickname, job_title")
+      .eq("user_id", args.user_id)
+      .maybeSingle();
+    const actor_name =
+      xprof?.nickname || prof?.display_name || prof?.email?.split("@")[0] || "Someone";
+    await supabase.from("x_activity_log").insert({
+      actor_user_id: args.user_id,
+      actor_name,
+      actor_job_title: xprof?.job_title ?? null,
+      action_type: args.action_type,
+      description: args.description,
+      metadata: args.metadata ?? {},
+      route: args.route ?? (typeof window !== "undefined" ? window.location.pathname : null),
+    });
+  } catch {
+    /* non-blocking */
+  }
+}
+
+/* ============================== Voice (STT + TTS) ============================== */
+
+type SR = any;
+
+function VoiceMic({
+  ar,
+  onTranscript,
+  onAutoSend,
+}: {
+  ar: boolean;
+  onTranscript: (t: string) => void;
+  onAutoSend: (t: string) => void;
+}) {
+  const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const recRef = useRef<SR | null>(null);
+
+  useEffect(() => {
+    const W = window as any;
+    const SR = W.SpeechRecognition || W.webkitSpeechRecognition;
+    if (!SR) setSupported(false);
+  }, []);
+
+  const start = () => {
+    const W = window as any;
+    const SR = W.SpeechRecognition || W.webkitSpeechRecognition;
+    if (!SR) {
+      import("sonner").then(({ toast }) =>
+        toast.error(ar ? "متصفحك لا يدعم الميكروفون — جرّب Chrome" : "Browser doesn't support voice — try Chrome"),
+      );
+      return;
+    }
+    try {
+      const r = new SR();
+      r.lang = ar ? "ar-EG" : "en-US";
+      r.interimResults = true;
+      r.continuous = false;
+      let finalText = "";
+      r.onresult = (e: any) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const txt = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalText += txt;
+          else interim += txt;
+        }
+        if (interim) onTranscript("");
+      };
+      r.onend = () => {
+        setListening(false);
+        if (finalText.trim()) onAutoSend(finalText.trim());
+      };
+      r.onerror = () => setListening(false);
+      r.start();
+      recRef.current = r;
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  };
+
+  const stop = () => {
+    try {
+      recRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
+    setListening(false);
+  };
+
+  return (
+    <button
+      type="button"
+      title={ar ? (listening ? "أوقف التسجيل" : "تكلم") : listening ? "Stop" : "Speak"}
+      className={`x-mic flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${
+        listening
+          ? "bg-red-500/20 text-red-300 ring-2 ring-red-400/60 animate-pulse"
+          : "text-white/60 hover:bg-white/10 hover:text-white"
+      } ${!supported ? "opacity-50" : ""}`}
+      onClick={listening ? stop : start}
+    >
+      <Mic className="h-4 w-4" />
+    </button>
+  );
+}
+
