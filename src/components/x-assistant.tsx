@@ -236,6 +236,7 @@ export function XAssistant() {
 
       const { cleaned, actions } = extractActions(acc);
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: cleaned }]);
+      if (ttsOn) speakText(cleaned, accent);
       setStreamBuf("");
       if (newConvId && !conv) {
         setConv({ id: newConvId, title: text.slice(0, 60), last_message_at: new Date().toISOString() });
