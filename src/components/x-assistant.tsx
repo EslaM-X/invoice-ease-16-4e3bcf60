@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   Sparkles,
@@ -50,7 +50,7 @@ export function XAssistant() {
     setMounted(true);
   }, []);
 
-  const openAssistant = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const openAssistant = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     window.setTimeout(() => setOpen(true), 0);
