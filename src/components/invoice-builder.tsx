@@ -292,6 +292,50 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   };
 
   const handleScan = async (text: string) => {
+    // Price-list QR (catalog): PL1:SKU — adds as virtual line item, no stock check.
+    if (typeof text === "string" && text.startsWith("PL1:")) {
+      try {
+        const { findPriceItemByPayload } = await import("@/lib/price-list");
+        const it = await findPriceItemByPayload(text.trim());
+        if (!it) {
+          toast.error(lang === "ar" ? "منتج غير موجود في كتالوج الأسعار" : "Price-list item not found");
+          return;
+        }
+        const newItem: BuilderItem = {
+          product_id: `pl::${it.sku}`,
+          product_name: `${it.name_en}${it.color ? ` — ${it.color}` : ""}`,
+          serial_number: it.sku,
+          color: it.color ?? "",
+          quantity: 1,
+          unit_price: Number(it.price),
+          discount: 0,
+          discount_mode: "percent",
+          discount_percent: 0,
+        };
+        setItems((prev) => {
+          const idx = prev.findIndex((x) => x.product_id === newItem.product_id);
+          if (idx >= 0) {
+            const next = prev.slice();
+            next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+            return next;
+          }
+          const feeIdx = prev.findIndex(isServiceFee);
+          if (feeIdx >= 0) {
+            const next = prev.slice();
+            next.splice(feeIdx, 0, newItem);
+            return next;
+          }
+          return [...prev, newItem];
+        });
+        beep();
+        toast.success(`✓ ${it.sku}`, { description: `${it.price.toLocaleString()} ${it.currency}`, duration: 1400 });
+        if (!continuous) setScanning(false);
+        return;
+      } catch (e: any) {
+        toast.error(e?.message ?? "Price-list lookup failed");
+        return;
+      }
+    }
     const decoded = decodeProductQR(text);
     if (!decoded.ok) {
       const msg = decoded.reason === "checksum"
