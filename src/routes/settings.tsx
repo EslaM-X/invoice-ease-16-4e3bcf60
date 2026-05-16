@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AvatarUpload } from "@/components/avatar-upload";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { NotificationSettings } from "@/components/notification-settings";
+import { XCalendar } from "@/components/x-calendar";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
@@ -83,6 +84,8 @@ function SettingsPage() {
       <h1 className="text-2xl font-bold tracking-tight text-gradient-gold">{t("settings")}</h1>
 
       <AppearanceSettings />
+
+      <XCalendar />
 
       <NotificationSettings />
 

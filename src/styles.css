@@ -649,7 +649,9 @@ html, body {
     radial-gradient(ellipse 100% 60% at 50% 0%, oklch(0.18 0 0) 0%, transparent 60%),
     linear-gradient(180deg, oklch(0.08 0 0) 0%, oklch(0.05 0 0) 100%);
   color: oklch(0.98 0 0);
-  position: relative;
+  /* position is set via Tailwind `fixed` on the element; do not override here */
+  max-height: 100dvh;
+  height: 100dvh;
 }
 .x-sheet::before {
   content: "";

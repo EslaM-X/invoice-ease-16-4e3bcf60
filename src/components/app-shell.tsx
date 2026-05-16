@@ -19,6 +19,7 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { LangStatusPill } from "@/components/lang-status-pill";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { XAssistant } from "@/components/x-assistant";
+import { useReminderPoller } from "@/hooks/use-reminder-poller";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
@@ -60,6 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  useReminderPoller();
 
   const handleSignOut = async () => {
     setOpen(false);
