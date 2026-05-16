@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_updates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          download_url: string
+          id: string
+          is_mandatory: boolean
+          platform: Database["public"]["Enums"]["app_platform"]
+          release_notes: string | null
+          released_at: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          download_url: string
+          id?: string
+          is_mandatory?: boolean
+          platform: Database["public"]["Enums"]["app_platform"]
+          release_notes?: string | null
+          released_at?: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          download_url?: string
+          id?: string
+          is_mandatory?: boolean
+          platform?: Database["public"]["Enums"]["app_platform"]
+          release_notes?: string | null
+          released_at?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -2461,6 +2503,7 @@ export type Database = {
       void_invoice: { Args: { _invoice_id: string }; Returns: string }
     }
     Enums: {
+      app_platform: "android" | "ios" | "windows" | "macos" | "web"
       app_role:
         | "admin"
         | "user"
@@ -2596,6 +2639,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_platform: ["android", "ios", "windows", "macos", "web"],
       app_role: [
         "admin",
         "user",
