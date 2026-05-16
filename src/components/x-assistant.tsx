@@ -250,18 +250,16 @@ export function XAssistant() {
       </button>
       {mounted && open && createPortal(
         <>
-          <div
-            className="fixed inset-0 z-[68] bg-foreground/55 backdrop-blur-sm no-print"
-            onClick={() => setOpen(false)}
-            aria-hidden
-          />
+          {/* No full-screen backdrop — keep the app visible behind so the user
+              can still see context. A subtle gradient bleed sits behind only
+              the panel itself for separation. */}
           <section
             role="dialog"
-            aria-modal="true"
+            aria-modal="false"
             aria-labelledby="x-assistant-title"
             aria-describedby="x-assistant-desc"
             dir={ar ? "rtl" : "ltr"}
-            className="x-sheet fixed inset-y-0 end-0 z-[70] isolate flex w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
+            className="x-sheet fixed inset-y-0 end-0 z-[70] isolate flex w-full max-w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
           >
         <div className="x-sheet-header px-4 py-3">
           <p id="x-assistant-desc" className="sr-only">
