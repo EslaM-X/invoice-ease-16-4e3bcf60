@@ -1866,6 +1866,57 @@ export type Database = {
         }
         Relationships: []
       }
+      x_calendar_events: {
+        Row: {
+          all_day: boolean
+          company_id: string | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          kind: string
+          location: string | null
+          metadata: Json
+          notes: string | null
+          remind_before_minutes: number[]
+          starts_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean
+          company_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          kind?: string
+          location?: string | null
+          metadata?: Json
+          notes?: string | null
+          remind_before_minutes?: number[]
+          starts_at: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean
+          company_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          kind?: string
+          location?: string | null
+          metadata?: Json
+          notes?: string | null
+          remind_before_minutes?: number[]
+          starts_at?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       x_conversations: {
         Row: {
           created_at: string
@@ -1930,6 +1981,56 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "x_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      x_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          delivered_at: string | null
+          event_id: string | null
+          id: string
+          kind: string
+          metadata: Json
+          read_at: string | null
+          scheduled_for: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          event_id?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          read_at?: string | null
+          scheduled_for: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          event_id?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          read_at?: string | null
+          scheduled_for?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "x_notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "x_calendar_events"
             referencedColumns: ["id"]
           },
         ]
