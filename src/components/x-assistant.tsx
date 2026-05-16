@@ -249,7 +249,8 @@ export function XAssistant() {
             aria-modal="true"
             aria-labelledby="x-assistant-title"
             aria-describedby="x-assistant-desc"
-            className="x-sheet fixed inset-y-0 end-0 z-[70] flex w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
+            dir={ar ? "rtl" : "ltr"}
+            className="x-sheet fixed inset-y-0 end-0 z-[70] isolate flex w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
           >
         <div className="x-sheet-header px-4 py-3">
           <p id="x-assistant-desc" className="sr-only">
