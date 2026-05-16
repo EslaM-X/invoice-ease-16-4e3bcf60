@@ -1,5 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, Send, Loader2, Plus, MessageSquare, X as XIcon } from "lucide-react";
+import {
+  Sparkles,
+  Send,
+  Loader2,
+  Plus,
+  MessageSquare,
+  X as XIcon,
+  Mic,
+  ChevronRight,
+  Wand2,
+  TrendingUp,
+  Package,
+  FileText,
+  Users,
+  BarChart3,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
@@ -15,10 +30,12 @@ import { Link } from "@tanstack/react-router";
 
 type Msg = { id: string; role: "user" | "assistant"; content: string };
 type Conv = { id: string; title: string; last_message_at: string };
+type Status = "idle" | "thinking" | "speaking";
 
 /**
- * X Assistant — floating sphere FAB that opens a fullscreen chat sheet.
- * Phase 2: streaming chat (read-only). Tools/voice come in Phase 3.
+ * X Assistant — luxury floating orb FAB that opens a polished chat sheet.
+ * Phase 1: refined visual identity aligned with Steinheim editorial monochrome.
+ * Voice + tool execution land in subsequent phases.
  */
 export function XAssistant() {
   const { lang } = useI18n();
@@ -32,6 +49,7 @@ export function XAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const ar = lang === "ar";
+  const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
 
   // Load conversations list when opening
   useEffect(() => {
@@ -45,6 +63,18 @@ export function XAssistant() {
       setConvs((data ?? []) as Conv[]);
     })();
   }, [open]);
+
+  // Cmd/Ctrl + K shortcut
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Load messages for a conversation
   const openConv = async (c: Conv | null) => {
@@ -67,10 +97,10 @@ export function XAssistant() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streamBuf]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
     if (!text || streaming) return;
-    setInput("");
+    if (!overrideText) setInput("");
     const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: text };
     setMessages((m) => [...m, userMsg]);
     setStreaming(true);
@@ -128,7 +158,6 @@ export function XAssistant() {
         }
       }
 
-      // Commit final assistant message
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: acc }]);
       setStreamBuf("");
       if (newConvId && !conv) {
@@ -145,36 +174,77 @@ export function XAssistant() {
     }
   };
 
+  const quickActions = ar
+    ? [
+        { icon: TrendingUp, label: "مبيعات اليوم", prompt: "اعملي ملخص مبيعات اليوم بشكل سريع" },
+        { icon: FileText, label: "صفحة الفواتير", prompt: "اشرحلي صفحة الفواتير وإزاي أعمل فاتورة جديدة" },
+        { icon: Package, label: "أقل مخزون", prompt: "إيه المنتجات اللي مخزونها منخفض؟" },
+        { icon: Users, label: "العملاء", prompt: "إزاي أضيف عميل جديد وأشوف معاملاته؟" },
+        { icon: BarChart3, label: "الأرباح", prompt: "ودّيني للأرباح واشرحلي الأرقام" },
+        { icon: Wand2, label: "فاجئني", prompt: "اقترحلي ٣ حاجات أعملها دلوقتي تزوّد مبيعاتي" },
+      ]
+    : [
+        { icon: TrendingUp, label: "Today's sales", prompt: "Give me a quick summary of today's sales" },
+        { icon: FileText, label: "Invoices page", prompt: "Explain the invoices page and how to create one" },
+        { icon: Package, label: "Low stock", prompt: "Which products are running low on stock?" },
+        { icon: Users, label: "Customers", prompt: "How do I add a customer and view their history?" },
+        { icon: BarChart3, label: "Profits", prompt: "Take me to profits and explain the numbers" },
+        { icon: Wand2, label: "Surprise me", prompt: "Suggest 3 things I can do right now to grow sales" },
+      ];
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <button
           aria-label="X Assistant"
-          className="no-print group fixed bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-amber-400 text-white shadow-[0_10px_30px_-8px_rgba(168,85,247,0.6)] ring-1 ring-white/30 backdrop-blur transition-transform hover:scale-110 active:scale-95 sm:bottom-14 lg:bottom-16"
+          className="x-orb no-print group fixed bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full sm:bottom-14 lg:bottom-16"
           style={{ insetInlineEnd: "1.25rem" }}
         >
-          <span className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-400 opacity-0 blur-xl transition-opacity group-hover:opacity-70" />
-          <Sparkles className="relative h-6 w-6 drop-shadow" />
-          <span className="sr-only">X</span>
+          <span className="x-orb-ring" aria-hidden />
+          <span className="x-orb-core">
+            <span className="x-orb-mark">X</span>
+          </span>
+          <span className="x-orb-shine" aria-hidden />
+          <span className="sr-only">X Assistant</span>
         </button>
       </SheetTrigger>
       <SheetContent
         side={ar ? "left" : "right"}
-        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+        className="x-sheet flex w-full flex-col gap-0 border-0 p-0 sm:max-w-md"
       >
-        <SheetHeader className="border-b border-border/60 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/10 to-amber-400/10 px-4 py-3">
+        <SheetHeader className="x-sheet-header px-4 py-3">
           <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
-                <Sparkles className="h-4 w-4" />
+            <SheetTitle className="flex items-center gap-3 text-base text-white">
+              <span className="x-header-orb">
+                <span className="x-header-orb-core">X</span>
               </span>
-              <span>X — {ar ? "المساعد الذكي" : "Smart Assistant"}</span>
+              <span className="flex flex-col items-start leading-tight">
+                <span className="x-title font-display text-[17px] tracking-wide">
+                  X — {ar ? "المساعد الذكي" : "Smart Assistant"}
+                </span>
+                <span className="x-status">
+                  <span className={`x-status-dot ${status}`} />
+                  {statusLabel(status, ar)}
+                </span>
+              </span>
             </SheetTitle>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openConv(null)} title={ar ? "محادثة جديدة" : "New chat"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => openConv(null)}
+                title={ar ? "محادثة جديدة" : "New chat"}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowHistory((s) => !s)} title={ar ? "السجل" : "History"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => setShowHistory((s) => !s)}
+                title={ar ? "السجل" : "History"}
+              >
                 <MessageSquare className="h-4 w-4" />
               </Button>
             </div>
@@ -182,24 +252,36 @@ export function XAssistant() {
         </SheetHeader>
 
         {showHistory ? (
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="x-sheet-body flex-1 overflow-y-auto p-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground">{ar ? "محادثاتك" : "Conversations"}</p>
-              <Button variant="ghost" size="sm" className="h-7" onClick={() => setShowHistory(false)}>
+              <p className="text-xs font-semibold text-white/60">
+                {ar ? "محادثاتك" : "Conversations"}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-white/70 hover:bg-white/10 hover:text-white"
+                onClick={() => setShowHistory(false)}
+              >
                 <XIcon className="h-3 w-3" />
               </Button>
             </div>
             {convs.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{ar ? "لا محادثات بعد" : "No conversations yet"}</p>
+              <p className="py-12 text-center text-sm text-white/50">
+                {ar ? "لا محادثات بعد" : "No conversations yet"}
+              </p>
             ) : (
               <ul className="space-y-1">
                 {convs.map((c) => (
                   <li key={c.id}>
                     <button
                       onClick={() => openConv(c)}
-                      className={`w-full truncate rounded-lg px-3 py-2 text-start text-sm transition hover:bg-accent ${conv?.id === c.id ? "bg-accent" : ""}`}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border border-white/5 px-3 py-2.5 text-start text-sm text-white/85 transition hover:border-white/15 hover:bg-white/[0.06] ${
+                        conv?.id === c.id ? "bg-white/[0.08] border-white/20" : ""
+                      }`}
                     >
-                      {c.title}
+                      <span className="truncate">{c.title}</span>
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 opacity-50 ${ar ? "rotate-180" : ""}`} />
                     </button>
                   </li>
                 ))}
@@ -208,29 +290,34 @@ export function XAssistant() {
           </div>
         ) : (
           <>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+            <div ref={scrollRef} className="x-sheet-body flex-1 overflow-y-auto px-4 py-4">
               {messages.length === 0 && !streamBuf ? (
                 <div className="flex h-full flex-col items-center justify-center text-center">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg">
-                    <Sparkles className="h-8 w-8" />
+                  <div className="x-hero-orb mb-5">
+                    <span className="x-hero-orb-ring" />
+                    <span className="x-hero-orb-core">
+                      <Sparkles className="h-7 w-7 text-white" />
+                    </span>
                   </div>
-                  <h3 className="text-lg font-semibold">{ar ? "أهلاً، أنا X" : "Hi, I'm X"}</h3>
-                  <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                  <h3 className="font-display text-2xl text-white">
+                    {ar ? "أهلاً، أنا X" : "Hi, I'm X"}
+                  </h3>
+                  <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/65">
                     {ar
-                      ? "اسألني عن أي شيء في التطبيق — صفحات، فواتير، مخزون، أرباح."
-                      : "Ask me anything about the app — pages, invoices, stock, profits."}
+                      ? "بسألني عن أي حاجة في شغلك — فواتير، مخزون، عملاء، أرباح. وبتكلم عربي وإنجليزي. وأحياناً بهزر 😉"
+                      : "Ask me anything about your business — invoices, stock, customers, profits. I speak Arabic & English, and I sometimes crack a joke 😉"}
                   </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    {(ar
-                      ? ["اشرحلي صفحة الفواتير", "إيه فايدة المخزون؟", "وريني مكان التقارير"]
-                      : ["Explain invoices page", "What is stock for?", "Where are reports?"]
-                    ).map((q) => (
+                  <div className="mt-5 grid w-full grid-cols-2 gap-2">
+                    {quickActions.map((q) => (
                       <button
-                        key={q}
-                        onClick={() => setInput(q)}
-                        className="rounded-full border border-border/60 bg-card px-3 py-1 text-xs hover:bg-accent"
+                        key={q.label}
+                        onClick={() => send(q.prompt)}
+                        className="x-quick-card group flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-start text-xs text-white/85 transition hover:border-white/25 hover:bg-white/[0.08]"
                       >
-                        {q}
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/90 transition group-hover:bg-white/20">
+                          <q.icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="truncate font-medium">{q.label}</span>
                       </button>
                     ))}
                   </div>
@@ -240,6 +327,7 @@ export function XAssistant() {
                   {messages.map((m) => (
                     <Bubble key={m.id} role={m.role} content={m.content} />
                   ))}
+                  {streaming && !streamBuf && <ThinkingBubble ar={ar} />}
                   {streamBuf && <Bubble role="assistant" content={streamBuf} streaming />}
                 </div>
               )}
@@ -250,9 +338,28 @@ export function XAssistant() {
                 e.preventDefault();
                 send();
               }}
-              className="border-t border-border/60 bg-background/80 p-3 backdrop-blur"
+              className="x-sheet-footer p-3"
             >
-              <div className="flex items-end gap-2 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2 focus-within:border-primary/50">
+              <div className="x-input-shell flex items-end gap-2 rounded-2xl px-3 py-2">
+                <button
+                  type="button"
+                  title={ar ? "محادثة صوتية (قريباً)" : "Voice chat (coming soon)"}
+                  className="x-mic flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
+                  onClick={() =>
+                    setMessages((m) => [
+                      ...m,
+                      {
+                        id: crypto.randomUUID(),
+                        role: "assistant",
+                        content: ar
+                          ? "🎤 المحادثة الصوتية في الطريق — هتتفعل خلال يوم أو اتنين بإذن الله."
+                          : "🎤 Voice chat is on the way — landing in the next update.",
+                      },
+                    ])
+                  }
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -264,19 +371,21 @@ export function XAssistant() {
                   }}
                   rows={1}
                   placeholder={ar ? "اكتب رسالتك… (Enter للإرسال)" : "Type a message… (Enter to send)"}
-                  className="max-h-32 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  className="max-h-32 flex-1 resize-none bg-transparent text-sm text-white outline-none placeholder:text-white/40"
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white hover:opacity-90"
+                  className="x-send h-9 w-9 shrink-0 rounded-full border-0 text-black hover:opacity-90"
                   disabled={!input.trim() || streaming}
                 >
                   {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
-                {ar ? "X في النسخة الأولى — قراءة فقط. الصوت والتنفيذ قريباً." : "X v1 — read-only. Voice + actions coming."}
+              <p className="mt-1.5 px-1 text-center text-[10px] text-white/40">
+                {ar
+                  ? "X نسخة المعاينة • Cmd/Ctrl + K لفتح أو إغلاق"
+                  : "X preview • Cmd/Ctrl + K to toggle"}
               </p>
             </form>
           </>
@@ -286,34 +395,53 @@ export function XAssistant() {
   );
 }
 
+function statusLabel(s: Status, ar: boolean) {
+  if (s === "thinking") return ar ? "يفكّر…" : "Thinking…";
+  if (s === "speaking") return ar ? "يكتب…" : "Typing…";
+  return ar ? "متصل" : "Online";
+}
+
+function ThinkingBubble({ ar }: { ar: boolean }) {
+  return (
+    <div className="flex justify-start">
+      <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm text-white/70">
+        <span className="x-think-dot" />
+        <span className="x-think-dot" />
+        <span className="x-think-dot" />
+        <span className="ms-1 text-[11px] text-white/45">{ar ? "لحظة…" : "one sec…"}</span>
+      </div>
+    </div>
+  );
+}
+
 function Bubble({ role, content, streaming }: { role: "user" | "assistant"; content: string; streaming?: boolean }) {
   const isUser = role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
           isUser
-            ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md"
-            : "bg-muted text-foreground"
+            ? "x-bubble-user text-white"
+            : "x-bubble-bot text-white/90"
         }`}
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{content}</p>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1">
+          <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-headings:text-white prose-strong:text-white prose-ul:my-1 prose-ol:my-1">
             <ReactMarkdown
               components={{
                 a: ({ href, children }) => {
                   const internal = href?.startsWith("/");
                   if (internal) {
                     return (
-                      <Link to={href as any} className="text-primary underline underline-offset-2">
+                      <Link to={href as any} className="text-white underline decoration-white/40 underline-offset-2 hover:decoration-white">
                         {children}
                       </Link>
                     );
                   }
                   return (
-                    <a href={href} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+                    <a href={href} target="_blank" rel="noreferrer" className="text-white underline decoration-white/40 underline-offset-2">
                       {children}
                     </a>
                   );
@@ -322,7 +450,7 @@ function Bubble({ role, content, streaming }: { role: "user" | "assistant"; cont
             >
               {content}
             </ReactMarkdown>
-            {streaming && <span className="ms-1 inline-block h-3 w-1.5 animate-pulse bg-current align-middle" />}
+            {streaming && <span className="ms-1 inline-block h-3 w-1.5 animate-pulse bg-white/80 align-middle" />}
           </div>
         )}
       </div>
