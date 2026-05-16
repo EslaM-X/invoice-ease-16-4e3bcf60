@@ -151,8 +151,9 @@ export const Route = createFileRoute("/api/x-chat")({
           ? `\n\nملخص شخصية المستخدم (يرشدك في النبرة): ${profile.summary}${profile.tone ? ` — النبرة المفضلة: ${profile.tone}` : ""}`
           : "";
 
+        const nowIso = new Date().toLocaleString("sv-SE", { timeZone: "Africa/Cairo" });
         const messages = [
-          { role: "system", content: SYSTEM_PROMPT + sysExtra },
+          { role: "system", content: (SYSTEM_PROMPT + sysExtra).replace("{{NOW_ISO}}", nowIso) },
           ...(history ?? []).map((m: any) => ({ role: m.role, content: m.content })),
         ];
 
