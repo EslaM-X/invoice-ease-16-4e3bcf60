@@ -18,6 +18,7 @@ import { Route as SalesRangeRouteImport } from './routes/sales-range'
 import { Route as SalesAuditRouteImport } from './routes/sales-audit'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as QrPriceListRouteImport } from './routes/qr-price-list'
 import { Route as PurchaseOrdersRouteImport } from './routes/purchase-orders'
 import { Route as ProfitsRouteImport } from './routes/profits'
 import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
@@ -101,6 +102,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrPriceListRoute = QrPriceListRouteImport.update({
+  id: '/qr-price-list',
+  path: '/qr-price-list',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PurchaseOrdersRoute = PurchaseOrdersRouteImport.update({
@@ -325,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
+  '/qr-price-list': typeof QrPriceListRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -375,6 +382,7 @@ export interface FileRoutesByTo {
   '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
+  '/qr-price-list': typeof QrPriceListRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -426,6 +434,7 @@ export interface FileRoutesById {
   '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
+  '/qr-price-list': typeof QrPriceListRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales-audit': typeof SalesAuditRoute
@@ -478,6 +487,7 @@ export interface FileRouteTypes {
     | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
+    | '/qr-price-list'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -528,6 +538,7 @@ export interface FileRouteTypes {
     | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
+    | '/qr-price-list'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -578,6 +589,7 @@ export interface FileRouteTypes {
     | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
+    | '/qr-price-list'
     | '/reports'
     | '/reset-password'
     | '/sales-audit'
@@ -629,6 +641,7 @@ export interface RootRouteChildren {
   ProfitScenariosRoute: typeof ProfitScenariosRoute
   ProfitsRoute: typeof ProfitsRoute
   PurchaseOrdersRoute: typeof PurchaseOrdersRoute
+  QrPriceListRoute: typeof QrPriceListRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SalesAuditRoute: typeof SalesAuditRoute
@@ -721,6 +734,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-price-list': {
+      id: '/qr-price-list'
+      path: '/qr-price-list'
+      fullPath: '/qr-price-list'
+      preLoaderRoute: typeof QrPriceListRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/purchase-orders': {
@@ -1021,6 +1041,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfitScenariosRoute: ProfitScenariosRoute,
   ProfitsRoute: ProfitsRoute,
   PurchaseOrdersRoute: PurchaseOrdersRoute,
+  QrPriceListRoute: QrPriceListRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SalesAuditRoute: SalesAuditRoute,
