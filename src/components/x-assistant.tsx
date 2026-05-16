@@ -808,7 +808,49 @@ function VoiceMic({
     if (!SR) setSupported(false);
   }, []);
 
+  const startNative = async (): Promise<boolean> => {
+    // Try @capacitor-community/speech-recognition for native Android/iOS accuracy.
+    // Returns true if native STT handled it, false to fall back to Web Speech.
+    try {
+      const cap: any = (window as any).Capacitor;
+      if (!cap?.isNativePlatform?.()) return false;
+      const mod: any = await import(/* @vite-ignore */ "@capacitor-community/speech-recognition");
+      const SR = mod.SpeechRecognition;
+      if (!SR) return false;
+      const avail = await SR.available();
+      if (!avail?.available) return false;
+      const perm = await SR.checkPermissions();
+      if (perm.speechRecognition !== "granted") {
+        const req = await SR.requestPermissions();
+        if (req.speechRecognition !== "granted") return false;
+      }
+      finalRef.current = "";
+      setListening(true);
+      // Live partial results
+      const partialHandle = await SR.addListener("partialResults", (data: any) => {
+        const t = (data?.matches?.[0] ?? "").trim();
+        if (t) onTranscript(t);
+      });
+      const res = await SR.start({
+        language: lang,
+        maxResults: 1,
+        prompt: ar ? "اتكلم دلوقتي…" : "Speak now…",
+        partialResults: true,
+        popup: false,
+      });
+      partialHandle?.remove?.();
+      setListening(false);
+      const finalText = (res?.matches?.[0] ?? "").trim();
+      if (finalText) onAutoSend(finalText);
+      return true;
+    } catch {
+      setListening(false);
+      return false;
+    }
+  };
+
   const start = async () => {
+    if (await startNative()) return;
     const W = window as any;
     const SR = W.SpeechRecognition || W.webkitSpeechRecognition;
     if (!SR) {
