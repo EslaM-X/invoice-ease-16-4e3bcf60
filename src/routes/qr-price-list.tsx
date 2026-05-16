@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { QRCodeCanvas } from "qrcode.react";
 import { motion } from "framer-motion";
-import { Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2, Sparkles, History } from "lucide-react";
+import { Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2, Sparkles, History, Plus, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  listPriceItems, updatePriceItemPrice, uploadPriceItemImage, updatePriceItemImage,
+  listPriceItems, getCachedPriceItems, createPriceItem,
+  updatePriceItemPrice, uploadPriceItemImage, updatePriceItemImage,
   getPriceHistory, formatPrice, type PriceListItem, type PriceHistoryEntry,
 } from "@/lib/price-list";
 import { supabase } from "@/integrations/supabase/client";
