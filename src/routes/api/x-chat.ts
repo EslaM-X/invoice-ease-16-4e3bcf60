@@ -143,13 +143,66 @@ export const Route = createFileRoute("/api/x-chat")({
 
         const { data: profile } = await supabaseAdmin
           .from("x_user_profile")
-          .select("summary, tone")
+          .select("summary, tone, frequent_topics, message_count, preferences")
           .eq("user_id", userId)
           .maybeSingle();
 
-        const sysExtra = profile?.summary
-          ? `\n\nملخص شخصية المستخدم (يرشدك في النبرة): ${profile.summary}${profile.tone ? ` — النبرة المفضلة: ${profile.tone}` : ""}`
-          : "";
+        // Build a live usage snapshot so the bot can give SMART, contextual
+        // suggestions. Everything below respects the user_id scope already.
+        const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
+        const weekAgo = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const upcomingEnd = new Date(Date.now() + 14 * 24 * 3600_000).toISOString();
+
+        const [
+          invToday, invWeek, lowStock, customersWeek, upcomingEvents, recentPOs,
+        ] = await Promise.all([
+          supabaseAdmin.from("invoices").select("id,total", { count: "exact" })
+            .eq("user_id", userId).gte("created_at", todayStart.toISOString()),
+          supabaseAdmin.from("invoices").select("id,total", { count: "exact", head: false })
+            .eq("user_id", userId).gte("created_at", weekAgo),
+          supabaseAdmin.from("products").select("name,stock_quantity,low_stock_threshold")
+            .eq("user_id", userId).limit(500),
+          supabaseAdmin.from("customers").select("id", { count: "exact", head: true })
+            .eq("user_id", userId).gte("created_at", weekAgo),
+          supabaseAdmin.from("x_calendar_events").select("title,starts_at,kind")
+            .eq("user_id", userId).gte("starts_at", new Date().toISOString())
+            .lte("starts_at", upcomingEnd).order("starts_at").limit(8),
+          supabaseAdmin.from("purchase_orders").select("po_number,status,expected_arrival_at")
+            .eq("user_id", userId).gte("created_at", weekAgo).limit(10),
+        ]);
+
+        const todayCount = invToday.count ?? (invToday.data?.length ?? 0);
+        const todayTotal = (invToday.data ?? []).reduce((s: number, r: any) => s + Number(r.total || 0), 0);
+        const weekCount = invWeek.count ?? (invWeek.data?.length ?? 0);
+        const weekTotal = (invWeek.data ?? []).reduce((s: number, r: any) => s + Number(r.total || 0), 0);
+        const lowStockList = (lowStock.data ?? [])
+          .filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold ?? 5))
+          .slice(0, 8)
+          .map((p: any) => `${p.name} (${p.stock_quantity})`);
+
+        const usageSnapshot = [
+          `# Live usage snapshot for THIS user (do not share these raw numbers unless asked; use them to give smart, contextual suggestions)`,
+          `- Invoices today: ${todayCount} (total ≈ ${todayTotal.toFixed(2)} EGP)`,
+          `- Invoices last 7 days: ${weekCount} (total ≈ ${weekTotal.toFixed(2)} EGP)`,
+          `- New customers last 7 days: ${customersWeek.count ?? 0}`,
+          `- Low-stock products (≤ threshold): ${lowStockList.length ? lowStockList.join(", ") : "none 🎉"}`,
+          `- Upcoming calendar (next 14 days): ${(upcomingEvents.data ?? []).length
+            ? (upcomingEvents.data ?? []).map((e: any) => `${e.title} @ ${new Date(e.starts_at).toLocaleString("en-GB", { timeZone: "Africa/Cairo" })}`).join("; ")
+            : "nothing scheduled"}`,
+          `- Recent POs: ${(recentPOs.data ?? []).length
+            ? (recentPOs.data ?? []).map((p: any) => `${p.po_number}(${p.status}${p.expected_arrival_at ? `, arr ${new Date(p.expected_arrival_at).toLocaleDateString("en-GB")}` : ""})`).join("; ")
+            : "none recent"}`,
+        ].join("\n");
+
+        const sysExtra =
+          (profile?.summary
+            ? `\n\n# Learned about this user (from past chats — guide tone & suggestions)\n${profile.summary}${profile.tone ? `\nPreferred tone: ${profile.tone}` : ""}`
+            : "") +
+          (Array.isArray(profile?.frequent_topics) && profile!.frequent_topics.length
+            ? `\n# Frequent topics: ${(profile!.frequent_topics as any[]).join(", ")}`
+            : "") +
+          `\n\n${usageSnapshot}`;
 
         const nowIso = new Date().toLocaleString("sv-SE", { timeZone: "Africa/Cairo" });
         const messages = [
