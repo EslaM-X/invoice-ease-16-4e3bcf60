@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   Sparkles,
   Send,
@@ -32,6 +33,7 @@ type Status = "idle" | "thinking" | "speaking";
  */
 export function XAssistant() {
   const { lang } = useI18n();
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [conv, setConv] = useState<Conv | null>(null);
   const [convs, setConvs] = useState<Conv[]>([]);
@@ -44,7 +46,15 @@ export function XAssistant() {
   const ar = lang === "ar";
   const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
 
-  const openAssistant = () => setOpen(true);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const openAssistant = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.setTimeout(() => setOpen(true), 0);
+  };
 
   // Load conversations list when opening
   useEffect(() => {
@@ -227,7 +237,7 @@ export function XAssistant() {
         <span className="x-orb-shine" aria-hidden />
         <span className="sr-only">X Assistant</span>
       </button>
-      {open && (
+      {mounted && open && createPortal(
         <>
           <div
             className="fixed inset-0 z-[68] bg-foreground/55 backdrop-blur-sm no-print"
@@ -239,8 +249,7 @@ export function XAssistant() {
             aria-modal="true"
             aria-labelledby="x-assistant-title"
             aria-describedby="x-assistant-desc"
-            className="x-sheet fixed inset-y-0 z-[70] flex w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
-            style={ar ? { left: 0 } : { right: 0 }}
+            className="x-sheet fixed inset-y-0 end-0 z-[70] flex w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
           >
         <div className="x-sheet-header px-4 py-3">
           <p id="x-assistant-desc" className="sr-only">
@@ -435,7 +444,8 @@ export function XAssistant() {
           </>
         )}
           </section>
-        </>
+        </>,
+        document.body,
       )}
     </>
   );
