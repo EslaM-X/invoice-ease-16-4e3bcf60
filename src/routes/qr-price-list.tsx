@@ -207,6 +207,61 @@ function PriceListPage() {
                 </button>
               ))}
             </div>
+            {/* Color filter pills */}
+            {colors.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] uppercase tracking-widest text-white/40">اللون</span>
+                <button
+                  onClick={() => setColorFilter("ALL")}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                    colorFilter === "ALL"
+                      ? "bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)]"
+                      : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
+                  }`}
+                >
+                  الكل
+                </button>
+                {colors.map(([name, hex]) => (
+                  <button
+                    key={name}
+                    onClick={() => setColorFilter(name)}
+                    title={name}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                      colorFilter === name
+                        ? "bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)]"
+                        : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
+                    }`}
+                  >
+                    <span
+                      className="h-3 w-3 rounded-full border border-white/30"
+                      style={{ backgroundColor: hex ?? "#888" }}
+                    />
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {isAdmin && (
+              <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-3">
+                {offline ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-300/80">
+                    <WifiOff className="h-3 w-3" /> offline · يعمل من الكاش
+                  </span>
+                ) : <span />}
+                <Button
+                  size="sm"
+                  onClick={() => setAddOpen(true)}
+                  className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                >
+                  <Plus className="mr-1 h-3 w-3" /> إضافة منتج
+                </Button>
+              </div>
+            )}
+            {!isAdmin && offline && (
+              <div className="border-t border-white/5 pt-3 text-xs text-amber-300/80">
+                <WifiOff className="mr-1 inline h-3 w-3" /> offline — معروض من الكاش
+              </div>
+            )}
           </div>
         </div>
       </section>
