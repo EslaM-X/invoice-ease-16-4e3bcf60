@@ -214,7 +214,7 @@ export const Route = createFileRoute("/api/x-chat")({
             : "none recent"}`,
         ].join("\n");
 
-        const sysExtra =
+        const sysExtraBase =
           (profile?.summary
             ? `\n\n# Learned about this user (from past chats — guide tone & suggestions)\n${profile.summary}${profile.tone ? `\nPreferred tone: ${profile.tone}` : ""}`
             : "") +
@@ -224,8 +224,8 @@ export const Route = createFileRoute("/api/x-chat")({
           `\n\n${usageSnapshot}`;
 
         const identityBlock = identityName
-          ? `\n\n# Who you're talking to RIGHT NOW\nName: ${identityName}${identityJob ? `\nRole: ${identityJob}` : ""}\nAlways address them by name occasionally (not every message — feels weird). Remember their role when giving advice.`
-          : `\n\n# Identity not set yet (CRITICAL)\nYou don't know this user's name or role yet. In your FIRST reply, warmly ask them: their preferred name and their job title/role at the company. Then emit at the END of that reply an x-action block of shape:\n\`\`\`x-action\n{"type":"set_identity","nickname":"...","job_title":"..."}\n\`\`\`\nAfter that you remember them forever — don't ask again.`;
+          ? `\n\n# Who you're talking to RIGHT NOW\nName: ${identityName}${identityJob ? `\nRole: ${identityJob}` : ""}\nAddress them by name occasionally (not every message). Remember their role when giving advice.`
+          : `\n\n# Identity not set yet (CRITICAL)\nYou don't know this user's name or role yet. In your FIRST reply, warmly ask them: their preferred name and their job title/role. Then emit at the END of that reply an x-action block:\n\`\`\`x-action\n{"type":"set_identity","nickname":"...","job_title":"..."}\n\`\`\`\nAfter that you remember them forever — don't ask again.`;
 
         const sysExtra = identityBlock + sysExtraBase;
 
