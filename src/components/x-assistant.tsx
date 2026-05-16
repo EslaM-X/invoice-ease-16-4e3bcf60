@@ -28,6 +28,10 @@ import { Link } from "@tanstack/react-router";
 type Msg = { id: string; role: "user" | "assistant"; content: string };
 type Conv = { id: string; title: string; last_message_at: string };
 type Status = "idle" | "thinking" | "speaking";
+type Accent = "ar-EG" | "en-US" | "en-GB";
+
+const ACCENT_STORAGE = "x:accent";
+const TTS_STORAGE = "x:tts-enabled";
 
 /**
  * X Assistant — luxury floating orb FAB that opens a polished chat sheet.
@@ -45,9 +49,33 @@ export function XAssistant() {
   const [streaming, setStreaming] = useState(false);
   const [streamBuf, setStreamBuf] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const [accent, setAccentState] = useState<Accent>("ar-EG");
+  const [ttsOn, setTtsOnState] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const ar = lang === "ar";
   const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
+
+  // Hydrate accent + tts from localStorage on mount
+  useEffect(() => {
+    try {
+      const a = localStorage.getItem(ACCENT_STORAGE) as Accent | null;
+      if (a === "ar-EG" || a === "en-US" || a === "en-GB") setAccentState(a);
+      else setAccentState(ar ? "ar-EG" : "en-US");
+      setTtsOnState(localStorage.getItem(TTS_STORAGE) === "1");
+    } catch { /* ignore */ }
+  }, [ar]);
+
+  const setAccent = (a: Accent) => {
+    setAccentState(a);
+    try { localStorage.setItem(ACCENT_STORAGE, a); } catch { /* ignore */ }
+  };
+  const setTtsOn = (v: boolean) => {
+    setTtsOnState(v);
+    try { localStorage.setItem(TTS_STORAGE, v ? "1" : "0"); } catch { /* ignore */ }
+    if (!v) {
+      try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
