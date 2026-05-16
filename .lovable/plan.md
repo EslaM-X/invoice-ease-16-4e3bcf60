@@ -1,74 +1,119 @@
-# خطة التنفيذ — على مراحل
 
-نظراً لحجم العمل، سأقسم على **3 مراحل**. كل مرحلة قابلة للاختبار قبل الانتقال للي بعدها.
+# خطة: X — المساعد الفاخر المتكامل
 
----
-
-## المرحلة 1 — أساس التصميم بنمط iOS + التجاوب الكامل (أولاً)
-
-**الهدف**: واجهة تحس إنها iOS فاخرة (iOS 18 style) — زجاجية، ناعمة، متجاوبة لكل المقاسات من 320px لحد 4K، مع الحفاظ على الهوية الحالية والألوان.
-
-تعديلات:
-- **`src/styles.css`**: إضافة tokens جديدة (glass blur, soft shadows, spring easing, safe-area insets, larger touch targets ≥44px)، تحسين typography scale، dynamic type.
-- **`src/components/app-shell.tsx`**: تحويل الـ navigation للتاب-بار سفلي على الموبايل بنمط iOS (translucent + blur)، وsidebar مدمج على الديسكتوب.
-- **`src/components/luxury-splash.tsx`** + **`page-transition.tsx`**: انتقالات spring بنمط iOS.
-- صفحة **`dashboard.tsx`**: إعادة تنظيم الكروت بـ stacked cards على الموبايل، grid على الديسكتوب، haptic feedback عند اللمس، pull-to-refresh.
-- كروت بـ rounded-3xl، blur backgrounds، subtle gradients مع نفس الألوان الحالية.
-
-**الناتج**: تطبيق يحس iOS-native على الموبايل، فاخر على الديسكتوب، متجاوب على كل المقاسات.
+هدف واحد: نحوّل X من فقاعة شات بسيطة لمساعد يحس إنه **منتج رائد** — شكل أوركسترالي، صوت طبيعي، عربي/إنجليزي بسلاسة، وروح بشرية فيها هزار خفيف.
 
 ---
 
-## المرحلة 2 — هيكل المساعد X (Foundation)
+## 1. الهوية البصرية الجديدة (تتناغم مع Steinheim الأسود/الذهبي)
 
-**الهدف**: تأسيس بنية المساعد قبل ما نضيف الصلاحيات الكاملة.
+نسيب الـ gradient البنفسجي/الفوشي الحالي (مش متناسق مع هوية التطبيق) ونروح لـ:
 
-تعديلات:
-- **DB migrations**: 
-  - `x_conversations` (محادثات بـ user_id + title + created_at)
-  - `x_messages` (role, content, tool_calls, conversation_id)
-  - `x_user_profile` (يحلل شخصية المستخدم — preferences, tone, common queries)
-- **Server function `chatWithX`** (`src/lib/x-assistant.functions.ts`):
-  - يستخدم Lovable AI Gateway مع `google/gemini-3-pro-preview` (متوسع وقوي زي Gemini)
-  - Streaming via async generator
-  - System prompt يعرف كل قسم بالتطبيق (Invoices, Inventory, Customers, POs, Reports...)
-  - يحفظ المحادثات تلقائي
-- **زر عائم (FAB) "X"** في `app-shell` — أيقونة دائرية فاخرة مع gradient.
-- **شيت محادثة** بنمط iOS Messages — fullscreen على الموبايل، side-panel على الديسكتوب.
-- صلاحيات قراءة فقط في البداية: يقدر يستفسر عن المبيعات/الفواتير/المخزون.
+- **كرة X العائمة (Orb)**: كرة سوداء عميقة بحلقة ذهبية متحركة (conic-gradient يدور ببطء)، نبض ناعم عند الـ idle، توهج ذهبي عند الـ hover. حجم 64px على الديسكتوب، 56px على الموبايل. تنجذب لحافة الشاشة مع safe-area.
+- **لما يتكلم**: الحلقة تنبض مع الـ amplitude للصوت (audio-reactive ring باستخدام `getOutputByteFrequencyData`).
+- **شيت المحادثة**: 
+  - موبايل: fullscreen مع drag-handle علوي بنمط iOS sheet.
+  - ديسكتوب: side-panel 420px بـ glass blur وحدود ذهبية رفيعة.
+  - خلفية: gradient أسود → فحمي مع noise texture خفيف.
+  - هيدر فيه: اسم X بخط Serif، badge صغير (Online / Thinking / Listening / Speaking)، وأيقونات (محادثة جديدة، سجل، إعدادات الصوت، لغة).
 
-**الناتج**: تقدر تفتح X وتسأله "كم مبيعات اليوم؟" أو "اشرحلي صفحة الفواتير" ويرد بـ streaming.
+## 2. الذكاء — Tool Calling كامل
+
+نعرّف tools للـ AI (Lovable AI Gateway, `google/gemini-3-pro-preview`):
+
+| Tool | الوصف | يحتاج تأكيد؟ |
+|---|---|---|
+| `create_invoice` | إنشاء فاتورة جديدة | ✅ Dialog |
+| `add_product` / `update_product` / `delete_product` | إدارة منتجات | ✅ Dialog |
+| `add_customer` / `update_customer` | إدارة عملاء | ✅ Dialog |
+| `create_purchase_order` | أمر شراء | ✅ Dialog |
+| `search_anything` | بحث عام (منتج/عميل/فاتورة) | ❌ |
+| `get_sales_summary` / `get_stock_status` / `get_profits` | تقارير | ❌ |
+| `navigate_to(path)` | تنقّل سريع | ❌ |
+| `explain_screen` | شرح صفحة | ❌ |
+
+كل عملية كتابة تحترم RLS وصلاحية المستخدم (admin أو موظف). الـ destructive (حذف) تتطلب biometric/PIN لو متفعّل.
+
+في الـ UI: لما X يقترح عملية، تظهر **بطاقة تأكيد فاخرة** جوّه الشات (مش modal خارجي) — فيها ملخص العملية + زرّيْن «نفّذ» / «ألغِ»، مع animation انزلاق.
+
+## 3. الصوت — محادثة كاملة + TTS مرن
+
+نستخدم **ElevenLabs Conversational Agents (WebRTC)** للمحادثة الحقيقية (interruption + VAD + latency منخفض):
+
+- زر **ميكروفون** كبير في الشيت → يفتح session صوتي.
+- موجة صوتية حية (waveform) أسفل الشاشة لما يتكلم — رد فعل بصري على صوت X.
+- الـ Agent مُعدّ على ElevenLabs بـ:
+  - Voice عربي (أنثى/ذكر — هنختار سوا)
+  - System prompt يطابق الشخصية (ودود، محترف، فيه هزار خفيف)
+  - Client tools متربطة بنفس الـ tool-calling pipeline
+- Fallback نصي شغّال طول الوقت.
+- زر تبديل: 🎤 صوت ↔ 💬 نص.
+
+نحتاج: **`ELEVENLABS_API_KEY`** + **`ELEVENLABS_AGENT_ID`** (هنطلبهم لما نوصل).
+
+## 4. ثنائية اللغة الذكية
+
+- X يكتشف لغة الرسالة تلقائياً ويرد بنفسها (مش يعتمد على اللغة المختارة في التطبيق فقط).
+- يقدر يخلط (code-switching) لو المستخدم خلط.
+- في الصوت: نختار agent multilingual في ElevenLabs (يدعم العربي والإنجليزي في نفس الـ session).
+- System prompt يحتوي تعليمات صريحة: «رد بنفس لغة المستخدم. لو سأل بالعربي رد بالعربي، لو إنجليزي رد إنجليزي.»
+
+## 5. الشخصية + الهزار
+
+System prompt جديد:
+- **النبرة**: واثق، محترم، ودود، **بيرمي نكتة خفيفة من وقت للتاني** (مش مبالغ فيها)، يستخدم emoji باعتدال.
+- **الذاكرة**: يستدعي اسم المستخدم، يفتكر تفضيلاته من `x_user_profile`.
+- **الاستباقية**: لو لاحظ مخزون قارب على النفاد وانت بتسأل عن منتج تاني، يقول «بالمناسبة، X خلص تقريباً 👀».
+- **التحليل**: بعد كل محادثة، server function يحدّث `x_user_profile` (tone preference, common tasks, business priorities) → يتدمج في system prompt للمحادثة الجاية.
+
+## 6. تفاصيل UX إضافية
+
+- **Quick Actions** في الشاشة الفاضية: 6 بطاقات أنيقة (مبيعات اليوم / إنشاء فاتورة / أقل مخزون / آخر عميل / فتح التقارير / محادثة صوتية).
+- **Streaming markdown** مع syntax highlighting للأرقام والعملات.
+- **Haptic feedback** على الموبايل (Vibration API) عند الإرسال/الاستلام.
+- **Keyboard shortcut**: `⌘K` يفتح X من أي مكان.
+- **Mini mode**: لما تقفل الشيت أثناء محادثة صوتية، الكرة تفضل تنبض في الزاوية وتفضل المحادثة شغالة.
 
 ---
 
-## المرحلة 3 — صلاحيات تنفيذ + صوت + تحليل شخصية
+## التغييرات التقنية (للمراجعة)
 
-**الهدف**: X يبقى مساعد كامل زي Gemini.
+```text
+src/components/x-assistant.tsx          → إعادة تصميم كامل + تقسيم
+  ├── x-orb.tsx                         (الكرة العائمة + audio-reactive)
+  ├── x-sheet.tsx                       (الشيت + هيدر + tabs)
+  ├── x-voice-panel.tsx                 (محادثة ElevenLabs WebRTC)
+  ├── x-tool-confirm-card.tsx           (بطاقة تأكيد العمليات)
+  └── x-quick-actions.tsx               (اقتراحات سريعة)
 
-تعديلات:
-- **Tool calling**: تعريف tools للـ AI:
-  - `create_invoice`, `add_product`, `add_customer`, `update_*`, `delete_*` (مع dialog تأكيد قبل التنفيذ)
-  - `search_anything`, `navigate_to`, `explain_screen`
-- **محادثة صوتية كاملة**: 
-  - استخدام **ElevenLabs Conversational Agents** (WebRTC) — أسرع وأطبيعي للمحادثة الكاملة
-  - زر mic في شيت X يفتح conversation session
-  - Voice activity detection + interruption support
-  - يحتاج `ELEVENLABS_API_KEY` كـ secret
-- **تحليل الشخصية**: 
-  - بعد كل محادثة، server function يحدث `x_user_profile` (tone preference, frequently asked topics, business priorities)
-  - System prompt في كل request يشمل ملخص الشخصية → ردود متجاوبة معاك شخصياً
-- **ذاكرة طويلة المدى**: Embeddings للمحادثات القديمة + semantic search للسياق
+src/lib/x-tools.ts                      → تعريف الـ tools + executors
+src/lib/x-assistant.functions.ts        → تحديث system prompt + tool loop + bilingual
+src/routes/api/x-chat.ts                → دعم tool_calls + iterations
+src/routes/api/x-voice-token.ts         → جديد: يستخرج conversation token من ElevenLabs
 
-**الناتج**: X مساعد ذكي حقيقي — صوتي، نصي، منفذ للمهام، عارف شخصيتك ومتطورها معاك.
-
----
-
-## ملاحظات تقنية
-
-- Lovable AI (مجاني محدود) كافي للمرحلة 2. ElevenLabs مدفوع — هطلب الـ API key وقت المرحلة 3.
-- كل المهام التنفيذية (المرحلة 3) هتحترم RLS الموجودة وصلاحيات المستخدم — admin يقدر يحذف، عادي لأ.
-- التصميم الجديد مش هيغير الألوان/اللوجو/الهوية، بس هيرفع مستوى الـ polish.
+DB migration:
+  - x_user_profile: إضافة personality_summary, language_preference, humor_level
+  - x_tool_audit: جدول لتسجيل كل عملية نفذها X (للتدقيق)
+```
 
 ---
 
-**أبدأ بالمرحلة 1 دلوقتي؟** وبعد ما تختبرها وتوافق، نعدي للمرحلة 2.
+## الأسرار المطلوبة (لما توافق)
+
+سأطلب منك:
+1. `ELEVENLABS_API_KEY` (من elevenlabs.io → Profile → API Keys)
+2. `ELEVENLABS_AGENT_ID` (من Agent اللي عملته)
+
+---
+
+## الترتيب المقترح للتنفيذ
+
+1. **إعادة التصميم البصري** (الكرة + الشيت + الهوية الذهبية) — أسرع win بصري.
+2. **Tool calling** (read-only tools أولاً: search, navigate, summaries).
+3. **Tool calling** (write tools: create/update/delete + بطاقة التأكيد).
+4. **محادثة صوتية ElevenLabs** (نطلب الـ secrets هنا).
+5. **تحليل الشخصية + الهزار + الذاكرة الطويلة**.
+
+كل مرحلة قابلة للاختبار لوحدها.
+
+**أبدأ بالخطوة 1 (التصميم البصري الجديد) أول حاجة؟**
