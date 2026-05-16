@@ -302,7 +302,82 @@ function PriceListPage() {
           onClose={() => setEditItem(null)}
         />
       )}
+      {addOpen && (
+        <AddDialog
+          onClose={() => setAddOpen(false)}
+          onCreated={(it) => { setItems((prev) => [...prev, it]); setAddOpen(false); }}
+        />
+      )}
     </div>
+  );
+}
+
+function AddDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (i: PriceListItem) => void }) {
+  const [form, setForm] = useState({
+    sku: "", name_en: "", collection: "JOY", category: "",
+    color: "", color_hex: "#c8c8c8", price: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (!form.sku.trim() || !form.name_en.trim() || !form.category.trim() || !form.price) {
+      toast.error("SKU، الاسم، الفئة، والسعر مطلوبين");
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await createPriceItem({
+        sku: form.sku.trim(),
+        name_en: form.name_en.trim(),
+        collection: form.collection,
+        category: form.category.trim(),
+        color: form.color.trim() || null,
+        color_hex: form.color_hex || null,
+        price: Number(form.price),
+      });
+      toast.success("تمت إضافة المنتج");
+      onCreated(created);
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل الإضافة");
+    } finally { setSaving(false); }
+  };
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md bg-[oklch(0.12_0.005_60)] text-white border-white/10">
+        <DialogHeader>
+          <DialogTitle className="text-[oklch(0.92_0.08_82)]">منتج جديد</DialogTitle>
+          <DialogDescription className="text-white/60">سيُولَّد QR تلقائياً بصيغة PL1:SKU</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label className="text-white/80 text-xs">SKU</Label>
+              <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="mt-1 border-white/15 bg-white/5 text-white" /></div>
+            <div><Label className="text-white/80 text-xs">Collection</Label>
+              <select value={form.collection} onChange={(e) => setForm({ ...form, collection: e.target.value })}
+                className="mt-1 h-9 w-full rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white">
+                {["JOY","UP","ART","QUATRO"].map((c) => <option key={c} value={c} className="bg-[oklch(0.12_0.005_60)]">{c}</option>)}
+              </select></div>
+          </div>
+          <div><Label className="text-white/80 text-xs">الاسم (EN)</Label>
+            <Input value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} className="mt-1 border-white/15 bg-white/5 text-white" /></div>
+          <div><Label className="text-white/80 text-xs">الفئة</Label>
+            <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="JOY BASIN MIXERS" className="mt-1 border-white/15 bg-white/5 text-white" /></div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2"><Label className="text-white/80 text-xs">اللون</Label>
+              <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="CHROME PLATED" className="mt-1 border-white/15 bg-white/5 text-white" /></div>
+            <div><Label className="text-white/80 text-xs">Hex</Label>
+              <Input type="color" value={form.color_hex} onChange={(e) => setForm({ ...form, color_hex: e.target.value })} className="mt-1 h-9 border-white/15 bg-white/5" /></div>
+          </div>
+          <div><Label className="text-white/80 text-xs">السعر (LE)</Label>
+            <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="mt-1 border-white/15 bg-white/5 text-white" /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="border-white/15 bg-white/5 text-white">إلغاء</Button>
+          <Button disabled={saving} onClick={submit} className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
