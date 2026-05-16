@@ -179,10 +179,14 @@ export function XAssistant() {
         }
       }
 
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: acc }]);
+      const { cleaned, actions } = extractActions(acc);
+      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: cleaned }]);
       setStreamBuf("");
       if (newConvId && !conv) {
         setConv({ id: newConvId, title: text.slice(0, 60), last_message_at: new Date().toISOString() });
+      }
+      for (const a of actions) {
+        await runAssistantAction(a, ar);
       }
     } catch (e: any) {
       setMessages((m) => [
