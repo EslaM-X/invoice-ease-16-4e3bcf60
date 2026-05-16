@@ -85,6 +85,8 @@ function SettingsPage() {
 
       <AppearanceSettings />
 
+      <XCalendar />
+
       <NotificationSettings />
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
