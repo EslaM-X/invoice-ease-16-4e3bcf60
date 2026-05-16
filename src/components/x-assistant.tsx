@@ -481,6 +481,7 @@ export function XAssistant() {
               <div className="x-input-shell flex items-end gap-2 rounded-2xl px-3 py-2">
                 <VoiceMic
                   ar={ar}
+                  lang={accent}
                   onTranscript={(t) => {
                     setInput((prev) => (prev ? prev + " " : "") + t);
                   }}
