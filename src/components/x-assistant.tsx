@@ -545,9 +545,32 @@ function extractActions(text: string): { cleaned: string; actions: AssistantActi
 
 async function runAssistantAction(a: AssistantAction, ar: boolean) {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    if (a.type === "set_identity") {
+      const nickname = a.nickname ? String(a.nickname).slice(0, 80) : null;
+      const job_title = a.job_title ? String(a.job_title).slice(0, 120) : null;
+      const { error } = await supabase.from("x_user_profile").upsert({
+        user_id: user.id,
+        nickname,
+        job_title,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      await logActivity({
+        user_id: user.id,
+        action_type: "identity_set",
+        description: ar
+          ? `سجّل اسمه: ${nickname ?? "—"}${job_title ? ` (${job_title})` : ""}`
+          : `Identified as ${nickname ?? "—"}${job_title ? ` (${job_title})` : ""}`,
+      });
+      const { toast } = await import("sonner");
+      toast.success(ar ? "أهلاً بيك ✨" : "Nice to meet you ✨");
+      return;
+    }
+
     if (a.type === "create_event" && a.title && a.starts_at) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
       const { error } = await supabase.from("x_calendar_events").insert({
         user_id: user.id,
         title: String(a.title).slice(0, 200),
