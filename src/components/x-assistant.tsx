@@ -408,6 +408,7 @@ export function XAssistant() {
         )}
       </SheetContent>
     </Sheet>
+    </>
   );
 }
 
