@@ -61,6 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  useReminderPoller();
 
   const handleSignOut = async () => {
     setOpen(false);
