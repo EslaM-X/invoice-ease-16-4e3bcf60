@@ -153,9 +153,18 @@ export const Route = createFileRoute("/api/x-chat")({
 
         const { data: profile } = await supabaseAdmin
           .from("x_user_profile")
-          .select("summary, tone, frequent_topics, message_count, preferences")
+          .select("summary, tone, frequent_topics, message_count, preferences, job_title, nickname")
           .eq("user_id", userId)
           .maybeSingle();
+
+        const { data: appProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("display_name, email")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const identityName = profile?.nickname || appProfile?.display_name || appProfile?.email?.split("@")[0] || null;
+        const identityJob = profile?.job_title || null;
 
         // Build a live usage snapshot so the bot can give SMART, contextual
         // suggestions. Everything below respects the user_id scope already.
@@ -205,7 +214,7 @@ export const Route = createFileRoute("/api/x-chat")({
             : "none recent"}`,
         ].join("\n");
 
-        const sysExtra =
+        const sysExtraBase =
           (profile?.summary
             ? `\n\n# Learned about this user (from past chats — guide tone & suggestions)\n${profile.summary}${profile.tone ? `\nPreferred tone: ${profile.tone}` : ""}`
             : "") +
@@ -213,6 +222,12 @@ export const Route = createFileRoute("/api/x-chat")({
             ? `\n# Frequent topics: ${(profile!.frequent_topics as any[]).join(", ")}`
             : "") +
           `\n\n${usageSnapshot}`;
+
+        const identityBlock = identityName
+          ? `\n\n# Who you're talking to RIGHT NOW\nName: ${identityName}${identityJob ? `\nRole: ${identityJob}` : ""}\nAddress them by name occasionally (not every message). Remember their role when giving advice.`
+          : `\n\n# Identity not set yet (CRITICAL)\nYou don't know this user's name or role yet. In your FIRST reply, warmly ask them: their preferred name and their job title/role. Then emit at the END of that reply an x-action block:\n\`\`\`x-action\n{"type":"set_identity","nickname":"...","job_title":"..."}\n\`\`\`\nAfter that you remember them forever — don't ask again.`;
+
+        const sysExtra = identityBlock + sysExtraBase;
 
         const nowIso = new Date().toLocaleString("sv-SE", { timeZone: "Africa/Cairo" });
         const messages = [
