@@ -18,13 +18,6 @@ import {
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 
@@ -48,28 +41,10 @@ export function XAssistant() {
   const [streamBuf, setStreamBuf] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const orbButtonRef = useRef<HTMLButtonElement>(null);
-  const suppressOutsideCloseUntilRef = useRef(0);
   const ar = lang === "ar";
   const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
 
-  const openAssistant = (event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    suppressOutsideCloseUntilRef.current = performance.now() + 350;
-    window.setTimeout(() => setOpen(true), 0);
-  };
-
-  const preventImmediateDismiss = (event: { preventDefault: () => void; target: EventTarget | null }) => {
-    const target = event.target;
-    if (target instanceof Node && orbButtonRef.current?.contains(target)) {
-      event.preventDefault();
-      return;
-    }
-    if (performance.now() < suppressOutsideCloseUntilRef.current) {
-      event.preventDefault();
-    }
-  };
+  const openAssistant = () => setOpen(true);
 
   // Load conversations list when opening
   useEffect(() => {
@@ -95,6 +70,15 @@ export function XAssistant() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   // Load messages for a conversation
   const openConv = async (c: Conv | null) => {
@@ -215,7 +199,6 @@ export function XAssistant() {
   return (
     <>
       <button
-        ref={orbButtonRef}
         type="button"
         aria-label="X Assistant"
         onClick={openAssistant}
@@ -244,26 +227,34 @@ export function XAssistant() {
         <span className="x-orb-shine" aria-hidden />
         <span className="sr-only">X Assistant</span>
       </button>
-      <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent
-        side={ar ? "left" : "right"}
-        className="x-sheet flex w-full flex-col gap-0 border-0 p-0 sm:max-w-md"
-        onInteractOutside={preventImmediateDismiss}
-        onPointerDownOutside={preventImmediateDismiss}
-      >
-        <SheetHeader className="x-sheet-header px-4 py-3">
-          <SheetDescription className="sr-only">
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-[68] bg-foreground/55 backdrop-blur-sm no-print"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="x-assistant-title"
+            aria-describedby="x-assistant-desc"
+            className="x-sheet fixed inset-y-0 z-[70] flex w-full flex-col gap-0 border-0 p-0 shadow-2xl sm:max-w-md"
+            style={ar ? { left: 0 } : { right: 0 }}
+          >
+        <div className="x-sheet-header px-4 py-3">
+          <p id="x-assistant-desc" className="sr-only">
             {ar
               ? "مساعد ذكي للمحادثة بالعربية والإنجليزية داخل التطبيق."
               : "A smart in-app assistant for Arabic and English conversations."}
-          </SheetDescription>
+          </p>
           <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="flex items-center gap-3 text-base text-white">
+            <div className="flex items-center gap-3 text-base text-white">
               <span className="x-header-orb">
                 <span className="x-header-orb-core">X</span>
               </span>
               <span className="flex flex-col items-start leading-tight">
-                <span className="x-title font-display text-[17px] tracking-wide">
+                <span id="x-assistant-title" className="x-title font-display text-[17px] tracking-wide">
                   X — {ar ? "المساعد الذكي" : "Smart Assistant"}
                 </span>
                 <span className="x-status">
@@ -271,7 +262,7 @@ export function XAssistant() {
                   {statusLabel(status, ar)}
                 </span>
               </span>
-            </SheetTitle>
+            </div>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -291,9 +282,18 @@ export function XAssistant() {
               >
                 <MessageSquare className="h-4 w-4" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => setOpen(false)}
+                title={ar ? "إغلاق" : "Close"}
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        </SheetHeader>
+        </div>
 
         {showHistory ? (
           <div className="x-sheet-body flex-1 overflow-y-auto p-3">
@@ -434,8 +434,9 @@ export function XAssistant() {
             </form>
           </>
         )}
-      </SheetContent>
-    </Sheet>
+          </section>
+        </>
+      )}
     </>
   );
 }
