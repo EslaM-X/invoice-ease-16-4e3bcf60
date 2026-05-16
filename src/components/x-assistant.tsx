@@ -193,37 +193,37 @@ export function XAssistant() {
       ];
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <button
-          type="button"
-          aria-label="X Assistant"
-          className="x-orb no-print group fixed bottom-24 z-[60] flex h-14 w-14 items-center justify-center rounded-full sm:bottom-14 lg:bottom-16"
-          style={{ insetInlineEnd: "1.25rem" }}
-        >
-          <span className="x-orb-ring" aria-hidden />
-          <span className="x-orb-core" aria-hidden>
-            <svg className="x-orb-mark" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <defs>
-                <linearGradient id="x-orb-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="oklch(1 0 0)" />
-                  <stop offset="55%" stopColor="oklch(0.92 0.005 250)" />
-                  <stop offset="100%" stopColor="oklch(0.72 0.005 250)" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M5 4.5 L11 12 L5 19.5 M19 4.5 L13 12 L19 19.5"
-                stroke="url(#x-orb-grad)"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className="x-orb-shine" aria-hidden />
-          <span className="sr-only">X Assistant</span>
-        </button>
-      </SheetTrigger>
+    <>
+      <button
+        type="button"
+        aria-label="X Assistant"
+        onClick={() => setOpen(true)}
+        className="x-orb no-print group fixed bottom-24 z-[60] flex h-14 w-14 items-center justify-center rounded-full sm:bottom-14 lg:bottom-16"
+        style={{ insetInlineEnd: "1.25rem" }}
+      >
+        <span className="x-orb-ring" aria-hidden />
+        <span className="x-orb-core" aria-hidden>
+          <svg className="x-orb-mark" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <defs>
+              <linearGradient id="x-orb-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="oklch(1 0 0)" />
+                <stop offset="55%" stopColor="oklch(0.92 0.005 250)" />
+                <stop offset="100%" stopColor="oklch(0.72 0.005 250)" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M5 4.5 L11 12 L5 19.5 M19 4.5 L13 12 L19 19.5"
+              stroke="url(#x-orb-grad)"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        <span className="x-orb-shine" aria-hidden />
+        <span className="sr-only">X Assistant</span>
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side={ar ? "left" : "right"}
         className="x-sheet flex w-full flex-col gap-0 border-0 p-0 sm:max-w-md"
