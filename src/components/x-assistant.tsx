@@ -48,13 +48,27 @@ export function XAssistant() {
   const [streamBuf, setStreamBuf] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const orbButtonRef = useRef<HTMLButtonElement>(null);
+  const suppressOutsideCloseUntilRef = useRef(0);
   const ar = lang === "ar";
   const status: Status = streaming ? (streamBuf ? "speaking" : "thinking") : "idle";
 
   const openAssistant = (event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
     event?.preventDefault?.();
     event?.stopPropagation?.();
+    suppressOutsideCloseUntilRef.current = performance.now() + 350;
     window.setTimeout(() => setOpen(true), 0);
+  };
+
+  const preventImmediateDismiss = (event: { preventDefault: () => void; target: EventTarget | null }) => {
+    const target = event.target;
+    if (target instanceof Node && orbButtonRef.current?.contains(target)) {
+      event.preventDefault();
+      return;
+    }
+    if (performance.now() < suppressOutsideCloseUntilRef.current) {
+      event.preventDefault();
+    }
   };
 
   // Load conversations list when opening
@@ -201,6 +215,7 @@ export function XAssistant() {
   return (
     <>
       <button
+        ref={orbButtonRef}
         type="button"
         aria-label="X Assistant"
         onClick={openAssistant}
@@ -233,6 +248,8 @@ export function XAssistant() {
       <SheetContent
         side={ar ? "left" : "right"}
         className="x-sheet flex w-full flex-col gap-0 border-0 p-0 sm:max-w-md"
+        onInteractOutside={preventImmediateDismiss}
+        onPointerDownOutside={preventImmediateDismiss}
       >
         <SheetHeader className="x-sheet-header px-4 py-3">
           <SheetDescription className="sr-only">
