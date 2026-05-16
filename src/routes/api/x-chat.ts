@@ -284,6 +284,28 @@ export const Route = createFileRoute("/api/x-chat")({
                   .from("x_conversations")
                   .update({ last_message_at: new Date().toISOString() })
                   .eq("id", conversationId);
+
+                // Learning loop: increment message_count, and every 6 turns
+                // run a quick summarization to refresh the persistent profile.
+                const newCount = (profile?.message_count ?? 0) + 1;
+                await supabaseAdmin
+                  .from("x_user_profile")
+                  .upsert({ user_id: userId, message_count: newCount, updated_at: new Date().toISOString() });
+
+                if (newCount % 6 === 0) {
+                  // fire-and-forget — don't block the response
+                  void updateUserMemory({
+                    userId,
+                    apiKey,
+                    history: [
+                      ...((history ?? []) as any[]),
+                      { role: "user", content: userMessage },
+                      { role: "assistant", content: full },
+                    ],
+                    previousSummary: profile?.summary ?? null,
+                    previousTopics: (profile?.frequent_topics as string[] | undefined) ?? [],
+                  });
+                }
               }
               controller.enqueue(sse({ type: "done" }));
             } catch (e: any) {
