@@ -740,18 +740,38 @@ export function speakText(rawText: string, lang: Accent) {
   const text = cleanForSpeech(rawText);
   if (!text) return;
   const synth = window.speechSynthesis;
+
+  // Auto-detect: if the text is mostly Arabic, always use Arabic voice
+  // regardless of the user's selected accent (so Arabic replies aren't
+  // read with an English voice).
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  const latinChars = (text.match(/[A-Za-z]/g) || []).length;
+  const isArabic = arabicChars > latinChars;
+  const effectiveLang: Accent = isArabic ? "ar-EG" : (lang.startsWith("ar") ? "en-US" : lang);
+
   const doSpeak = () => {
     try {
       synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = lang;
-      u.rate = lang.startsWith("ar") ? 0.95 : 1.0;
+      u.lang = effectiveLang;
+      u.rate = effectiveLang.startsWith("ar") ? 0.95 : 1.0;
       u.pitch = 1;
       const voices = synth.getVoices();
-      // Prefer exact lang, then prefix match, then any Arabic/English
-      const exact = voices.find((v) => v.lang === lang);
-      const prefix = voices.find((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
-      u.voice = exact ?? prefix ?? null;
+      let chosen: SpeechSynthesisVoice | null = null;
+      if (effectiveLang.startsWith("ar")) {
+        // Prefer Egyptian, then any Arabic
+        chosen =
+          voices.find((v) => /ar[-_]EG/i.test(v.lang)) ||
+          voices.find((v) => /^ar/i.test(v.lang)) ||
+          voices.find((v) => /arabic/i.test(v.name)) ||
+          null;
+      } else {
+        chosen =
+          voices.find((v) => v.lang.toLowerCase() === effectiveLang.toLowerCase()) ||
+          voices.find((v) => v.lang.toLowerCase().startsWith(effectiveLang.slice(0, 2))) ||
+          null;
+      }
+      if (chosen) u.voice = chosen;
       synth.speak(u);
     } catch { /* ignore */ }
   };
@@ -759,9 +779,8 @@ export function speakText(rawText: string, lang: Accent) {
   if (synth.getVoices().length === 0) {
     const handler = () => { synth.removeEventListener("voiceschanged", handler); doSpeak(); };
     synth.addEventListener("voiceschanged", handler);
-    // Trigger
     synth.getVoices();
-    setTimeout(doSpeak, 250);
+    setTimeout(doSpeak, 300);
   } else {
     doSpeak();
   }
