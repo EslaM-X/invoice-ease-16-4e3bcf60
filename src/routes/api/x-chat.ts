@@ -223,6 +223,12 @@ export const Route = createFileRoute("/api/x-chat")({
             : "") +
           `\n\n${usageSnapshot}`;
 
+        const identityBlock = identityName
+          ? `\n\n# Who you're talking to RIGHT NOW\nName: ${identityName}${identityJob ? `\nRole: ${identityJob}` : ""}\nAlways address them by name occasionally (not every message — feels weird). Remember their role when giving advice.`
+          : `\n\n# Identity not set yet (CRITICAL)\nYou don't know this user's name or role yet. In your FIRST reply, warmly ask them: their preferred name and their job title/role at the company. Then emit at the END of that reply an x-action block of shape:\n\`\`\`x-action\n{"type":"set_identity","nickname":"...","job_title":"..."}\n\`\`\`\nAfter that you remember them forever — don't ask again.`;
+
+        const sysExtra = identityBlock + sysExtraBase;
+
         const nowIso = new Date().toLocaleString("sv-SE", { timeZone: "Africa/Cairo" });
         const messages = [
           { role: "system", content: (SYSTEM_PROMPT + sysExtra).replace("{{NOW_ISO}}", nowIso) },
