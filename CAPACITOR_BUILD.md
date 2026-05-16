@@ -1,95 +1,156 @@
-# بناء التطبيق الأصلي (Android / iOS / Windows / macOS)
+# دليل بناء وتحميل التطبيق على كل المنصات
 
-هذا التطبيق يعمل كـ Web + PWA + تطبيق أصلي عبر **Capacitor** بدون الحاجة للنشر على متاجر التطبيقات.
+ده الدليل الكامل لإزاي تبني نسخة جديدة من تطبيق Steinheim لأي منصة (Android / iOS / Windows / macOS)، ترفعها، وتنشرها للموظفين من جوه التطبيق.
 
-## الإعداد لمرة واحدة (على جهازك المحلي)
+> 📌 كل ما تنشر نسخة جديدة من صفحة `/download` كـ Admin، **كل الموظفين هيوصلهم إشعار تلقائي** فيه رقم النسخة ورابط التحميل.
 
-> سحب المشروع من Lovable إلى GitHub أولاً، ثم على جهازك:
+---
+
+## 0) المتطلبات لمرة واحدة
 
 ```bash
-git clone <repo-url>
-cd <repo>
 bun install
+# Capacitor (موبايل)
+bun add @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
+bun add @capacitor/push-notifications @capgo/capacitor-updater
+bun add @capacitor-community/speech-recognition   # مايك أصلي على الموبايل
+```
 
-# تثبيت Capacitor + المنصات
-bun add @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios \
-        @capacitor/push-notifications @capacitor/splash-screen \
-        @capacitor/status-bar @capacitor-community/speech-recognition
-bun add @capgo/capacitor-updater    # OTA
+> الـ **Speech Recognition plugin** بيدّينا دقة أعلى بكتير للهجة المصرية (`ar-EG`) من Web Speech API لأنه بيستخدم المحرك الأصلي للنظام (Google STT على أندرويد / Siri على آيفون).
 
-# إضافة المنصات (أول مرة فقط)
+أول مرة بس:
+
+```bash
 npx cap add android
-npx cap add ios
+npx cap add ios     # محتاج Mac
 ```
 
-## بناء الـ Web Bundle
+---
+
+## 1) Android (`.apk`)
+
+محتاج Android Studio.
 
 ```bash
-bun run build      # ينتج /dist
-npx cap sync       # ينسخ /dist للمشاريع الأصلية
+bun run build           # ينتج /dist
+npx cap sync android
+npx cap open android    # يفتح Android Studio
 ```
 
-## 1. Android APK (مجاني، بدون متجر)
+في Android Studio: **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
+ملف الـ APK هيطلع في `android/app/build/outputs/apk/release/`.
+
+ارفعه (Storage / Drive / موقع) واعمل publish من `/download` → Platform: Android.
+
+---
+
+## 2) iOS (`.ipa`)
+
+محتاج Mac + Xcode.
 
 ```bash
-npx cap open android
-```
-
-في Android Studio:
-- **Build → Build Bundle(s) / APK(s) → Build APK(s)**
-- الملف بيظهر في: `android/app/build/outputs/apk/debug/app-debug.apk`
-- ابعت الـ APK لموظفين الشركة عبر واتساب/Drive
-- المستخدم: **Settings → Security → Install from unknown sources** → ثبّت
-
-## 2. iOS IPA (محتاج Mac + Apple ID)
-
-```bash
-npx cap open ios
-```
-
-في Xcode:
-- اختر الـ Team (حتى Apple ID مجاني يكفي للتوزيع الداخلي لمدة 7 أيام)
-- **Product → Archive → Distribute App → Ad Hoc**
-- للتوزيع طويل المدى بدون متاجر: استخدم **AltStore** أو **Sideloadly**
-- أو اشترك في Apple Developer ($99/سنة) واستخدم **TestFlight** (موصى به)
-
-## 3. Windows EXE + macOS DMG (Electron)
-
-سيتم إضافة Electron wrapper في المرحلة التالية (يحتاج تثبيت Electron محلياً).
-
-## التحديثات الفورية (Capgo OTA)
-
-بعد كل مرة ترفع تحديث من Lovable:
-
-```bash
-# 1. اسحب آخر تحديثات الكود
-git pull
-
-# 2. ابني الـ web
 bun run build
-
-# 3. ارفع التحديث على Capgo (مجاني لـ 1000 جهاز)
-npx @capgo/cli upload --apikey YOUR_CAPGO_KEY
-
-# 4. سجّل التحديث في قاعدة البيانات عشان الموظفين يجيلهم إشعار
-psql -c "INSERT INTO app_updates (version, release_notes) VALUES ('1.2.3', 'إصلاح الصوت + الكلندر الذكي')"
+npx cap sync ios
+npx cap open ios        # يفتح Xcode
 ```
 
-كل الأجهزة المثبت عليها التطبيق:
-1. هتشيك على التحديث عند فتح التطبيق
-2. هتنزّله في الخلفية
-3. هيتفعّل تلقائياً
-4. هيوصلهم إشعار: "في تحديث جديد متاح"
+في Xcode: **Product → Archive → Distribute App**.
 
-## الإشعارات Push (حتى لو التطبيق مقفول)
+- لو عندك Apple Developer Account ($99/سنة): اختار **TestFlight** (الأسهل).
+- من غير Developer Account: استخدم **AltStore / Sideloadly** لتثبيت الـ `.ipa` على الأجهزة (الـ certificate بيعدّى 7 أيام مع الحساب المجاني).
 
-1. أنشئ مشروع مجاني على Firebase: https://console.firebase.google.com
-2. حمّل `google-services.json` لـ Android و `GoogleService-Info.plist` لـ iOS
-3. ضعهم في `android/app/` و `ios/App/App/` على التوالي
-4. الإشعارات هتشتغل تلقائياً عبر الجدول الموجود `push_subscriptions`
+ارفع الـ `.ipa` واعمل publish من `/download` → Platform: iOS.
 
-## ملاحظات
+---
 
-- **Vite base path**: لو ظهر screen أبيض في Electron، تأكد إن `vite.config.ts` فيه `base: './'`
-- **iOS Safari**: ميكروفون مدعوم بس محتاج HTTPS — الأصلي مش هيكون فيه مشكلة
-- **Egyptian Arabic STT**: على Android بيستخدم Google TTS الأصلي (دقة ممتازة)، على iOS بيستخدم Siri Arabic
+## 3) Windows (`.exe`)
+
+محتاج جهاز ويندوز (أو VM).
+
+```bash
+# مرة واحدة
+npm install --save-dev electron @electron/packager
+
+# في كل بيلد
+bun run build
+npx @electron/packager . "Steinheim" --platform=win32 --arch=x64 --out=electron-release --overwrite --ignore="^/(android|ios|src|public|electron-release)"
+```
+
+النتيجة في `electron-release/Steinheim-win32-x64/`. زِبّها (`.zip`) وارفعها، أو اعمل installer بـ `electron-builder` لو محتاج `.exe` رسمي.
+
+publish من `/download` → Platform: Windows.
+
+---
+
+## 4) macOS (`.dmg` أو `.zip`)
+
+محتاج Mac.
+
+```bash
+bun run build
+npx @electron/packager . "Steinheim" --platform=darwin --arch=universal --out=electron-release --overwrite --ignore="^/(android|ios|src|public|electron-release)"
+
+# اعمل DMG
+hdiutil create -volname "Steinheim" -srcfolder electron-release/Steinheim-darwin-universal -ov -format UDZO Steinheim.dmg
+```
+
+publish من `/download` → Platform: macOS.
+
+---
+
+## 5) إزاي تنشر نسخة جديدة (Admin)
+
+1. ابني الملف للمنصة اللي عاوزها (الخطوات فوق).
+2. ارفع الملف على أي storage عام (يفضّل Supabase Storage bucket عام، أو Google Drive بـ direct download link).
+3. ادخل **`/download`** في التطبيق.
+4. في كرت **"نشر نسخة جديدة (Admin)"** املأ:
+   - **المنصة**: android / ios / windows / macos
+   - **رقم النسخة**: مثلاً `1.2.0`
+   - **رابط التحميل**: الرابط المباشر للملف
+   - **ملاحظات الإصدار**: أهم التغييرات
+   - **تحديث إجباري؟**: لو محتاج تجبر التحديث
+5. اضغط **نشر**.
+
+النتيجة:
+- النسخة بتظهر فوراً في `/download` لكل المستخدمين.
+- **كل موظفين الشركة بيوصلهم إشعار** (جرس + push على الموبايل).
+- النسخة بتفضل محفوظة في سجل النسخ للأبد.
+
+---
+
+## 6) OTA Updates (Capgo) — تحديثات JS فقط من غير ما الناس تنزّل APK تاني
+
+لما بتعدّل **ويب فقط** (مفيش plugins جديدة)، Capgo بيوزّع الـ JS bundle مباشرة:
+
+```bash
+bun add @capgo/cli --dev
+npx @capgo/cli login YOUR_CAPGO_API_KEY
+npx @capgo/cli bundle upload --channel production
+```
+
+التطبيقات اللي شغّالة هتنزّل التحديث في الخلفية وتطبّقه في فتحة قادمة.
+
+> ⚠️ Capgo بيشتغل بس مع تغييرات JS/HTML/CSS. لو زوّدت plugin أصلي جديد لازم build APK/IPA جديد ونشره من `/download`.
+
+---
+
+## 7) Speech Recognition (المايك الأصلي على الموبايل)
+
+البلَجِن متركّب. التطبيق بيستخدمه أوتوماتيك على الموبايل ويرجع لـ Web Speech في المتصفح.
+
+أضف الصلاحيات:
+
+**Android** (`android/app/src/main/AndroidManifest.xml`):
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+**iOS** (`ios/App/App/Info.plist`):
+```xml
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>للتعرف على الكلام لما تتكلم مع المساعد X</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>عشان تسجل صوت للمساعد X</string>
+```
+
+ابعد كده `npx cap sync` وابني التطبيق تاني.
