@@ -1138,6 +1138,107 @@ export type Database = {
           },
         ]
       }
+      price_list_items: {
+        Row: {
+          category: string
+          collection: string
+          color: string | null
+          color_hex: string | null
+          created_at: string
+          currency: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name_ar: string | null
+          name_en: string
+          price: number
+          qr_payload: string
+          sku: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
+        }
+        Insert: {
+          category: string
+          collection: string
+          color?: string | null
+          color_hex?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name_ar?: string | null
+          name_en: string
+          price?: number
+          qr_payload: string
+          sku: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+        }
+        Update: {
+          category?: string
+          collection?: string
+          color?: string | null
+          color_hex?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name_ar?: string | null
+          name_en?: string
+          price?: number
+          qr_payload?: string
+          sku?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
+        }
+        Relationships: []
+      }
+      price_list_price_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          id: string
+          item_id: string
+          new_price: number | null
+          old_price: number | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          item_id: string
+          new_price?: number | null
+          old_price?: number | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          item_id?: string
+          new_price?: number | null
+          old_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_list_price_history_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "price_list_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_price_history: {
         Row: {
           changed_at: string

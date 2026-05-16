@@ -356,7 +356,7 @@ function AuthPage() {
         <div className="order-2 w-full max-w-md justify-self-center lg:justify-self-end">
         <div className="relative rounded-2xl border border-[oklch(0.86_0.01_250_/_0.2)] bg-[oklch(0.13_0.003_250_/_0.85)] p-5 text-white shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
           <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
-          <div className="mb-5 flex gap-1 rounded-lg bg-white/5 p-1">
+          <div className="mb-3 flex gap-1 rounded-lg bg-white/5 p-1">
             <button
               onClick={() => setMode("login")}
               className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
@@ -374,6 +374,23 @@ function AuthPage() {
               }`}
             >{t("signup")}</button>
           </div>
+          <Link
+            to="/qr-price-list"
+            className="group mb-5 flex items-center justify-between gap-3 rounded-lg border border-[oklch(0.78_0.11_82_/_0.35)] bg-gradient-to-r from-[oklch(0.78_0.11_82_/_0.12)] via-[oklch(0.78_0.11_82_/_0.18)] to-[oklch(0.78_0.11_82_/_0.12)] px-4 py-2.5 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:border-[oklch(0.78_0.11_82_/_0.7)] hover:from-[oklch(0.78_0.11_82_/_0.22)] hover:to-[oklch(0.78_0.11_82_/_0.22)] hover:shadow-[0_8px_30px_-10px_oklch(0.78_0.11_82_/_0.6)]"
+          >
+            <span className="inline-flex items-center gap-2">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v1" />
+                </svg>
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="font-semibold">QR Price List</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Steinheim · 2026</span>
+              </span>
+            </span>
+            <span className="text-[oklch(0.78_0.11_82)] transition group-hover:translate-x-1">→</span>
+          </Link>
 
           {mode === "login" && enrolledAccounts.length > 0 && (
             <div className="mb-5 overflow-hidden rounded-2xl border border-[oklch(0.86_0.01_250_/_0.28)] bg-[linear-gradient(180deg,oklch(0.2_0.004_250_/_0.92),oklch(0.14_0.003_250_/_0.94))] shadow-[0_18px_60px_-24px_oklch(0.86_0.01_250_/_0.45)]">
