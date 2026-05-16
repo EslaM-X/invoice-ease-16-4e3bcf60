@@ -339,6 +339,25 @@ export function XAssistant() {
               </span>
             </div>
             <div className="flex items-center gap-1">
+              <select
+                value={accent}
+                onChange={(e) => setAccent(e.target.value as Accent)}
+                title={ar ? "اللهجة" : "Accent"}
+                className="h-8 cursor-pointer rounded-md border border-white/15 bg-white/5 px-2 text-[11px] font-medium text-white/80 outline-none hover:bg-white/10"
+              >
+                <option value="ar-EG" className="bg-black">🇪🇬 مصري</option>
+                <option value="en-US" className="bg-black">🇺🇸 US</option>
+                <option value="en-GB" className="bg-black">🇬🇧 UK</option>
+              </select>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => setTtsOn(!ttsOn)}
+                title={ar ? (ttsOn ? "إيقاف القراءة الصوتية" : "تشغيل القراءة الصوتية") : ttsOn ? "Mute voice" : "Read aloud"}
+              >
+                {ttsOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -361,7 +380,7 @@ export function XAssistant() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-white/80 hover:bg-white/10 hover:text-white"
-                onClick={() => setOpen(false)}
+                onClick={() => { try { window.speechSynthesis?.cancel(); } catch {} setOpen(false); }}
                 title={ar ? "إغلاق" : "Close"}
               >
                 <XIcon className="h-4 w-4" />
