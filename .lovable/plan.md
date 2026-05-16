@@ -1,119 +1,102 @@
+# خطة تحويل التطبيق لتطبيق أصلي متعدد المنصات
 
-# خطة: X — المساعد الفاخر المتكامل
-
-هدف واحد: نحوّل X من فقاعة شات بسيطة لمساعد يحس إنه **منتج رائد** — شكل أوركسترالي، صوت طبيعي، عربي/إنجليزي بسلاسة، وروح بشرية فيها هزار خفيف.
-
----
-
-## 1. الهوية البصرية الجديدة (تتناغم مع Steinheim الأسود/الذهبي)
-
-نسيب الـ gradient البنفسجي/الفوشي الحالي (مش متناسق مع هوية التطبيق) ونروح لـ:
-
-- **كرة X العائمة (Orb)**: كرة سوداء عميقة بحلقة ذهبية متحركة (conic-gradient يدور ببطء)، نبض ناعم عند الـ idle، توهج ذهبي عند الـ hover. حجم 64px على الديسكتوب، 56px على الموبايل. تنجذب لحافة الشاشة مع safe-area.
-- **لما يتكلم**: الحلقة تنبض مع الـ amplitude للصوت (audio-reactive ring باستخدام `getOutputByteFrequencyData`).
-- **شيت المحادثة**: 
-  - موبايل: fullscreen مع drag-handle علوي بنمط iOS sheet.
-  - ديسكتوب: side-panel 420px بـ glass blur وحدود ذهبية رفيعة.
-  - خلفية: gradient أسود → فحمي مع noise texture خفيف.
-  - هيدر فيه: اسم X بخط Serif، badge صغير (Online / Thinking / Listening / Speaking)، وأيقونات (محادثة جديدة، سجل، إعدادات الصوت، لغة).
-
-## 2. الذكاء — Tool Calling كامل
-
-نعرّف tools للـ AI (Lovable AI Gateway, `google/gemini-3-pro-preview`):
-
-| Tool | الوصف | يحتاج تأكيد؟ |
-|---|---|---|
-| `create_invoice` | إنشاء فاتورة جديدة | ✅ Dialog |
-| `add_product` / `update_product` / `delete_product` | إدارة منتجات | ✅ Dialog |
-| `add_customer` / `update_customer` | إدارة عملاء | ✅ Dialog |
-| `create_purchase_order` | أمر شراء | ✅ Dialog |
-| `search_anything` | بحث عام (منتج/عميل/فاتورة) | ❌ |
-| `get_sales_summary` / `get_stock_status` / `get_profits` | تقارير | ❌ |
-| `navigate_to(path)` | تنقّل سريع | ❌ |
-| `explain_screen` | شرح صفحة | ❌ |
-
-كل عملية كتابة تحترم RLS وصلاحية المستخدم (admin أو موظف). الـ destructive (حذف) تتطلب biometric/PIN لو متفعّل.
-
-في الـ UI: لما X يقترح عملية، تظهر **بطاقة تأكيد فاخرة** جوّه الشات (مش modal خارجي) — فيها ملخص العملية + زرّيْن «نفّذ» / «ألغِ»، مع animation انزلاق.
-
-## 3. الصوت — محادثة كاملة + TTS مرن
-
-نستخدم **ElevenLabs Conversational Agents (WebRTC)** للمحادثة الحقيقية (interruption + VAD + latency منخفض):
-
-- زر **ميكروفون** كبير في الشيت → يفتح session صوتي.
-- موجة صوتية حية (waveform) أسفل الشاشة لما يتكلم — رد فعل بصري على صوت X.
-- الـ Agent مُعدّ على ElevenLabs بـ:
-  - Voice عربي (أنثى/ذكر — هنختار سوا)
-  - System prompt يطابق الشخصية (ودود، محترف، فيه هزار خفيف)
-  - Client tools متربطة بنفس الـ tool-calling pipeline
-- Fallback نصي شغّال طول الوقت.
-- زر تبديل: 🎤 صوت ↔ 💬 نص.
-
-نحتاج: **`ELEVENLABS_API_KEY`** + **`ELEVENLABS_AGENT_ID`** (هنطلبهم لما نوصل).
-
-## 4. ثنائية اللغة الذكية
-
-- X يكتشف لغة الرسالة تلقائياً ويرد بنفسها (مش يعتمد على اللغة المختارة في التطبيق فقط).
-- يقدر يخلط (code-switching) لو المستخدم خلط.
-- في الصوت: نختار agent multilingual في ElevenLabs (يدعم العربي والإنجليزي في نفس الـ session).
-- System prompt يحتوي تعليمات صريحة: «رد بنفس لغة المستخدم. لو سأل بالعربي رد بالعربي، لو إنجليزي رد إنجليزي.»
-
-## 5. الشخصية + الهزار
-
-System prompt جديد:
-- **النبرة**: واثق، محترم، ودود، **بيرمي نكتة خفيفة من وقت للتاني** (مش مبالغ فيها)، يستخدم emoji باعتدال.
-- **الذاكرة**: يستدعي اسم المستخدم، يفتكر تفضيلاته من `x_user_profile`.
-- **الاستباقية**: لو لاحظ مخزون قارب على النفاد وانت بتسأل عن منتج تاني، يقول «بالمناسبة، X خلص تقريباً 👀».
-- **التحليل**: بعد كل محادثة، server function يحدّث `x_user_profile` (tone preference, common tasks, business priorities) → يتدمج في system prompt للمحادثة الجاية.
-
-## 6. تفاصيل UX إضافية
-
-- **Quick Actions** في الشاشة الفاضية: 6 بطاقات أنيقة (مبيعات اليوم / إنشاء فاتورة / أقل مخزون / آخر عميل / فتح التقارير / محادثة صوتية).
-- **Streaming markdown** مع syntax highlighting للأرقام والعملات.
-- **Haptic feedback** على الموبايل (Vibration API) عند الإرسال/الاستلام.
-- **Keyboard shortcut**: `⌘K` يفتح X من أي مكان.
-- **Mini mode**: لما تقفل الشيت أثناء محادثة صوتية، الكرة تفضل تنبض في الزاوية وتفضل المحادثة شغالة.
+## النظرة العامة
+تحويل التطبيق الحالي (Web/PWA) إلى تطبيق أصلي يمكن تثبيته على Android, iOS, Windows, macOS بدون متاجر، مع تحديثات فورية OTA من خلال Lovable، وإصلاح الصوت في البوت.
 
 ---
 
-## التغييرات التقنية (للمراجعة)
+## 1. التغليف لتطبيق أصلي (Capacitor)
 
-```text
-src/components/x-assistant.tsx          → إعادة تصميم كامل + تقسيم
-  ├── x-orb.tsx                         (الكرة العائمة + audio-reactive)
-  ├── x-sheet.tsx                       (الشيت + هيدر + tabs)
-  ├── x-voice-panel.tsx                 (محادثة ElevenLabs WebRTC)
-  ├── x-tool-confirm-card.tsx           (بطاقة تأكيد العمليات)
-  └── x-quick-actions.tsx               (اقتراحات سريعة)
+استخدام **Capacitor** (نفس تقنية واتساب وتطبيقات كبيرة) لتغليف الـ web build في تطبيق أصلي.
 
-src/lib/x-tools.ts                      → تعريف الـ tools + executors
-src/lib/x-assistant.functions.ts        → تحديث system prompt + tool loop + bilingual
-src/routes/api/x-chat.ts                → دعم tool_calls + iterations
-src/routes/api/x-voice-token.ts         → جديد: يستخرج conversation token من ElevenLabs
+**الناتج النهائي:**
+- **Android**: ملف `.apk` مباشر — المستخدم بينزله ويثبته (يفعّل "Install from unknown sources" مرة واحدة)
+- **iOS**: ملف `.ipa` — يتثبت عبر AltStore أو Sideloadly (مجاني لكن محتاج توقيع كل 7 أيام بحساب Apple ID مجاني)، أو TestFlight لو احتجنا حل أنظف
+- **Windows**: ملف `.exe` عبر Electron wrapper
+- **macOS**: ملف `.dmg` عبر Electron wrapper
 
-DB migration:
-  - x_user_profile: إضافة personality_summary, language_preference, humor_level
-  - x_tool_audit: جدول لتسجيل كل عملية نفذها X (للتدقيق)
-```
+**ملاحظة مهمة عن iOS:** بدون حساب مطور Apple ($99/سنة) أي توزيع خارج App Store محدود. أنصح إضافة TestFlight لاحقًا لو احتجت توزيع iOS احترافي.
 
 ---
 
-## الأسرار المطلوبة (لما توافق)
+## 2. التحديثات الفورية OTA (Capgo)
 
-سأطلب منك:
-1. `ELEVENLABS_API_KEY` (من elevenlabs.io → Profile → API Keys)
-2. `ELEVENLABS_AGENT_ID` (من Agent اللي عملته)
+ربط **Capgo** (مجاني لحد 1000 جهاز شهريًا) عشان لما ترفع تحديث من Lovable:
+1. سكربت build بيرفع الـ web bundle لـ Capgo تلقائيًا
+2. كل الأجهزة المثبت عليها التطبيق بتشيك على التحديث وبتنزله في الخلفية
+3. إشعار push (عبر Supabase + OneSignal/Firebase) بيتبعت لكل الموظفين: "في تحديث جديد متاح"
+4. التحديث بيتفعل عند فتح التطبيق التالي
+
+**ميزة كبيرة:** التحديث بيوصل في دقائق بدون مراجعة متاجر، وبدون ما الموظف يعيد تنزيل التطبيق.
 
 ---
 
-## الترتيب المقترح للتنفيذ
+## 3. الإشعارات بأولوية عالية (حتى لو التطبيق مغلق)
 
-1. **إعادة التصميم البصري** (الكرة + الشيت + الهوية الذهبية) — أسرع win بصري.
-2. **Tool calling** (read-only tools أولاً: search, navigate, summaries).
-3. **Tool calling** (write tools: create/update/delete + بطاقة التأكيد).
-4. **محادثة صوتية ElevenLabs** (نطلب الـ secrets هنا).
-5. **تحليل الشخصية + الهزار + الذاكرة الطويلة**.
+- **Android/iOS**: استخدام `@capacitor/push-notifications` مع Firebase Cloud Messaging (مجاني)
+- **Windows/macOS**: إشعارات النظام عبر Electron native notifications
+- جدول `push_subscriptions` موجود بالفعل في القاعدة — هنوسعه ليدعم FCM tokens
+- الإشعارات هتيجي حتى لو التطبيق مقفول تمامًا (high-priority FCM)
 
-كل مرحلة قابلة للاختبار لوحدها.
+---
 
-**أبدأ بالخطوة 1 (التصميم البصري الجديد) أول حاجة؟**
+## 4. إصلاح الصوت في البوت
+
+المشكلة الحالية: `VoiceMic` بيستخدم Web Speech API بس مش شغّال صح.
+
+**الحل:**
+- **STT (صوت → نص)**: Web Speech API مع `lang="ar-EG"` للعربية المصرية و `lang="en-US"` / `lang="en-GB"` للإنجليزي. على الموبايل عبر Capacitor هنستخدم `@capacitor-community/speech-recognition` اللي بيستخدم نظام التشغيل (دقة أعلى بكتير للهجة المصرية)
+- **TTS (نص → صوت)**: 
+  - افتراضي: `speechSynthesis` الموجود في النظام
+  - على iOS/Android: أصوات النظام الأصلية أدق (Siri Arabic, Google TTS Arabic)
+  - زر اختيار اللهجة: مصري / أمريكي / بريطاني
+- **الردود**: Lovable AI Gateway مع system prompt يجبر اللهجة المصرية في الردود العربية
+
+---
+
+## 5. نظام إشعار التحديثات للموظفين
+
+عند رفع تحديث جديد:
+1. سكربت ما بعد build بيرفع لـ Capgo + بيدخل صف في جدول `app_updates` جديد (version, release_notes, published_at)
+2. Trigger في Supabase بيبعت notification لكل المستخدمين النشطين
+3. Push notification بيوصل لكل الأجهزة
+4. أول ما الموظف يفتح التطبيق: dialog "تحديث جديد متاح — إيه الجديد؟" مع release notes
+
+---
+
+## 6. الخطوات التنفيذية (بالترتيب)
+
+1. **تثبيت Capacitor** وإضافة منصات Android + iOS
+2. **إصلاح إعدادات Vite** (`base: './'`) عشان يشتغل في `file://`
+3. **إعداد Capgo** — حساب مجاني، إضافة plugin، وإعداد سكربت رفع
+4. **إعداد Firebase Cloud Messaging** للإشعارات (الـ project ID مجاني)
+5. **إنشاء جدول `app_updates`** + trigger إشعارات
+6. **إصلاح `VoiceMic`** بـ STT/TTS صح + اختيار اللهجة
+7. **بناء Electron wrapper** لويندوز وماك
+8. **توفير صفحة تنزيل داخلية** (`/download`) فيها كل الملفات للموظفين
+
+---
+
+## التفاصيل التقنية
+
+- **Capacitor 6** + `@capacitor/android` + `@capacitor/ios`
+- **Capgo plugin**: `@capgo/capacitor-updater`
+- **Push**: `@capacitor/push-notifications` + Firebase Admin SDK في server function
+- **Voice native**: `@capacitor-community/speech-recognition`
+- **Desktop**: Electron + `@electron/packager`
+- **CI build**: سكربت `npm run build:mobile` يبني الـ web + يرفع لـ Capgo + يحدّث جدول `app_updates`
+
+---
+
+## ما يحتاج منك:
+1. **Firebase**: حساب مجاني (5 دقايق) — هتديني الـ `google-services.json` و `GoogleService-Info.plist`
+2. **Capgo**: حساب مجاني — API key
+3. **(اختياري) Apple Developer**: لو عاوز iOS احترافي عبر TestFlight ($99/سنة)
+4. **أيقونة التطبيق + Splash screen** (PNG 1024×1024)
+
+---
+
+## ملاحظة عن المدة
+التنفيذ كبير وهيتقسم على عدة مراحل. أقترح نبدأ بالمرحلة الأولى (Capacitor + Android APK + إصلاح الصوت) لأنها الأهم وبتغطي معظم الموظفين، وبعدين iOS/Desktop/OTA.
+
+هل تأكدلي إني أبدأ بالمرحلة الأولى، ولا تحب نخطط تفاصيل أكثر؟
