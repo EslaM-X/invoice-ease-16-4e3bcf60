@@ -328,3 +328,63 @@ export const Route = createFileRoute("/api/x-chat")({
     },
   },
 });
+
+/**
+ * Lightweight "memory keeper": every few turns, asks the gateway to summarize
+ * the user's style, preferences, and frequent topics, then persists into
+ * x_user_profile. The result feeds back into the next conversation as system
+ * context — that's how X "learns" the user.
+ */
+async function updateUserMemory(args: {
+  userId: string;
+  apiKey: string;
+  history: { role: string; content: string }[];
+  previousSummary: string | null;
+  previousTopics: string[];
+}) {
+  try {
+    const tail = args.history.slice(-20)
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n");
+    const prompt = `Update a long-lived memory profile for an app user, based on their chat with the assistant.
+Previous summary: ${args.previousSummary ?? "(none)"}
+Previous frequent topics: ${args.previousTopics.join(", ") || "(none)"}
+Recent dialog:
+${tail}
+
+Return STRICT JSON with this shape (no prose, no fences):
+{"summary": "<= 600 chars, 1-2 short paragraphs in English describing how this user works, what they care about, their preferred tone, recurring goals, recent context worth remembering",
+ "tone": "<= 40 chars, e.g. 'casual Arabic, dry humor'",
+ "frequent_topics": ["topic1","topic2","topic3"]  // max 8
+}`;
+
+    const res = await fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${args.apiKey}` },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: "You output ONLY valid JSON. No commentary." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    const text: string = json?.choices?.[0]?.message?.content ?? "";
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+    let parsed: any;
+    try { parsed = JSON.parse(cleaned); } catch { return; }
+    if (!parsed || typeof parsed !== "object") return;
+
+    await supabaseAdmin.from("x_user_profile").upsert({
+      user_id: args.userId,
+      summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 2000) : args.previousSummary,
+      tone: typeof parsed.tone === "string" ? parsed.tone.slice(0, 120) : null,
+      frequent_topics: Array.isArray(parsed.frequent_topics) ? parsed.frequent_topics.slice(0, 8) : args.previousTopics,
+      updated_at: new Date().toISOString(),
+    });
+  } catch {
+    // best-effort; never break the chat reply
+  }
+}
