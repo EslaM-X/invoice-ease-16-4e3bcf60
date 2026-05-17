@@ -126,7 +126,7 @@ function ShippingOrder() {
         setProducts(m);
       } else setProducts(new Map());
     } catch (err: any) {
-      toast.error(err?.message ?? "خطأ في التحميل");
+      toast.error(err?.message ?? tt("خطأ في التحميل", "Failed to load"));
     } finally { setLoading(false); }
   };
 
