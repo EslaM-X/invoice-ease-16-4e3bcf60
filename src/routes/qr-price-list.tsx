@@ -179,9 +179,9 @@ function PriceListPage() {
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const margin = 10;
-      const cols = 3;
-      const rows = 4;
-      const gap = 4;
+      const cols = 2;
+      const rows = 2;
+      const gap = 8;
       const cellW = (pageW - margin * 2 - gap * (cols - 1)) / cols;
       const cellH = (pageH - margin * 2 - 18 - gap * (rows - 1)) / rows;
       const perPage = cols * rows;
