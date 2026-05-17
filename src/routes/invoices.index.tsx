@@ -142,7 +142,8 @@ function InvoicesList() {
         (i.invoice_number ?? "").toLowerCase().includes(s) ||
         String(i.receipt_number ?? "").includes(s) ||
         (i.customer_name ?? "").toLowerCase().includes(s) ||
-        (i.customer_phone ?? "").toLowerCase().includes(s)
+        (i.customer_phone ?? "").toLowerCase().includes(s) ||
+        (serialsByInvoice[i.id] ?? []).some((sn) => sn.includes(s))
       );
     })
     .sort((a, b) => {
