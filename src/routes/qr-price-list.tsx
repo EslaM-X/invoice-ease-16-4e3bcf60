@@ -154,15 +154,25 @@ function PriceListPage() {
       </div>
 
       <header className="relative z-10 border-b border-white/5 bg-[oklch(0.1_0.004_60_/_0.6)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link
-            to={user ? "/dashboard" : "/auth"}
-            className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-[oklch(0.78_0.11_82)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {user ? "Dashboard" : "Sign In"}
-          </Link>
-          <img src={brandLogo} alt="Steinheim" className="h-10 w-auto" />
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 sm:py-6" dir="ltr">
+          {user ? (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-[oklch(0.78_0.11_82)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/auth"
+              className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
+            >
+              <LogIn className="h-4 w-4" />
+              Sign In
+            </Link>
+          )}
+          <img src={brandLogo} alt="Steinheim" className="h-16 w-auto sm:h-20" />
         </div>
       </header>
 
