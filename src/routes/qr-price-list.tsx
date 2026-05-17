@@ -538,7 +538,7 @@ function ProductCard({
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={copyQR}
           >
-            <Copy className="ml-1 h-3 w-3" /> نسخ
+            <Copy className="ml-1 h-3 w-3" /> {tt("نسخ", "Copy")}
           </Button>
           <Button
             size="sm" variant="outline"
