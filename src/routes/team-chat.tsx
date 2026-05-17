@@ -400,28 +400,26 @@ function TeamChatPage() {
                 )}
               </div>
               <div className="p-2 sm:p-3 border-t flex gap-2 items-center bg-card/60 backdrop-blur">
-                <Input
-                  value={composer}
-                  onChange={(e) => setComposer(e.target.value)}
-                  placeholder={
-                    composer.trim()
-                      ? (rtl ? "اكتب رسالة..." : "Type a message...")
-                      : (rtl ? "اكتب رسالة أو سجل صوت..." : "Type a message or record...")
-                  }
-                  className="flex-1 rounded-full bg-muted/40 border-muted"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      onSend();
-                    }
-                  }}
-                />
-                {composer.trim() ? (
+                {!voiceActive && (
+                  <Input
+                    value={composer}
+                    onChange={(e) => setComposer(e.target.value)}
+                    placeholder={rtl ? "اكتب رسالة أو سجل صوت..." : "Type a message or record..."}
+                    className="flex-1 min-w-0 rounded-full bg-muted/40 border-muted"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        onSend();
+                      }
+                    }}
+                  />
+                )}
+                {composer.trim() && !voiceActive ? (
                   <Button onClick={onSend} size="icon" className="rounded-full shrink-0">
                     <Send className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <VoiceRecorder onSend={onSendVoice} rtl={rtl} />
+                  <VoiceRecorder onSend={onSendVoice} rtl={rtl} onActiveChange={setVoiceActive} />
                 )}
               </div>
             </>
