@@ -13,11 +13,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Plus, Users, MessageSquare, ArrowLeft, ArrowRight } from "lucide-react";
+import { Send, Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listChatRooms, listChatMessages, sendChatMessage, markRoomRead,
-  listCompanyMembers, createChatRoom,
+  listCompanyMembers, createChatRoom, deleteChatMessage,
 } from "@/lib/chat.functions";
 import { toast } from "sonner";
 import { VoiceRecorder } from "@/components/chat/voice-recorder";
@@ -42,6 +42,7 @@ function TeamChatPage() {
   const markRead = useServerFn(markRoomRead);
   const fetchMembers = useServerFn(listCompanyMembers);
   const createRoom = useServerFn(createChatRoom);
+  const deleteMsg = useServerFn(deleteChatMessage);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [composer, setComposer] = useState("");
