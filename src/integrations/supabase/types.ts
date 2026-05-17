@@ -674,6 +674,7 @@ export type Database = {
       delivery_receipts: {
         Row: {
           accountant_name: string | null
+          archived_at: string | null
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -691,6 +692,7 @@ export type Database = {
           signature_customer: string | null
           signature_manager: string | null
           status: string
+          status_reason: string | null
           updated_at: string
           updated_by: string | null
           updated_by_email: string | null
@@ -698,6 +700,7 @@ export type Database = {
         }
         Insert: {
           accountant_name?: string | null
+          archived_at?: string | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -715,6 +718,7 @@ export type Database = {
           signature_customer?: string | null
           signature_manager?: string | null
           status?: string
+          status_reason?: string | null
           updated_at?: string
           updated_by?: string | null
           updated_by_email?: string | null
@@ -722,6 +726,7 @@ export type Database = {
         }
         Update: {
           accountant_name?: string | null
+          archived_at?: string | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -739,6 +744,7 @@ export type Database = {
           signature_customer?: string | null
           signature_manager?: string | null
           status?: string
+          status_reason?: string | null
           updated_at?: string
           updated_by?: string | null
           updated_by_email?: string | null
@@ -2864,6 +2870,10 @@ export type Database = {
       }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
+      change_delivery_receipt_status: {
+        Args: { _new_status: string; _reason?: string; _receipt_id: string }
+        Returns: string
+      }
       convert_invoice_to_draft: {
         Args: { _invoice_id: string }
         Returns: string
