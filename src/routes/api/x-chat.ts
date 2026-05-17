@@ -235,7 +235,7 @@ async function buildLiveData(userId: string, userMessage: string): Promise<strin
         createdAt: inv.created_at,
         quantity: 0,
         total: 0,
-        matches: [],
+        matches: [] as string[],
       };
       existing.quantity += Number(row.quantity || 0);
       existing.total += Number(row.line_total || 0);
