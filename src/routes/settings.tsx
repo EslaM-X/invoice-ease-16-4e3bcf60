@@ -95,6 +95,8 @@ function SettingsPage() {
         <AvatarUpload />
       </div>
 
+      <ChatProfileSettings />
+
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <h3 className="mb-4 font-semibold">{t("logo")}</h3>
         <div className="flex items-center gap-4">
