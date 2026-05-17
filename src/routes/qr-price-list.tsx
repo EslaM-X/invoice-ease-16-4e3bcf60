@@ -433,11 +433,11 @@ function PriceListPage() {
   );
 }
 
-function ProductCard({
-  item, index, canEdit, eager, canAddToInvoice, inCart, lang, onEdit, onAdd,
+const ProductCard = memo(function ProductCard({
+  item, canEdit, eager, canAddToInvoice, inCart, lang, onEdit, onAdd,
 }: {
   item: Product;
-  index: number;
+  index?: number;
   canEdit: boolean;
   eager?: boolean;
   canAddToInvoice?: boolean;
@@ -450,8 +450,15 @@ function ProductCard({
   const tt = (a: string, e: string) => (isAr ? a : e);
   const qrRef = useRef<HTMLCanvasElement | null>(null);
   const qrValue = useMemo(() => encodeProductQR(item.qr_code || item.id), [item.qr_code, item.id]);
+  // CRITICAL perf fix: don't render a QRCodeCanvas per card on mount.
+  // Rendering 100+ canvases blocks the main thread on weak devices and causes
+  // input lag / cursor disappearing when typing elsewhere on the page.
+  const [showQR, setShowQR] = useState(false);
 
-  const downloadQR = () => {
+  const downloadQR = async () => {
+    setShowQR(true);
+    // wait a tick for canvas to mount
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
     const canvas = qrRef.current;
     if (!canvas) return;
     const url = canvas.toDataURL("image/png");
@@ -471,12 +478,8 @@ function ProductCard({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.6) }}
-      whileHover={{ y: -4 }}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[oklch(0.13_0.005_60_/_0.9)] to-[oklch(0.1_0.004_60_/_0.95)] backdrop-blur-xl transition-shadow hover:border-[oklch(0.78_0.11_82_/_0.4)] hover:shadow-[0_20px_60px_-20px_oklch(0.78_0.11_82_/_0.3)]"
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[oklch(0.13_0.005_60_/_0.9)] to-[oklch(0.1_0.004_60_/_0.95)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-[oklch(0.78_0.11_82_/_0.4)] hover:shadow-[0_20px_60px_-20px_oklch(0.78_0.11_82_/_0.3)] will-change-transform"
     >
       {item.collection && (
         <div className="absolute right-0 top-0 z-10 rounded-bl-xl bg-[oklch(0.78_0.11_82)] px-3 py-1 text-[10px] font-bold tracking-widest text-[oklch(0.1_0.004_60)]">
@@ -508,6 +511,16 @@ function ProductCard({
             title={item.color}
           />
         )}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="absolute top-3 left-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white/80 opacity-0 backdrop-blur transition group-hover:opacity-100 hover:bg-black/60"
+            aria-label={tt("تعديل", "Edit")}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="space-y-3 p-4" dir={isAr ? "rtl" : "ltr"}>
@@ -527,18 +540,21 @@ function ProductCard({
             {fmtMoney(Number(item.price) || 0, "EGP", lang)}
           </div>
         </div>
-        <div className="flex justify-center">
-          <div className="rounded-xl bg-white p-3 shadow-lg">
-            <QRCodeCanvas
-              ref={qrRef}
-              value={qrValue}
-              size={140}
-              level="M"
-              bgColor="#ffffff"
-              fgColor="#0a0a0a"
-            />
+
+        {showQR && (
+          <div className="flex justify-center">
+            <div className="rounded-xl bg-white p-3 shadow-lg">
+              <QRCodeCanvas
+                ref={qrRef}
+                value={qrValue}
+                size={140}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#0a0a0a"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {canAddToInvoice && onAdd && (
           <Button
@@ -555,6 +571,13 @@ function ProductCard({
           <Button
             size="sm" variant="outline"
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
+            onClick={() => setShowQR((v) => !v)}
+          >
+            {showQR ? tt("إخفاء QR", "Hide QR") : tt("عرض QR", "Show QR")}
+          </Button>
+          <Button
+            size="sm" variant="outline"
+            className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={copyQR}
           >
             <Copy className="ml-1 h-3 w-3" /> {tt("نسخ", "Copy")}
@@ -568,9 +591,9 @@ function ProductCard({
           </Button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
-}
+});
 
 // --- Cart dialog for signed-in users -------------------------------------
 function CartDialog({
