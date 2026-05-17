@@ -240,21 +240,27 @@ function SalesRange() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-4" dir="rtl">
+    <div className="container mx-auto p-4 space-y-4" dir={dir}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShoppingCart className="h-6 w-6 text-primary" /> تقرير المبيعات حسب الفترة
+            <ShoppingCart className="h-6 w-6 text-primary" /> {tt("تقرير المبيعات حسب الفترة", "Sales Report by Range")}
           </h1>
-          <p className="text-sm text-muted-foreground">المنتجات المباعة فعليًا (الفواتير المكتملة فقط — بدون الملغاة أو المحذوفة).</p>
+          <p className="text-sm text-muted-foreground">{tt(
+            "المنتجات المباعة فعليًا (الفواتير المكتملة فقط — بدون الملغاة أو المحذوفة).",
+            "Actually sold products (completed invoices only — excluding voided/deleted).",
+          )}</p>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm"><Link to="/sales-today">مبيعات اليوم</Link></Button>
+          <Button onClick={() => setLang(ar ? "en" : "ar")} variant="outline" size="sm" className="gap-1">
+            <Languages className="h-4 w-4" /> {ar ? "EN" : "ع"}
+          </Button>
+          <Button asChild variant="outline" size="sm"><Link to="/sales-today">{tt("مبيعات اليوم", "Today's Sales")}</Link></Button>
           <Button onClick={load} variant="outline" size="sm" disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ml-1 ${loading ? "animate-spin" : ""}`} /> تحديث
+            <RefreshCw className={`h-4 w-4 mx-1 ${loading ? "animate-spin" : ""}`} /> {tt("تحديث", "Refresh")}
           </Button>
           <Button onClick={exportXlsx} size="sm" disabled={!rows.length}>
-            <Download className="h-4 w-4 ml-1" /> تصدير Excel
+            <Download className="h-4 w-4 mx-1" /> {tt("تصدير Excel", "Export Excel")}
           </Button>
         </div>
       </div>
@@ -262,51 +268,51 @@ function SalesRange() {
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="text-xs text-muted-foreground">من</label>
+            <label className="text-xs text-muted-foreground">{tt("من", "From")}</label>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">إلى</label>
+            <label className="text-xs text-muted-foreground">{tt("إلى", "To")}</label>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" />
             </div>
           </div>
           <div className="flex gap-1">
-            <Button variant="outline" size="sm" onClick={() => { const d = todayISO(); setFrom(d); setTo(d); }}>اليوم</Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(7)}>آخر 7 أيام</Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(30)}>آخر 30 يوم</Button>
+            <Button variant="outline" size="sm" onClick={() => { const d = todayISO(); setFrom(d); setTo(d); }}>{tt("اليوم", "Today")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setRange(7)}>{tt("آخر 7 أيام", "Last 7 days")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setRange(30)}>{tt("آخر 30 يوم", "Last 30 days")}</Button>
           </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">إجمالي القطع المباعة</div>
+          <div className="text-xs text-muted-foreground">{tt("إجمالي القطع المباعة", "Total units sold")}</div>
           <div className="text-3xl font-bold flex items-center gap-2 mt-1"><Boxes className="h-6 w-6 text-primary" /> {totalUnits}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">إجمالي القيمة</div>
+          <div className="text-xs text-muted-foreground">{tt("إجمالي القيمة", "Total value")}</div>
           <div className="text-3xl font-bold mt-1">{fmtMoney(totalValue)}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">عدد المنتجات المختلفة / الفواتير</div>
+          <div className="text-xs text-muted-foreground">{tt("عدد المنتجات المختلفة / الفواتير", "Distinct products / invoices")}</div>
           <div className="text-3xl font-bold mt-1">{rows.length} <span className="text-base text-muted-foreground">/ {invoices.length}</span></div>
         </Card>
       </div>
 
       {byCollection.size > 0 && (
         <Card className="p-4">
-          <h2 className="font-semibold mb-3">حسب الكولكشن</h2>
+          <h2 className="font-semibold mb-3">{tt("حسب الكولكشن", "By collection")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Array.from(byCollection).sort((a, b) => b[1].units - a[1].units).map(([c, v]) => (
               <div key={c} className="rounded-lg border p-3 bg-muted/30">
                 <div className="text-xs text-muted-foreground">{c}</div>
                 <div className="text-2xl font-bold mt-1">{v.units}</div>
-                <div className="text-xs text-muted-foreground">{v.distinct} منتج · {fmtMoney(v.value)}</div>
+                <div className="text-xs text-muted-foreground">{v.distinct} {tt("منتج", "products")} · {fmtMoney(v.value)}</div>
               </div>
             ))}
           </div>
@@ -315,27 +321,27 @@ function SalesRange() {
 
       <Card className="overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4" /> تفاصيل المنتجات المباعة</h2>
-          <Badge variant="secondary">{rows.length} منتج</Badge>
+          <h2 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4" /> {tt("تفاصيل المنتجات المباعة", "Sold products details")}</h2>
+          <Badge variant="secondary">{rows.length} {tt("منتج", "products")}</Badge>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
-              <tr className="text-right">
-                <th className="p-2">صورة</th>
-                <th className="p-2">المنتج</th>
-                <th className="p-2">السيريال</th>
-                <th className="p-2">اللون</th>
-                <th className="p-2">كولكشن</th>
-                <th className="p-2">سعر الوحدة</th>
-                <th className="p-2">الكمية المباعة</th>
-                <th className="p-2">الإجمالي</th>
-                <th className="p-2">الفواتير</th>
+              <tr className={ar ? "text-right" : "text-left"}>
+                <th className="p-2">{tt("صورة", "Image")}</th>
+                <th className="p-2">{tt("المنتج", "Product")}</th>
+                <th className="p-2">{tt("السيريال", "Serial")}</th>
+                <th className="p-2">{tt("اللون", "Color")}</th>
+                <th className="p-2">{tt("كولكشن", "Collection")}</th>
+                <th className="p-2">{tt("سعر الوحدة", "Unit price")}</th>
+                <th className="p-2">{tt("الكمية المباعة", "Qty sold")}</th>
+                <th className="p-2">{tt("الإجمالي", "Total")}</th>
+                <th className="p-2">{tt("الفواتير", "Invoices")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
-                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">لا توجد مبيعات في هذه الفترة</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">{tt("لا توجد مبيعات في هذه الفترة", "No sales in this range")}</td></tr>
               )}
               {rows.map((r) => (
                 <tr key={r.product_id} className="border-t hover:bg-muted/30">
