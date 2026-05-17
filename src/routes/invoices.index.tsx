@@ -90,7 +90,10 @@ function InvoicesList() {
         if (!it.invoice_id) return;
         totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
         if (it.serial_number) {
-          (serialsMap[it.invoice_id] ??= []).push(String(it.serial_number).toLowerCase());
+          // Normalize: lowercase + strip spaces/dashes/dots so search matches
+          // regardless of how the serial was typed.
+          const norm = String(it.serial_number).toLowerCase().replace(/[\s_\-./]+/g, "");
+          (serialsMap[it.invoice_id] ??= []).push(norm);
         }
       });
       setSerialsByInvoice(serialsMap);
