@@ -65,10 +65,14 @@ type Intake = {
   }>;
 };
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/stock-intake")({
   component: () => (
     <AppShell>
-      <StockIntake />
+      <ExecutiveGate>
+        <StockIntake />
+      </ExecutiveGate>
     </AppShell>
   ),
 });
