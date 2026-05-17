@@ -282,7 +282,7 @@ function PriceListPage() {
             <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-3">
               {offline ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-amber-300/80">
-                  <WifiOff className="h-3 w-3" /> offline · يعمل من الكاش
+                  <WifiOff className="h-3 w-3" /> {tt("غير متصل · يعمل من الكاش", "Offline · using cache")}
                 </span>
               ) : <span />}
               {isAdmin && (
@@ -291,7 +291,7 @@ function PriceListPage() {
                   onClick={() => setAddOpen(true)}
                   className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
                 >
-                  <Plus className="mr-1 h-3 w-3" /> إضافة منتج
+                  <Plus className="mr-1 h-3 w-3" /> {tt("إضافة منتج", "Add product")}
                 </Button>
               )}
             </div>
