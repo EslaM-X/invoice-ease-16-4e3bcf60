@@ -188,10 +188,15 @@ function TeamChatPage() {
 
   return (
     <AppShell>
-      <div className="flex h-[calc(100vh-12rem)] gap-3 rounded-xl border bg-card overflow-hidden" dir={rtl ? "rtl" : "ltr"}>
+      <div
+        className="flex h-[calc(100dvh-9rem)] sm:h-[calc(100vh-12rem)] rounded-2xl border bg-card overflow-hidden shadow-sm"
+        dir={rtl ? "rtl" : "ltr"}
+      >
         {/* Sidebar */}
-        <div className="w-72 shrink-0 border-e flex flex-col">
-          <div className="p-3 border-b flex items-center justify-between">
+        <div
+          className={`${activeRoomId ? "hidden md:flex" : "flex"} w-full md:w-72 md:shrink-0 md:border-e flex-col`}
+        >
+          <div className="p-3 border-b flex items-center justify-between bg-card/60 backdrop-blur">
             <h2 className="font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               {rtl ? "الشات الداخلي" : "Team Chat"}
@@ -232,9 +237,11 @@ function TeamChatPage() {
                     activeRoomId === r.id ? "bg-accent" : ""
                   }`}
                 >
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="h-10 w-10 ring-2 ring-background shadow">
                     {r.avatar_url && <AvatarImage src={r.avatar_url} />}
-                    <AvatarFallback>{label.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
+                      {label.charAt(0).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -254,17 +261,26 @@ function TeamChatPage() {
         </div>
 
         {/* Conversation */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`${activeRoomId ? "flex" : "hidden md:flex"} flex-1 flex-col min-w-0`}>
           {activeRoom ? (
             <>
-              <div className="p-3 border-b flex items-center gap-3">
-                <Avatar className="h-9 w-9">
+              <div className="p-3 border-b flex items-center gap-3 bg-card/60 backdrop-blur">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="md:hidden shrink-0 h-9 w-9"
+                  onClick={() => setActiveRoomId(null)}
+                  aria-label="Back"
+                >
+                  {rtl ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+                </Button>
+                <Avatar className="h-10 w-10 ring-2 ring-background shadow">
                   {activeRoom.avatar_url && <AvatarImage src={activeRoom.avatar_url} />}
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
                     {(activeRoom.display_name ?? "G").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="font-semibold truncate">
                     {activeRoom.display_name ??
                       (activeRoom.type === "direct"
@@ -274,38 +290,44 @@ function TeamChatPage() {
                   <div className="text-xs text-muted-foreground truncate">
                     {activeRoom.type === "group" && activeRoom.members
                       ? `${activeRoom.members.length} ${rtl ? "عضو" : "members"}`
-                      : activeRoom.type}
+                      : (rtl ? "محادثة مباشرة" : "Direct chat")}
                   </div>
                 </div>
               </div>
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
+              <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 bg-gradient-to-b from-muted/30 to-muted/10"
+              >
                 {(messagesQ.data?.messages ?? []).map((m: any) => {
                   const mine = m.sender_id === user?.id;
                   const isGroup = activeRoom.type === "group";
-                  const showHeader = !mine; // always show sender info for incoming
+                  const displayName = mine
+                    ? (myProfile.display_name ?? (rtl ? "أنا" : "You"))
+                    : (m.sender_display_name ?? m.sender_email ?? "?");
+                  const avatarUrl = mine ? myProfile.avatar_url : m.sender_avatar_url;
                   return (
                     <div key={m.id} className={`flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                       {!mine && (
-                        <Avatar className="h-8 w-8 mt-1 shrink-0">
-                          {m.sender_avatar_url && <AvatarImage src={m.sender_avatar_url} />}
-                          <AvatarFallback className="text-[10px]">
-                            {(m.sender_display_name ?? "?").charAt(0).toUpperCase()}
+                        <Avatar className="h-8 w-8 mt-1 shrink-0 ring-1 ring-border">
+                          {avatarUrl && <AvatarImage src={avatarUrl} />}
+                          <AvatarFallback className="text-[10px] bg-muted">
+                            {displayName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                       )}
                       <div
-                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
+                        className={`max-w-[80%] sm:max-w-[70%] px-3 py-2 rounded-2xl text-sm shadow-sm ${
                           mine
                             ? "bg-primary text-primary-foreground rounded-ee-sm"
                             : "bg-card border rounded-es-sm"
                         }`}
                       >
-                        {showHeader && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium truncate">
-                              {m.sender_display_name ?? m.sender_email}
+                        {(!mine || isGroup) && (
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`text-xs font-semibold truncate ${mine ? "opacity-90" : ""}`}>
+                              {displayName}
                             </span>
-                            {(isGroup || m.sender_job_title) && m.sender_job_title && (
+                            {(mine ? null : m.sender_job_title) && (
                               <span
                                 className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                                 style={{
@@ -329,7 +351,7 @@ function TeamChatPage() {
                             <div className="text-xs opacity-70">{rtl ? "جاري تحميل الصوت..." : "Loading audio..."}</div>
                           )
                         ) : (
-                          <div className="whitespace-pre-wrap break-words">{m.body}</div>
+                          <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
                         )}
                         <div className="text-[10px] opacity-60 mt-1 text-end">
                           {new Date(m.created_at).toLocaleTimeString(rtl ? "ar-EG" : undefined, {
@@ -337,6 +359,14 @@ function TeamChatPage() {
                           })}
                         </div>
                       </div>
+                      {mine && (
+                        <Avatar className="h-8 w-8 mt-1 shrink-0 ring-1 ring-primary/30">
+                          {avatarUrl && <AvatarImage src={avatarUrl} />}
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                            {displayName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                     </div>
                   );
                 })}
@@ -346,44 +376,34 @@ function TeamChatPage() {
                   </div>
                 )}
               </div>
-              <div className="p-3 border-t flex gap-2 items-center">
+              <div className="p-2 sm:p-3 border-t flex gap-2 items-center bg-card/60 backdrop-blur">
+                <Input
+                  value={composer}
+                  onChange={(e) => setComposer(e.target.value)}
+                  placeholder={
+                    composer.trim()
+                      ? (rtl ? "اكتب رسالة..." : "Type a message...")
+                      : (rtl ? "اكتب رسالة أو سجل صوت..." : "Type a message or record...")
+                  }
+                  className="flex-1 rounded-full bg-muted/40 border-muted"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      onSend();
+                    }
+                  }}
+                />
                 {composer.trim() ? (
-                  <>
-                    <Input
-                      value={composer}
-                      onChange={(e) => setComposer(e.target.value)}
-                      placeholder={rtl ? "اكتب رسالة..." : "Type a message..."}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          onSend();
-                        }
-                      }}
-                    />
-                    <Button onClick={onSend}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </>
+                  <Button onClick={onSend} size="icon" className="rounded-full shrink-0">
+                    <Send className="h-4 w-4" />
+                  </Button>
                 ) : (
-                  <>
-                    <Input
-                      value={composer}
-                      onChange={(e) => setComposer(e.target.value)}
-                      placeholder={rtl ? "اكتب رسالة أو سجل صوت..." : "Type a message or record..."}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          onSend();
-                        }
-                      }}
-                    />
-                    <VoiceRecorder onSend={onSendVoice} rtl={rtl} />
-                  </>
+                  <VoiceRecorder onSend={onSendVoice} rtl={rtl} />
                 )}
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-6 text-center">
               {rtl ? "اختر محادثة عشان تبدأ" : "Pick a conversation to start"}
             </div>
           )}
