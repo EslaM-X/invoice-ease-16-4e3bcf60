@@ -286,7 +286,7 @@ const ar: Dict = {
   received_label: "مستلم",
   remaining_label: "متبقي",
   // Invoice list filters
-  search_invoices_placeholder: "ابحث برقم الفاتورة، اسم العميل أو رقم الهاتف…",
+  search_invoices_placeholder: "ابحث برقم الفاتورة، اسم العميل، الهاتف أو الرقم التسلسلي…",
   all_statuses: "كل الحالات",
   status_completed: "مكتملة",
   status_voided: "ملغاة",
