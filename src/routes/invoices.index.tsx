@@ -171,6 +171,13 @@ function InvoicesList() {
     load();
   };
 
+  const convertToDraft = async (id: string) => {
+    const { error } = await supabase.rpc("convert_invoice_to_draft" as any, { _invoice_id: id } as any);
+    if (error) return toast.error(error.message);
+    toast.success(t("invoice_converted_to_draft"));
+    load();
+  };
+
   const duplicate = async (id: string) => {
     if (!user) return;
     const { data: inv } = await supabase.from("invoices").select("*").eq("id", id).single();
