@@ -39,6 +39,7 @@ function etaShort(iso: string, lang: string): string {
 function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
+  const isExecutive = useIsExecutive();
   const [list, setList] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
