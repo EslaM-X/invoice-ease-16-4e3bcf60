@@ -393,18 +393,18 @@ function ProductCard({
           )}
         </div>
 
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/40">Price</div>
-            <div className="text-2xl font-light text-[oklch(0.92_0.08_82)]">
-              {fmtMoney(Number(item.price) || 0, "EGP", "ar")}
-            </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-white/40">Price</div>
+          <div className="text-2xl font-light text-[oklch(0.92_0.08_82)]">
+            {fmtMoney(Number(item.price) || 0, "EGP", "ar")}
           </div>
-          <div className="rounded-lg bg-white p-1.5">
+        </div>
+        <div className="flex justify-center">
+          <div className="rounded-xl bg-white p-3 shadow-lg">
             <QRCodeCanvas
               ref={qrRef}
               value={qrValue}
-              size={64}
+              size={140}
               level="M"
               bgColor="#ffffff"
               fgColor="#0a0a0a"
