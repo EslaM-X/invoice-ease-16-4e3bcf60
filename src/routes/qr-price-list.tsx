@@ -479,7 +479,7 @@ function ProductCard({
         ) : (
           <div className="flex flex-col items-center text-white/20">
             <ImagePlus className="h-12 w-12" />
-            <span className="mt-2 text-xs">لا توجد صورة</span>
+            <span className="mt-2 text-xs">{tt("لا توجد صورة", "No image")}</span>
           </div>
         )}
         {item.color && (
