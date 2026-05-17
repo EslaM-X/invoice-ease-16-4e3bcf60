@@ -342,8 +342,8 @@ function PriceListPage() {
               className="inline-flex items-center gap-3 rounded-full bg-[oklch(0.78_0.11_82)] px-5 py-3 text-sm font-semibold text-[oklch(0.1_0.004_60)] shadow-[0_20px_60px_-10px_oklch(0.78_0.11_82_/_0.6)] transition hover:bg-[oklch(0.84_0.1_82)]"
             >
               <ShoppingCart className="h-4 w-4" />
-              <span>السلة ({Object.values(cart).reduce((a, b) => a + b, 0)})</span>
-              <span className="rounded-full bg-black/15 px-2 py-0.5 text-xs">إنشاء فاتورة</span>
+              <span>{tt("السلة", "Cart")} ({Object.values(cart).reduce((a, b) => a + b, 0)})</span>
+              <span className="rounded-full bg-black/15 px-2 py-0.5 text-xs">{tt("إنشاء فاتورة", "Create invoice")}</span>
             </button>
           </motion.div>
         )}
