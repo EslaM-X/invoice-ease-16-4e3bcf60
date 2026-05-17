@@ -171,13 +171,14 @@ function PriceListPage() {
                 {tt("لوحة التحكم", "Dashboard")}
               </Link>
             ) : (
-              <Link
-                to="/auth"
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
                 className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
               >
                 <LogIn className="h-4 w-4" />
                 {tt("تسجيل الدخول", "Sign In")}
-              </Link>
+              </button>
             )}
             <button
               type="button"
