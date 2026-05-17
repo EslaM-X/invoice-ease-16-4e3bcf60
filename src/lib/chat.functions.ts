@@ -101,11 +101,11 @@ export const listCompanyMembers = createServerFn({ method: "GET" })
       .from("company_members")
       .select("user_id, email");
     if (error) throw new Error(error.message);
-    // Hydrate profiles for display_name + avatar
+    // Hydrate profiles for display_name + avatar + job_title
     const ids = (data ?? []).map((m: any) => m.user_id);
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, avatar_url, email")
+      .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
       .in("user_id", ids);
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
     return {
@@ -114,6 +114,8 @@ export const listCompanyMembers = createServerFn({ method: "GET" })
         email: m.email,
         display_name: pMap.get(m.user_id)?.display_name ?? m.email,
         avatar_url: pMap.get(m.user_id)?.avatar_url ?? null,
+        job_title: pMap.get(m.user_id)?.job_title ?? null,
+        job_title_color: pMap.get(m.user_id)?.job_title_color ?? null,
       })),
     };
   });
