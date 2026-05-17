@@ -264,7 +264,7 @@ function InvoicesList() {
           <Link to="/invoices/drafts">
             <Button variant="outline" className="gap-2 rounded-full border-amber-500/40 bg-amber-500/5 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400">
               <FileText className="h-4 w-4" />
-              {lang === "ar" ? "المسودات" : "Drafts"}
+              {t("drafts")}
               {draftCount > 0 && (
                 <span className="ms-1 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
                   {draftCount}
@@ -275,7 +275,7 @@ function InvoicesList() {
           <Link to="/invoices/archive">
             <Button variant="outline" className="gap-2 rounded-full border-emerald-500/40 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">
               <Archive className="h-4 w-4" />
-              {lang === "ar" ? "الأرشيف" : "Archive"}
+              {t("archive")}
               {closedCount > 0 && (
                 <span className="ms-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
                   {closedCount}
