@@ -250,10 +250,13 @@ function Products() {
       return toast.error(msg);
     }
     toast.success(t("stock_adjusted"));
+    const targetId = adjustFor.id;
     setAdjustFor(null);
     setAdjustAmt("0");
     setAdjustReason("");
-    load();
+    // In-place patch — fetch only the affected row
+    const { data: fresh } = await supabase.from("products").select("*").eq("id", targetId).single();
+    if (fresh) setList((prev) => prev.map((p) => (p.id === targetId ? (fresh as Product) : p)));
   };
 
   const runBulkAdjust = async () => {
