@@ -4,8 +4,10 @@ import { QRCodeCanvas } from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2,
-  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus, Languages,
+  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus, Languages, FileDown,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,6 +167,103 @@ function PriceListPage() {
   const count = hydrated ? items.length : 0;
   const matchCount = hydrated ? filtered.length : 0;
 
+  const [exporting, setExporting] = useState(false);
+  const exportPdf = async () => {
+    if (filtered.length === 0) {
+      toast.error(tt("لا توجد منتجات للتصدير", "No products to export"));
+      return;
+    }
+    setExporting(true);
+    try {
+      const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const cols = 3;
+      const rows = 4;
+      const gap = 4;
+      const cellW = (pageW - margin * 2 - gap * (cols - 1)) / cols;
+      const cellH = (pageH - margin * 2 - 18 - gap * (rows - 1)) / rows;
+      const perPage = cols * rows;
+
+      const drawHeader = (pageIdx: number, totalPages: number) => {
+        doc.setFillColor(15, 15, 18);
+        doc.rect(0, 0, pageW, 14, "F");
+        doc.setTextColor(220, 180, 90);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("STEINHEIM · QR Price List 2026", margin, 9);
+        doc.setTextColor(180, 180, 180);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.text(`${pageIdx}/${totalPages}`, pageW - margin, 9, { align: "right" });
+      };
+
+      const totalPages = Math.ceil(filtered.length / perPage);
+
+      for (let i = 0; i < filtered.length; i++) {
+        const pageIdx = Math.floor(i / perPage);
+        const inPage = i % perPage;
+        if (inPage === 0) {
+          if (i > 0) doc.addPage();
+          drawHeader(pageIdx + 1, totalPages);
+        }
+        const r = Math.floor(inPage / cols);
+        const c = inPage % cols;
+        const x = margin + c * (cellW + gap);
+        const y = margin + 18 + r * (cellH + gap);
+
+        const item = filtered[i];
+
+        // Cell border
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(x, y, cellW, cellH, 2, 2, "S");
+
+        // Product name
+        doc.setTextColor(20, 20, 20);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        const name = doc.splitTextToSize(item.name || "", cellW - 6);
+        doc.text(name.slice(0, 2), x + cellW / 2, y + 6, { align: "center" });
+
+        // Serial / color
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 100, 100);
+        const meta = [item.serial_number, item.color].filter(Boolean).join(" · ");
+        if (meta) doc.text(meta, x + cellW / 2, y + 13, { align: "center" });
+
+        // Price
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(160, 110, 30);
+        doc.text(`${fmtMoney(Number(item.price) || 0)} LE`, x + cellW / 2, y + 19, { align: "center" });
+
+        // QR code
+        const qrPayload = encodeProductQR(item.qr_code || item.id);
+        const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+          margin: 1,
+          width: 400,
+          errorCorrectionLevel: "M",
+        });
+        const qrSize = Math.min(cellW - 12, cellH - 26);
+        const qrX = x + (cellW - qrSize) / 2;
+        const qrY = y + 22;
+        doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+      }
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      doc.save(`steinheim-price-list-${stamp}.pdf`);
+      toast.success(tt("تم تنزيل ملف PDF", "PDF downloaded"));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+
   return (
     <div dir={dir} className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -301,15 +400,31 @@ function PriceListPage() {
                   <WifiOff className="h-3 w-3" /> {tt("غير متصل · يعمل من الكاش", "Offline · using cache")}
                 </span>
               ) : <span />}
-              {isAdmin && (
+              <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => setAddOpen(true)}
-                  className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                  variant="outline"
+                  onClick={exportPdf}
+                  disabled={exporting || filtered.length === 0}
+                  className="border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] text-[oklch(0.92_0.08_82)] hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
                 >
-                  <Plus className="mr-1 h-3 w-3" /> {tt("إضافة منتج", "Add product")}
+                  {exporting ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-1 h-3 w-3" />
+                  )}
+                  {tt("تنزيل PDF", "Download PDF")}
                 </Button>
-              )}
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    onClick={() => setAddOpen(true)}
+                    className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                  >
+                    <Plus className="mr-1 h-3 w-3" /> {tt("إضافة منتج", "Add product")}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
