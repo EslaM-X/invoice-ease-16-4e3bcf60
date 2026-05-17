@@ -48,6 +48,19 @@ function TeamChatPage() {
   const [newOpen, setNewOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
+  const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null }>({ display_name: null, avatar_url: null });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) setMyProfile({ display_name: data.display_name ?? null, avatar_url: data.avatar_url ?? null });
+    })();
+  }, [user?.id]);
 
   const roomsQ = useQuery({
     queryKey: ["chat-rooms"],
