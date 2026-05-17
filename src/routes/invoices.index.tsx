@@ -27,6 +27,7 @@ function InvoicesList() {
   const [list, setList] = useState<any[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number }>>({});
+  const [serialsByInvoice, setSerialsByInvoice] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
