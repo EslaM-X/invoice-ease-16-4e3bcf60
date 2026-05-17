@@ -76,6 +76,7 @@ function PriceListPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   // Public page — no auth redirect. Anyone can browse; only admins can edit.
 
