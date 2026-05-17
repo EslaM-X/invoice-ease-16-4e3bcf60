@@ -20,6 +20,7 @@ import { LangStatusPill } from "@/components/lang-status-pill";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { XAssistant } from "@/components/x-assistant";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
+import { useChatNotifications } from "@/hooks/use-chat-notifications";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
@@ -63,6 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   useReminderPoller();
+  const { unreadTotal: chatUnread } = useChatNotifications();
 
   const handleSignOut = async () => {
     setOpen(false);
@@ -308,7 +310,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
             }`}
           >
-            <MessageSquare className="h-4 w-4" /> {t("team_chat")}
+            <MessageSquare className="h-4 w-4" />
+            <span className="flex-1">{t("team_chat")}</span>
+            {chatUnread > 0 && (
+              <span className="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sidebar-primary px-1.5 text-[10px] font-bold text-sidebar-primary-foreground">
+                {chatUnread > 99 ? "99+" : chatUnread}
+              </span>
+            )}
           </Link>
           <Link
             to="/whatsapp"
