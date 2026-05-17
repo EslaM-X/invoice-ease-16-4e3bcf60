@@ -801,6 +801,9 @@ function SignInDialog({ onClose, lang }: { onClose: () => void; lang: "ar" | "en
     </Dialog>
   );
 }
+
+// --- Add product dialog ---------------------------------------------------
+function AddDialog({
   userId, userEmail, onClose,
 }: { userId: string; userEmail: string | null; onClose: () => void }) {
   const [form, setForm] = useState({
