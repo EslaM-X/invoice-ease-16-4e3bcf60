@@ -393,7 +393,7 @@ function InvoicesList() {
                           <Checkbox
                             checked={selected.has(i.id)}
                             onCheckedChange={() => toggleOne(i.id)}
-                            aria-label="تحديد الفاتورة"
+                            aria-label={t("select_invoice_aria")}
                           />
                         )}
                       </td>
