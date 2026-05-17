@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, RefreshCw, Package, ShoppingCart, Boxes, Calendar as CalendarIcon } from "lucide-react";
+import { Download, RefreshCw, Package, ShoppingCart, Boxes, Calendar as CalendarIcon, Languages } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/sales-range")({
   head: () => ({
