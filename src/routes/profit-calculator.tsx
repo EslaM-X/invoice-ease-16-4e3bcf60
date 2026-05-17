@@ -16,11 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { Calculator, TrendingUp, TrendingDown, Save, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/profit-calculator")({
   validateSearch: (s: Record<string, unknown>) => ({ po: typeof s.po === "string" ? s.po : undefined }),
   component: () => (
     <AppShell>
-      <ProfitCalculatorPage />
+      <ExecutiveGate>
+        <ProfitCalculatorPage />
+      </ExecutiveGate>
     </AppShell>
   ),
 });
