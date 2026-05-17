@@ -307,7 +307,7 @@ function TeamChatPage() {
                     : (m.sender_display_name ?? m.sender_email ?? "?");
                   const avatarUrl = mine ? myProfile.avatar_url : m.sender_avatar_url;
                   return (
-                    <div key={m.id} className={`flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                    <div key={m.id} className={`group/msg flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                       {!mine && (
                         <Avatar className="h-8 w-8 mt-1 shrink-0 ring-1 ring-border">
                           {avatarUrl && <AvatarImage src={avatarUrl} />}
@@ -360,6 +360,27 @@ function TeamChatPage() {
                           })}
                         </div>
                       </div>
+                      {mine && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 self-center opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                          onClick={async () => {
+                            if (!confirm(rtl ? "حذف الرسالة؟" : "Delete message?")) return;
+                            try {
+                              await deleteMsg({ data: { message_id: m.id } });
+                              qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+                              qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+                            } catch (err: any) {
+                              toast.error(err?.message ?? "Failed");
+                            }
+                          }}
+                          aria-label={rtl ? "حذف" : "Delete"}
+                          title={rtl ? "حذف الرسالة" : "Delete message"}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {mine && (
                         <Avatar className="h-8 w-8 mt-1 shrink-0 ring-1 ring-primary/30">
                           {avatarUrl && <AvatarImage src={avatarUrl} />}
