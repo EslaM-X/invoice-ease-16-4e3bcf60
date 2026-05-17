@@ -7,8 +7,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import { useRealtimeTable } from "@/lib/realtime";
 import { ShieldCheck, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { ExecutiveGate } from "@/components/executive-gate";
 
-export const Route = createFileRoute("/audit-log")({ component: AuditLogPage });
+export const Route = createFileRoute("/audit-log")({
+  component: () => (
+    <ExecutiveGate>
+      <AuditLogPage />
+    </ExecutiveGate>
+  ),
+});
 
 type Row = {
   id: string;
