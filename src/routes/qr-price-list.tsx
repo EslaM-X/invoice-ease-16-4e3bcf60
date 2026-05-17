@@ -69,6 +69,8 @@ function PriceListPage() {
   const [colorFilter, setColorFilter] = useState<string>("ALL");
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartOpen, setCartOpen] = useState(false);
 
   // Public page — no auth redirect. Anyone can browse; only admins can edit.
 
