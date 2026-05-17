@@ -43,6 +43,7 @@ function ReceiptsList() {
     const { data } = await supabase
       .from("delivery_receipts" as any)
       .select("*")
+      .in("status", ["draft", "out_for_delivery", "signed"])
       .order("created_at", { ascending: false });
     const list = (data ?? []) as any[];
     setRows(list);
@@ -59,7 +60,14 @@ function ReceiptsList() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [user]);
-  useRealtimeTable("delivery_receipts" as any, () => load());
+  useRealtimeTable("delivery_receipts" as any, (payload: any) => {
+    const next = payload?.new?.status as string | undefined;
+    const prev = payload?.old?.status as string | undefined;
+    if (next && prev && next !== prev) {
+      toast.message(`${payload.new.receipt_number ?? ""} → ${next}`);
+    }
+    load();
+  });
 
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;
