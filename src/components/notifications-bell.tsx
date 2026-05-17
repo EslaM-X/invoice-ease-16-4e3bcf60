@@ -46,7 +46,7 @@ export function NotificationsBell() {
       .select("id, type, title, body, link, read_at, created_at")
       .order("created_at", { ascending: false })
       .limit(30);
-    setItems((data as any) ?? []);
+    setItems(filterForRole(((data as any) ?? []) as Notification[]));
     setLoading(false);
   };
 
