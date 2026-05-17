@@ -319,6 +319,7 @@ function PriceListPage() {
                 eager={idx < 8}
                 canAddToInvoice={!!user}
                 inCart={cart[item.id] ?? 0}
+                lang={lang}
                 onEdit={() => setEditItem(item)}
                 onAdd={() => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
               />
