@@ -355,6 +355,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Settings className="h-4 w-4" /> {t("settings")}
           </Link>
+          {isExecutive && (
           <Link
             to="/audit-log"
             onClick={() => setOpen(false)}
@@ -366,6 +367,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <ShieldCheck className="h-4 w-4" /> {t("audit_log")}
           </Link>
+          )}
           <Link
             to="/pending-operations"
             onClick={() => setOpen(false)}
