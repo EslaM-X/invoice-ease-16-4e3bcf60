@@ -11,6 +11,7 @@ import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
 import { elementToPdf } from "@/lib/delivery-receipts";
 import { toast } from "sonner";
+import { DeliveryReceiptTracker } from "@/components/delivery-receipt-tracker";
 
 type Search = { print?: boolean };
 
