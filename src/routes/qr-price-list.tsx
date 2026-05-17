@@ -151,31 +151,43 @@ function PriceListPage() {
   const matchCount = hydrated ? filtered.length : 0;
 
   return (
-    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
+    <div dir={dir} className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-[oklch(0.78_0.11_82_/_0.15)] blur-3xl" />
         <div className="absolute top-1/2 -left-32 h-96 w-96 rounded-full bg-[oklch(0.4_0.05_240_/_0.2)] blur-3xl" />
       </div>
 
       <header className="relative z-10 border-b border-white/5 bg-[oklch(0.1_0.004_60_/_0.6)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 sm:py-6" dir="ltr">
-          {user ? (
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-[oklch(0.78_0.11_82)]"
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-5 sm:px-6 sm:py-6" dir="ltr">
+          <div className="flex items-center gap-2">
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-[oklch(0.78_0.11_82)]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {tt("لوحة التحكم", "Dashboard")}
+              </Link>
+            ) : (
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
+              >
+                <LogIn className="h-4 w-4" />
+                {tt("تسجيل الدخول", "Sign In")}
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setLang(isAr ? "en" : "ar")}
+              title={tt("English", "العربية")}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/10"
+              aria-label="toggle language"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </Link>
-          ) : (
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
-            >
-              <LogIn className="h-4 w-4" />
-              Sign In
-            </Link>
-          )}
+              <Languages className="h-3.5 w-3.5 text-[oklch(0.78_0.11_82)]" />
+              <span>{isAr ? "EN" : "ع"}</span>
+            </button>
+          </div>
           <img src={brandLogo} alt="Steinheim" className="h-16 w-auto sm:h-20" />
         </div>
       </header>
@@ -188,18 +200,21 @@ function PriceListPage() {
           </div>
           <h1 className="mt-6 text-4xl font-light tracking-tight sm:text-6xl">
             <span className="bg-gradient-to-r from-[oklch(0.95_0.04_82)] via-[oklch(0.78_0.11_82)] to-[oklch(0.65_0.12_82)] bg-clip-text text-transparent">
-              QR Price List
+              {tt("قائمة الأسعار", "QR Price List")}
             </span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-white/60 sm:text-base">
-            امسح الـ QR لأى منتج ليُضاف للفاتورة الحالية فوراً
+            {tt(
+              "امسح الـ QR لأى منتج ليُضاف للفاتورة الحالية فوراً",
+              "Scan any product's QR to instantly add it to the current invoice",
+            )}
           </p>
           <div className="mt-6 flex items-center justify-center gap-6 text-xs text-white/40">
-            <span>{count} منتج</span>
+            <span>{count} {tt("منتج", "products")}</span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
-            <span>4 كولكشن</span>
+            <span>4 {tt("كولكشن", "collections")}</span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
-            <span>{matchCount} يطابق البحث</span>
+            <span>{matchCount} {tt("يطابق البحث", "matches")}</span>
           </div>
         </motion.div>
       </section>
