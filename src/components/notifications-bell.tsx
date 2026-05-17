@@ -57,6 +57,7 @@ export function NotificationsBell() {
   useRealtimeTable("notifications", (p) => {
     if (p.eventType === "INSERT") {
       const n = p.new as Notification;
+      if (!isExecutive && EXEC_ONLY_NOTIFICATION_TYPES.has(n.type)) return;
       setItems((prev) => [n, ...prev].slice(0, 30));
       toast(`${TYPE_EMOJI[n.type] ?? "🔔"} ${n.title}`, {
         description: n.body ?? undefined,
