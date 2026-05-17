@@ -31,9 +31,13 @@ const TYPE_EMOJI: Record<string, string> = {
 
 export function NotificationsBell() {
   const { user } = useAuth();
+  const isExecutive = useIsExecutive();
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const filterForRole = (rows: Notification[]) =>
+    isExecutive ? rows : rows.filter((n) => !EXEC_ONLY_NOTIFICATION_TYPES.has(n.type));
 
   const load = async () => {
     setLoading(true);
