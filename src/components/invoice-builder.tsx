@@ -117,14 +117,28 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     setScanning(true);
   };
 
+  // In-transit map: product_id -> total qty across open POs (ordered/shipped/in_warehouse)
+  const [inTransitQty, setInTransitQty] = useState<Record<string, number>>({});
+
   // Load customers/products (RLS handles company-wide visibility)
   const loadLists = async () => {
-    const [{ data: c }, { data: p }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: poItems }] = await Promise.all([
       supabase.from("customers").select("*").order("name"),
       supabase.from("products").select("*").order("name"),
+      supabase
+        .from("purchase_order_items")
+        .select("product_id, quantity, received_qty, purchase_orders!inner(status)")
+        .in("purchase_orders.status", ["ordered", "shipped", "in_warehouse"]),
     ]);
     setCustomers((c ?? []) as Customer[]);
     setProducts((p ?? []) as Product[]);
+    const map: Record<string, number> = {};
+    for (const it of (poItems ?? []) as any[]) {
+      const remaining = Math.max(0, Number(it.quantity || 0) - Number(it.received_qty || 0));
+      if (!it.product_id || remaining <= 0) continue;
+      map[it.product_id] = (map[it.product_id] ?? 0) + remaining;
+    }
+    setInTransitQty(map);
   };
   useEffect(() => {
     if (!user) return;
@@ -132,6 +146,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   }, [user]);
   useRealtimeTable("customers", () => { loadLists(); });
   useRealtimeTable("products", () => { loadLists(); });
+  useRealtimeTable("purchase_orders", () => { loadLists(); });
+  useRealtimeTable("purchase_order_items", () => { loadLists(); });
 
   // Hydrate draft only in new mode
   useEffect(() => {
