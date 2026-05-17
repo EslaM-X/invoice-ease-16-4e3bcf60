@@ -18,10 +18,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Calculator, Search, TrendingUp, TrendingDown, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/profit-scenarios")({
   component: () => (
     <AppShell>
-      <SavedScenariosPage />
+      <ExecutiveGate>
+        <SavedScenariosPage />
+      </ExecutiveGate>
     </AppShell>
   ),
 });
