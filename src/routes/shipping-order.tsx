@@ -621,11 +621,11 @@ function ShippingOrder() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/20">
-                      <tr className="text-right">
-                        <th className="p-2 w-40">Code</th>
-                        <th className="p-2">Product</th>
-                        <th className="p-2 w-32">اللون</th>
-                        <th className="p-2 w-20 text-center">العدد</th>
+                      <tr className={ar ? "text-right" : "text-left"}>
+                        <th className="p-2 w-40">{tt("الكود", "Code")}</th>
+                        <th className="p-2">{tt("المنتج", "Product")}</th>
+                        <th className="p-2 w-32">{tt("اللون", "Color")}</th>
+                        <th className="p-2 w-20 text-center">{tt("العدد", "Qty")}</th>
                       </tr>
                     </thead>
                     <tbody>
