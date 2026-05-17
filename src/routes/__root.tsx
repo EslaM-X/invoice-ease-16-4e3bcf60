@@ -1,6 +1,7 @@
 
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { startSyncEngine } from "@/lib/sync-engine";
 import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
@@ -85,24 +86,27 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const [queryClient] = useState(() => new QueryClient());
   useEffect(() => { startSyncEngine(); }, []);
   return (
-    <ThemeProvider>
-      <I18nProvider>
-        <AuthProvider>
-          <PwaVersionGuard />
-          <StaleChunkGuard />
-          <LuxurySplash />
-          <OfflineBanner />
-          <ApprovalGate>
-            <Outlet />
-          </ApprovalGate>
-          <InstallPrompt />
-          <SyncStatusPill />
-          <SyncToaster />
-          <Toaster position="top-center" richColors closeButton />
-        </AuthProvider>
-      </I18nProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <PwaVersionGuard />
+            <StaleChunkGuard />
+            <LuxurySplash />
+            <OfflineBanner />
+            <ApprovalGate>
+              <Outlet />
+            </ApprovalGate>
+            <InstallPrompt />
+            <SyncStatusPill />
+            <SyncToaster />
+            <Toaster position="top-center" richColors closeButton />
+          </AuthProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
