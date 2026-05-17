@@ -41,8 +41,11 @@ You know every section of the app and can deep-link to it:
 When you mention a page, link it with markdown: [Page name](/route) — same in Arabic.
 
 # Capability scope (current phase)
-- You have **read-only access** for most business data: answer questions, explain UI, guide the user to the right page, recommend next actions.
-- **Search / lookup**: when the user asks to "ابحث/دور/find/search" for a serial number, invoice number, customer, or phone — the server already pre-runs the search and injects matches under "Live search results" below. Use them verbatim, link each invoice as [INVOICE_NUMBER](/invoices/<id>), and if nothing matched, say so clearly and suggest the closest page (e.g. [Invoices](/invoices)).
+- You have **read-only access** for business data, but you ARE strong at **search, filter, lookup, counting, grouping, and summaries** across invoices, invoice items, customers, products, stock, and purchase orders.
+- **Search / lookup / filter**: when the user asks to "ابحث/دور/find/search/filter/show/list" for a serial number, invoice number, product name, full item description, color, customer, phone, drafts, low stock, top customers, totals, or invoice counts — the server pre-runs live lookups and injects the results under "Live data" / "Live search results" below. Use them directly and confidently.
+- For product-in-invoices requests, you can use product name + serial + color together. If the user asks for "كل الفواتير اللي فيها المنتج ده" or "find invoices containing this item", use the injected invoice-item matches and give a proper count/summary.
+- Link each invoice as [INVOICE_NUMBER](/invoices/<id>) when results are available.
+- If nothing matched, say clearly that **no results were found in the current data** — NOT that the system cannot do it.
 - **Calendar & reminders (NEW)**: You CAN schedule events, reminders, shipment arrivals, and special dates for the user. To create one, append a fenced code block tagged \`x-action\` at the very END of your reply, containing JSON of shape:
   \`\`\`x-action
   {"type":"create_event","title":"...","starts_at":"YYYY-MM-DDTHH:mm:ss+02:00","notes":"...","kind":"event|shipment|reminder|milestone","remind_before_minutes":[60,1440]}
@@ -64,6 +67,8 @@ The user's local time is approximately: {{NOW_ISO}} (Africa/Cairo). Use this to 
 # Honesty
 - Never invent numbers, invoice IDs, customer names, or stock levels. If you don't have the real data, use the live usage snapshot below — or tell the user which page to open to see it.
 - If you're unsure, say so briefly and offer the closest helpful answer.
+- Never claim a search/filter/count request is unsupported when live data is provided below. Use the live data first.
+- Never argue with the user, shame them, or respond defensively even if they are frustrated. Stay calm, helpful, and action-oriented.
 
 # Smart suggestions & learning (CRITICAL)
 You actively LEARN this user's style — what pages they use, what they ignore, when they work, what they care about. The "Learned about this user" + "Live usage snapshot" sections below are injected fresh every turn. Use them to:
@@ -81,6 +86,22 @@ EN (dry wit): "Got it. Want me to walk you to invoices, or shall we look at prof
 
 const enc = new TextEncoder();
 const sse = (data: any) => enc.encode(`data: ${JSON.stringify(data)}\n\n`);
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueNonEmpty(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function cleanQueryTerm(value: string): string {
+  return value.replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
+}
 
 // Detect filter/aggregation/lookup intent in the user message and return a
 // markdown block of live data to inject into the system prompt. Best-effort —
@@ -101,48 +122,160 @@ async function buildLiveData(userId: string, userMessage: string): Promise<strin
 
   const sections: string[] = [];
 
-  // Extract a free-text term (strip common verbs) for fuzzy matches
+  const stopWords = new Set([
+    "ابحث", "دور", "دوّر", "هات", "اعرض", "اعرضلي", "جيب", "طلع", "عن", "لي", "فين", "وين", "اظهر", "اظهرلي",
+    "كل", "جميع", "فاتورة", "الفاتورة", "الفواتير", "منتج", "المنتج", "منتجات", "المنتجات", "اللون", "لون", "رقم",
+    "سيريال", "serial", "number", "invoice", "invoices", "product", "products", "customer", "customers", "phone",
+    "search", "find", "lookup", "show", "list", "filter", "for", "about", "with", "from", "the", "this", "that",
+  ]);
+
+  // Extract a free-text term (strip common verbs)
   const term = msg
     .replace(/(ابحث|دور|دوّر|هات|اعرض|اعرضلي|جيب|طلع|search|find|lookup|show|list|عن|لي|عن|about|for|the|a|an)/gi, " ")
     .replace(/[?؟.!,]/g, " ")
     .trim();
+  const normalizedTerm = normalizeSearchText(term);
+  const serialTerms = uniqueNonEmpty(term.match(/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+/g) ?? []);
+  const tokens = uniqueNonEmpty(
+    normalizedTerm
+      .split(/[^\p{L}\p{N}-]+/u)
+      .filter((token) => token.length >= 3 && !stopWords.has(token)),
+  ).slice(0, 8);
+  const queryTerms = uniqueNonEmpty([normalizedTerm, ...serialTerms, ...tokens])
+    .map(cleanQueryTerm)
+    .filter((value) => value.length >= 2)
+    .slice(0, 8);
+
+  const scoreItemMatch = (row: { product_name?: string | null; serial_number?: string | null; color?: string | null }) => {
+    const haystack = normalizeSearchText([row.product_name, row.serial_number, row.color].filter(Boolean).join(" "));
+    let score = 0;
+    if (normalizedTerm && haystack.includes(normalizedTerm)) score += 50;
+    serialTerms.forEach((serial) => {
+      if (haystack.includes(normalizeSearchText(serial))) score += 25;
+    });
+    tokens.forEach((token) => {
+      if (haystack.includes(token)) score += token.length >= 5 ? 8 : 4;
+    });
+    return score;
+  };
+
+  const noResults = () => `## Live search results for "${term || msg}"
+- No matching records were found in invoices, invoice items, customers, or products for this query.`;
 
   // 1. Invoice / serial / customer lookup
   if (wantsSearch && term.length >= 2) {
-    const like = `%${term}%`;
-    const [byNumber, bySerial, byCustomer] = await Promise.all([
-      supabaseAdmin
-        .from("invoices")
-        .select("id, invoice_number, customer_name, total, status, created_at")
-        .eq("user_id", userId)
-        .ilike("invoice_number", like)
-        .limit(10),
-      supabaseAdmin
-        .from("invoice_items")
-        .select("serial_number, product_name, invoice_id, invoices!inner(id, invoice_number, customer_name, user_id)")
-        .eq("invoices.user_id", userId)
-        .ilike("serial_number", like)
-        .limit(10),
-      supabaseAdmin
-        .from("invoices")
-        .select("id, invoice_number, customer_name, customer_phone, total, status, created_at")
-        .eq("user_id", userId)
-        .or(`customer_name.ilike.${like},customer_phone.ilike.${like}`)
-        .limit(10),
+    const invoiceSearchTerms = queryTerms.length ? queryTerms : [cleanQueryTerm(term)].filter(Boolean);
+    const invoiceOr = invoiceSearchTerms
+      .flatMap((value) => [`invoice_number.ilike.%${value}%`, `customer_name.ilike.%${value}%`, `customer_phone.ilike.%${value}%`])
+      .join(",");
+    const itemOr = invoiceSearchTerms
+      .flatMap((value) => [`product_name.ilike.%${value}%`, `serial_number.ilike.%${value}%`, `color.ilike.%${value}%`])
+      .join(",");
+    const productOr = invoiceSearchTerms
+      .flatMap((value) => [`name.ilike.%${value}%`, `serial_number.ilike.%${value}%`, `color.ilike.%${value}%`])
+      .join(",");
+
+    let invoiceQuery = supabaseAdmin
+      .from("invoices")
+      .select("id, invoice_number, customer_name, customer_phone, total, status, created_at")
+      .eq("user_id", userId)
+      .limit(20);
+    if (invoiceOr) invoiceQuery = invoiceQuery.or(invoiceOr);
+
+    let itemQuery = supabaseAdmin
+      .from("invoice_items")
+      .select("product_name, serial_number, color, quantity, line_total, invoice_id, invoices!inner(id, invoice_number, customer_name, status, created_at, user_id)")
+      .eq("invoices.user_id", userId)
+      .limit(120);
+    if (itemOr) itemQuery = itemQuery.or(itemOr);
+
+    let productQuery = supabaseAdmin
+      .from("products")
+      .select("id, name, serial_number, color, stock_quantity, price")
+      .eq("user_id", userId)
+      .limit(25);
+    if (productOr) productQuery = productQuery.or(productOr);
+
+    const [invoiceMatches, invoiceItemMatches, productMatches] = await Promise.all([
+      invoiceQuery,
+      itemQuery,
+      productQuery,
     ]);
 
     const lines: string[] = [];
-    (byNumber.data ?? []).forEach((r: any) =>
+    (invoiceMatches.data ?? []).forEach((r: any) =>
       lines.push(`- Invoice ${r.invoice_number} — ${r.customer_name ?? "—"} — ${Number(r.total).toFixed(2)} EGP — ${r.status} — id:${r.id}`),
     );
-    (bySerial.data ?? []).forEach((r: any) => {
-      const inv = (r as any).invoices;
-      if (inv) lines.push(`- Serial ${r.serial_number} → Invoice ${inv.invoice_number} (${inv.customer_name ?? "—"}) — id:${inv.id}`);
+
+    const scoredItemMatches = (invoiceItemMatches.data ?? [])
+      .map((row: any) => ({ row, score: scoreItemMatch(row) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 30);
+
+    const matchedInvoices = new Map<string, {
+      invoiceId: string;
+      invoiceNumber: string;
+      customerName: string | null;
+      status: string;
+      createdAt: string;
+      quantity: number;
+      total: number;
+      matches: string[];
+    }>();
+
+    scoredItemMatches.forEach(({ row }: any) => {
+      const inv = row.invoices;
+      if (!inv?.id) return;
+      const existing = matchedInvoices.get(inv.id) ?? {
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoice_number,
+        customerName: inv.customer_name ?? null,
+        status: inv.status,
+        createdAt: inv.created_at,
+        quantity: 0,
+        total: 0,
+        matches: [] as string[],
+      };
+      existing.quantity += Number(row.quantity || 0);
+      existing.total += Number(row.line_total || 0);
+      existing.matches.push(
+        [row.product_name, row.serial_number ? `SN ${row.serial_number}` : "", row.color ? `color ${row.color}` : ""]
+          .filter(Boolean)
+          .join(" — "),
+      );
+      matchedInvoices.set(inv.id, existing);
     });
-    (byCustomer.data ?? []).forEach((r: any) =>
-      lines.push(`- ${r.customer_name ?? r.customer_phone} → Invoice ${r.invoice_number} — ${Number(r.total).toFixed(2)} EGP — ${r.status} — id:${r.id}`),
-    );
+
+    if (matchedInvoices.size) {
+      const invoiceList = [...matchedInvoices.values()];
+      const totalQty = invoiceList.reduce((sum, row) => sum + row.quantity, 0);
+      const totalSales = invoiceList.reduce((sum, row) => sum + row.total, 0);
+      sections.push([
+        `## Invoice-item matches for "${term}"`,
+        `- Matching invoices: ${invoiceList.length}`,
+        `- Total matched quantity: ${totalQty}`,
+        `- Total matched line sales: ${totalSales.toFixed(2)} EGP`,
+        ...invoiceList.slice(0, 15).map((row) => `- Invoice ${row.invoiceNumber} — ${row.customerName ?? "—"} — qty ${row.quantity} — ${row.status} — ${row.matches.slice(0, 2).join(" | ")} — id:${row.invoiceId}`),
+      ].join("\n"));
+    }
+
+    const scoredProducts = (productMatches.data ?? [])
+      .map((row: any) => ({ row, score: scoreItemMatch({ product_name: row.name, serial_number: row.serial_number, color: row.color }) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+
+    if (scoredProducts.length) {
+      sections.push(
+        `## Matching products in catalog\n${scoredProducts.map(({ row }: any) => `- ${row.name} — ${row.serial_number ? `SN ${row.serial_number}` : "no serial"} — ${row.color ?? "no color"} — stock ${row.stock_quantity} — price ${Number(row.price || 0).toFixed(2)} EGP — id:${row.id}`).join("\n")}`,
+      );
+    }
+
     if (lines.length) sections.push(`## Live search results for "${term}"\n${lines.slice(0, 20).join("\n")}`);
+    if (!lines.length && !matchedInvoices.size && !scoredProducts.length) {
+      sections.push(noResults());
+    }
   }
 
   // 2. Drafts / void / paid quick lists
@@ -198,6 +331,10 @@ async function buildLiveData(userId: string, userMessage: string): Promise<strin
         `## Top customers (last 90 days)\n${top.map(([name, v]) => `- ${name}: ${v.count} invoices, ${v.total.toFixed(2)} EGP`).join("\n")}`,
       );
     }
+  }
+
+  if (wantsAggregate && term.length >= 2 && /(منتج|المنتج|product|item|الصنف|الصنف ده|الفواتير اللي فيها|contains|containing)/i.test(msg) && !sections.some((section) => section.startsWith("## Invoice-item matches"))) {
+    sections.push(noResults());
   }
 
   if (!sections.length) return "";
