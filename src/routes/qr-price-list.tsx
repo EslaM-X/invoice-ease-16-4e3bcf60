@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { QRCodeCanvas } from "qrcode.react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2,
-  Sparkles, History, Plus, WifiOff,
+  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
