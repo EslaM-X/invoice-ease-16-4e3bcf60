@@ -107,7 +107,9 @@ const KEYWORDS: Array<{ match: RegExp; swatch: Swatch }> = [
   { match: /polished\s*gold|gold|ذهبي|دهبي/, swatch: POLISHED_GOLD },
   // Silver / chrome / nickel
   { match: /brushed\s*nickel|brushed|نيكل\s*مفرش|مفرش/, swatch: BRUSHED_NICKEL },
-  { match: /chrome\s*plated|chrome|polished|كروم|مصقول|بوليش/, swatch: POLISHED_CHROME },
+  // CHROME PLATED specifically → bright white finish (user request)
+  { match: /chrome\s*plated|كروم\s*مطلي/, swatch: WHITE },
+  { match: /chrome|polished|كروم|مصقول|بوليش/, swatch: POLISHED_CHROME },
   { match: /nickel|nikel|نيكل/, swatch: BRUSHED_NICKEL },
   // Copper / bronze
   { match: /copper|نحاس(?!\s*برون)/, swatch: COPPER },

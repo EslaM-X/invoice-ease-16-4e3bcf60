@@ -4,7 +4,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2,
-  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus,
+  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus, Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useRole } from "@/lib/use-role";
+import { useI18n } from "@/lib/i18n";
 import { encodeProductQR } from "@/lib/qr-codec";
 import { swatchStyle } from "@/lib/color-swatch";
 import { ProductImageUpload } from "@/components/product-image-upload";
@@ -58,6 +59,9 @@ function PriceListPage() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
   const navigate = useNavigate();
+  const { lang, setLang, dir } = useI18n();
+  const isAr = lang === "ar";
+  const tt = (ar: string, en: string) => (isAr ? ar : en);
 
   // CRITICAL: SSR-safe — start empty, hydrate cache after mount to avoid hydration mismatch.
   const [items, setItems] = useState<Product[]>([]);
@@ -147,31 +151,43 @@ function PriceListPage() {
   const matchCount = hydrated ? filtered.length : 0;
 
   return (
-    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
+    <div dir={dir} className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-[oklch(0.78_0.11_82_/_0.15)] blur-3xl" />
         <div className="absolute top-1/2 -left-32 h-96 w-96 rounded-full bg-[oklch(0.4_0.05_240_/_0.2)] blur-3xl" />
       </div>
 
       <header className="relative z-10 border-b border-white/5 bg-[oklch(0.1_0.004_60_/_0.6)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 sm:py-6" dir="ltr">
-          {user ? (
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-[oklch(0.78_0.11_82)]"
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-5 sm:px-6 sm:py-6" dir="ltr">
+          <div className="flex items-center gap-2">
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-[oklch(0.78_0.11_82)]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {tt("لوحة التحكم", "Dashboard")}
+              </Link>
+            ) : (
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
+              >
+                <LogIn className="h-4 w-4" />
+                {tt("تسجيل الدخول", "Sign In")}
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setLang(isAr ? "en" : "ar")}
+              title={tt("English", "العربية")}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/10"
+              aria-label="toggle language"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </Link>
-          ) : (
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
-            >
-              <LogIn className="h-4 w-4" />
-              Sign In
-            </Link>
-          )}
+              <Languages className="h-3.5 w-3.5 text-[oklch(0.78_0.11_82)]" />
+              <span>{isAr ? "EN" : "ع"}</span>
+            </button>
+          </div>
           <img src={brandLogo} alt="Steinheim" className="h-16 w-auto sm:h-20" />
         </div>
       </header>
@@ -184,18 +200,21 @@ function PriceListPage() {
           </div>
           <h1 className="mt-6 text-4xl font-light tracking-tight sm:text-6xl">
             <span className="bg-gradient-to-r from-[oklch(0.95_0.04_82)] via-[oklch(0.78_0.11_82)] to-[oklch(0.65_0.12_82)] bg-clip-text text-transparent">
-              QR Price List
+              {tt("قائمة الأسعار", "QR Price List")}
             </span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-white/60 sm:text-base">
-            امسح الـ QR لأى منتج ليُضاف للفاتورة الحالية فوراً
+            {tt(
+              "امسح الـ QR لأى منتج ليُضاف للفاتورة الحالية فوراً",
+              "Scan any product's QR to instantly add it to the current invoice",
+            )}
           </p>
           <div className="mt-6 flex items-center justify-center gap-6 text-xs text-white/40">
-            <span>{count} منتج</span>
+            <span>{count} {tt("منتج", "products")}</span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
-            <span>4 كولكشن</span>
+            <span>4 {tt("كولكشن", "collections")}</span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
-            <span>{matchCount} يطابق البحث</span>
+            <span>{matchCount} {tt("يطابق البحث", "matches")}</span>
           </div>
         </motion.div>
       </section>
@@ -208,7 +227,7 @@ function PriceListPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث بالاسم أو السيريال أو اللون..."
+                placeholder={tt("ابحث بالاسم أو السيريال أو اللون...", "Search by name, serial, or color...")}
                 className="border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
               />
             </div>
@@ -228,7 +247,7 @@ function PriceListPage() {
 
             {colors.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] uppercase tracking-widest text-white/40">اللون</span>
+                <span className="text-[11px] uppercase tracking-widest text-white/40">{tt("اللون", "Color")}</span>
                 <button
                   onClick={() => setColorFilter("ALL")}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${
@@ -237,7 +256,7 @@ function PriceListPage() {
                       : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
                   }`}
                 >
-                  الكل
+                  {tt("الكل", "All")}
                 </button>
                 {colors.map((name) => (
                   <button
@@ -263,7 +282,7 @@ function PriceListPage() {
             <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-3">
               {offline ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-amber-300/80">
-                  <WifiOff className="h-3 w-3" /> offline · يعمل من الكاش
+                  <WifiOff className="h-3 w-3" /> {tt("غير متصل · يعمل من الكاش", "Offline · using cache")}
                 </span>
               ) : <span />}
               {isAdmin && (
@@ -272,7 +291,7 @@ function PriceListPage() {
                   onClick={() => setAddOpen(true)}
                   className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
                 >
-                  <Plus className="mr-1 h-3 w-3" /> إضافة منتج
+                  <Plus className="mr-1 h-3 w-3" /> {tt("إضافة منتج", "Add product")}
                 </Button>
               )}
             </div>
@@ -287,7 +306,7 @@ function PriceListPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center text-white/50">
-            لا توجد منتجات مطابقة
+            {tt("لا توجد منتجات مطابقة", "No matching products")}
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -300,6 +319,7 @@ function PriceListPage() {
                 eager={idx < 8}
                 canAddToInvoice={!!user}
                 inCart={cart[item.id] ?? 0}
+                lang={lang}
                 onEdit={() => setEditItem(item)}
                 onAdd={() => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
               />
@@ -322,8 +342,8 @@ function PriceListPage() {
               className="inline-flex items-center gap-3 rounded-full bg-[oklch(0.78_0.11_82)] px-5 py-3 text-sm font-semibold text-[oklch(0.1_0.004_60)] shadow-[0_20px_60px_-10px_oklch(0.78_0.11_82_/_0.6)] transition hover:bg-[oklch(0.84_0.1_82)]"
             >
               <ShoppingCart className="h-4 w-4" />
-              <span>السلة ({Object.values(cart).reduce((a, b) => a + b, 0)})</span>
-              <span className="rounded-full bg-black/15 px-2 py-0.5 text-xs">إنشاء فاتورة</span>
+              <span>{tt("السلة", "Cart")} ({Object.values(cart).reduce((a, b) => a + b, 0)})</span>
+              <span className="rounded-full bg-black/15 px-2 py-0.5 text-xs">{tt("إنشاء فاتورة", "Create invoice")}</span>
             </button>
           </motion.div>
         )}
@@ -395,7 +415,7 @@ function PriceListPage() {
 }
 
 function ProductCard({
-  item, index, canEdit, eager, canAddToInvoice, inCart, onEdit, onAdd,
+  item, index, canEdit, eager, canAddToInvoice, inCart, lang, onEdit, onAdd,
 }: {
   item: Product;
   index: number;
@@ -403,9 +423,12 @@ function ProductCard({
   eager?: boolean;
   canAddToInvoice?: boolean;
   inCart?: number;
+  lang: "ar" | "en";
   onEdit: () => void;
   onAdd?: () => void;
 }) {
+  const isAr = lang === "ar";
+  const tt = (a: string, e: string) => (isAr ? a : e);
   const qrRef = useRef<HTMLCanvasElement | null>(null);
   const qrValue = useMemo(() => encodeProductQR(item.qr_code || item.id), [item.qr_code, item.id]);
 
@@ -422,9 +445,9 @@ function ProductCard({
   const copyQR = async () => {
     try {
       await navigator.clipboard.writeText(qrValue);
-      toast.success("تم نسخ الـ QR");
+      toast.success(tt("تم نسخ الـ QR", "QR copied"));
     } catch {
-      toast.error("فشل النسخ");
+      toast.error(tt("فشل النسخ", "Copy failed"));
     }
   };
 
@@ -456,7 +479,7 @@ function ProductCard({
         ) : (
           <div className="flex flex-col items-center text-white/20">
             <ImagePlus className="h-12 w-12" />
-            <span className="mt-2 text-xs">لا توجد صورة</span>
+            <span className="mt-2 text-xs">{tt("لا توجد صورة", "No image")}</span>
           </div>
         )}
         {item.color && (
@@ -468,7 +491,7 @@ function ProductCard({
         )}
       </div>
 
-      <div className="space-y-3 p-4" dir="rtl">
+      <div className="space-y-3 p-4" dir={isAr ? "rtl" : "ltr"}>
         <div>
           <h3 className="line-clamp-2 text-sm font-medium text-white" dir="auto">{item.name}</h3>
           {item.serial_number && (
@@ -480,9 +503,9 @@ function ProductCard({
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-white/40" dir="ltr">Price</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/40" dir="ltr">{tt("السعر", "Price")}</div>
           <div className="text-2xl font-light text-[oklch(0.92_0.08_82)]">
-            {fmtMoney(Number(item.price) || 0, "EGP", "ar")}
+            {fmtMoney(Number(item.price) || 0, "EGP", lang)}
           </div>
         </div>
         <div className="flex justify-center">
@@ -505,7 +528,7 @@ function ProductCard({
             className="w-full bg-[oklch(0.78_0.11_82)] text-xs font-semibold text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
           >
             <Plus className="ml-1 h-3 w-3" />
-            {inCart && inCart > 0 ? `في السلة (${inCart}) · أضف` : "أضف للفاتورة"}
+            {inCart && inCart > 0 ? tt(`في السلة (${inCart}) · أضف`, `In cart (${inCart}) · Add`) : tt("أضف للفاتورة", "Add to invoice")}
           </Button>
         )}
 
@@ -515,7 +538,7 @@ function ProductCard({
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={copyQR}
           >
-            <Copy className="ml-1 h-3 w-3" /> نسخ
+            <Copy className="ml-1 h-3 w-3" /> {tt("نسخ", "Copy")}
           </Button>
           <Button
             size="sm" variant="outline"
