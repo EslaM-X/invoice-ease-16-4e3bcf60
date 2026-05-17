@@ -147,7 +147,7 @@ function PriceListPage() {
   const matchCount = hydrated ? filtered.length : 0;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
+    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-[oklch(0.78_0.11_82_/_0.15)] blur-3xl" />
         <div className="absolute top-1/2 -left-32 h-96 w-96 rounded-full bg-[oklch(0.4_0.05_240_/_0.2)] blur-3xl" />
