@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { QRCodeCanvas } from "qrcode.react";
 import { motion } from "framer-motion";
-import { Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2, Sparkles, History, Plus, WifiOff } from "lucide-react";
+import {
+  Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2,
+  Sparkles, History, Plus, WifiOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,14 +14,15 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import {
-  listPriceItems, getCachedPriceItems, createPriceItem,
-  updatePriceItemPrice, uploadPriceItemImage, updatePriceItemImage,
-  getPriceHistory, formatPrice, type PriceListItem, type PriceHistoryEntry,
-} from "@/lib/price-list";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useRole } from "@/lib/use-role";
+import { encodeProductQR } from "@/lib/qr-codec";
+import { swatchStyle } from "@/lib/color-swatch";
+import { ProductImageUpload } from "@/components/product-image-upload";
+import type { Product } from "@/lib/data";
+import { COLLECTIONS as APP_COLLECTIONS } from "@/lib/data";
+import { fmtMoney } from "@/lib/utils-money";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 
 export const Route = createFileRoute("/qr-price-list")({
@@ -26,52 +30,97 @@ export const Route = createFileRoute("/qr-price-list")({
   head: () => ({
     meta: [
       { title: "QR Price List 2026 — Steinheim" },
-      { name: "description", content: "Steinheim official 2026 price list — Joy, Up, Art, Quatro mixers, showers, and accessories. Scan QR to add to invoice." },
+      { name: "description", content: "Steinheim official 2026 catalog — scan QR to add any product to the current invoice." },
     ],
   }),
 });
 
-const COLLECTIONS = ["ALL", "JOY", "UP", "ART", "QUATRO"] as const;
-type CollectionFilter = (typeof COLLECTIONS)[number];
+const COLLECTION_TABS = ["ALL", ...APP_COLLECTIONS] as const;
+type CollectionFilter = (typeof COLLECTION_TABS)[number];
+
+const CACHE_KEY = "qr_price_list_products_v1";
+
+const readCache = (): Product[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? (arr as Product[]) : [];
+  } catch { return []; }
+};
+const writeCache = (items: Product[]) => {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(items)); } catch {}
+};
 
 function PriceListPage() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
-  // Seed from cache so the page renders instantly even offline.
-  const [items, setItems] = useState<PriceListItem[]>(() => getCachedPriceItems());
-  const [loading, setLoading] = useState(() => getCachedPriceItems().length === 0);
+  const navigate = useNavigate();
+
+  // CRITICAL: SSR-safe — start empty, hydrate cache after mount to avoid hydration mismatch.
+  const [items, setItems] = useState<Product[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [search, setSearch] = useState("");
   const [collection, setCollection] = useState<CollectionFilter>("ALL");
-  const [category, setCategory] = useState<string>("ALL");
   const [colorFilter, setColorFilter] = useState<string>("ALL");
-  const [editItem, setEditItem] = useState<PriceListItem | null>(null);
+  const [editItem, setEditItem] = useState<Product | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
+  // Send unauthenticated users to /auth — products are RLS-protected.
   useEffect(() => {
+    if (user === null) {
+      navigate({ to: "/auth" });
+    }
+  }, [user, navigate]);
+
+  // Hydrate from cache on mount (avoids SSR/CSR text mismatch on the counter).
+  useEffect(() => {
+    const cached = readCache();
+    if (cached.length) setItems(cached);
+    setHydrated(true);
+  }, []);
+
+  // Live load + realtime + online state
+  useEffect(() => {
+    if (!user) return;
     let mounted = true;
+
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          // Explicit columns — cost_price / cost_price_usd intentionally NOT selected.
+          .select("id,user_id,name,serial_number,color,price,stock_quantity,low_stock_threshold,collection,image_url,qr_code,created_at,updated_at")
+          .order("collection", { ascending: true })
+          .order("name", { ascending: true })
+          .order("color", { ascending: true })
+          .limit(2000);
+        if (error) throw error;
+        if (!mounted) return;
+        const rows = (data ?? []) as Product[];
+        setItems(rows);
+        writeCache(rows);
+      } catch (e: any) {
+        if (readCache().length === 0) toast.error(e?.message ?? "Failed to load");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+
     const onOff = () => setOffline(!navigator.onLine);
     onOff();
     window.addEventListener("online", onOff);
     window.addEventListener("offline", onOff);
 
-    listPriceItems()
-      .then((rows) => { if (mounted) setItems(rows); })
-      .catch((e) => {
-        // If cache exists we already rendered — don't block the UI.
-        if (getCachedPriceItems().length === 0) {
-          toast.error(e?.message ?? "Failed to load");
-        }
-      })
-      .finally(() => { if (mounted) setLoading(false); });
-
     const channel = supabase
-      .channel("price_list_items_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "price_list_items" },
-        () => { listPriceItems().then(setItems).catch(() => {}); },
-      )
+      .channel("qr_price_list_products")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => load())
       .subscribe();
 
     return () => {
@@ -80,50 +129,41 @@ function PriceListPage() {
       window.removeEventListener("offline", onOff);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    items.forEach((i) => set.add(i.category));
-    return ["ALL", ...Array.from(set).sort()];
-  }, [items]);
-
-  // Distinct colors across the active dataset, with their hex for the swatch.
+  // Distinct colors for the color-filter pills.
   const colors = useMemo(() => {
-    const map = new Map<string, string | null>();
-    items.forEach((i) => {
-      if (i.color) {
-        if (!map.has(i.color)) map.set(i.color, i.color_hex ?? null);
-      }
-    });
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const set = new Set<string>();
+    items.forEach((i) => { if (i.color) set.add(i.color); });
+    return Array.from(set).sort();
   }, [items]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((i) => {
-      if (collection !== "ALL" && i.collection !== collection) return false;
-      if (category !== "ALL" && i.category !== category) return false;
+      if (collection !== "ALL" && (i.collection ?? "") !== collection) return false;
       if (colorFilter !== "ALL" && (i.color ?? "") !== colorFilter) return false;
       if (!q) return true;
       return (
-        i.sku.toLowerCase().includes(q) ||
-        i.name_en.toLowerCase().includes(q) ||
-        (i.name_ar ?? "").toLowerCase().includes(q) ||
-        (i.color ?? "").toLowerCase().includes(q)
+        i.name.toLowerCase().includes(q) ||
+        (i.serial_number ?? "").toLowerCase().includes(q) ||
+        (i.color ?? "").toLowerCase().includes(q) ||
+        (i.collection ?? "").toLowerCase().includes(q)
       );
     });
-  }, [items, search, collection, category, colorFilter]);
+  }, [items, search, collection, colorFilter]);
+
+  // Only show counts AFTER hydration to avoid mismatch with empty SSR markup.
+  const count = hydrated ? items.length : 0;
+  const matchCount = hydrated ? filtered.length : 0;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[oklch(0.08_0.005_60)] text-[oklch(0.97_0.008_82)]">
-      {/* Decorative gradient blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-[oklch(0.78_0.11_82_/_0.15)] blur-3xl" />
         <div className="absolute top-1/2 -left-32 h-96 w-96 rounded-full bg-[oklch(0.4_0.05_240_/_0.2)] blur-3xl" />
       </div>
 
-      {/* Header */}
       <header className="relative z-10 border-b border-white/5 bg-[oklch(0.1_0.004_60_/_0.6)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link
@@ -131,19 +171,14 @@ function PriceListPage() {
             className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-[oklch(0.78_0.11_82)]"
           >
             <ArrowLeft className="h-4 w-4" />
-            {user ? "Dashboard" : "Back to Sign In"}
+            {user ? "Dashboard" : "Sign In"}
           </Link>
           <img src={brandLogo} alt="Steinheim" className="h-10 w-auto" />
         </div>
       </header>
 
-      {/* Hero */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 pt-12 pb-8 text-center sm:px-6 sm:pt-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <div className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.3)] bg-[oklch(0.78_0.11_82_/_0.08)] px-4 py-1.5 text-xs font-medium uppercase tracking-[0.3em] text-[oklch(0.78_0.11_82)]">
             <Sparkles className="h-3 w-3" />
             Steinheim · 2026
@@ -154,19 +189,18 @@ function PriceListPage() {
             </span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-white/60 sm:text-base">
-            Defined Precision · Designed for Modern Spaces · امسح الـ QR لتُضاف للفاتورة فوراً
+            امسح الـ QR لأى منتج ليُضاف للفاتورة الحالية فوراً
           </p>
           <div className="mt-6 flex items-center justify-center gap-6 text-xs text-white/40">
-            <span>{items.length} منتج</span>
+            <span>{count} منتج</span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
             <span>4 كولكشن</span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
-            <span>{filtered.length} يطابق البحث</span>
+            <span>{matchCount} يطابق البحث</span>
           </div>
         </motion.div>
       </section>
 
-      {/* Filters */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 pb-8 sm:px-6">
         <div className="rounded-2xl border border-white/10 bg-[oklch(0.12_0.005_60_/_0.6)] p-4 backdrop-blur-xl sm:p-5">
           <div className="flex flex-col gap-4">
@@ -175,13 +209,13 @@ function PriceListPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث بالكود أو الاسم أو اللون..."
+                placeholder="ابحث بالاسم أو السيريال أو اللون..."
                 className="border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
               />
             </div>
             <Tabs value={collection} onValueChange={(v) => setCollection(v as CollectionFilter)}>
               <TabsList className="flex w-full flex-wrap gap-1 bg-white/5">
-                {COLLECTIONS.map((c) => (
+                {COLLECTION_TABS.map((c) => (
                   <TabsTrigger
                     key={c}
                     value={c}
@@ -192,22 +226,7 @@ function PriceListPage() {
                 ))}
               </TabsList>
             </Tabs>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    category === c
-                      ? "bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)]"
-                      : "border border-white/15 bg-white/5 text-white/70 hover:border-[oklch(0.78_0.11_82_/_0.5)] hover:text-white"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            {/* Color filter pills */}
+
             {colors.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] uppercase tracking-widest text-white/40">اللون</span>
@@ -221,7 +240,7 @@ function PriceListPage() {
                 >
                   الكل
                 </button>
-                {colors.map(([name, hex]) => (
+                {colors.map((name) => (
                   <button
                     key={name}
                     onClick={() => setColorFilter(name)}
@@ -232,22 +251,20 @@ function PriceListPage() {
                         : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
                     }`}
                   >
-                    <span
-                      className="h-3 w-3 rounded-full border border-white/30"
-                      style={{ backgroundColor: hex ?? "#888" }}
-                    />
+                    <span className="h-3.5 w-3.5 rounded-full" style={swatchStyle(name)} />
                     {name}
                   </button>
                 ))}
               </div>
             )}
-            {isAdmin && (
-              <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-3">
-                {offline ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-300/80">
-                    <WifiOff className="h-3 w-3" /> offline · يعمل من الكاش
-                  </span>
-                ) : <span />}
+
+            <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-3">
+              {offline ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-amber-300/80">
+                  <WifiOff className="h-3 w-3" /> offline · يعمل من الكاش
+                </span>
+              ) : <span />}
+              {isAdmin && (
                 <Button
                   size="sm"
                   onClick={() => setAddOpen(true)}
@@ -255,20 +272,14 @@ function PriceListPage() {
                 >
                   <Plus className="mr-1 h-3 w-3" /> إضافة منتج
                 </Button>
-              </div>
-            )}
-            {!isAdmin && offline && (
-              <div className="border-t border-white/5 pt-3 text-xs text-amber-300/80">
-                <WifiOff className="mr-1 inline h-3 w-3" /> offline — معروض من الكاش
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Grid */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-        {loading ? (
+        {loading && items.length === 0 ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-[oklch(0.78_0.11_82)]" />
           </div>
@@ -302,89 +313,22 @@ function PriceListPage() {
           onClose={() => setEditItem(null)}
         />
       )}
-      {addOpen && (
+      {addOpen && user && (
         <AddDialog
+          userId={user.id}
+          userEmail={user.email ?? null}
           onClose={() => setAddOpen(false)}
-          onCreated={(it) => { setItems((prev) => [...prev, it]); setAddOpen(false); }}
         />
       )}
     </div>
   );
 }
 
-function AddDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (i: PriceListItem) => void }) {
-  const [form, setForm] = useState({
-    sku: "", name_en: "", collection: "JOY", category: "",
-    color: "", color_hex: "#c8c8c8", price: "",
-  });
-  const [saving, setSaving] = useState(false);
-  const submit = async () => {
-    if (!form.sku.trim() || !form.name_en.trim() || !form.category.trim() || !form.price) {
-      toast.error("SKU، الاسم، الفئة، والسعر مطلوبين");
-      return;
-    }
-    setSaving(true);
-    try {
-      const created = await createPriceItem({
-        sku: form.sku.trim(),
-        name_en: form.name_en.trim(),
-        collection: form.collection,
-        category: form.category.trim(),
-        color: form.color.trim() || null,
-        color_hex: form.color_hex || null,
-        price: Number(form.price),
-      });
-      toast.success("تمت إضافة المنتج");
-      onCreated(created);
-    } catch (e: any) {
-      toast.error(e?.message ?? "فشل الإضافة");
-    } finally { setSaving(false); }
-  };
-  return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-md bg-[oklch(0.12_0.005_60)] text-white border-white/10">
-        <DialogHeader>
-          <DialogTitle className="text-[oklch(0.92_0.08_82)]">منتج جديد</DialogTitle>
-          <DialogDescription className="text-white/60">سيُولَّد QR تلقائياً بصيغة PL1:SKU</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div><Label className="text-white/80 text-xs">SKU</Label>
-              <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="mt-1 border-white/15 bg-white/5 text-white" /></div>
-            <div><Label className="text-white/80 text-xs">Collection</Label>
-              <select value={form.collection} onChange={(e) => setForm({ ...form, collection: e.target.value })}
-                className="mt-1 h-9 w-full rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white">
-                {["JOY","UP","ART","QUATRO"].map((c) => <option key={c} value={c} className="bg-[oklch(0.12_0.005_60)]">{c}</option>)}
-              </select></div>
-          </div>
-          <div><Label className="text-white/80 text-xs">الاسم (EN)</Label>
-            <Input value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} className="mt-1 border-white/15 bg-white/5 text-white" /></div>
-          <div><Label className="text-white/80 text-xs">الفئة</Label>
-            <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="JOY BASIN MIXERS" className="mt-1 border-white/15 bg-white/5 text-white" /></div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2"><Label className="text-white/80 text-xs">اللون</Label>
-              <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="CHROME PLATED" className="mt-1 border-white/15 bg-white/5 text-white" /></div>
-            <div><Label className="text-white/80 text-xs">Hex</Label>
-              <Input type="color" value={form.color_hex} onChange={(e) => setForm({ ...form, color_hex: e.target.value })} className="mt-1 h-9 border-white/15 bg-white/5" /></div>
-          </div>
-          <div><Label className="text-white/80 text-xs">السعر (LE)</Label>
-            <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="mt-1 border-white/15 bg-white/5 text-white" /></div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-white/15 bg-white/5 text-white">إلغاء</Button>
-          <Button disabled={saving} onClick={submit} className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function ProductCard({
   item, index, canEdit, onEdit,
-}: { item: PriceListItem; index: number; canEdit: boolean; onEdit: () => void }) {
+}: { item: Product; index: number; canEdit: boolean; onEdit: () => void }) {
   const qrRef = useRef<HTMLCanvasElement | null>(null);
+  const qrValue = useMemo(() => encodeProductQR(item.qr_code || item.id), [item.qr_code, item.id]);
 
   const downloadQR = () => {
     const canvas = qrRef.current;
@@ -392,14 +336,14 @@ function ProductCard({
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${item.sku}-qr.png`;
+    a.download = `${(item.serial_number || item.name).replace(/[^\w-]+/g, "_")}-qr.png`;
     a.click();
   };
 
   const copyQR = async () => {
     try {
-      await navigator.clipboard.writeText(item.qr_payload);
-      toast.success("تم نسخ الـ QR payload");
+      await navigator.clipboard.writeText(qrValue);
+      toast.success("تم نسخ الـ QR");
     } catch {
       toast.error("فشل النسخ");
     }
@@ -412,19 +356,18 @@ function ProductCard({
       transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.6) }}
       whileHover={{ y: -4 }}
       className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[oklch(0.13_0.005_60_/_0.9)] to-[oklch(0.1_0.004_60_/_0.95)] backdrop-blur-xl transition-shadow hover:border-[oklch(0.78_0.11_82_/_0.4)] hover:shadow-[0_20px_60px_-20px_oklch(0.78_0.11_82_/_0.3)]"
-      style={{ animationDelay: `${index * 20}ms` }}
     >
-      {/* Collection ribbon */}
-      <div className="absolute right-0 top-0 z-10 rounded-bl-xl bg-[oklch(0.78_0.11_82)] px-3 py-1 text-[10px] font-bold tracking-widest text-[oklch(0.1_0.004_60)]">
-        {item.collection}
-      </div>
+      {item.collection && (
+        <div className="absolute right-0 top-0 z-10 rounded-bl-xl bg-[oklch(0.78_0.11_82)] px-3 py-1 text-[10px] font-bold tracking-widest text-[oklch(0.1_0.004_60)]">
+          {item.collection}
+        </div>
+      )}
 
-      {/* Image area */}
       <div className="relative flex h-48 items-center justify-center overflow-hidden bg-[oklch(0.06_0.003_60)]">
         {item.image_url ? (
           <img
             src={item.image_url}
-            alt={item.name_en}
+            alt={item.name}
             className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
@@ -434,27 +377,32 @@ function ProductCard({
             <span className="mt-2 text-xs">لا توجد صورة</span>
           </div>
         )}
-        {item.color_hex && (
+        {item.color && (
           <div
-            className="absolute bottom-3 left-3 h-6 w-6 rounded-full border-2 border-white/30 shadow-lg"
-            style={{ backgroundColor: item.color_hex }}
-            title={item.color ?? ""}
+            className="absolute bottom-3 left-3 h-7 w-7 rounded-full border-2 border-white/30 shadow-lg"
+            style={swatchStyle(item.color)}
+            title={item.color}
           />
         )}
       </div>
 
-      {/* Body */}
       <div className="space-y-3 p-4">
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-widest text-[oklch(0.78_0.11_82)]">
-            {item.category}
-          </div>
-          <h3 className="mt-1 line-clamp-2 text-sm font-medium text-white">
-            {item.name_en}
-          </h3>
-          <div className="mt-1 font-mono text-[11px] text-white/40">{item.sku}</div>
+          <h3 className="line-clamp-2 text-sm font-medium text-white">{item.name}</h3>
+          {item.serial_number && (
+            <div className="mt-1 font-mono text-[11px] text-white/40">{item.serial_number}</div>
+          )}
           {item.color && (
             <div className="mt-1 text-[11px] text-white/60">{item.color}</div>
+          )}
+          {typeof item.stock_quantity === "number" && (
+            <div className={`mt-1 text-[10px] uppercase tracking-wider ${
+              item.stock_quantity <= 0 ? "text-rose-300/80"
+              : item.stock_quantity <= (item.low_stock_threshold ?? 5) ? "text-amber-300/80"
+              : "text-emerald-300/70"
+            }`}>
+              Stock: {item.stock_quantity}
+            </div>
           )}
         </div>
 
@@ -462,14 +410,14 @@ function ProductCard({
           <div>
             <div className="text-[10px] uppercase tracking-wider text-white/40">Price</div>
             <div className="text-2xl font-light text-[oklch(0.92_0.08_82)]">
-              {formatPrice(item.price, item.currency)}
+              {fmtMoney(Number(item.price) || 0, "EGP", "ar")}
             </div>
           </div>
           <div className="rounded-lg bg-white p-1.5">
             <QRCodeCanvas
               ref={qrRef}
-              value={item.qr_payload}
-              size={56}
+              value={qrValue}
+              size={64}
               level="M"
               bgColor="#ffffff"
               fgColor="#0a0a0a"
@@ -479,16 +427,14 @@ function ProductCard({
 
         <div className="flex gap-2 pt-1">
           <Button
-            size="sm"
-            variant="outline"
+            size="sm" variant="outline"
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={copyQR}
           >
             <Copy className="mr-1 h-3 w-3" /> نسخ
           </Button>
           <Button
-            size="sm"
-            variant="outline"
+            size="sm" variant="outline"
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={downloadQR}
           >
@@ -509,20 +455,26 @@ function ProductCard({
   );
 }
 
+// --- Edit dialog (price + image) ------------------------------------------
 function EditDialog({
   item, userEmail, onClose,
-}: { item: PriceListItem; userEmail: string | null; onClose: () => void }) {
+}: { item: Product; userEmail: string | null; onClose: () => void }) {
   const [price, setPrice] = useState(String(item.price));
+  const [imageUrl, setImageUrl] = useState<string | null>(item.image_url ?? null);
   const [saving, setSaving] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [history, setHistory] = useState<PriceHistoryEntry[]>([]);
+  const [history, setHistory] = useState<Array<{ id: string; old_value: number | null; new_value: number | null; changed_at: string; changed_by_email: string | null }>>([]);
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    getPriceHistory(item.id).then(setHistory).catch(() => {});
+    supabase
+      .from("product_price_history")
+      .select("id,old_value,new_value,changed_at,changed_by_email")
+      .eq("product_id", item.id).eq("field", "price")
+      .order("changed_at", { ascending: false }).limit(50)
+      .then(({ data }) => setHistory((data ?? []) as any));
   }, [item.id]);
 
-  const handleSave = async () => {
+  const save = async () => {
     const next = Number(price);
     if (!Number.isFinite(next) || next < 0) {
       toast.error("سعر غير صحيح");
@@ -530,52 +482,42 @@ function EditDialog({
     }
     setSaving(true);
     try {
-      if (imageFile) {
-        const url = await uploadPriceItemImage(item.sku, imageFile);
-        await updatePriceItemImage(item.id, url);
-      }
-      if (next !== item.price) {
-        await updatePriceItemPrice(item.id, next, userEmail);
-      }
+      const patch: Record<string, any> = {};
+      if (next !== Number(item.price)) patch.price = next;
+      if (imageUrl !== (item.image_url ?? null)) patch.image_url = imageUrl;
+      if (Object.keys(patch).length === 0) { onClose(); return; }
+      patch.updated_by_email = userEmail;
+      const { error } = await supabase.from("products").update(patch as any).eq("id", item.id);
+      if (error) throw error;
       toast.success("تم الحفظ");
       onClose();
     } catch (e: any) {
       toast.error(e?.message ?? "فشل الحفظ");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md bg-[oklch(0.12_0.005_60)] text-white border-white/10">
         <DialogHeader>
-          <DialogTitle className="text-[oklch(0.92_0.08_82)]">
-            تعديل: {item.sku}
-          </DialogTitle>
+          <DialogTitle className="text-[oklch(0.92_0.08_82)]">{item.name}</DialogTitle>
           <DialogDescription className="text-white/60">
-            {item.name_en} · {item.color}
+            {[item.serial_number, item.color, item.collection].filter(Boolean).join(" · ")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label className="text-white/80">السعر ({item.currency})</Label>
+            <Label className="text-white/80">السعر (EGP)</Label>
             <Input
-              type="number"
-              value={price}
+              type="number" value={price}
               onChange={(e) => setPrice(e.target.value)}
               className="mt-1 border-white/15 bg-white/5 text-white"
             />
           </div>
           <div>
-            <Label className="text-white/80">صورة المنتج (اختياري)</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-              className="mt-1 border-white/15 bg-white/5 text-white file:text-white/70"
-            />
+            <Label className="text-white/80">صورة المنتج</Label>
+            <div className="mt-2"><ProductImageUpload value={imageUrl} onChange={setImageUrl} /></div>
           </div>
 
           <button
@@ -593,7 +535,7 @@ function EditDialog({
               ) : history.map((h) => (
                 <div key={h.id} className="flex items-center justify-between border-b border-white/5 py-1 last:border-0">
                   <span className="text-white/60">
-                    {Number(h.old_price ?? 0).toLocaleString()} → {Number(h.new_price ?? 0).toLocaleString()}
+                    {Number(h.old_value ?? 0).toLocaleString()} → {Number(h.new_value ?? 0).toLocaleString()}
                   </span>
                   <span className="text-white/40">{new Date(h.changed_at).toLocaleDateString()}</span>
                 </div>
@@ -604,11 +546,117 @@ function EditDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} className="border-white/15 bg-transparent text-white">إلغاء</Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
-          >
+          <Button onClick={save} disabled={saving}
+            className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- Add product dialog ---------------------------------------------------
+function AddDialog({
+  userId, userEmail, onClose,
+}: { userId: string; userEmail: string | null; onClose: () => void }) {
+  const [form, setForm] = useState({
+    name: "", serial_number: "", color: "",
+    collection: "JOY" as string,
+    price: "", stock_quantity: "0",
+  });
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!form.name.trim() || !form.price) {
+      toast.error("الاسم والسعر مطلوبين");
+      return;
+    }
+    setSaving(true);
+    try {
+      const insertRow = {
+        user_id: userId,
+        name: form.name.trim(),
+        serial_number: form.serial_number.trim() || null,
+        color: form.color.trim() || null,
+        collection: form.collection || null,
+        price: Number(form.price),
+        stock_quantity: Number(form.stock_quantity) || 0,
+        image_url: imageUrl,
+        created_by_email: userEmail,
+        updated_by_email: userEmail,
+      };
+      const { data, error } = await supabase
+        .from("products").insert(insertRow as any).select("id").single();
+      if (error) throw error;
+      // Mirror the products page: set qr_code = id for stable QR.
+      await supabase.from("products").update({ qr_code: data.id }).eq("id", data.id);
+      toast.success("تمت إضافة المنتج");
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل الإضافة");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md bg-[oklch(0.12_0.005_60)] text-white border-white/10">
+        <DialogHeader>
+          <DialogTitle className="text-[oklch(0.92_0.08_82)]">منتج جديد</DialogTitle>
+          <DialogDescription className="text-white/60">
+            سيظهر فوراً في الكتالوج وصفحة المنتجات (مزامنة لحظية).
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div>
+            <Label className="text-white/80 text-xs">الاسم</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="mt-1 border-white/15 bg-white/5 text-white" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-white/80 text-xs">السيريال</Label>
+              <Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })}
+                className="mt-1 border-white/15 bg-white/5 text-white" />
+            </div>
+            <div>
+              <Label className="text-white/80 text-xs">Collection</Label>
+              <select value={form.collection} onChange={(e) => setForm({ ...form, collection: e.target.value })}
+                className="mt-1 h-9 w-full rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white">
+                {APP_COLLECTIONS.map((c) => (
+                  <option key={c} value={c} className="bg-[oklch(0.12_0.005_60)]">{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-white/80 text-xs">اللون</Label>
+              <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })}
+                placeholder="CHROME PLATED" className="mt-1 border-white/15 bg-white/5 text-white" />
+            </div>
+            <div>
+              <Label className="text-white/80 text-xs">السعر (EGP)</Label>
+              <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
+                className="mt-1 border-white/15 bg-white/5 text-white" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-white/80 text-xs">المخزون</Label>
+            <Input type="number" value={form.stock_quantity}
+              onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
+              className="mt-1 border-white/15 bg-white/5 text-white" />
+          </div>
+          <div>
+            <Label className="text-white/80 text-xs">صورة المنتج</Label>
+            <div className="mt-2"><ProductImageUpload value={imageUrl} onChange={setImageUrl} /></div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="border-white/15 bg-white/5 text-white">إلغاء</Button>
+          <Button disabled={saving} onClick={submit}
+            className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
           </Button>
         </DialogFooter>
