@@ -64,6 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   useReminderPoller();
+  const { unreadTotal: chatUnread } = useChatNotifications();
 
   const handleSignOut = async () => {
     setOpen(false);
