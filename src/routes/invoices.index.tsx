@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil, Archive, ClipboardCheck } from "lucide-react";
+import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil, Archive, ClipboardCheck, FileEdit } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
