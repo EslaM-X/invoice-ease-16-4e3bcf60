@@ -227,7 +227,7 @@ function PriceListPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث بالاسم أو السيريال أو اللون..."
+                placeholder={tt("ابحث بالاسم أو السيريال أو اللون...", "Search by name, serial, or color...")}
                 className="border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus-visible:ring-[oklch(0.78_0.11_82)]"
               />
             </div>
