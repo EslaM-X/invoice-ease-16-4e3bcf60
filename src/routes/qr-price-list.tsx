@@ -116,7 +116,7 @@ function PriceListPage() {
       window.removeEventListener("offline", onOff);
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, []);
 
   // Distinct colors for the color-filter pills.
   const colors = useMemo(() => {
