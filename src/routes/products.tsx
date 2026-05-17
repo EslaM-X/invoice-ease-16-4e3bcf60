@@ -109,23 +109,36 @@ function Products() {
   useRealtimeTable("purchase_orders", () => { loadInTransit(); });
   useRealtimeTable("purchase_order_items", () => { loadInTransit(); });
 
-  const filtered = useMemo(() => list.filter((p) => {
-    if (collectionFilter) {
-      if (collectionFilter === "__none__") {
-        if (p.collection) return false;
-      } else if (p.collection !== collectionFilter) {
-        return false;
+  const filtered = useMemo(() => {
+    const raw = q.trim().toLowerCase();
+    const s = raw.replace(/\s+/g, " ");
+    const sSerial = raw.replace(/[\s_\-./]+/g, ""); // serial-friendly normalize
+    const hasQuery = s.length > 0;
+    return list.filter((p) => {
+      // When the user is searching, ignore the collection tab so a serial
+      // that lives in another collection is never accidentally hidden.
+      if (!hasQuery) {
+        if (collectionFilter) {
+          if (collectionFilter === "__none__") {
+            if (p.collection) return false;
+          } else if (p.collection !== collectionFilter) {
+            return false;
+          }
+        }
+        return true;
       }
-    }
-    const s = q.trim().toLowerCase();
-    if (!s) return true;
-    return (
-      p.name.toLowerCase().includes(s) ||
-      (p.serial_number ?? "").toLowerCase().includes(s) ||
-      (p.color ?? "").toLowerCase().includes(s) ||
-      (p.collection ?? "").toLowerCase().includes(s)
-    );
-  }), [list, q, collectionFilter]);
+      const name = p.name.toLowerCase();
+      const serialNorm = (p.serial_number ?? "").toLowerCase().replace(/[\s_\-./]+/g, "");
+      const color = (p.color ?? "").toLowerCase();
+      const coll = (p.collection ?? "").toLowerCase();
+      return (
+        name.includes(s) ||
+        serialNorm.includes(sSerial) ||
+        color.includes(s) ||
+        coll.includes(s)
+      );
+    });
+  }, [list, q, collectionFilter]);
 
   const collectionCounts = useMemo(() => {
     const counts: Record<string, number> = { __all__: list.length, __none__: 0 };
