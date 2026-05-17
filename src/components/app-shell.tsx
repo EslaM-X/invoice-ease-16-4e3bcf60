@@ -15,6 +15,7 @@ import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { LowStockAlerts } from "@/components/low-stock-alerts";
 import { useRole } from "@/lib/use-role";
+import { useIsExecutive } from "@/lib/use-executive";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LangStatusPill } from "@/components/lang-status-pill";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
