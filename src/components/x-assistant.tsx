@@ -23,7 +23,7 @@ import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 
 type Msg = { id: string; role: "user" | "assistant"; content: string };
 type Conv = { id: string; title: string; last_message_at: string };
@@ -40,6 +40,8 @@ const TTS_STORAGE = "x:tts-enabled";
  */
 export function XAssistant() {
   const { lang } = useI18n();
+  const location = useLocation();
+  const hideOrb = location.pathname.startsWith("/team-chat");
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [conv, setConv] = useState<Conv | null>(null);
