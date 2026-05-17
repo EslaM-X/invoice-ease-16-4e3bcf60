@@ -247,7 +247,7 @@ function PriceListPage() {
 
             {colors.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] uppercase tracking-widest text-white/40">اللون</span>
+                <span className="text-[11px] uppercase tracking-widest text-white/40">{tt("اللون", "Color")}</span>
                 <button
                   onClick={() => setColorFilter("ALL")}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${
@@ -256,7 +256,7 @@ function PriceListPage() {
                       : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
                   }`}
                 >
-                  الكل
+                  {tt("الكل", "All")}
                 </button>
                 {colors.map((name) => (
                   <button
