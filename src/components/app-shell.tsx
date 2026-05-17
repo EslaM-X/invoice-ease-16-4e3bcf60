@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
   Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
-  CloudUpload, Activity, PackageOpen,
+  CloudUpload, Activity, PackageOpen, MessageSquare, MessagesSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -291,6 +291,37 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </GroupNav>
         )}
+        <GroupNav
+          label={t("communication_group")}
+          icon={MessagesSquare}
+          defaultOpen={
+            location.pathname.startsWith("/team-chat") ||
+            location.pathname.startsWith("/whatsapp")
+          }
+        >
+          <Link
+            to="/team-chat"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/team-chat")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" /> {t("team_chat")}
+          </Link>
+          <Link
+            to="/whatsapp"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/whatsapp")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Phone className="h-4 w-4" /> {t("whatsapp_inbox")}
+          </Link>
+        </GroupNav>
         <GroupNav
           label={t("settings")}
           icon={Settings}
