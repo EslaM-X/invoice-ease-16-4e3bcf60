@@ -68,6 +68,9 @@ function daysAgoISO(n: number) {
 
 function SalesRange() {
   const { user } = useAuth();
+  const { lang, setLang, dir } = useI18n();
+  const ar = lang === "ar";
+  const tt = (a: string, e: string) => (ar ? a : e);
   const [from, setFrom] = useState<string>(daysAgoISO(6));
   const [to, setTo] = useState<string>(todayISO());
   const [invoices, setInvoices] = useState<Inv[]>([]);
