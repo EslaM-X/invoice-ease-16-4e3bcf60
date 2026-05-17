@@ -50,6 +50,7 @@ import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
 import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
+import { Route as DeliveryReceiptsArchiveRouteImport } from './routes/delivery-receipts.archive'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -267,6 +268,11 @@ const DeliveryReceiptsNewRoute = DeliveryReceiptsNewRouteImport.update({
   path: '/delivery-receipts/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryReceiptsArchiveRoute = DeliveryReceiptsArchiveRouteImport.update({
+  id: '/delivery-receipts/archive',
+  path: '/delivery-receipts/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeliveryReceiptsIdRoute = DeliveryReceiptsIdRouteImport.update({
   id: '/delivery-receipts/$id',
   path: '/delivery-receipts/$id',
@@ -364,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/whatsapp': typeof WhatsappRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
+  '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invoices/$id': typeof InvoicesIdRoute
@@ -418,6 +425,7 @@ export interface FileRoutesByTo {
   '/whatsapp': typeof WhatsappRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
+  '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invoices/$id': typeof InvoicesIdRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/whatsapp': typeof WhatsappRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
+  '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invoices/$id': typeof InvoicesIdRoute
@@ -529,6 +538,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
+    | '/delivery-receipts/archive'
     | '/delivery-receipts/new'
     | '/email/unsubscribe'
     | '/invoices/$id'
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
+    | '/delivery-receipts/archive'
     | '/delivery-receipts/new'
     | '/email/unsubscribe'
     | '/invoices/$id'
@@ -637,6 +648,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
+    | '/delivery-receipts/archive'
     | '/delivery-receipts/new'
     | '/email/unsubscribe'
     | '/invoices/$id'
@@ -692,6 +704,7 @@ export interface RootRouteChildren {
   WhatsappRoute: typeof WhatsappRoute
   ApiXChatRoute: typeof ApiXChatRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
+  DeliveryReceiptsArchiveRoute: typeof DeliveryReceiptsArchiveRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InvoicesIdRoute: typeof InvoicesIdRoute
@@ -1000,6 +1013,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryReceiptsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery-receipts/archive': {
+      id: '/delivery-receipts/archive'
+      path: '/delivery-receipts/archive'
+      fullPath: '/delivery-receipts/archive'
+      preLoaderRoute: typeof DeliveryReceiptsArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/delivery-receipts/$id': {
       id: '/delivery-receipts/$id'
       path: '/delivery-receipts/$id'
@@ -1116,6 +1136,7 @@ const rootRouteChildren: RootRouteChildren = {
   WhatsappRoute: WhatsappRoute,
   ApiXChatRoute: ApiXChatRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
+  DeliveryReceiptsArchiveRoute: DeliveryReceiptsArchiveRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InvoicesIdRoute: InvoicesIdRoute,

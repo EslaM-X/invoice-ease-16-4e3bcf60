@@ -8,7 +8,8 @@ import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Eye, Trash2, Pencil, ClipboardCheck, FileDown, Archive, X, Truck } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Pencil, ClipboardCheck, FileDown, Archive, X } from "lucide-react";
+import { StatusBadge, StatusActions } from "@/components/delivery-receipt-tracker";
 import { fmtDate, fmtDateTime } from "@/lib/utils-money";
 import { toast } from "sonner";
 import {
@@ -43,6 +44,7 @@ function ReceiptsList() {
     const { data } = await supabase
       .from("delivery_receipts" as any)
       .select("*")
+      .in("status", ["draft", "out_for_delivery", "signed"])
       .order("created_at", { ascending: false });
     const list = (data ?? []) as any[];
     setRows(list);
@@ -59,7 +61,14 @@ function ReceiptsList() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [user]);
-  useRealtimeTable("delivery_receipts" as any, () => load());
+  useRealtimeTable("delivery_receipts" as any, (payload: any) => {
+    const next = payload?.new?.status as string | undefined;
+    const prev = payload?.old?.status as string | undefined;
+    if (next && prev && next !== prev) {
+      toast.message(`${payload.new.receipt_number ?? ""} → ${next}`);
+    }
+    load();
+  });
 
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;
@@ -209,9 +218,16 @@ function ReceiptsList() {
               : "Create delivery receipts. Select multiple to export together."}
           </p>
         </div>
-        <Button onClick={() => navigate({ to: "/delivery-receipts/new" })} className="gap-2 shadow-glow">
-          <Plus className="h-4 w-4" /> {isAr ? "محضر جديد" : "New receipt"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/delivery-receipts/archive">
+            <Button variant="outline" className="gap-2 rounded-full">
+              <Archive className="h-4 w-4" /> {isAr ? "الأرشيف" : "Archive"}
+            </Button>
+          </Link>
+          <Button onClick={() => navigate({ to: "/delivery-receipts/new" })} className="gap-2 shadow-glow">
+            <Plus className="h-4 w-4" /> {isAr ? "محضر جديد" : "New receipt"}
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -287,40 +303,11 @@ function ReceiptsList() {
                       <td className="px-3 py-3">{r.delivered_to_name || "—"}</td>
                       <td className="px-3 py-3 text-muted-foreground">{fmtDate(r.delivered_at, lang)}</td>
                       <td className="px-3 py-3">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                          r.status === "signed"
-                            ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                            : r.status === "out_for_delivery"
-                            ? "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-400"
-                            : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        }`}>
-                          {r.status === "signed"
-                            ? (isAr ? "موقّع" : "Signed")
-                            : r.status === "out_for_delivery"
-                            ? (isAr ? "في الطريق" : "Out for delivery")
-                            : (isAr ? "مسودة" : "Draft")}
-                        </span>
+                        <StatusBadge status={r.status} isAr={isAr} />
                       </td>
                       <td className="px-3 py-3">
-                        <div className="flex justify-end gap-1">
-                          {r.status !== "signed" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title={r.status === "out_for_delivery" ? (isAr ? "إرجاع لمسودة" : "Back to draft") : (isAr ? "تعليم: في الطريق" : "Mark: out for delivery")}
-                              onClick={async () => {
-                                const next = r.status === "out_for_delivery" ? "draft" : "out_for_delivery";
-                                const { error } = await supabase
-                                  .from("delivery_receipts" as any)
-                                  .update({ status: next })
-                                  .eq("id", r.id);
-                                if (error) toast.error(error.message);
-                                else { toast.success(isAr ? "تم التحديث" : "Updated"); load(); }
-                              }}
-                            >
-                              <Truck className={`h-4 w-4 ${r.status === "out_for_delivery" ? "text-sky-600" : ""}`} />
-                            </Button>
-                          )}
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <StatusActions receipt={r} isAr={isAr} onChanged={load} />
                           <Link to="/delivery-receipts/$id" params={{ id: r.id }}>
                             <Button variant="ghost" size="icon" title={isAr ? "عرض" : "View"}>
                               <Eye className="h-4 w-4" />

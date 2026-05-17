@@ -11,6 +11,7 @@ import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
 import { elementToPdf } from "@/lib/delivery-receipts";
 import { toast } from "sonner";
+import { DeliveryReceiptTracker } from "@/components/delivery-receipt-tracker";
 
 type Search = { print?: boolean };
 
@@ -113,6 +114,15 @@ function ReceiptView() {
           </Button>
         </div>
       </div>
+
+      <DeliveryReceiptTracker
+        receipt={r}
+        isAr={isAr}
+        onChanged={async () => {
+          const { data: rec } = await supabase.from("delivery_receipts" as any).select("*").eq("id", id).single();
+          if (rec) setR(rec);
+        }}
+      />
 
       {showAudit && (
         <div className="no-print rounded-2xl border bg-card p-5">
