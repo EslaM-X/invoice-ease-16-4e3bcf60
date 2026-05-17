@@ -256,6 +256,205 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          attachments: Json
+          body: string | null
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          id: string
+          message_type: string
+          reply_to_id: string | null
+          room_id: string
+          sender_email: string | null
+          sender_id: string
+          voice_duration_seconds: number | null
+          voice_note_url: string | null
+        }
+        Insert: {
+          attachments?: Json
+          body?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          message_type?: string
+          reply_to_id?: string | null
+          room_id: string
+          sender_email?: string | null
+          sender_id: string
+          voice_duration_seconds?: number | null
+          voice_note_url?: string | null
+        }
+        Update: {
+          attachments?: Json
+          body?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          message_type?: string
+          reply_to_id?: string | null
+          room_id?: string
+          sender_email?: string | null
+          sender_id?: string
+          voice_duration_seconds?: number | null
+          voice_note_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_presence: {
+        Row: {
+          last_seen_at: string
+          status: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_room_members: {
+        Row: {
+          id: string
+          joined_at: string
+          last_read_at: string
+          muted: boolean
+          role: string
+          room_id: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          last_read_at?: string
+          muted?: boolean
+          role?: string
+          room_id: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          last_read_at?: string
+          muted?: boolean
+          role?: string
+          room_id?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          last_message_at: string
+          last_message_preview: string | null
+          name: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          name?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          name?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_counters: {
         Row: {
           id: string
@@ -1916,6 +2115,96 @@ export type Database = {
         }
         Relationships: []
       }
+      support_tickets: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          assigned_to_email: string | null
+          category: string
+          conversation_id: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          description: string | null
+          id: string
+          invoice_id: string | null
+          meta: Json
+          priority: string
+          resolved_at: string | null
+          source: string
+          status: string
+          subject: string
+          ticket_number: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          assigned_to_email?: string | null
+          category: string
+          conversation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          meta?: Json
+          priority?: string
+          resolved_at?: string | null
+          source?: string
+          status?: string
+          subject: string
+          ticket_number: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          assigned_to_email?: string | null
+          category?: string
+          conversation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          meta?: Json
+          priority?: string
+          resolved_at?: string | null
+          source?: string
+          status?: string
+          subject?: string
+          ticket_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -2006,6 +2295,166 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_conversations: {
+        Row: {
+          assigned_to: string | null
+          assigned_to_email: string | null
+          bot_enabled: boolean
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string
+          id: string
+          last_message_at: string
+          last_message_preview: string | null
+          meta: Json
+          status: string
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          assigned_to_email?: string | null
+          bot_enabled?: boolean
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          meta?: Json
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          assigned_to_email?: string | null
+          bot_enabled?: boolean
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          meta?: Json
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          body: string | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          error_message: string | null
+          id: string
+          is_bot: boolean
+          media_filename: string | null
+          media_mime: string | null
+          media_url: string | null
+          message_type: string
+          raw: Json
+          sent_by: string | null
+          sent_by_email: string | null
+          status: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          error_message?: string | null
+          id?: string
+          is_bot?: boolean
+          media_filename?: string | null
+          media_mime?: string | null
+          media_url?: string | null
+          message_type?: string
+          raw?: Json
+          sent_by?: string | null
+          sent_by_email?: string | null
+          status?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          id?: string
+          is_bot?: boolean
+          media_filename?: string | null
+          media_mime?: string | null
+          media_url?: string | null
+          message_type?: string
+          raw?: Json
+          sent_by?: string | null
+          sent_by_email?: string | null
+          status?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          language: string
+          name: string
+          status: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          language?: string
+          name: string
+          status?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          language?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          variables?: Json
         }
         Relationships: []
       }
@@ -2509,6 +2958,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_allowed_company_email: { Args: { _email: string }; Returns: boolean }
+      is_chat_room_member: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_company_member: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       move_to_dlq: {
