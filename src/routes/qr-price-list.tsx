@@ -491,7 +491,7 @@ function ProductCard({
         )}
       </div>
 
-      <div className="space-y-3 p-4" dir="rtl">
+      <div className="space-y-3 p-4" dir={isAr ? "rtl" : "ltr"}>
         <div>
           <h3 className="line-clamp-2 text-sm font-medium text-white" dir="auto">{item.name}</h3>
           {item.serial_number && (
@@ -503,9 +503,9 @@ function ProductCard({
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-white/40" dir="ltr">Price</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/40" dir="ltr">{tt("السعر", "Price")}</div>
           <div className="text-2xl font-light text-[oklch(0.92_0.08_82)]">
-            {fmtMoney(Number(item.price) || 0, "EGP", "ar")}
+            {fmtMoney(Number(item.price) || 0, "EGP", lang)}
           </div>
         </div>
         <div className="flex justify-center">
