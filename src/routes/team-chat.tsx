@@ -50,6 +50,7 @@ function TeamChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [myProfile, setMyProfile] = useState<{ display_name: string | null; avatar_url: string | null }>({ display_name: null, avatar_url: null });
+  const [voiceActive, setVoiceActive] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
