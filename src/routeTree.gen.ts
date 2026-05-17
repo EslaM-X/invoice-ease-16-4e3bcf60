@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WhatsappRouteImport } from './routes/whatsapp'
+import { Route as TeamChatRouteImport } from './routes/team-chat'
 import { Route as StockIntakeRouteImport } from './routes/stock-intake'
 import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -60,6 +62,16 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp.webhook'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
 
+const WhatsappRoute = WhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamChatRoute = TeamChatRouteImport.update({
+  id: '/team-chat',
+  path: '/team-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StockIntakeRoute = StockIntakeRouteImport.update({
   id: '/stock-intake',
   path: '/stock-intake',
@@ -348,6 +360,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/team-chat': typeof TeamChatRoute
+  '/whatsapp': typeof WhatsappRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
@@ -400,6 +414,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/team-chat': typeof TeamChatRoute
+  '/whatsapp': typeof WhatsappRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
@@ -453,6 +469,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/team-chat': typeof TeamChatRoute
+  '/whatsapp': typeof WhatsappRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/new': typeof DeliveryReceiptsNewRoute
@@ -507,6 +525,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/team-chat'
+    | '/whatsapp'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
@@ -559,6 +579,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/team-chat'
+    | '/whatsapp'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
@@ -611,6 +633,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/team-chat'
+    | '/whatsapp'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/new'
@@ -664,6 +688,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
   StockIntakeRoute: typeof StockIntakeRoute
+  TeamChatRoute: typeof TeamChatRoute
+  WhatsappRoute: typeof WhatsappRoute
   ApiXChatRoute: typeof ApiXChatRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsNewRoute: typeof DeliveryReceiptsNewRoute
@@ -687,6 +713,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/whatsapp': {
+      id: '/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof WhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team-chat': {
+      id: '/team-chat'
+      path: '/team-chat'
+      fullPath: '/team-chat'
+      preLoaderRoute: typeof TeamChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stock-intake': {
       id: '/stock-intake'
       path: '/stock-intake'
@@ -1072,6 +1112,8 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
   StockIntakeRoute: StockIntakeRoute,
+  TeamChatRoute: TeamChatRoute,
+  WhatsappRoute: WhatsappRoute,
   ApiXChatRoute: ApiXChatRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsNewRoute: DeliveryReceiptsNewRoute,
