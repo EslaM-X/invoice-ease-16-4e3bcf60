@@ -445,9 +445,9 @@ function ProductCard({
   const copyQR = async () => {
     try {
       await navigator.clipboard.writeText(qrValue);
-      toast.success("تم نسخ الـ QR");
+      toast.success(tt("تم نسخ الـ QR", "QR copied"));
     } catch {
-      toast.error("فشل النسخ");
+      toast.error(tt("فشل النسخ", "Copy failed"));
     }
   };
 
