@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Plus, Users, MessageSquare } from "lucide-react";
+import { Send, Plus, Users, MessageSquare, ArrowLeft, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listChatRooms, listChatMessages, sendChatMessage, markRoomRead,
