@@ -183,23 +183,26 @@ function Products() {
       collection: form.collection ? form.collection.toUpperCase() : null,
     };
     if (editing) {
-      const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
+      const { data: updated, error } = await supabase.from("products").update(payload).eq("id", editing.id).select("*").single();
       if (error) return toast.error(error.message);
+      // In-place patch — no full reload, no scroll jump
+      if (updated) setList((prev) => prev.map((p) => (p.id === editing.id ? (updated as Product) : p)));
     } else {
-      const { data, error } = await supabase.from("products").insert({ ...payload, user_id: user.id }).select("id").single();
+      const { data, error } = await supabase.from("products").insert({ ...payload, user_id: user.id }).select("*").single();
       if (error) return toast.error(error.message);
-      await supabase.from("products").update({ qr_code: data.id }).eq("id", data.id);
+      const { data: withQr } = await supabase.from("products").update({ qr_code: data.id }).eq("id", data.id).select("*").single();
+      const inserted = (withQr ?? data) as Product;
+      setList((prev) => [inserted, ...prev]);
     }
     toast.success(t("product_saved"));
     setOpen(false);
-    load();
   };
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success(t("product_deleted"));
-    load();
+    setList((prev) => prev.filter((p) => p.id !== id));
   };
 
   const showQr = async (p: Product) => {
@@ -247,10 +250,13 @@ function Products() {
       return toast.error(msg);
     }
     toast.success(t("stock_adjusted"));
+    const targetId = adjustFor.id;
     setAdjustFor(null);
     setAdjustAmt("0");
     setAdjustReason("");
-    load();
+    // In-place patch — fetch only the affected row
+    const { data: fresh } = await supabase.from("products").select("*").eq("id", targetId).single();
+    if (fresh) setList((prev) => prev.map((p) => (p.id === targetId ? (fresh as Product) : p)));
   };
 
   const runBulkAdjust = async () => {
