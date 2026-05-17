@@ -2480,6 +2480,22 @@ export type Database = {
         Returns: number
       }
       get_my_role: { Args: never; Returns: string }
+      get_public_price_list: {
+        Args: never
+        Returns: {
+          collection: string
+          color: string
+          id: string
+          image_url: string
+          low_stock_threshold: number
+          name: string
+          price: number
+          qr_code: string
+          serial_number: string
+          stock_quantity: number
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
