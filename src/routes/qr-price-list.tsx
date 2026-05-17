@@ -395,8 +395,17 @@ function PriceListPage() {
 }
 
 function ProductCard({
-  item, index, canEdit, onEdit,
-}: { item: Product; index: number; canEdit: boolean; onEdit: () => void }) {
+  item, index, canEdit, eager, canAddToInvoice, inCart, onEdit, onAdd,
+}: {
+  item: Product;
+  index: number;
+  canEdit: boolean;
+  eager?: boolean;
+  canAddToInvoice?: boolean;
+  inCart?: number;
+  onEdit: () => void;
+  onAdd?: () => void;
+}) {
   const qrRef = useRef<HTMLCanvasElement | null>(null);
   const qrValue = useMemo(() => encodeProductQR(item.qr_code || item.id), [item.qr_code, item.id]);
 
@@ -433,13 +442,16 @@ function ProductCard({
         </div>
       )}
 
-      <div className="relative flex h-48 items-center justify-center overflow-hidden bg-[oklch(0.06_0.003_60)]">
+      <div className="relative flex h-48 items-center justify-center overflow-hidden bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         {item.image_url ? (
           <img
             src={item.image_url}
             alt={item.name}
             className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            // @ts-expect-error: standard browser attr not yet typed
+            fetchpriority={eager ? "high" : "auto"}
           />
         ) : (
           <div className="flex flex-col items-center text-white/20">
@@ -456,28 +468,19 @@ function ProductCard({
         )}
       </div>
 
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-4" dir="rtl">
         <div>
-          <h3 className="line-clamp-2 text-sm font-medium text-white">{item.name}</h3>
+          <h3 className="line-clamp-2 text-sm font-medium text-white" dir="auto">{item.name}</h3>
           {item.serial_number && (
-            <div className="mt-1 font-mono text-[11px] text-white/40">{item.serial_number}</div>
+            <div className="mt-1 font-mono text-[11px] text-white/40" dir="ltr">{item.serial_number}</div>
           )}
           {item.color && (
-            <div className="mt-1 text-[11px] text-white/60">{item.color}</div>
-          )}
-          {typeof item.stock_quantity === "number" && (
-            <div className={`mt-1 text-[10px] uppercase tracking-wider ${
-              item.stock_quantity <= 0 ? "text-rose-300/80"
-              : item.stock_quantity <= (item.low_stock_threshold ?? 5) ? "text-amber-300/80"
-              : "text-emerald-300/70"
-            }`}>
-              Stock: {item.stock_quantity}
-            </div>
+            <div className="mt-1 text-[11px] text-white/60" dir="auto">{item.color}</div>
           )}
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-white/40">Price</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/40" dir="ltr">Price</div>
           <div className="text-2xl font-light text-[oklch(0.92_0.08_82)]">
             {fmtMoney(Number(item.price) || 0, "EGP", "ar")}
           </div>
@@ -495,20 +498,31 @@ function ProductCard({
           </div>
         </div>
 
+        {canAddToInvoice && onAdd && (
+          <Button
+            size="sm"
+            onClick={onAdd}
+            className="w-full bg-[oklch(0.78_0.11_82)] text-xs font-semibold text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+          >
+            <Plus className="ml-1 h-3 w-3" />
+            {inCart && inCart > 0 ? `في السلة (${inCart}) · أضف` : "أضف للفاتورة"}
+          </Button>
+        )}
+
         <div className="flex gap-2 pt-1">
           <Button
             size="sm" variant="outline"
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={copyQR}
           >
-            <Copy className="mr-1 h-3 w-3" /> نسخ
+            <Copy className="ml-1 h-3 w-3" /> نسخ
           </Button>
           <Button
             size="sm" variant="outline"
             className="flex-1 border-white/10 bg-white/5 text-xs text-white hover:bg-white/10"
             onClick={downloadQR}
           >
-            <Download className="mr-1 h-3 w-3" /> QR
+            <Download className="ml-1 h-3 w-3" /> QR
           </Button>
           {canEdit && (
             <Button
@@ -522,6 +536,88 @@ function ProductCard({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// --- Cart dialog for signed-in users -------------------------------------
+function CartDialog({
+  items, cart, onClose, onChange, onCheckout,
+}: {
+  items: Product[];
+  cart: Record<string, number>;
+  onClose: () => void;
+  onChange: (next: Record<string, number>) => void;
+  onCheckout: () => void;
+}) {
+  const rows = Object.entries(cart)
+    .map(([pid, qty]) => ({ p: items.find((x) => x.id === pid), qty }))
+    .filter((r) => r.p && r.qty > 0) as { p: Product; qty: number }[];
+  const total = rows.reduce((s, r) => s + Number(r.p.price ?? 0) * r.qty, 0);
+
+  const setQty = (pid: string, qty: number) => {
+    const next = { ...cart };
+    if (qty <= 0) delete next[pid]; else next[pid] = qty;
+    onChange(next);
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent dir="rtl" className="max-w-lg bg-[oklch(0.12_0.005_60)] text-white border-white/10">
+        <DialogHeader>
+          <DialogTitle className="text-[oklch(0.92_0.08_82)]">السلة ({rows.length})</DialogTitle>
+          <DialogDescription className="text-white/60">
+            راجع المنتجات ثم اضغط "إنشاء فاتورة" لإكمالها في حسابك.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto">
+          {rows.length === 0 ? (
+            <div className="py-10 text-center text-sm text-white/40">السلة فارغة</div>
+          ) : rows.map(({ p, qty }) => (
+            <div key={p.id} className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.03] p-2.5">
+              <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-white/5">
+                {p.image_url ? (
+                  <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" loading="lazy" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-white/20"><ImagePlus className="h-5 w-5" /></div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm" dir="auto">{p.name}</div>
+                <div className="text-[11px] text-white/50" dir="ltr">{p.serial_number ?? ""}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="outline" className="h-7 w-7 border-white/10 bg-white/5" onClick={() => setQty(p.id, qty - 1)}>
+                  <Minus className="h-3 w-3" />
+                </Button>
+                <span className="w-8 text-center text-sm">{qty}</span>
+                <Button size="icon" variant="outline" className="h-7 w-7 border-white/10 bg-white/5" onClick={() => setQty(p.id, qty + 1)}>
+                  <Plus className="h-3 w-3" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-300 hover:bg-rose-500/10" onClick={() => setQty(p.id, 0)}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="w-20 text-end text-sm text-[oklch(0.92_0.08_82)]">
+                {fmtMoney(Number(p.price ?? 0) * qty, "EGP", "ar")}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between border-t border-white/10 pt-3 text-sm">
+          <span className="text-white/60">الإجمالي</span>
+          <span className="text-lg font-semibold text-[oklch(0.92_0.08_82)]">{fmtMoney(total, "EGP", "ar")}</span>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="border-white/15 bg-transparent text-white">
+            <X className="ml-1 h-3 w-3" /> إغلاق
+          </Button>
+          <Button disabled={rows.length === 0} onClick={onCheckout}
+            className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]">
+            <FileText className="ml-1 h-4 w-4" /> إنشاء فاتورة
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
