@@ -553,15 +553,6 @@ function ProductCard({
           >
             <Download className="ml-1 h-3 w-3" /> QR
           </Button>
-          {canEdit && (
-            <Button
-              size="sm"
-              className="bg-[oklch(0.78_0.11_82)] text-xs text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
-              onClick={onEdit}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-          )}
         </div>
       </div>
     </motion.div>
