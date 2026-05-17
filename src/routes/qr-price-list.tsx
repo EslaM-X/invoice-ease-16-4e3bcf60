@@ -588,7 +588,7 @@ function AddDialog({
         updated_by_email: userEmail,
       };
       const { data, error } = await supabase
-        .from("products").insert(insertRow).select("id").single();
+        .from("products").insert(insertRow as any).select("id").single();
       if (error) throw error;
       // Mirror the products page: set qr_code = id for stable QR.
       await supabase.from("products").update({ qr_code: data.id }).eq("id", data.id);
