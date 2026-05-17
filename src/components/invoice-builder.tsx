@@ -117,14 +117,28 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     setScanning(true);
   };
 
+  // In-transit map: product_id -> total qty across open POs (ordered/shipped/in_warehouse)
+  const [inTransitQty, setInTransitQty] = useState<Record<string, number>>({});
+
   // Load customers/products (RLS handles company-wide visibility)
   const loadLists = async () => {
-    const [{ data: c }, { data: p }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: poItems }] = await Promise.all([
       supabase.from("customers").select("*").order("name"),
       supabase.from("products").select("*").order("name"),
+      supabase
+        .from("purchase_order_items")
+        .select("product_id, quantity, received_qty, purchase_orders!inner(status)")
+        .in("purchase_orders.status", ["ordered", "shipped", "in_warehouse"]),
     ]);
     setCustomers((c ?? []) as Customer[]);
     setProducts((p ?? []) as Product[]);
+    const map: Record<string, number> = {};
+    for (const it of (poItems ?? []) as any[]) {
+      const remaining = Math.max(0, Number(it.quantity || 0) - Number(it.received_qty || 0));
+      if (!it.product_id || remaining <= 0) continue;
+      map[it.product_id] = (map[it.product_id] ?? 0) + remaining;
+    }
+    setInTransitQty(map);
   };
   useEffect(() => {
     if (!user) return;
@@ -132,6 +146,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   }, [user]);
   useRealtimeTable("customers", () => { loadLists(); });
   useRealtimeTable("products", () => { loadLists(); });
+  useRealtimeTable("purchase_orders", () => { loadLists(); });
+  useRealtimeTable("purchase_order_items", () => { loadLists(); });
 
   // Hydrate draft only in new mode
   useEffect(() => {
@@ -219,7 +235,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  /** Returns how many MORE units of this product can still be added. */
+  /** Returns how many MORE units of this product can still be added (stock + in-transit). */
   const remainingFor = (productId: string): number => {
     const p = products.find((x) => x.id === productId);
     if (!p) return 0;
@@ -227,7 +243,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .filter((it) => it.product_id === productId)
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(productId) ?? 0;
-    return Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
+    const transit = inTransitQty[productId] ?? 0;
+    return Math.max(0, (p.stock_quantity ?? 0) + transit + baseline - allocatedNow);
   };
 
   /** Try to add 1 unit of a product. Returns true if added, false if blocked by stock. */
@@ -239,6 +256,15 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         : t("insufficient_stock_remaining").replace("{n}", String(remaining));
       toast.error(`${p.name} — ${msg}`);
       return false;
+    }
+    // Notify when this unit is coming from the in-transit pool (stock fully consumed).
+    const allocatedNow = items
+      .filter((it) => it.product_id === p.id)
+      .reduce((s, it) => s + (it.quantity || 0), 0);
+    const baseline = initialQtyByProduct.get(p.id) ?? 0;
+    const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
+    if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
+      toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
     }
     let newQty = 1;
     setItems((prev) => {
@@ -1247,7 +1273,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             ) : (
               <ul className="divide-y">
                 {filteredProducts.map((p) => {
+                  const transit = inTransitQty[p.id] ?? 0;
                   const out = p.stock_quantity <= 0;
+                  const blocked = out && transit <= 0;
                   const low = !out && p.stock_quantity <= p.low_stock_threshold;
                   const inCartQty = items
                     .filter((it) => it.product_id === p.id)
@@ -1258,7 +1286,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                       <button
                         type="button"
                         onClick={() => addProduct(p)}
-                        disabled={out}
+                        disabled={blocked}
                         className={`relative flex w-full items-center gap-3 px-2.5 py-2 text-start transition disabled:opacity-50 disabled:cursor-not-allowed ${
                           justAdded
                             ? "bg-emerald-500/15 ring-1 ring-emerald-500/40"
@@ -1302,11 +1330,17 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                               </span>
                             )}
                             <span>{t("stock")}: <span className={out ? "text-destructive font-bold" : low ? "text-warning-foreground font-bold" : ""}>{p.stock_quantity}</span></span>
+                            {transit > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-300">
+                                🚚 {lang === "ar" ? "في الطريق" : "in transit"}: {transit}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex-shrink-0 text-end">
                           <div className="font-semibold tabular-nums text-sm">{fmtMoney(Number(p.price), "EGP", lang)}</div>
-                          {out && <span className="text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
+                          {blocked && <span className="text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
+                          {out && !blocked && <span className="text-[10px] font-bold text-sky-600 dark:text-sky-300">{lang === "ar" ? "من الشحنة" : "FROM SHIPMENT"}</span>}
                         </div>
                       </button>
                     </li>
