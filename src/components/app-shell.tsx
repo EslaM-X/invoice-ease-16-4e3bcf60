@@ -158,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {(isPurchasing || isCFO) && (
+        {isExecutive && (isPurchasing || isCFO) && (
           <GroupNav
             label={lang === "ar" ? "المشتريات والربح" : "Procurement & Profit"}
             icon={ShoppingCart}
