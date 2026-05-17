@@ -379,7 +379,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <CloudUpload className="h-4 w-4" /> {t("pending_operations")}
           </Link>
-          {isAdmin && (
+          {isAdmin && isExecutive && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}
