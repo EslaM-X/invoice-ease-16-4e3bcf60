@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AvatarUpload } from "@/components/avatar-upload";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { NotificationSettings } from "@/components/notification-settings";
+import { ChatProfileSettings } from "@/components/chat-profile-settings";
 import { XCalendar } from "@/components/x-calendar";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
@@ -93,6 +94,8 @@ function SettingsPage() {
         <h3 className="mb-4 font-semibold">{t("profile_photo")}</h3>
         <AvatarUpload />
       </div>
+
+      <ChatProfileSettings />
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <h3 className="mb-4 font-semibold">{t("logo")}</h3>

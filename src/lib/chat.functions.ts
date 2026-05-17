@@ -20,8 +20,27 @@ export const listChatRooms = createServerFn({ method: "GET" })
       .from("chat_rooms")
       .select("*")
       .in("id", roomIds)
-      .order("last_message_at", { ascending: false });
+      .order("last_message_at", { ascending: false, nullsFirst: false });
     if (error) throw new Error(error.message);
+
+    // Pull all members of these rooms (so we can label direct rooms with the
+    // other party's name + avatar, and show group member previews).
+    const { data: allMembers } = await supabase
+      .from("chat_room_members")
+      .select("room_id, user_id, user_email")
+      .in("room_id", roomIds);
+
+    const otherUserIds = new Set<string>();
+    for (const m of allMembers ?? []) {
+      if (m.user_id !== userId) otherUserIds.add(m.user_id);
+    }
+    const { data: profiles } = otherUserIds.size
+      ? await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
+          .in("user_id", Array.from(otherUserIds))
+      : { data: [] as any[] };
+    const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
 
     // Unread counts
     const lastRead: Record<string, string> = {};
@@ -33,9 +52,42 @@ export const listChatRooms = createServerFn({ method: "GET" })
           .from("chat_messages")
           .select("id", { count: "exact", head: true })
           .eq("room_id", r.id)
+          .is("deleted_at", null)
           .gt("created_at", lastRead[r.id] ?? "1970-01-01")
           .neq("sender_id", userId);
-        return { ...r, unread_count: count ?? 0 };
+
+        const roomMembers = (allMembers ?? [])
+          .filter((m: any) => m.room_id === r.id)
+          .map((m: any) => {
+            const p = pMap.get(m.user_id);
+            return {
+              user_id: m.user_id,
+              email: m.user_email ?? p?.email ?? null,
+              display_name: p?.display_name ?? m.user_email ?? "Member",
+              avatar_url: p?.avatar_url ?? null,
+              job_title: p?.job_title ?? null,
+              job_title_color: p?.job_title_color ?? null,
+              is_me: m.user_id === userId,
+            };
+          });
+
+        let display_name: string | null = r.name ?? null;
+        let avatar_url: string | null = null;
+        if (r.type === "direct" && !display_name) {
+          const other = roomMembers.find((m: any) => !m.is_me);
+          if (other) {
+            display_name = other.display_name;
+            avatar_url = other.avatar_url;
+          }
+        }
+
+        return {
+          ...r,
+          unread_count: count ?? 0,
+          members: roomMembers,
+          display_name,
+          avatar_url,
+        };
       })
     );
     return { rooms: withUnread };
@@ -49,11 +101,11 @@ export const listCompanyMembers = createServerFn({ method: "GET" })
       .from("company_members")
       .select("user_id, email");
     if (error) throw new Error(error.message);
-    // Hydrate profiles for display_name + avatar
+    // Hydrate profiles for display_name + avatar + job_title
     const ids = (data ?? []).map((m: any) => m.user_id);
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, avatar_url, email")
+      .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
       .in("user_id", ids);
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
     return {
@@ -62,6 +114,8 @@ export const listCompanyMembers = createServerFn({ method: "GET" })
         email: m.email,
         display_name: pMap.get(m.user_id)?.display_name ?? m.email,
         avatar_url: pMap.get(m.user_id)?.avatar_url ?? null,
+        job_title: pMap.get(m.user_id)?.job_title ?? null,
+        job_title_color: pMap.get(m.user_id)?.job_title_color ?? null,
       })),
     };
   });
@@ -146,9 +200,69 @@ export const listChatMessages = createServerFn({ method: "GET" })
       .eq("room_id", data.room_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(data.limit ?? 100);
+      .limit(data.limit ?? 200);
     if (error) throw new Error(error.message);
-    return { messages: msgs ?? [] };
+
+    // Hydrate sender profile (display_name, avatar, job_title, color)
+    const senderIds = Array.from(new Set((msgs ?? []).map((m: any) => m.sender_id)));
+    const { data: profiles } = senderIds.length
+      ? await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, job_title, job_title_color")
+          .in("user_id", senderIds)
+      : { data: [] as any[] };
+    const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+    const enriched = (msgs ?? []).map((m: any) => ({
+      ...m,
+      sender_display_name: pMap.get(m.sender_id)?.display_name ?? m.sender_email ?? "Member",
+      sender_avatar_url: pMap.get(m.sender_id)?.avatar_url ?? null,
+      sender_job_title: pMap.get(m.sender_id)?.job_title ?? null,
+      sender_job_title_color: pMap.get(m.sender_id)?.job_title_color ?? null,
+    }));
+    return { messages: enriched };
+  });
+
+// Update current user's chat display profile (job title + color).
+export const updateChatProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        job_title: z.string().trim().max(60).optional().nullable(),
+        job_title_color: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional()
+          .nullable(),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        job_title: data.job_title?.trim() || null,
+        job_title_color: data.job_title_color || null,
+      })
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getMyChatProfile = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("profiles")
+      .select("job_title, job_title_color")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return {
+      job_title: data?.job_title ?? null,
+      job_title_color: data?.job_title_color ?? null,
+    };
   });
 
 export const sendChatMessage = createServerFn({ method: "POST" })

@@ -20,6 +20,8 @@ import {
   listCompanyMembers, createChatRoom,
 } from "@/lib/chat.functions";
 import { toast } from "sonner";
+import { VoiceRecorder } from "@/components/chat/voice-recorder";
+import { VoicePlayer } from "@/components/chat/voice-player";
 
 export const Route = createFileRoute("/team-chat")({
   beforeLoad: async () => {
@@ -31,7 +33,7 @@ export const Route = createFileRoute("/team-chat")({
 
 function TeamChatPage() {
   const { user } = useAuth();
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
   const rtl = lang === "ar";
   const qc = useQueryClient();
   const fetchRooms = useServerFn(listChatRooms);
@@ -45,6 +47,7 @@ function TeamChatPage() {
   const [composer, setComposer] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
 
   const roomsQ = useQuery({
     queryKey: ["chat-rooms"],
@@ -65,7 +68,7 @@ function TeamChatPage() {
     enabled: newOpen,
   });
 
-  // Realtime subscription
+  // Realtime per room
   useEffect(() => {
     if (!activeRoomId) return;
     const ch = supabase
@@ -79,25 +82,23 @@ function TeamChatPage() {
         }
       )
       .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return () => { supabase.removeChannel(ch); };
   }, [activeRoomId, qc]);
 
-  // Global realtime to refresh rooms list on any new message
+  // Global rooms refresh (new rooms / new direct memberships)
   useEffect(() => {
     const ch = supabase
       .channel("chat-rooms-global")
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_rooms" }, () => {
         qc.invalidateQueries({ queryKey: ["chat-rooms"] });
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_room_members" }, () => {
+        qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      })
       .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  // Mark as read when opening
   useEffect(() => {
     if (activeRoomId) {
       markRead({ data: { room_id: activeRoomId } }).then(() =>
@@ -106,7 +107,6 @@ function TeamChatPage() {
     }
   }, [activeRoomId, markRead, qc]);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -115,6 +115,29 @@ function TeamChatPage() {
 
   const rooms = roomsQ.data?.rooms ?? [];
   const activeRoom = useMemo(() => rooms.find((r: any) => r.id === activeRoomId), [rooms, activeRoomId]);
+
+  // Sign voice-note URLs for visible messages
+  useEffect(() => {
+    const msgs = messagesQ.data?.messages ?? [];
+    const missing = msgs.filter(
+      (m: any) => m.voice_note_url && !voiceUrls[m.voice_note_url]
+    );
+    if (missing.length === 0) return;
+    (async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(
+        missing.map(async (m: any) => {
+          const { data } = await supabase.storage
+            .from("chat-voice-notes")
+            .createSignedUrl(m.voice_note_url, 3600);
+          if (data?.signedUrl) updates[m.voice_note_url] = data.signedUrl;
+        })
+      );
+      if (Object.keys(updates).length) {
+        setVoiceUrls((prev) => ({ ...prev, ...updates }));
+      }
+    })();
+  }, [messagesQ.data?.messages, voiceUrls]);
 
   const onSend = async () => {
     const body = composer.trim();
@@ -128,6 +151,26 @@ function TeamChatPage() {
       toast.error(err.message ?? "Failed to send");
       setComposer(body);
     }
+  };
+
+  const onSendVoice = async (blob: Blob, durationSeconds: number) => {
+    if (!activeRoomId) return;
+    const ext = blob.type.includes("mp4") ? "m4a" : "webm";
+    const path = `${activeRoomId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("chat-voice-notes")
+      .upload(path, blob, { contentType: blob.type, upsert: false });
+    if (upErr) throw new Error(upErr.message);
+    await sendMessage({
+      data: {
+        room_id: activeRoomId,
+        message_type: "voice",
+        voice_note_url: path,
+        voice_duration_seconds: Math.max(1, Math.round(durationSeconds)),
+      },
+    });
+    qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+    qc.invalidateQueries({ queryKey: ["chat-rooms"] });
   };
 
   return (
@@ -164,32 +207,36 @@ function TeamChatPage() {
                 {rtl ? "مفيش محادثات لسه. اعمل واحدة جديدة." : "No conversations yet. Start one."}
               </div>
             )}
-            {rooms.map((r: any) => (
-              <button
-                key={r.id}
-                onClick={() => setActiveRoomId(r.id)}
-                className={`w-full text-start p-3 flex items-center gap-3 hover:bg-accent/50 border-b transition ${
-                  activeRoomId === r.id ? "bg-accent" : ""
-                }`}
-              >
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback>{(r.name ?? "G").charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium truncate">
-                      {r.name ?? (r.type === "direct" ? (rtl ? "محادثة" : "Direct") : (rtl ? "جروب" : "Group"))}
-                    </span>
-                    {r.unread_count > 0 && (
-                      <Badge variant="default" className="h-5 px-1.5 text-xs">{r.unread_count}</Badge>
-                    )}
+            {rooms.map((r: any) => {
+              const label =
+                r.display_name ??
+                (r.type === "direct" ? (rtl ? "محادثة" : "Direct") : (rtl ? "جروب" : "Group"));
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setActiveRoomId(r.id)}
+                  className={`w-full text-start p-3 flex items-center gap-3 hover:bg-accent/50 border-b transition ${
+                    activeRoomId === r.id ? "bg-accent" : ""
+                  }`}
+                >
+                  <Avatar className="h-10 w-10">
+                    {r.avatar_url && <AvatarImage src={r.avatar_url} />}
+                    <AvatarFallback>{label.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium truncate">{label}</span>
+                      {r.unread_count > 0 && (
+                        <Badge variant="default" className="h-5 px-1.5 text-xs">{r.unread_count}</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {r.last_message_preview ?? (rtl ? "ابدأ المحادثة" : "Start chatting")}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {r.last_message_preview ?? (rtl ? "ابدأ المحادثة" : "Start chatting")}
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </ScrollArea>
         </div>
 
@@ -199,31 +246,78 @@ function TeamChatPage() {
             <>
               <div className="p-3 border-b flex items-center gap-3">
                 <Avatar className="h-9 w-9">
-                  <AvatarFallback>{(activeRoom.name ?? "G").charAt(0).toUpperCase()}</AvatarFallback>
+                  {activeRoom.avatar_url && <AvatarImage src={activeRoom.avatar_url} />}
+                  <AvatarFallback>
+                    {(activeRoom.display_name ?? "G").charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
-                <div>
-                  <div className="font-semibold">
-                    {activeRoom.name ?? (activeRoom.type === "direct" ? (rtl ? "محادثة مباشرة" : "Direct") : (rtl ? "جروب" : "Group"))}
+                <div className="min-w-0">
+                  <div className="font-semibold truncate">
+                    {activeRoom.display_name ??
+                      (activeRoom.type === "direct"
+                        ? (rtl ? "محادثة مباشرة" : "Direct")
+                        : (rtl ? "جروب" : "Group"))}
                   </div>
-                  <div className="text-xs text-muted-foreground capitalize">{activeRoom.type}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {activeRoom.type === "group" && activeRoom.members
+                      ? `${activeRoom.members.length} ${rtl ? "عضو" : "members"}`
+                      : activeRoom.type}
+                  </div>
                 </div>
               </div>
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/20">
+              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
                 {(messagesQ.data?.messages ?? []).map((m: any) => {
                   const mine = m.sender_id === user?.id;
+                  const isGroup = activeRoom.type === "group";
+                  const showHeader = !mine; // always show sender info for incoming
                   return (
-                    <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div key={m.id} className={`flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                      {!mine && (
+                        <Avatar className="h-8 w-8 mt-1 shrink-0">
+                          {m.sender_avatar_url && <AvatarImage src={m.sender_avatar_url} />}
+                          <AvatarFallback className="text-[10px]">
+                            {(m.sender_display_name ?? "?").charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div
-                        className={`max-w-[70%] px-3 py-2 rounded-2xl text-sm ${
+                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
                           mine
                             ? "bg-primary text-primary-foreground rounded-ee-sm"
                             : "bg-card border rounded-es-sm"
                         }`}
                       >
-                        {!mine && (
-                          <div className="text-[10px] opacity-70 mb-0.5">{m.sender_email}</div>
+                        {showHeader && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium truncate">
+                              {m.sender_display_name ?? m.sender_email}
+                            </span>
+                            {(isGroup || m.sender_job_title) && m.sender_job_title && (
+                              <span
+                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: (m.sender_job_title_color ?? "#64748b") + "22",
+                                  color: m.sender_job_title_color ?? "#64748b",
+                                }}
+                              >
+                                {m.sender_job_title}
+                              </span>
+                            )}
+                          </div>
                         )}
-                        <div className="whitespace-pre-wrap break-words">{m.body}</div>
+                        {m.message_type === "voice" && m.voice_note_url ? (
+                          voiceUrls[m.voice_note_url] ? (
+                            <VoicePlayer
+                              url={voiceUrls[m.voice_note_url]}
+                              durationSeconds={m.voice_duration_seconds}
+                              tone={mine ? "mine" : "neutral"}
+                            />
+                          ) : (
+                            <div className="text-xs opacity-70">{rtl ? "جاري تحميل الصوت..." : "Loading audio..."}</div>
+                          )
+                        ) : (
+                          <div className="whitespace-pre-wrap break-words">{m.body}</div>
+                        )}
                         <div className="text-[10px] opacity-60 mt-1 text-end">
                           {new Date(m.created_at).toLocaleTimeString(rtl ? "ar-EG" : undefined, {
                             hour: "2-digit", minute: "2-digit",
@@ -239,21 +333,40 @@ function TeamChatPage() {
                   </div>
                 )}
               </div>
-              <div className="p-3 border-t flex gap-2 items-end">
-                <Input
-                  value={composer}
-                  onChange={(e) => setComposer(e.target.value)}
-                  placeholder={rtl ? "اكتب رسالة..." : "Type a message..."}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      onSend();
-                    }
-                  }}
-                />
-                <Button onClick={onSend} disabled={!composer.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="p-3 border-t flex gap-2 items-center">
+                {composer.trim() ? (
+                  <>
+                    <Input
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                      placeholder={rtl ? "اكتب رسالة..." : "Type a message..."}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          onSend();
+                        }
+                      }}
+                    />
+                    <Button onClick={onSend}>
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                      placeholder={rtl ? "اكتب رسالة أو سجل صوت..." : "Type a message or record..."}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          onSend();
+                        }
+                      }}
+                    />
+                    <VoiceRecorder onSend={onSendVoice} rtl={rtl} />
+                  </>
+                )}
               </div>
             </>
           ) : (
@@ -337,7 +450,20 @@ function NewChatDialog({
                   <AvatarFallback>{(m.display_name ?? m.email ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{m.display_name ?? m.email}</div>
+                  <div className="text-sm font-medium truncate flex items-center gap-2">
+                    {m.display_name ?? m.email}
+                    {m.job_title && (
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{
+                          backgroundColor: (m.job_title_color ?? "#64748b") + "22",
+                          color: m.job_title_color ?? "#64748b",
+                        }}
+                      >
+                        {m.job_title}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground truncate">{m.email}</div>
                 </div>
                 {selected.includes(m.user_id) && <Badge>✓</Badge>}
