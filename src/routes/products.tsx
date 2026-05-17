@@ -62,7 +62,11 @@ function Products() {
   const load = async () => {
     if (!user) return;
     const { data, fromCache } = await cachedListFetch<Product>("products", async () => {
-      const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(0, 9999); // lift the 1000-row default cap so search never misses items
       return (data ?? []) as Product[];
     });
     setList(data);
