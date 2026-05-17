@@ -400,15 +400,31 @@ function PriceListPage() {
                   <WifiOff className="h-3 w-3" /> {tt("غير متصل · يعمل من الكاش", "Offline · using cache")}
                 </span>
               ) : <span />}
-              {isAdmin && (
+              <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => setAddOpen(true)}
-                  className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                  variant="outline"
+                  onClick={exportPdf}
+                  disabled={exporting || filtered.length === 0}
+                  className="border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] text-[oklch(0.92_0.08_82)] hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
                 >
-                  <Plus className="mr-1 h-3 w-3" /> {tt("إضافة منتج", "Add product")}
+                  {exporting ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <FileDown className="mr-1 h-3 w-3" />
+                  )}
+                  {tt("تنزيل PDF", "Download PDF")}
                 </Button>
-              )}
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    onClick={() => setAddOpen(true)}
+                    className="bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+                  >
+                    <Plus className="mr-1 h-3 w-3" /> {tt("إضافة منتج", "Add product")}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
