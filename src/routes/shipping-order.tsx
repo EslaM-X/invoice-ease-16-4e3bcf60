@@ -238,7 +238,7 @@ function ShippingOrder() {
     XLSX.utils.book_append_sheet(wb, ws2, "Per Collection");
 
     XLSX.writeFile(wb, `shipping-order_${from}_to_${to}.xlsx`);
-    toast.success("تم تصدير Excel");
+    toast.success(tt("تم تصدير Excel", "Excel exported"));
   };
 
   const exportPdf = () => {
@@ -372,7 +372,7 @@ function ShippingOrder() {
     pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
 
     pdf.save(`shipping-order_${from}_to_${to}.pdf`);
-    toast.success("تم تصدير PDF");
+    toast.success(tt("تم تصدير PDF", "PDF exported"));
   };
 
   const exportCollectionsXlsx = () => {
@@ -395,7 +395,7 @@ function ShippingOrder() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Per Collection");
     XLSX.writeFile(wb, `collections-summary_${from}_to_${to}.xlsx`);
-    toast.success("تم تصدير Excel");
+    toast.success(tt("تم تصدير Excel", "Excel exported"));
   };
 
   const exportCollectionsPdf = () => {
@@ -460,7 +460,7 @@ function ShippingOrder() {
     pdf.setFontSize(13);
     pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
     pdf.save(`collections-summary_${from}_to_${to}.pdf`);
-    toast.success("تم تصدير PDF");
+    toast.success(tt("تم تصدير PDF", "PDF exported"));
   };
 
   const setRange = (days: number) => {
