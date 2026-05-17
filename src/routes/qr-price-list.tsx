@@ -133,20 +133,33 @@ function PriceListPage() {
     return Array.from(set).sort();
   }, [items]);
 
+  // Debounce search via React's deferred value — keeps typing snappy on weak devices.
+  const deferredSearch = useDeferredValue(search);
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const raw = deferredSearch.trim().toLowerCase();
+    const q = raw.replace(/\s+/g, " ");
+    const qSerial = raw.replace(/[\s_\-./]+/g, ""); // serial-friendly: ignore dashes/spaces
+    const hasQuery = q.length > 0;
     return items.filter((i) => {
-      if (collection !== "ALL" && (i.collection ?? "") !== collection) return false;
-      if (colorFilter !== "ALL" && (i.color ?? "") !== colorFilter) return false;
-      if (!q) return true;
+      // When the user is searching, surface matches across ALL collections/colors
+      // so a serial in another tab isn't accidentally hidden.
+      if (!hasQuery) {
+        if (collection !== "ALL" && (i.collection ?? "") !== collection) return false;
+        if (colorFilter !== "ALL" && (i.color ?? "") !== colorFilter) return false;
+        return true;
+      }
+      const name = i.name.toLowerCase();
+      const serialNorm = (i.serial_number ?? "").toLowerCase().replace(/[\s_\-./]+/g, "");
+      const color = (i.color ?? "").toLowerCase();
+      const coll = (i.collection ?? "").toLowerCase();
       return (
-        i.name.toLowerCase().includes(q) ||
-        (i.serial_number ?? "").toLowerCase().includes(q) ||
-        (i.color ?? "").toLowerCase().includes(q) ||
-        (i.collection ?? "").toLowerCase().includes(q)
+        name.includes(q) ||
+        serialNorm.includes(qSerial) ||
+        color.includes(q) ||
+        coll.includes(q)
       );
     });
-  }, [items, search, collection, colorFilter]);
+  }, [items, deferredSearch, collection, colorFilter]);
 
   // Only show counts AFTER hydration to avoid mismatch with empty SSR markup.
   const count = hydrated ? items.length : 0;
