@@ -586,7 +586,7 @@ function ShippingOrder() {
                 </tbody>
                 <tfoot className="bg-muted/40 font-bold">
                   <tr className="border-t-2">
-                    <td className="p-2" colSpan={2}>إجمالي اليوم</td>
+                    <td className="p-2" colSpan={2}>{tt("إجمالي اليوم", "Day total")}</td>
                     <td className="p-2 text-center text-primary">{g.totalSold}</td>
                     <td></td>
                   </tr>
