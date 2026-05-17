@@ -9,10 +9,12 @@ export function VoiceRecorder({
   onSend,
   rtl,
   disabled,
+  onActiveChange,
 }: {
   onSend: (blob: Blob, durationSeconds: number) => Promise<void>;
   rtl: boolean;
   disabled?: boolean;
+  onActiveChange?: (active: boolean) => void;
 }) {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -22,6 +24,10 @@ export function VoiceRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    onActiveChange?.(recording || !!blob);
+  }, [recording, blob, onActiveChange]);
 
   const cleanup = () => {
     if (timerRef.current) {
