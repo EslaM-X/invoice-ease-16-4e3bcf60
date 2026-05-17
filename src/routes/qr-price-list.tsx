@@ -70,12 +70,7 @@ function PriceListPage() {
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  // Send unauthenticated users to /auth — products are RLS-protected.
-  useEffect(() => {
-    if (user === null) {
-      navigate({ to: "/auth" });
-    }
-  }, [user, navigate]);
+  // Public page — no auth redirect. Anyone can browse; only admins can edit.
 
   // Hydrate from cache on mount (avoids SSR/CSR text mismatch on the counter).
   useEffect(() => {
@@ -84,21 +79,13 @@ function PriceListPage() {
     setHydrated(true);
   }, []);
 
-  // Live load + realtime + online state
+  // Live load + realtime + online state — works for anon and authenticated users.
   useEffect(() => {
-    if (!user) return;
     let mounted = true;
 
     const load = async () => {
       try {
-        const { data, error } = await supabase
-          .from("products")
-          // Explicit columns — cost_price / cost_price_usd intentionally NOT selected.
-          .select("id,user_id,name,serial_number,color,price,stock_quantity,low_stock_threshold,collection,image_url,qr_code,created_at,updated_at")
-          .order("collection", { ascending: true })
-          .order("name", { ascending: true })
-          .order("color", { ascending: true })
-          .limit(2000);
+        const { data, error } = await supabase.rpc("get_public_price_list");
         if (error) throw error;
         if (!mounted) return;
         const rows = (data ?? []) as Product[];
@@ -129,7 +116,7 @@ function PriceListPage() {
       window.removeEventListener("offline", onOff);
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, []);
 
   // Distinct colors for the color-filter pills.
   const colors = useMemo(() => {
