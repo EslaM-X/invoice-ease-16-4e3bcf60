@@ -595,7 +595,7 @@ const en: Dict = {
   received_label: "Received",
   remaining_label: "Remaining",
   // Invoice list filters
-  search_invoices_placeholder: "Search by invoice #, customer name or phone…",
+  search_invoices_placeholder: "Search by invoice #, customer, phone or serial number…",
   all_statuses: "All statuses",
   status_completed: "Completed",
   status_voided: "Voided",
