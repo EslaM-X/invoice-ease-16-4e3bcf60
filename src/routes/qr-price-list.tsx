@@ -415,7 +415,7 @@ function PriceListPage() {
 }
 
 function ProductCard({
-  item, index, canEdit, eager, canAddToInvoice, inCart, onEdit, onAdd,
+  item, index, canEdit, eager, canAddToInvoice, inCart, lang, onEdit, onAdd,
 }: {
   item: Product;
   index: number;
@@ -423,9 +423,12 @@ function ProductCard({
   eager?: boolean;
   canAddToInvoice?: boolean;
   inCart?: number;
+  lang: "ar" | "en";
   onEdit: () => void;
   onAdd?: () => void;
 }) {
+  const isAr = lang === "ar";
+  const tt = (a: string, e: string) => (isAr ? a : e);
   const qrRef = useRef<HTMLCanvasElement | null>(null);
   const qrValue = useMemo(() => encodeProductQR(item.qr_code || item.id), [item.qr_code, item.id]);
 
