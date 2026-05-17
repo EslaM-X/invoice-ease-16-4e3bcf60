@@ -157,12 +157,8 @@ export function DeliveryReceiptTracker({ receipt, isAr, onChanged }: { receipt: 
     setAudit((data ?? []) as any[]);
   };
   useEffect(() => { loadAudit(); }, [receipt.id]);
-  useRealtimeTable("delivery_receipt_audit_log" as any, (payload: any) => {
-    if (payload?.new?.receipt_id === receipt.id || payload?.old?.receipt_id === receipt.id) loadAudit();
-  });
-  useRealtimeTable("delivery_receipts" as any, (payload: any) => {
-    if (payload?.new?.id === receipt.id) onChanged?.();
-  });
+  useRealtimeTable("delivery_receipt_audit_log" as any, () => loadAudit());
+  useRealtimeTable("delivery_receipts" as any, () => onChanged?.());
 
   const status = receipt.status as DRStatus;
   const meta = STATUS_META[status] ?? STATUS_META.draft;
