@@ -528,7 +528,7 @@ function ProductCard({
             className="w-full bg-[oklch(0.78_0.11_82)] text-xs font-semibold text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
           >
             <Plus className="ml-1 h-3 w-3" />
-            {inCart && inCart > 0 ? `في السلة (${inCart}) · أضف` : "أضف للفاتورة"}
+            {inCart && inCart > 0 ? tt(`في السلة (${inCart}) · أضف`, `In cart (${inCart}) · Add`) : tt("أضف للفاتورة", "Add to invoice")}
           </Button>
         )}
 
