@@ -42,7 +42,11 @@ function InvoicesList() {
     if (!user) return;
     const cacheKey = `invoices:${from || "_"}:${to || "_"}`;
     const { data } = await cachedListFetch<any>(cacheKey, async () => {
-      let query = supabase.from("invoices").select("*").order("created_at", { ascending: false });
+      let query = supabase
+        .from("invoices")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(0, 9999); // lift the default 1000-row cap
       if (from) query = query.gte("created_at", from);
       if (to) query = query.lte("created_at", to + "T23:59:59");
       const { data } = await query;
@@ -58,11 +62,13 @@ function InvoicesList() {
         supabase
           .from("delivery_receipts" as any)
           .select("id, invoice_id, status")
-          .in("invoice_id", ids),
+          .in("invoice_id", ids)
+          .range(0, 19999),
         supabase
           .from("invoice_items")
           .select("invoice_id, quantity, serial_number")
-          .in("invoice_id", ids),
+          .in("invoice_id", ids)
+          .range(0, 49999), // serial search needs every line item
       ]);
       const counts: Record<string, number> = {};
       const drToInvoice: Record<string, string> = {};
