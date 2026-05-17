@@ -310,6 +310,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     return { message: msg };
   });
 
+export const deleteChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ message_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("chat_messages")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", data.message_id)
+      .eq("sender_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const markRoomRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ room_id: z.string().uuid() }).parse(d))

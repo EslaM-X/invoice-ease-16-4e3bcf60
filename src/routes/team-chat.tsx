@@ -13,11 +13,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Plus, Users, MessageSquare, ArrowLeft, ArrowRight } from "lucide-react";
+import { Send, Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listChatRooms, listChatMessages, sendChatMessage, markRoomRead,
-  listCompanyMembers, createChatRoom,
+  listCompanyMembers, createChatRoom, deleteChatMessage,
 } from "@/lib/chat.functions";
 import { toast } from "sonner";
 import { VoiceRecorder } from "@/components/chat/voice-recorder";
@@ -42,6 +42,7 @@ function TeamChatPage() {
   const markRead = useServerFn(markRoomRead);
   const fetchMembers = useServerFn(listCompanyMembers);
   const createRoom = useServerFn(createChatRoom);
+  const deleteMsg = useServerFn(deleteChatMessage);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [composer, setComposer] = useState("");
@@ -88,7 +89,7 @@ function TeamChatPage() {
       .channel(`chat-room-${activeRoomId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${activeRoomId}` },
+        { event: "*", schema: "public", table: "chat_messages", filter: `room_id=eq.${activeRoomId}` },
         () => {
           qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
           qc.invalidateQueries({ queryKey: ["chat-rooms"] });
@@ -306,7 +307,7 @@ function TeamChatPage() {
                     : (m.sender_display_name ?? m.sender_email ?? "?");
                   const avatarUrl = mine ? myProfile.avatar_url : m.sender_avatar_url;
                   return (
-                    <div key={m.id} className={`flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                    <div key={m.id} className={`group/msg flex gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                       {!mine && (
                         <Avatar className="h-8 w-8 mt-1 shrink-0 ring-1 ring-border">
                           {avatarUrl && <AvatarImage src={avatarUrl} />}
@@ -359,6 +360,27 @@ function TeamChatPage() {
                           })}
                         </div>
                       </div>
+                      {mine && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 self-center opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                          onClick={async () => {
+                            if (!confirm(rtl ? "حذف الرسالة؟" : "Delete message?")) return;
+                            try {
+                              await deleteMsg({ data: { message_id: m.id } });
+                              qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+                              qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+                            } catch (err: any) {
+                              toast.error(err?.message ?? "Failed");
+                            }
+                          }}
+                          aria-label={rtl ? "حذف" : "Delete"}
+                          title={rtl ? "حذف الرسالة" : "Delete message"}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {mine && (
                         <Avatar className="h-8 w-8 mt-1 shrink-0 ring-1 ring-primary/30">
                           {avatarUrl && <AvatarImage src={avatarUrl} />}
