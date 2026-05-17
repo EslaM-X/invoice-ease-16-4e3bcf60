@@ -21,6 +21,7 @@ import { useI18n } from "@/lib/i18n";
 import { encodeProductQR } from "@/lib/qr-codec";
 import { swatchStyle } from "@/lib/color-swatch";
 import { ProductImageUpload } from "@/components/product-image-upload";
+import { lovable } from "@/integrations/lovable";
 import type { Product } from "@/lib/data";
 import { COLLECTIONS as APP_COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
