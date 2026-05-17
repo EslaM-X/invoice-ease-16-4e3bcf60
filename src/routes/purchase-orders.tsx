@@ -21,10 +21,14 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components/po-tracker-dialog";
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/purchase-orders")({
   component: () => (
     <AppShell>
-      <PurchaseOrdersPage />
+      <ExecutiveGate>
+        <PurchaseOrdersPage />
+      </ExecutiveGate>
     </AppShell>
   ),
 });
