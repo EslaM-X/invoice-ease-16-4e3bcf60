@@ -23,6 +23,7 @@ import { cachedListFetch } from "@/lib/list-cache";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
+import { useIsExecutive } from "@/lib/use-executive";
 
 export const Route = createFileRoute("/products")({ component: () => <AppShell><Products /></AppShell> });
 
