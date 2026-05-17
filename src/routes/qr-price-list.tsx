@@ -244,14 +244,17 @@ function PriceListPage() {
                     key={name}
                     onClick={() => setColorFilter(name)}
                     title={name}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                       colorFilter === name
                         ? "bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)]"
                         : "border border-white/15 bg-white/5 text-white/70 hover:text-white"
                     }`}
                   >
-                    <span className="h-3.5 w-3.5 rounded-full" style={swatchStyle(name)} />
-                    {name}
+                    <span
+                      className="h-5 w-5 rounded-md ring-1 ring-black/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.25)]"
+                      style={swatchStyle(name)}
+                    />
+                    <span dir="auto">{name}</span>
                   </button>
                 ))}
               </div>
