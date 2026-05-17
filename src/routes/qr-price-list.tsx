@@ -59,6 +59,9 @@ function PriceListPage() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
   const navigate = useNavigate();
+  const { lang, setLang, dir } = useI18n();
+  const isAr = lang === "ar";
+  const tt = (ar: string, en: string) => (isAr ? ar : en);
 
   // CRITICAL: SSR-safe — start empty, hydrate cache after mount to avoid hydration mismatch.
   const [items, setItems] = useState<Product[]>([]);
