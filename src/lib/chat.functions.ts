@@ -20,8 +20,27 @@ export const listChatRooms = createServerFn({ method: "GET" })
       .from("chat_rooms")
       .select("*")
       .in("id", roomIds)
-      .order("last_message_at", { ascending: false });
+      .order("last_message_at", { ascending: false, nullsFirst: false });
     if (error) throw new Error(error.message);
+
+    // Pull all members of these rooms (so we can label direct rooms with the
+    // other party's name + avatar, and show group member previews).
+    const { data: allMembers } = await supabase
+      .from("chat_room_members")
+      .select("room_id, user_id, user_email")
+      .in("room_id", roomIds);
+
+    const otherUserIds = new Set<string>();
+    for (const m of allMembers ?? []) {
+      if (m.user_id !== userId) otherUserIds.add(m.user_id);
+    }
+    const { data: profiles } = otherUserIds.size
+      ? await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
+          .in("user_id", Array.from(otherUserIds))
+      : { data: [] as any[] };
+    const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
 
     // Unread counts
     const lastRead: Record<string, string> = {};
@@ -33,9 +52,42 @@ export const listChatRooms = createServerFn({ method: "GET" })
           .from("chat_messages")
           .select("id", { count: "exact", head: true })
           .eq("room_id", r.id)
+          .is("deleted_at", null)
           .gt("created_at", lastRead[r.id] ?? "1970-01-01")
           .neq("sender_id", userId);
-        return { ...r, unread_count: count ?? 0 };
+
+        const roomMembers = (allMembers ?? [])
+          .filter((m: any) => m.room_id === r.id)
+          .map((m: any) => {
+            const p = pMap.get(m.user_id);
+            return {
+              user_id: m.user_id,
+              email: m.user_email ?? p?.email ?? null,
+              display_name: p?.display_name ?? m.user_email ?? "Member",
+              avatar_url: p?.avatar_url ?? null,
+              job_title: p?.job_title ?? null,
+              job_title_color: p?.job_title_color ?? null,
+              is_me: m.user_id === userId,
+            };
+          });
+
+        let display_name: string | null = r.name ?? null;
+        let avatar_url: string | null = null;
+        if (r.type === "direct" && !display_name) {
+          const other = roomMembers.find((m: any) => !m.is_me);
+          if (other) {
+            display_name = other.display_name;
+            avatar_url = other.avatar_url;
+          }
+        }
+
+        return {
+          ...r,
+          unread_count: count ?? 0,
+          members: roomMembers,
+          display_name,
+          avatar_url,
+        };
       })
     );
     return { rooms: withUnread };
