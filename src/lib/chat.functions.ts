@@ -200,9 +200,69 @@ export const listChatMessages = createServerFn({ method: "GET" })
       .eq("room_id", data.room_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(data.limit ?? 100);
+      .limit(data.limit ?? 200);
     if (error) throw new Error(error.message);
-    return { messages: msgs ?? [] };
+
+    // Hydrate sender profile (display_name, avatar, job_title, color)
+    const senderIds = Array.from(new Set((msgs ?? []).map((m: any) => m.sender_id)));
+    const { data: profiles } = senderIds.length
+      ? await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, job_title, job_title_color")
+          .in("user_id", senderIds)
+      : { data: [] as any[] };
+    const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+    const enriched = (msgs ?? []).map((m: any) => ({
+      ...m,
+      sender_display_name: pMap.get(m.sender_id)?.display_name ?? m.sender_email ?? "Member",
+      sender_avatar_url: pMap.get(m.sender_id)?.avatar_url ?? null,
+      sender_job_title: pMap.get(m.sender_id)?.job_title ?? null,
+      sender_job_title_color: pMap.get(m.sender_id)?.job_title_color ?? null,
+    }));
+    return { messages: enriched };
+  });
+
+// Update current user's chat display profile (job title + color).
+export const updateChatProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        job_title: z.string().trim().max(60).optional().nullable(),
+        job_title_color: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional()
+          .nullable(),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        job_title: data.job_title?.trim() || null,
+        job_title_color: data.job_title_color || null,
+      })
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getMyChatProfile = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("profiles")
+      .select("job_title, job_title_color")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return {
+      job_title: data?.job_title ?? null,
+      job_title_color: data?.job_title_color ?? null,
+    };
   });
 
 export const sendChatMessage = createServerFn({ method: "POST" })
