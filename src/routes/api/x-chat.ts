@@ -218,61 +218,13 @@ export const Route = createFileRoute("/api/x-chat")({
             : "none recent"}`,
         ].join("\n");
 
-        // On-demand search: if the user's latest message looks like a lookup
-        // (e.g. "ابحث/find/serial/SN/invoice/فاتورة/رقم"), pre-fetch matching
-        // invoices+items by serial/invoice#/customer name/phone and inject as
-        // structured context so the bot can answer with real data.
+        // Smart live data: detect filter/aggregation intent and inject results.
+        // Covers serial/invoice/customer/phone lookup PLUS sales totals by
+        // period, top customers/products, drafts/voids/paid lists, low stock,
+        // product stock by name, customer stats by name/phone, and PO summary.
         let searchBlock = "";
         try {
-          const m = userMessage.toLowerCase();
-          const isLookup =
-            /ابحث|دور|دوّر|فين|سيريال|سيريل|رقم.*فاتور|فاتور|عميل|تليفون|هاتف/.test(userMessage) ||
-            /search|find|lookup|serial|invoice|customer|phone/.test(m);
-          // Extract candidate tokens (serials, invoice numbers, phone digits, words)
-          const tokens = Array.from(
-            new Set(
-              (userMessage.match(/[A-Za-z0-9_\-\/\u0600-\u06FF]{3,}/g) || [])
-                .filter((t) => !/^(ابحث|find|search|serial|invoice|سيريال|فاتورة|عميل|customer|phone|تليفون|رقم)$/i.test(t))
-                .slice(0, 5),
-            ),
-          );
-          if (isLookup && tokens.length) {
-            const results: string[] = [];
-            for (const tok of tokens) {
-              const like = `%${tok}%`;
-              const [bySerial, byInvoice] = await Promise.all([
-                supabaseAdmin
-                  .from("invoice_items")
-                  .select("serial_number, product_name, quantity, unit_price, invoices!inner(id, invoice_number, customer_name, customer_phone, total, status, created_at, user_id)")
-                  .eq("invoices.user_id", userId)
-                  .ilike("serial_number", like)
-                  .limit(8),
-                supabaseAdmin
-                  .from("invoices")
-                  .select("id, invoice_number, customer_name, customer_phone, total, status, created_at")
-                  .eq("user_id", userId)
-                  .or(`invoice_number.ilike.${like},customer_name.ilike.${like},customer_phone.ilike.${like}`)
-                  .limit(8),
-              ]);
-              (bySerial.data ?? []).forEach((row: any) => {
-                const inv = row.invoices;
-                results.push(
-                  `• Serial ${row.serial_number} → invoice ${inv.invoice_number} (${inv.customer_name ?? "—"}, ${inv.customer_phone ?? "—"}, total ${inv.total} EGP, ${inv.status}, ${new Date(inv.created_at).toLocaleDateString("en-GB")}) — item: ${row.product_name} x${row.quantity} @ ${row.unit_price}`,
-                );
-              });
-              (byInvoice.data ?? []).forEach((inv: any) => {
-                results.push(
-                  `• Invoice ${inv.invoice_number} — ${inv.customer_name ?? "—"} (${inv.customer_phone ?? "—"}) — ${inv.total} EGP — ${inv.status} — ${new Date(inv.created_at).toLocaleDateString("en-GB")}`,
-                );
-              });
-            }
-            const dedup = Array.from(new Set(results)).slice(0, 16);
-            if (dedup.length) {
-              searchBlock = `\n\n# Live search results for the user's query (use these to answer factually; deep-link invoices with [#NUMBER](/invoices/<id>))\n${dedup.join("\n")}`;
-            } else {
-              searchBlock = `\n\n# Live search: no invoices/serials matched the query tokens (${tokens.join(", ")})`;
-            }
-          }
+          searchBlock = await buildLiveData(userId, userMessage);
         } catch {
           // best-effort; never break the chat
         }
