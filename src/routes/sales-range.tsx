@@ -229,7 +229,7 @@ function SalesRange() {
     XLSX.utils.book_append_sheet(wb, ws, "Summary");
     XLSX.utils.book_append_sheet(wb, ws2, "Line Items");
     XLSX.writeFile(wb, `sales_${from}_to_${to}.xlsx`);
-    toast.success("تم تصدير الملف");
+    toast.success(tt("تم تصدير الملف", "Exported"));
   };
 
   const setRange = (days: number) => {
