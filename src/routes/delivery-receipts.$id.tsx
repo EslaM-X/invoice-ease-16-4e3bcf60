@@ -114,6 +114,15 @@ function ReceiptView() {
         </div>
       </div>
 
+      <DeliveryReceiptTracker
+        receipt={r}
+        isAr={isAr}
+        onChanged={async () => {
+          const { data: rec } = await supabase.from("delivery_receipts" as any).select("*").eq("id", id).single();
+          if (rec) setR(rec);
+        }}
+      />
+
       {showAudit && (
         <div className="no-print rounded-2xl border bg-card p-5">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
