@@ -307,6 +307,7 @@ export function XAssistant() {
         <span className="x-orb-shine" aria-hidden />
         <span className="sr-only">X Assistant</span>
       </button>
+      )}
       {mounted && open && createPortal(
         <>
           {/* No full-screen backdrop — keep the app visible behind so the user
