@@ -374,7 +374,7 @@ function InvoicesList() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-3 py-3 w-10">
-                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="تحديد الكل" />
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label={t("select_all_aria")} />
                   </th>
                   <th className="px-4 py-3 text-start font-medium">{t("invoice_number")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("customer")}</th>
