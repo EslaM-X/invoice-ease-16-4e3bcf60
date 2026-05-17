@@ -86,24 +86,27 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const [queryClient] = useState(() => new QueryClient());
   useEffect(() => { startSyncEngine(); }, []);
   return (
-    <ThemeProvider>
-      <I18nProvider>
-        <AuthProvider>
-          <PwaVersionGuard />
-          <StaleChunkGuard />
-          <LuxurySplash />
-          <OfflineBanner />
-          <ApprovalGate>
-            <Outlet />
-          </ApprovalGate>
-          <InstallPrompt />
-          <SyncStatusPill />
-          <SyncToaster />
-          <Toaster position="top-center" richColors closeButton />
-        </AuthProvider>
-      </I18nProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <PwaVersionGuard />
+            <StaleChunkGuard />
+            <LuxurySplash />
+            <OfflineBanner />
+            <ApprovalGate>
+              <Outlet />
+            </ApprovalGate>
+            <InstallPrompt />
+            <SyncStatusPill />
+            <SyncToaster />
+            <Toaster position="top-center" richColors closeButton />
+          </AuthProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
