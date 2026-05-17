@@ -2409,6 +2409,10 @@ export type Database = {
       }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
+      convert_invoice_to_draft: {
+        Args: { _invoice_id: string }
+        Returns: string
+      }
       create_delivery_receipt:
         | {
             Args: {

@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil, Archive, ClipboardCheck } from "lucide-react";
+import { Plus, Search, Eye, Copy, Ban, Trash2, FileSpreadsheet, FileText, Download, Pencil, Archive, ClipboardCheck, FileEdit } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -171,6 +171,13 @@ function InvoicesList() {
     load();
   };
 
+  const convertToDraft = async (id: string) => {
+    const { error } = await supabase.rpc("convert_invoice_to_draft" as any, { _invoice_id: id } as any);
+    if (error) return toast.error(error.message);
+    toast.success(t("invoice_converted_to_draft"));
+    load();
+  };
+
   const duplicate = async (id: string) => {
     if (!user) return;
     const { data: inv } = await supabase.from("invoices").select("*").eq("id", id).single();
@@ -257,7 +264,7 @@ function InvoicesList() {
           <Link to="/invoices/drafts">
             <Button variant="outline" className="gap-2 rounded-full border-amber-500/40 bg-amber-500/5 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400">
               <FileText className="h-4 w-4" />
-              {lang === "ar" ? "المسودات" : "Drafts"}
+              {t("drafts")}
               {draftCount > 0 && (
                 <span className="ms-1 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
                   {draftCount}
@@ -268,7 +275,7 @@ function InvoicesList() {
           <Link to="/invoices/archive">
             <Button variant="outline" className="gap-2 rounded-full border-emerald-500/40 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">
               <Archive className="h-4 w-4" />
-              {lang === "ar" ? "الأرشيف" : "Archive"}
+              {t("archive")}
               {closedCount > 0 && (
                 <span className="ms-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
                   {closedCount}
@@ -301,26 +308,26 @@ function InvoicesList() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="relative lg:col-span-2">
           <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث برقم الفاتورة، اسم العميل أو رقم الهاتف…" className="ps-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_invoices_placeholder")} className="ps-9" />
         </div>
         <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="all">كل الحالات</option>
-          <option value="completed">مكتملة</option>
-          <option value="voided">ملغاة</option>
+          <option value="all">{t("all_statuses")}</option>
+          <option value="completed">{t("status_completed")}</option>
+          <option value="voided">{t("status_voided")}</option>
         </select>
         <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="all">كل المدفوعات</option>
-          <option value="paid">مدفوعة بالكامل</option>
-          <option value="partial">مدفوعة جزئياً</option>
-          <option value="unpaid">غير مدفوعة</option>
+          <option value="all">{t("all_payments")}</option>
+          <option value="paid">{t("payment_paid")}</option>
+          <option value="partial">{t("payment_partial")}</option>
+          <option value="unpaid">{t("payment_unpaid")}</option>
         </select>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="date_desc">الأحدث أولاً</option>
-          <option value="date_asc">الأقدم أولاً</option>
-          <option value="total_desc">الأعلى قيمة</option>
-          <option value="total_asc">الأقل قيمة</option>
+          <option value="date_desc">{t("sort_date_desc")}</option>
+          <option value="date_asc">{t("sort_date_asc")}</option>
+          <option value="total_desc">{t("sort_total_desc")}</option>
+          <option value="total_asc">{t("sort_total_asc")}</option>
         </select>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">
@@ -330,31 +337,27 @@ function InvoicesList() {
               checked={hideClosed}
               onChange={(e) => setHideClosed(e.target.checked)}
             />
-            <span>
-              {lang === "ar"
-                ? "إخفاء الفواتير المُغلقة (مدفوعة + مُسلَّمة)"
-                : "Hide closed invoices (paid + delivered)"}
-            </span>
+            <span>{t("hide_closed_invoices")}</span>
             {closedCount > 0 && (
               <Link to="/invoices/archive" className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20">
-                {closedCount} {lang === "ar" ? "في الأرشيف" : "in archive"} →
+                {closedCount} {t("in_archive")} →
               </Link>
             )}
           </label>
-          <span>عرض {filtered.length} من {list.length} فاتورة</span>
+          <span>{t("showing_count").replace("{n}", String(filtered.length)).replace("{m}", String(list.length))}</span>
         </div>
       </div>
 
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-primary/5 px-4 py-3">
-          <div className="text-sm font-medium">تم تحديد {selected.size} فاتورة</div>
+          <div className="text-sm font-medium">{t("selected_count").replace("{n}", String(selected.size))}</div>
           <div className="flex gap-2">
             <Button onClick={exportOrdersStyle} disabled={exporting} className="gap-2">
               <FileSpreadsheet className="h-4 w-4" />
-              تصدير Excel (نمط الطلبات)
+              {t("export_orders_style")}
             </Button>
             <Button variant="outline" onClick={() => setSelected(new Set())}>
-              إلغاء التحديد
+              {t("clear_selection")}
             </Button>
           </div>
         </div>
@@ -371,7 +374,7 @@ function InvoicesList() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-3 py-3 w-10">
-                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="تحديد الكل" />
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label={t("select_all_aria")} />
                   </th>
                   <th className="px-4 py-3 text-start font-medium">{t("invoice_number")}</th>
                   <th className="px-4 py-3 text-start font-medium">{t("customer")}</th>
@@ -390,7 +393,7 @@ function InvoicesList() {
                           <Checkbox
                             checked={selected.has(i.id)}
                             onCheckedChange={() => toggleOne(i.id)}
-                            aria-label="تحديد الفاتورة"
+                            aria-label={t("select_invoice_aria")}
                           />
                         )}
                       </td>
@@ -483,6 +486,25 @@ function InvoicesList() {
                             </Link>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => duplicate(i.id)} title={t("duplicate")}><Copy className="h-4 w-4" /></Button>
+                          {!voided && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" title={t("convert_to_draft")}>
+                                  <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t("convert_to_draft")}</AlertDialogTitle>
+                                  <AlertDialogDescription>{i.invoice_number} — {t("convert_to_draft_confirm")}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => convertToDraft(i.id)}>{t("confirm")}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                           {!voided && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
