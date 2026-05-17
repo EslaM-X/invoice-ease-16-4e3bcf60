@@ -82,6 +82,128 @@ EN (dry wit): "Got it. Want me to walk you to invoices, or shall we look at prof
 const enc = new TextEncoder();
 const sse = (data: any) => enc.encode(`data: ${JSON.stringify(data)}\n\n`);
 
+// Detect filter/aggregation/lookup intent in the user message and return a
+// markdown block of live data to inject into the system prompt. Best-effort —
+// returns "" when nothing relevant is found or on any error.
+async function buildLiveData(userId: string, userMessage: string): Promise<string> {
+  const msg = (userMessage || "").trim();
+  if (!msg) return "";
+  const lower = msg.toLowerCase();
+
+  const wantsSearch =
+    /\b(search|find|lookup|show|list|where|which)\b/i.test(lower) ||
+    /(ابحث|دور|دوّر|هات|اعرض|فين|وين|اظهر|اعرضلي|جيب|طلع)/.test(msg);
+  const wantsAggregate =
+    /\b(top|best|total|sum|count|how many|how much|stats|summary|breakdown|compare)\b/i.test(lower) ||
+    /(احصر|حصر|اجمالي|إجمالي|كام|عدد|احصائيات|إحصائيات|ملخص|قارن|اعلى|أعلى|اكثر|أكثر)/.test(msg);
+
+  if (!wantsSearch && !wantsAggregate) return "";
+
+  const sections: string[] = [];
+
+  // Extract a free-text term (strip common verbs) for fuzzy matches
+  const term = msg
+    .replace(/(ابحث|دور|دوّر|هات|اعرض|اعرضلي|جيب|طلع|search|find|lookup|show|list|عن|لي|عن|about|for|the|a|an)/gi, " ")
+    .replace(/[?؟.!,]/g, " ")
+    .trim();
+
+  // 1. Invoice / serial / customer lookup
+  if (wantsSearch && term.length >= 2) {
+    const like = `%${term}%`;
+    const [byNumber, bySerial, byCustomer] = await Promise.all([
+      supabaseAdmin
+        .from("invoices")
+        .select("id, invoice_number, customer_name, total, status, created_at")
+        .eq("user_id", userId)
+        .ilike("invoice_number", like)
+        .limit(10),
+      supabaseAdmin
+        .from("invoice_items")
+        .select("serial_number, product_name, invoice_id, invoices!inner(id, invoice_number, customer_name, user_id)")
+        .eq("invoices.user_id", userId)
+        .ilike("serial_number", like)
+        .limit(10),
+      supabaseAdmin
+        .from("invoices")
+        .select("id, invoice_number, customer_name, customer_phone, total, status, created_at")
+        .eq("user_id", userId)
+        .or(`customer_name.ilike.${like},customer_phone.ilike.${like}`)
+        .limit(10),
+    ]);
+
+    const lines: string[] = [];
+    (byNumber.data ?? []).forEach((r: any) =>
+      lines.push(`- Invoice ${r.invoice_number} — ${r.customer_name ?? "—"} — ${Number(r.total).toFixed(2)} EGP — ${r.status} — id:${r.id}`),
+    );
+    (bySerial.data ?? []).forEach((r: any) => {
+      const inv = (r as any).invoices;
+      if (inv) lines.push(`- Serial ${r.serial_number} → Invoice ${inv.invoice_number} (${inv.customer_name ?? "—"}) — id:${inv.id}`);
+    });
+    (byCustomer.data ?? []).forEach((r: any) =>
+      lines.push(`- ${r.customer_name ?? r.customer_phone} → Invoice ${r.invoice_number} — ${Number(r.total).toFixed(2)} EGP — ${r.status} — id:${r.id}`),
+    );
+    if (lines.length) sections.push(`## Live search results for "${term}"\n${lines.slice(0, 20).join("\n")}`);
+  }
+
+  // 2. Drafts / void / paid quick lists
+  if (/(drafts?|مسود|درافت)/i.test(msg)) {
+    const { data } = await supabaseAdmin
+      .from("invoices")
+      .select("id, invoice_number, customer_name, total, created_at")
+      .eq("user_id", userId)
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(15);
+    if (data?.length) {
+      sections.push(
+        `## Draft invoices (latest ${data.length})\n${data.map((r: any) => `- ${r.invoice_number} — ${r.customer_name ?? "—"} — ${Number(r.total).toFixed(2)} EGP — id:${r.id}`).join("\n")}`,
+      );
+    }
+  }
+
+  // 3. Low stock
+  if (/(low stock|out of stock|مخزون|ناقص|خلص|قليل)/i.test(msg)) {
+    const { data } = await supabaseAdmin
+      .from("products")
+      .select("name, stock_quantity, low_stock_threshold")
+      .eq("user_id", userId)
+      .order("stock_quantity", { ascending: true })
+      .limit(20);
+    const low = (data ?? []).filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold ?? 5));
+    if (low.length) {
+      sections.push(`## Low-stock products\n${low.map((p: any) => `- ${p.name}: ${p.stock_quantity} (threshold ${p.low_stock_threshold ?? 5})`).join("\n")}`);
+    }
+  }
+
+  // 4. Top customers (by total spend, last 90 days)
+  if (/(top customers?|best customers?|اعلى عملاء|أعلى عملاء|افضل عملاء|أفضل عملاء)/i.test(msg)) {
+    const since = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+    const { data } = await supabaseAdmin
+      .from("invoices")
+      .select("customer_name, total")
+      .eq("user_id", userId)
+      .gte("created_at", since)
+      .not("customer_name", "is", null);
+    const agg = new Map<string, { count: number; total: number }>();
+    (data ?? []).forEach((r: any) => {
+      const k = r.customer_name as string;
+      const cur = agg.get(k) ?? { count: 0, total: 0 };
+      cur.count += 1;
+      cur.total += Number(r.total || 0);
+      agg.set(k, cur);
+    });
+    const top = [...agg.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 10);
+    if (top.length) {
+      sections.push(
+        `## Top customers (last 90 days)\n${top.map(([name, v]) => `- ${name}: ${v.count} invoices, ${v.total.toFixed(2)} EGP`).join("\n")}`,
+      );
+    }
+  }
+
+  if (!sections.length) return "";
+  return `\n\n# Live data (use this to answer the user's question accurately)\n${sections.join("\n\n")}\n`;
+}
+
 export const Route = createFileRoute("/api/x-chat")({
   server: {
     handlers: {
