@@ -350,14 +350,14 @@ function InvoicesList() {
 
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-primary/5 px-4 py-3">
-          <div className="text-sm font-medium">تم تحديد {selected.size} فاتورة</div>
+          <div className="text-sm font-medium">{t("selected_count").replace("{n}", String(selected.size))}</div>
           <div className="flex gap-2">
             <Button onClick={exportOrdersStyle} disabled={exporting} className="gap-2">
               <FileSpreadsheet className="h-4 w-4" />
-              تصدير Excel (نمط الطلبات)
+              {t("export_orders_style")}
             </Button>
             <Button variant="outline" onClick={() => setSelected(new Set())}>
-              إلغاء التحديد
+              {t("clear_selection")}
             </Button>
           </div>
         </div>
