@@ -179,9 +179,9 @@ function PriceListPage() {
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const margin = 10;
-      const cols = 3;
-      const rows = 4;
-      const gap = 4;
+      const cols = 2;
+      const rows = 2;
+      const gap = 8;
       const cellW = (pageW - margin * 2 - gap * (cols - 1)) / cols;
       const cellH = (pageH - margin * 2 - 18 - gap * (rows - 1)) / rows;
       const perPage = cols * rows;
@@ -223,33 +223,33 @@ function PriceListPage() {
         // Product name
         doc.setTextColor(20, 20, 20);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        const name = doc.splitTextToSize(item.name || "", cellW - 6);
-        doc.text(name.slice(0, 2), x + cellW / 2, y + 6, { align: "center" });
+        doc.setFontSize(16);
+        const name = doc.splitTextToSize(item.name || "", cellW - 10);
+        doc.text(name.slice(0, 2), x + cellW / 2, y + 12, { align: "center" });
 
         // Serial / color
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
+        doc.setFontSize(11);
         doc.setTextColor(100, 100, 100);
         const meta = [item.serial_number, item.color].filter(Boolean).join(" · ");
-        if (meta) doc.text(meta, x + cellW / 2, y + 13, { align: "center" });
+        if (meta) doc.text(meta, x + cellW / 2, y + 22, { align: "center" });
 
         // Price
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
+        doc.setFontSize(18);
         doc.setTextColor(160, 110, 30);
-        doc.text(`${fmtMoney(Number(item.price) || 0)} LE`, x + cellW / 2, y + 19, { align: "center" });
+        doc.text(`${fmtMoney(Number(item.price) || 0)} LE`, x + cellW / 2, y + 32, { align: "center" });
 
-        // QR code
+        // QR code (large, centered below)
         const qrPayload = encodeProductQR(item.qr_code || item.id);
         const qrDataUrl = await QRCode.toDataURL(qrPayload, {
           margin: 1,
-          width: 400,
+          width: 600,
           errorCorrectionLevel: "M",
         });
-        const qrSize = Math.min(cellW - 12, cellH - 26);
+        const qrSize = Math.min(cellW - 20, cellH - 42);
         const qrX = x + (cellW - qrSize) / 2;
-        const qrY = y + 22;
+        const qrY = y + 38;
         doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
       }
 
