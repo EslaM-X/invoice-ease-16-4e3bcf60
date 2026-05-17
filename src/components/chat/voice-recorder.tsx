@@ -9,10 +9,12 @@ export function VoiceRecorder({
   onSend,
   rtl,
   disabled,
+  onActiveChange,
 }: {
   onSend: (blob: Blob, durationSeconds: number) => Promise<void>;
   rtl: boolean;
   disabled?: boolean;
+  onActiveChange?: (active: boolean) => void;
 }) {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -22,6 +24,10 @@ export function VoiceRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    onActiveChange?.(recording || !!blob);
+  }, [recording, blob, onActiveChange]);
 
   const cleanup = () => {
     if (timerRef.current) {
@@ -108,12 +114,28 @@ export function VoiceRecorder({
   if (blob) {
     const url = URL.createObjectURL(blob);
     return (
-      <div className="flex items-center gap-2 flex-1">
-        <Button size="icon" variant="ghost" onClick={discard} disabled={busy} title={rtl ? "حذف" : "Discard"}>
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 bg-muted/50 rounded-full px-2 py-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={discard}
+          disabled={busy}
+          className="h-8 w-8 shrink-0 rounded-full"
+          title={rtl ? "حذف" : "Discard"}
+        >
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
-        <audio src={url} controls className="h-9 flex-1" />
-        <Button size="icon" onClick={send} disabled={busy}>
+        <audio src={url} controls preload="metadata" className="h-8 flex-1 min-w-0" />
+        <span className="text-[11px] font-mono text-muted-foreground shrink-0 px-1 tabular-nums">
+          {fmt(seconds)}
+        </span>
+        <Button
+          size="icon"
+          onClick={send}
+          disabled={busy}
+          className="h-9 w-9 shrink-0 rounded-full shadow"
+          title={rtl ? "إرسال" : "Send"}
+        >
           <Send className="h-4 w-4" />
         </Button>
       </div>
@@ -122,14 +144,20 @@ export function VoiceRecorder({
 
   if (recording) {
     return (
-      <div className="flex items-center gap-2 flex-1">
-        <span className="inline-block h-2 w-2 rounded-full bg-destructive animate-pulse" />
-        <span className="text-sm font-mono">{fmt(seconds)}</span>
-        <span className="text-xs text-muted-foreground">
-          / {fmt(MAX_SECONDS)} {rtl ? "كحد أقصى" : "max"}
+      <div className="flex items-center gap-2 flex-1 min-w-0 bg-destructive/10 rounded-full px-3 py-1">
+        <span className="inline-block h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
+        <span className="text-sm font-mono tabular-nums shrink-0">{fmt(seconds)}</span>
+        <span className="text-[10px] text-muted-foreground truncate hidden xs:inline">
+          / {fmt(MAX_SECONDS)}
         </span>
         <div className="flex-1" />
-        <Button size="icon" variant="destructive" onClick={stop}>
+        <Button
+          size="icon"
+          variant="destructive"
+          onClick={stop}
+          className="h-9 w-9 shrink-0 rounded-full"
+          title={rtl ? "إيقاف" : "Stop"}
+        >
           <Square className="h-4 w-4" />
         </Button>
       </div>
@@ -137,7 +165,14 @@ export function VoiceRecorder({
   }
 
   return (
-    <Button size="icon" variant="ghost" onClick={start} disabled={disabled} title={rtl ? "تسجيل صوتي" : "Voice note"}>
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={start}
+      disabled={disabled}
+      className="rounded-full shrink-0"
+      title={rtl ? "تسجيل صوتي" : "Voice note"}
+    >
       <Mic className="h-4 w-4" />
     </Button>
   );
