@@ -9,6 +9,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { useIsExecutive, EXEC_ONLY_NOTIFICATION_TYPES } from "@/lib/use-executive";
 
 type Notification = {
   id: string;
