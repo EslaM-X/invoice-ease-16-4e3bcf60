@@ -250,6 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Truck className="h-4 w-4" /> {t("shipping_order")}
           </Link>
+          {isExecutive && (
           <Link
             to="/profits"
             onClick={() => setOpen(false)}
@@ -261,6 +262,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <TrendingUp className="h-4 w-4" /> {t("profits")}
           </Link>
+          )}
         </GroupNav>
         {isCallCenter && (
           <GroupNav
