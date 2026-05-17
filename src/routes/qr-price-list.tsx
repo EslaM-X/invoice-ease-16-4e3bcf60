@@ -4,8 +4,10 @@ import { QRCodeCanvas } from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2,
-  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus, Languages,
+  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus, Languages, FileDown,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
