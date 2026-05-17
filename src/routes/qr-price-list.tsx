@@ -306,7 +306,7 @@ function PriceListPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center text-white/50">
-            لا توجد منتجات مطابقة
+            {tt("لا توجد منتجات مطابقة", "No matching products")}
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
