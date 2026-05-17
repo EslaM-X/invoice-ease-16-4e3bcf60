@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 icon={GroupIcon}
                 defaultOpen={anyActive}
               >
-                {it.children.map((c) => {
+                {it.children.filter((c) => isExecutive || c.to !== "/stock-intake").map((c) => {
                   const active = location.pathname === c.to || location.pathname.startsWith(c.to + "/");
                   const Icon = c.icon;
                   return (
