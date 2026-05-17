@@ -600,14 +600,14 @@ function ShippingOrder() {
       {collectionGroups.length > 0 && (
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-primary/10 p-3">
-            <h2 className="font-semibold">ملخص حسب الكولكشن خلال الفترة</h2>
+            <h2 className="font-semibold">{tt("ملخص حسب الكولكشن خلال الفترة", "Per-collection summary for the range")}</h2>
             <div className="flex items-center gap-2">
-              <Badge>الإجمالي: {collectionsGrandTotal}</Badge>
+              <Badge>{tt("الإجمالي", "Total")}: {collectionsGrandTotal}</Badge>
               <Button size="sm" variant="outline" onClick={exportCollectionsXlsx}>
-                <Download className="h-4 w-4 ml-1" /> Excel
+                <Download className="h-4 w-4 mx-1" /> Excel
               </Button>
               <Button size="sm" variant="secondary" onClick={exportCollectionsPdf}>
-                <FileText className="h-4 w-4 ml-1" /> PDF
+                <FileText className="h-4 w-4 mx-1" /> PDF
               </Button>
             </div>
           </div>
