@@ -61,7 +61,7 @@ function InvoicesList() {
           .in("invoice_id", ids),
         supabase
           .from("invoice_items")
-          .select("invoice_id, quantity")
+          .select("invoice_id, quantity, serial_number")
           .in("invoice_id", ids),
       ]);
       const counts: Record<string, number> = {};
