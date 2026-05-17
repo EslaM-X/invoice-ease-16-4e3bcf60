@@ -489,6 +489,25 @@ function InvoicesList() {
                           {!voided && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" title={t("convert_to_draft")}>
+                                  <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t("convert_to_draft")}</AlertDialogTitle>
+                                  <AlertDialogDescription>{i.invoice_number} — {t("convert_to_draft_confirm")}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => convertToDraft(i.id)}>{t("confirm")}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          {!voided && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" title={t("void")}><Ban className="h-4 w-4 text-warning" /></Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
