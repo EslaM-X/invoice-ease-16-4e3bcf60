@@ -1273,7 +1273,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             ) : (
               <ul className="divide-y">
                 {filteredProducts.map((p) => {
+                  const transit = inTransitQty[p.id] ?? 0;
                   const out = p.stock_quantity <= 0;
+                  const blocked = out && transit <= 0;
                   const low = !out && p.stock_quantity <= p.low_stock_threshold;
                   const inCartQty = items
                     .filter((it) => it.product_id === p.id)
@@ -1284,7 +1286,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                       <button
                         type="button"
                         onClick={() => addProduct(p)}
-                        disabled={out}
+                        disabled={blocked}
                         className={`relative flex w-full items-center gap-3 px-2.5 py-2 text-start transition disabled:opacity-50 disabled:cursor-not-allowed ${
                           justAdded
                             ? "bg-emerald-500/15 ring-1 ring-emerald-500/40"
@@ -1328,11 +1330,17 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                               </span>
                             )}
                             <span>{t("stock")}: <span className={out ? "text-destructive font-bold" : low ? "text-warning-foreground font-bold" : ""}>{p.stock_quantity}</span></span>
+                            {transit > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-300">
+                                🚚 {lang === "ar" ? "في الطريق" : "in transit"}: {transit}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex-shrink-0 text-end">
                           <div className="font-semibold tabular-nums text-sm">{fmtMoney(Number(p.price), "EGP", lang)}</div>
-                          {out && <span className="text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
+                          {blocked && <span className="text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
+                          {out && !blocked && <span className="text-[10px] font-bold text-sky-600 dark:text-sky-300">{lang === "ar" ? "من الشحنة" : "FROM SHIPMENT"}</span>}
                         </div>
                       </button>
                     </li>
