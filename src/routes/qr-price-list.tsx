@@ -413,6 +413,9 @@ function PriceListPage() {
           }}
         />
       )}
+      {signInOpen && !user && (
+        <SignInDialog onClose={() => setSignInOpen(false)} lang={lang} />
+      )}
     </div>
   );
 }
