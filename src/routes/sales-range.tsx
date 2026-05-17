@@ -361,7 +361,7 @@ function SalesRange() {
                   <td className="p-2 font-semibold">{fmtMoney(r.total_value)}</td>
                   <td className="p-2 text-xs text-muted-foreground max-w-xs">
                     {r.invoices.map((i, idx) => (
-                      <span key={idx} className="inline-block ml-1 mb-1 px-1.5 py-0.5 rounded bg-muted">
+                      <span key={idx} className="inline-block mx-1 mb-1 px-1.5 py-0.5 rounded bg-muted">
                         {i.invoice_number} ×{i.quantity} · {fmtDate(i.created_at)}
                       </span>
                     ))}
@@ -372,7 +372,7 @@ function SalesRange() {
             {rows.length > 0 && (
               <tfoot className="bg-muted/40 font-bold">
                 <tr className="border-t-2">
-                  <td className="p-3" colSpan={6}>الإجمالي</td>
+                  <td className="p-3" colSpan={6}>{tt("الإجمالي", "Total")}</td>
                   <td className="p-3 text-primary text-lg">{totalUnits}</td>
                   <td className="p-3">{fmtMoney(totalValue)}</td>
                   <td></td>
