@@ -73,6 +73,9 @@ function dayKey(iso: string) {
 
 function ShippingOrder() {
   const { user } = useAuth();
+  const { lang, setLang, dir } = useI18n();
+  const ar = lang === "ar";
+  const tt = (a: string, e: string) => (ar ? a : e);
   const [from, setFrom] = useState<string>(todayISO());
   const [to, setTo] = useState<string>(todayISO());
   const [invoices, setInvoices] = useState<Inv[]>([]);
