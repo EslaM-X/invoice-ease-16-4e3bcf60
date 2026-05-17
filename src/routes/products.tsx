@@ -23,6 +23,7 @@ import { cachedListFetch } from "@/lib/list-cache";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
+import { useIsExecutive } from "@/lib/use-executive";
 
 export const Route = createFileRoute("/products")({ component: () => <AppShell><Products /></AppShell> });
 
@@ -38,6 +39,7 @@ function etaShort(iso: string, lang: string): string {
 function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
+  const isExecutive = useIsExecutive();
   const [list, setList] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -360,7 +362,9 @@ function Products() {
                 <div><Label>{t("serial_number")}</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
                 <div><Label>{t("color")}</Label><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
                 <div><Label>{t("price")}</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
-                <div><Label>{lang === "ar" ? "تكلفة الوحدة (USD)" : "Unit cost (USD)"}</Label><Input type="number" step="0.01" value={form.cost_price_usd} onChange={(e) => setForm({ ...form, cost_price_usd: e.target.value })} /></div>
+                {isExecutive && (
+                  <div><Label>{lang === "ar" ? "تكلفة الوحدة (USD)" : "Unit cost (USD)"}</Label><Input type="number" step="0.01" value={form.cost_price_usd} onChange={(e) => setForm({ ...form, cost_price_usd: e.target.value })} /></div>
+                )}
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
                 <div><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
                 <div>

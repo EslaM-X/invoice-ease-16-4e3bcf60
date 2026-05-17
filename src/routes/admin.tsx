@@ -32,8 +32,14 @@ const ROLE_COLORS: Record<AppRole, string> = {
   user: "bg-muted text-muted-foreground border-border",
 };
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/admin")({
-  component: AdminPage,
+  component: () => (
+    <ExecutiveGate>
+      <AdminPage />
+    </ExecutiveGate>
+  ),
 });
 
 function AdminPage() {

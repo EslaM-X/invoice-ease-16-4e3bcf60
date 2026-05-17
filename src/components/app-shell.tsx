@@ -15,6 +15,7 @@ import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { LowStockAlerts } from "@/components/low-stock-alerts";
 import { useRole } from "@/lib/use-role";
+import { useIsExecutive } from "@/lib/use-executive";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LangStatusPill } from "@/components/lang-status-pill";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
@@ -60,6 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
   const { theme, toggle } = useTheme();
   const { isAdmin, isCallCenter, isPurchasing, isCFO } = useRole();
+  const isExecutive = useIsExecutive();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -112,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 icon={GroupIcon}
                 defaultOpen={anyActive}
               >
-                {it.children.map((c) => {
+                {it.children.filter((c) => isExecutive || c.to !== "/stock-intake").map((c) => {
                   const active = location.pathname === c.to || location.pathname.startsWith(c.to + "/");
                   const Icon = c.icon;
                   return (
@@ -156,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {(isPurchasing || isCFO) && (
+        {isExecutive && (isPurchasing || isCFO) && (
           <GroupNav
             label={lang === "ar" ? "المشتريات والربح" : "Procurement & Profit"}
             icon={ShoppingCart}
@@ -248,6 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Truck className="h-4 w-4" /> {t("shipping_order")}
           </Link>
+          {isExecutive && (
           <Link
             to="/profits"
             onClick={() => setOpen(false)}
@@ -259,6 +262,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <TrendingUp className="h-4 w-4" /> {t("profits")}
           </Link>
+          )}
         </GroupNav>
         {isCallCenter && (
           <GroupNav
@@ -351,6 +355,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Settings className="h-4 w-4" /> {t("settings")}
           </Link>
+          {isExecutive && (
           <Link
             to="/audit-log"
             onClick={() => setOpen(false)}
@@ -362,6 +367,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <ShieldCheck className="h-4 w-4" /> {t("audit_log")}
           </Link>
+          )}
           <Link
             to="/pending-operations"
             onClick={() => setOpen(false)}
@@ -373,7 +379,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <CloudUpload className="h-4 w-4" /> {t("pending_operations")}
           </Link>
-          {isAdmin && (
+          {isAdmin && isExecutive && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}

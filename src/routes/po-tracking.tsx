@@ -15,10 +15,14 @@ import { Activity, Search, Route as RouteIcon } from "lucide-react";
 import { POTrackerDialog, statusBadge, statusLabel, PO_FLOW } from "@/components/po-tracker-dialog";
 import { toast } from "sonner";
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/po-tracking")({
   component: () => (
     <AppShell>
-      <POTrackingPage />
+      <ExecutiveGate>
+        <POTrackingPage />
+      </ExecutiveGate>
     </AppShell>
   ),
 });

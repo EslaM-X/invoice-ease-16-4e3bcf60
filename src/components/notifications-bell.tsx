@@ -9,6 +9,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { useIsExecutive, EXEC_ONLY_NOTIFICATION_TYPES } from "@/lib/use-executive";
 
 type Notification = {
   id: string;
@@ -30,9 +31,13 @@ const TYPE_EMOJI: Record<string, string> = {
 
 export function NotificationsBell() {
   const { user } = useAuth();
+  const isExecutive = useIsExecutive();
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const filterForRole = (rows: Notification[]) =>
+    isExecutive ? rows : rows.filter((n) => !EXEC_ONLY_NOTIFICATION_TYPES.has(n.type));
 
   const load = async () => {
     setLoading(true);
@@ -41,7 +46,7 @@ export function NotificationsBell() {
       .select("id, type, title, body, link, read_at, created_at")
       .order("created_at", { ascending: false })
       .limit(30);
-    setItems((data as any) ?? []);
+    setItems(filterForRole(((data as any) ?? []) as Notification[]));
     setLoading(false);
   };
 
@@ -52,6 +57,7 @@ export function NotificationsBell() {
   useRealtimeTable("notifications", (p) => {
     if (p.eventType === "INSERT") {
       const n = p.new as Notification;
+      if (!isExecutive && EXEC_ONLY_NOTIFICATION_TYPES.has(n.type)) return;
       setItems((prev) => [n, ...prev].slice(0, 30));
       toast(`${TYPE_EMOJI[n.type] ?? "🔔"} ${n.title}`, {
         description: n.body ?? undefined,

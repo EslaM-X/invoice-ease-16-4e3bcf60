@@ -1217,10 +1217,14 @@ function KpiCard({ icon, label, value, className }: { icon: React.ReactNode; lab
   );
 }
 
+import { ExecutiveGate } from "@/components/executive-gate";
+
 export const Route = createFileRoute("/profits")({
   component: () => (
     <AppShell>
-      <ProfitsPage />
+      <ExecutiveGate>
+        <ProfitsPage />
+      </ExecutiveGate>
     </AppShell>
   ),
 });
