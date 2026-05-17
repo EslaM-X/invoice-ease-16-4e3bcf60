@@ -297,12 +297,37 @@ function PriceListPage() {
                 item={item}
                 index={idx}
                 canEdit={isAdmin}
+                eager={idx < 8}
+                canAddToInvoice={!!user}
+                inCart={cart[item.id] ?? 0}
                 onEdit={() => setEditItem(item)}
+                onAdd={() => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
               />
             ))}
           </div>
         )}
       </section>
+
+      {/* Floating cart bar — appears for signed-in users with items */}
+      <AnimatePresence>
+        {user && Object.keys(cart).length > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-4 left-1/2 z-30 -translate-x-1/2"
+          >
+            <button
+              onClick={() => setCartOpen(true)}
+              className="inline-flex items-center gap-3 rounded-full bg-[oklch(0.78_0.11_82)] px-5 py-3 text-sm font-semibold text-[oklch(0.1_0.004_60)] shadow-[0_20px_60px_-10px_oklch(0.78_0.11_82_/_0.6)] transition hover:bg-[oklch(0.84_0.1_82)]"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span>السلة ({Object.values(cart).reduce((a, b) => a + b, 0)})</span>
+              <span className="rounded-full bg-black/15 px-2 py-0.5 text-xs">إنشاء فاتورة</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="relative z-10 border-t border-white/5 bg-[oklch(0.06_0.003_60)] py-6 text-center text-xs text-white/40">
         © Steinheim · A Brand by El-Sharbatly International Group
@@ -320,6 +345,49 @@ function PriceListPage() {
           userId={user.id}
           userEmail={user.email ?? null}
           onClose={() => setAddOpen(false)}
+        />
+      )}
+      {cartOpen && user && (
+        <CartDialog
+          items={items}
+          cart={cart}
+          onClose={() => setCartOpen(false)}
+          onChange={setCart}
+          onCheckout={() => {
+            // Build draft for the invoice builder and navigate.
+            const draftItems = Object.entries(cart)
+              .map(([pid, qty]) => {
+                const p = items.find((x) => x.id === pid);
+                if (!p || qty <= 0) return null;
+                return {
+                  product_id: p.id,
+                  product_name: p.name,
+                  serial_number: p.serial_number ?? "",
+                  color: p.color ?? "",
+                  quantity: qty,
+                  unit_price: Number(p.price) || 0,
+                  discount: 0,
+                  discount_mode: "percent",
+                  discount_percent: 0,
+                };
+              })
+              .filter(Boolean);
+            try {
+              localStorage.setItem(
+                "invoice_draft_v1",
+                JSON.stringify({
+                  customerId: "",
+                  items: draftItems,
+                  discount: 0,
+                  notes: "",
+                  savedAt: new Date().toISOString(),
+                }),
+              );
+            } catch {}
+            setCart({});
+            setCartOpen(false);
+            navigate({ to: "/invoices/new", search: { draft: true } as any });
+          }}
         />
       )}
     </div>
