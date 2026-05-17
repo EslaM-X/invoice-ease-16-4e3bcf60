@@ -277,6 +277,7 @@ export function XAssistant() {
 
   return (
     <>
+      {!hideOrb && (
       <button
         type="button"
         aria-label="X Assistant"
