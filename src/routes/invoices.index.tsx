@@ -308,26 +308,26 @@ function InvoicesList() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="relative lg:col-span-2">
           <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث برقم الفاتورة، اسم العميل أو رقم الهاتف…" className="ps-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_invoices_placeholder")} className="ps-9" />
         </div>
         <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="all">كل الحالات</option>
-          <option value="completed">مكتملة</option>
-          <option value="voided">ملغاة</option>
+          <option value="all">{t("all_statuses")}</option>
+          <option value="completed">{t("status_completed")}</option>
+          <option value="voided">{t("status_voided")}</option>
         </select>
         <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="all">كل المدفوعات</option>
-          <option value="paid">مدفوعة بالكامل</option>
-          <option value="partial">مدفوعة جزئياً</option>
-          <option value="unpaid">غير مدفوعة</option>
+          <option value="all">{t("all_payments")}</option>
+          <option value="paid">{t("payment_paid")}</option>
+          <option value="partial">{t("payment_partial")}</option>
+          <option value="unpaid">{t("payment_unpaid")}</option>
         </select>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="date_desc">الأحدث أولاً</option>
-          <option value="date_asc">الأقدم أولاً</option>
-          <option value="total_desc">الأعلى قيمة</option>
-          <option value="total_asc">الأقل قيمة</option>
+          <option value="date_desc">{t("sort_date_desc")}</option>
+          <option value="date_asc">{t("sort_date_asc")}</option>
+          <option value="total_desc">{t("sort_total_desc")}</option>
+          <option value="total_asc">{t("sort_total_asc")}</option>
         </select>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">
@@ -337,18 +337,14 @@ function InvoicesList() {
               checked={hideClosed}
               onChange={(e) => setHideClosed(e.target.checked)}
             />
-            <span>
-              {lang === "ar"
-                ? "إخفاء الفواتير المُغلقة (مدفوعة + مُسلَّمة)"
-                : "Hide closed invoices (paid + delivered)"}
-            </span>
+            <span>{t("hide_closed_invoices")}</span>
             {closedCount > 0 && (
               <Link to="/invoices/archive" className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20">
-                {closedCount} {lang === "ar" ? "في الأرشيف" : "in archive"} →
+                {closedCount} {t("in_archive")} →
               </Link>
             )}
           </label>
-          <span>عرض {filtered.length} من {list.length} فاتورة</span>
+          <span>{t("showing_count").replace("{n}", String(filtered.length)).replace("{m}", String(list.length))}</span>
         </div>
       </div>
 
