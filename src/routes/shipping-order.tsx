@@ -85,7 +85,7 @@ function ShippingOrder() {
 
   const load = async () => {
     if (!user) return;
-    if (from > to) { toast.error("تاريخ البداية بعد النهاية"); return; }
+    if (from > to) { toast.error(tt("تاريخ البداية بعد النهاية", "Start date is after end date")); return; }
     setLoading(true);
     try {
       const start = new Date(from + "T00:00:00").toISOString();
