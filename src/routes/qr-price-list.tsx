@@ -487,7 +487,7 @@ function EditDialog({
       if (imageUrl !== (item.image_url ?? null)) patch.image_url = imageUrl;
       if (Object.keys(patch).length === 0) { onClose(); return; }
       patch.updated_by_email = userEmail;
-      const { error } = await supabase.from("products").update(patch).eq("id", item.id);
+      const { error } = await supabase.from("products").update(patch as any).eq("id", item.id);
       if (error) throw error;
       toast.success("تم الحفظ");
       onClose();
