@@ -79,10 +79,15 @@ function InvoicesList() {
       setDrCounts(counts);
 
       const totals: Record<string, number> = {};
+      const serialsMap: Record<string, string[]> = {};
       (invItems ?? []).forEach((it: any) => {
         if (!it.invoice_id) return;
         totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
+        if (it.serial_number) {
+          (serialsMap[it.invoice_id] ??= []).push(String(it.serial_number).toLowerCase());
+        }
       });
+      setSerialsByInvoice(serialsMap);
 
       const deliveredByInv: Record<string, number> = {};
       if (validReceiptIds.length) {
