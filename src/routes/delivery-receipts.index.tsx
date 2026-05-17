@@ -218,9 +218,16 @@ function ReceiptsList() {
               : "Create delivery receipts. Select multiple to export together."}
           </p>
         </div>
-        <Button onClick={() => navigate({ to: "/delivery-receipts/new" })} className="gap-2 shadow-glow">
-          <Plus className="h-4 w-4" /> {isAr ? "محضر جديد" : "New receipt"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/delivery-receipts/archive">
+            <Button variant="outline" className="gap-2 rounded-full">
+              <Archive className="h-4 w-4" /> {isAr ? "الأرشيف" : "Archive"}
+            </Button>
+          </Link>
+          <Button onClick={() => navigate({ to: "/delivery-receipts/new" })} className="gap-2 shadow-glow">
+            <Plus className="h-4 w-4" /> {isAr ? "محضر جديد" : "New receipt"}
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
