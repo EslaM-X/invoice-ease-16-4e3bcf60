@@ -296,40 +296,11 @@ function ReceiptsList() {
                       <td className="px-3 py-3">{r.delivered_to_name || "—"}</td>
                       <td className="px-3 py-3 text-muted-foreground">{fmtDate(r.delivered_at, lang)}</td>
                       <td className="px-3 py-3">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                          r.status === "signed"
-                            ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                            : r.status === "out_for_delivery"
-                            ? "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-400"
-                            : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        }`}>
-                          {r.status === "signed"
-                            ? (isAr ? "موقّع" : "Signed")
-                            : r.status === "out_for_delivery"
-                            ? (isAr ? "في الطريق" : "Out for delivery")
-                            : (isAr ? "مسودة" : "Draft")}
-                        </span>
+                        <StatusBadge status={r.status} isAr={isAr} />
                       </td>
                       <td className="px-3 py-3">
-                        <div className="flex justify-end gap-1">
-                          {r.status !== "signed" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title={r.status === "out_for_delivery" ? (isAr ? "إرجاع لمسودة" : "Back to draft") : (isAr ? "تعليم: في الطريق" : "Mark: out for delivery")}
-                              onClick={async () => {
-                                const next = r.status === "out_for_delivery" ? "draft" : "out_for_delivery";
-                                const { error } = await supabase
-                                  .from("delivery_receipts" as any)
-                                  .update({ status: next })
-                                  .eq("id", r.id);
-                                if (error) toast.error(error.message);
-                                else { toast.success(isAr ? "تم التحديث" : "Updated"); load(); }
-                              }}
-                            >
-                              <Truck className={`h-4 w-4 ${r.status === "out_for_delivery" ? "text-sky-600" : ""}`} />
-                            </Button>
-                          )}
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <StatusActions receipt={r} isAr={isAr} onChanged={load} />
                           <Link to="/delivery-receipts/$id" params={{ id: r.id }}>
                             <Button variant="ghost" size="icon" title={isAr ? "عرض" : "View"}>
                               <Eye className="h-4 w-4" />
