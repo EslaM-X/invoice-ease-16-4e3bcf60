@@ -89,7 +89,7 @@ function TeamChatPage() {
       .channel(`chat-room-${activeRoomId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${activeRoomId}` },
+        { event: "*", schema: "public", table: "chat_messages", filter: `room_id=eq.${activeRoomId}` },
         () => {
           qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
           qc.invalidateQueries({ queryKey: ["chat-rooms"] });
