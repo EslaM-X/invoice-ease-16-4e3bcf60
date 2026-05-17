@@ -4,7 +4,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowLeft, Download, Copy, Pencil, ImagePlus, Loader2,
-  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus,
+  Sparkles, History, Plus, WifiOff, LogIn, ShoppingCart, Trash2, FileText, X, Minus, Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useRole } from "@/lib/use-role";
+import { useI18n } from "@/lib/i18n";
 import { encodeProductQR } from "@/lib/qr-codec";
 import { swatchStyle } from "@/lib/color-swatch";
 import { ProductImageUpload } from "@/components/product-image-upload";
