@@ -27,6 +27,7 @@ function InvoicesList() {
   const [list, setList] = useState<any[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number }>>({});
+  const [serialsByInvoice, setSerialsByInvoice] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
@@ -60,7 +61,7 @@ function InvoicesList() {
           .in("invoice_id", ids),
         supabase
           .from("invoice_items")
-          .select("invoice_id, quantity")
+          .select("invoice_id, quantity, serial_number")
           .in("invoice_id", ids),
       ]);
       const counts: Record<string, number> = {};
@@ -78,10 +79,15 @@ function InvoicesList() {
       setDrCounts(counts);
 
       const totals: Record<string, number> = {};
+      const serialsMap: Record<string, string[]> = {};
       (invItems ?? []).forEach((it: any) => {
         if (!it.invoice_id) return;
         totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
+        if (it.serial_number) {
+          (serialsMap[it.invoice_id] ??= []).push(String(it.serial_number).toLowerCase());
+        }
       });
+      setSerialsByInvoice(serialsMap);
 
       const deliveredByInv: Record<string, number> = {};
       if (validReceiptIds.length) {
@@ -136,7 +142,8 @@ function InvoicesList() {
         (i.invoice_number ?? "").toLowerCase().includes(s) ||
         String(i.receipt_number ?? "").includes(s) ||
         (i.customer_name ?? "").toLowerCase().includes(s) ||
-        (i.customer_phone ?? "").toLowerCase().includes(s)
+        (i.customer_phone ?? "").toLowerCase().includes(s) ||
+        (serialsByInvoice[i.id] ?? []).some((sn) => sn.includes(s))
       );
     })
     .sort((a, b) => {
