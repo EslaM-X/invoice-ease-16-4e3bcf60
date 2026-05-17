@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, RefreshCw, Truck, FileText, Calendar as CalendarIcon } from "lucide-react";
+import { Download, RefreshCw, Truck, FileText, Calendar as CalendarIcon, Languages } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/shipping-order")({
   head: () => ({
@@ -72,6 +73,9 @@ function dayKey(iso: string) {
 
 function ShippingOrder() {
   const { user } = useAuth();
+  const { lang, setLang, dir } = useI18n();
+  const ar = lang === "ar";
+  const tt = (a: string, e: string) => (ar ? a : e);
   const [from, setFrom] = useState<string>(todayISO());
   const [to, setTo] = useState<string>(todayISO());
   const [invoices, setInvoices] = useState<Inv[]>([]);
@@ -81,7 +85,7 @@ function ShippingOrder() {
 
   const load = async () => {
     if (!user) return;
-    if (from > to) { toast.error("تاريخ البداية بعد النهاية"); return; }
+    if (from > to) { toast.error(tt("تاريخ البداية بعد النهاية", "Start date is after end date")); return; }
     setLoading(true);
     try {
       const start = new Date(from + "T00:00:00").toISOString();
@@ -122,7 +126,7 @@ function ShippingOrder() {
         setProducts(m);
       } else setProducts(new Map());
     } catch (err: any) {
-      toast.error(err?.message ?? "خطأ في التحميل");
+      toast.error(err?.message ?? tt("خطأ في التحميل", "Failed to load"));
     } finally { setLoading(false); }
   };
 
@@ -234,7 +238,7 @@ function ShippingOrder() {
     XLSX.utils.book_append_sheet(wb, ws2, "Per Collection");
 
     XLSX.writeFile(wb, `shipping-order_${from}_to_${to}.xlsx`);
-    toast.success("تم تصدير Excel");
+    toast.success(tt("تم تصدير Excel", "Excel exported"));
   };
 
   const exportPdf = () => {
@@ -368,7 +372,7 @@ function ShippingOrder() {
     pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
 
     pdf.save(`shipping-order_${from}_to_${to}.pdf`);
-    toast.success("تم تصدير PDF");
+    toast.success(tt("تم تصدير PDF", "PDF exported"));
   };
 
   const exportCollectionsXlsx = () => {
@@ -391,7 +395,7 @@ function ShippingOrder() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Per Collection");
     XLSX.writeFile(wb, `collections-summary_${from}_to_${to}.xlsx`);
-    toast.success("تم تصدير Excel");
+    toast.success(tt("تم تصدير Excel", "Excel exported"));
   };
 
   const exportCollectionsPdf = () => {
@@ -456,7 +460,7 @@ function ShippingOrder() {
     pdf.setFontSize(13);
     pdf.text(`Grand Total: ${collectionsGrandTotal}`, pageW - margin, y + 10, { align: "right" });
     pdf.save(`collections-summary_${from}_to_${to}.pdf`);
-    toast.success("تم تصدير PDF");
+    toast.success(tt("تم تصدير PDF", "PDF exported"));
   };
 
   const setRange = (days: number) => {
@@ -474,25 +478,31 @@ function ShippingOrder() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-4" dir="rtl">
+    <div className="container mx-auto p-4 space-y-4" dir={dir}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Truck className="h-6 w-6 text-primary" /> طلبية الشحن
+            <Truck className="h-6 w-6 text-primary" /> {tt("طلبية الشحن", "Shipping Order")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            مرتبة بالأيام بناءً على الفواتير الفعلية فقط — بدون الملغاة أو المحذوفة. (Code / Sold / Packing List)
+            {tt(
+              "مرتبة بالأيام بناءً على الفواتير الفعلية فقط — بدون الملغاة أو المحذوفة. (Code / Sold / Packing List)",
+              "Grouped by day based on actual invoices only — excluding voided/deleted. (Code / Sold / Packing List)",
+            )}
           </p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setLang(ar ? "en" : "ar")} variant="outline" size="sm" className="gap-1">
+            <Languages className="h-4 w-4" /> {ar ? "EN" : "ع"}
+          </Button>
           <Button onClick={load} variant="outline" size="sm" disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ml-1 ${loading ? "animate-spin" : ""}`} /> تحديث
+            <RefreshCw className={`h-4 w-4 mx-1 ${loading ? "animate-spin" : ""}`} /> {tt("تحديث", "Refresh")}
           </Button>
           <Button onClick={exportXlsx} size="sm" disabled={!groups.length}>
-            <Download className="h-4 w-4 ml-1" /> Excel
+            <Download className="h-4 w-4 mx-1" /> Excel
           </Button>
           <Button onClick={exportPdf} size="sm" variant="secondary" disabled={!groups.length}>
-            <FileText className="h-4 w-4 ml-1" /> PDF
+            <FileText className="h-4 w-4 mx-1" /> PDF
           </Button>
         </div>
       </div>
@@ -500,46 +510,46 @@ function ShippingOrder() {
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="text-xs text-muted-foreground">من</label>
+            <label className="text-xs text-muted-foreground">{tt("من", "From")}</label>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">إلى</label>
+            <label className="text-xs text-muted-foreground">{tt("إلى", "To")}</label>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" />
             </div>
           </div>
           <div className="flex flex-wrap gap-1">
-            <Button variant="outline" size="sm" onClick={() => { const d = todayISO(); setFrom(d); setTo(d); }}>اليوم</Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(7)}>آخر 7 أيام</Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(30)}>آخر 30 يوم</Button>
-            <Button variant="outline" size="sm" onClick={() => setForwardRange(7)}>الأسبوع القادم</Button>
-            <Button variant="outline" size="sm" onClick={() => setForwardRange(30)}>الـ 30 يوم القادمة</Button>
+            <Button variant="outline" size="sm" onClick={() => { const d = todayISO(); setFrom(d); setTo(d); }}>{tt("اليوم", "Today")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setRange(7)}>{tt("آخر 7 أيام", "Last 7 days")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setRange(30)}>{tt("آخر 30 يوم", "Last 30 days")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setForwardRange(7)}>{tt("الأسبوع القادم", "Next week")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setForwardRange(30)}>{tt("الـ 30 يوم القادمة", "Next 30 days")}</Button>
           </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">عدد الأيام</div>
+          <div className="text-xs text-muted-foreground">{tt("عدد الأيام", "Days")}</div>
           <div className="text-3xl font-bold mt-1">{groups.length}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">عدد الفواتير</div>
+          <div className="text-xs text-muted-foreground">{tt("عدد الفواتير", "Invoices")}</div>
           <div className="text-3xl font-bold mt-1">{invoices.length}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">إجمالي القطع للشحن</div>
+          <div className="text-xs text-muted-foreground">{tt("إجمالي القطع للشحن", "Total units to ship")}</div>
           <div className="text-3xl font-bold mt-1 text-primary">{grandTotal}</div>
         </Card>
       </div>
 
       {groups.length === 0 ? (
-        <Card className="p-10 text-center text-muted-foreground">لا توجد فواتير في هذه الفترة</Card>
+        <Card className="p-10 text-center text-muted-foreground">{tt("لا توجد فواتير في هذه الفترة", "No invoices in this range")}</Card>
       ) : (
         groups.map((g) => (
           <Card key={g.date} className="overflow-hidden">
@@ -547,16 +557,16 @@ function ShippingOrder() {
               <h2 className="font-semibold flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4 text-primary" /> {g.date}
               </h2>
-              <Badge variant="secondary">إجمالي اليوم: {g.totalSold}</Badge>
+              <Badge variant="secondary">{tt("إجمالي اليوم", "Day total")}: {g.totalSold}</Badge>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/30">
-                  <tr className="text-right">
-                    <th className="p-2 w-40">Code</th>
-                    <th className="p-2">Product</th>
-                    <th className="p-2 w-20 text-center">Sold</th>
-                    <th className="p-2 w-32 text-center">Packing List</th>
+                  <tr className={ar ? "text-right" : "text-left"}>
+                    <th className="p-2 w-40">{tt("الكود", "Code")}</th>
+                    <th className="p-2">{tt("المنتج", "Product")}</th>
+                    <th className="p-2 w-20 text-center">{tt("المباع", "Sold")}</th>
+                    <th className="p-2 w-32 text-center">{tt("قائمة التغليف", "Packing List")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -576,7 +586,7 @@ function ShippingOrder() {
                 </tbody>
                 <tfoot className="bg-muted/40 font-bold">
                   <tr className="border-t-2">
-                    <td className="p-2" colSpan={2}>إجمالي اليوم</td>
+                    <td className="p-2" colSpan={2}>{tt("إجمالي اليوم", "Day total")}</td>
                     <td className="p-2 text-center text-primary">{g.totalSold}</td>
                     <td></td>
                   </tr>
@@ -590,14 +600,14 @@ function ShippingOrder() {
       {collectionGroups.length > 0 && (
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-primary/10 p-3">
-            <h2 className="font-semibold">ملخص حسب الكولكشن خلال الفترة</h2>
+            <h2 className="font-semibold">{tt("ملخص حسب الكولكشن خلال الفترة", "Per-collection summary for the range")}</h2>
             <div className="flex items-center gap-2">
-              <Badge>الإجمالي: {collectionsGrandTotal}</Badge>
+              <Badge>{tt("الإجمالي", "Total")}: {collectionsGrandTotal}</Badge>
               <Button size="sm" variant="outline" onClick={exportCollectionsXlsx}>
-                <Download className="h-4 w-4 ml-1" /> Excel
+                <Download className="h-4 w-4 mx-1" /> Excel
               </Button>
               <Button size="sm" variant="secondary" onClick={exportCollectionsPdf}>
-                <FileText className="h-4 w-4 ml-1" /> PDF
+                <FileText className="h-4 w-4 mx-1" /> PDF
               </Button>
             </div>
           </div>
@@ -611,11 +621,11 @@ function ShippingOrder() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/20">
-                      <tr className="text-right">
-                        <th className="p-2 w-40">Code</th>
-                        <th className="p-2">Product</th>
-                        <th className="p-2 w-32">اللون</th>
-                        <th className="p-2 w-20 text-center">العدد</th>
+                      <tr className={ar ? "text-right" : "text-left"}>
+                        <th className="p-2 w-40">{tt("الكود", "Code")}</th>
+                        <th className="p-2">{tt("المنتج", "Product")}</th>
+                        <th className="p-2 w-32">{tt("اللون", "Color")}</th>
+                        <th className="p-2 w-20 text-center">{tt("العدد", "Qty")}</th>
                       </tr>
                     </thead>
                     <tbody>
