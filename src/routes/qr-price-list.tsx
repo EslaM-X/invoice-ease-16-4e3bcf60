@@ -21,6 +21,7 @@ import { useI18n } from "@/lib/i18n";
 import { encodeProductQR } from "@/lib/qr-codec";
 import { swatchStyle } from "@/lib/color-swatch";
 import { ProductImageUpload } from "@/components/product-image-upload";
+import { lovable } from "@/integrations/lovable";
 import type { Product } from "@/lib/data";
 import { COLLECTIONS as APP_COLLECTIONS } from "@/lib/data";
 import { fmtMoney } from "@/lib/utils-money";
@@ -75,6 +76,7 @@ function PriceListPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   // Public page — no auth redirect. Anyone can browse; only admins can edit.
 
@@ -169,13 +171,14 @@ function PriceListPage() {
                 {tt("لوحة التحكم", "Dashboard")}
               </Link>
             ) : (
-              <Link
-                to="/auth"
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
                 className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.78_0.11_82_/_0.4)] bg-[oklch(0.78_0.11_82_/_0.1)] px-4 py-2 text-sm font-medium text-[oklch(0.92_0.08_82)] transition hover:bg-[oklch(0.78_0.11_82_/_0.2)]"
               >
                 <LogIn className="h-4 w-4" />
                 {tt("تسجيل الدخول", "Sign In")}
-              </Link>
+              </button>
             )}
             <button
               type="button"
@@ -409,6 +412,9 @@ function PriceListPage() {
             navigate({ to: "/invoices/new", search: { draft: true } as any });
           }}
         />
+      )}
+      {signInOpen && !user && (
+        <SignInDialog onClose={() => setSignInOpen(false)} lang={lang} />
       )}
     </div>
   );
@@ -648,35 +654,17 @@ function CartDialog({
 function EditDialog({
   item, userEmail, onClose,
 }: { item: Product; userEmail: string | null; onClose: () => void }) {
-  const [price, setPrice] = useState(String(item.price));
   const [imageUrl, setImageUrl] = useState<string | null>(item.image_url ?? null);
   const [saving, setSaving] = useState(false);
-  const [history, setHistory] = useState<Array<{ id: string; old_value: number | null; new_value: number | null; changed_at: string; changed_by_email: string | null }>>([]);
-  const [showHistory, setShowHistory] = useState(false);
-
-  useEffect(() => {
-    supabase
-      .from("product_price_history")
-      .select("id,old_value,new_value,changed_at,changed_by_email")
-      .eq("product_id", item.id).eq("field", "price")
-      .order("changed_at", { ascending: false }).limit(50)
-      .then(({ data }) => setHistory((data ?? []) as any));
-  }, [item.id]);
 
   const save = async () => {
-    const next = Number(price);
-    if (!Number.isFinite(next) || next < 0) {
-      toast.error("سعر غير صحيح");
-      return;
-    }
     setSaving(true);
     try {
-      const patch: Record<string, any> = {};
-      if (next !== Number(item.price)) patch.price = next;
-      if (imageUrl !== (item.image_url ?? null)) patch.image_url = imageUrl;
-      if (Object.keys(patch).length === 0) { onClose(); return; }
-      patch.updated_by_email = userEmail;
-      const { error } = await supabase.from("products").update(patch as any).eq("id", item.id);
+      if (imageUrl === (item.image_url ?? null)) { onClose(); return; }
+      const { error } = await supabase
+        .from("products")
+        .update({ image_url: imageUrl, updated_by_email: userEmail } as any)
+        .eq("id", item.id);
       if (error) throw error;
       toast.success("تم الحفظ");
       onClose();
@@ -696,41 +684,14 @@ function EditDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <Label className="text-white/80">السعر (EGP)</Label>
-            <Input
-              type="number" value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="mt-1 border-white/15 bg-white/5 text-white"
-            />
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-white/60">
+            السعر يُدار من <span className="text-[oklch(0.92_0.08_82)] font-medium">صفحة المنتجات</span> فقط.
+            هنا يمكنك تعديل الصورة فقط.
           </div>
           <div>
             <Label className="text-white/80">صورة المنتج</Label>
             <div className="mt-2"><ProductImageUpload value={imageUrl} onChange={setImageUrl} /></div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowHistory((v) => !v)}
-            className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:text-white"
-          >
-            <span className="inline-flex items-center gap-2"><History className="h-3 w-3" /> سجل الأسعار ({history.length})</span>
-            <span>{showHistory ? "إخفاء" : "عرض"}</span>
-          </button>
-          {showHistory && (
-            <div className="max-h-40 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2 text-xs">
-              {history.length === 0 ? (
-                <div className="py-3 text-center text-white/40">لا توجد تغييرات</div>
-              ) : history.map((h) => (
-                <div key={h.id} className="flex items-center justify-between border-b border-white/5 py-1 last:border-0">
-                  <span className="text-white/60">
-                    {Number(h.old_value ?? 0).toLocaleString()} → {Number(h.new_value ?? 0).toLocaleString()}
-                  </span>
-                  <span className="text-white/40">{new Date(h.changed_at).toLocaleDateString()}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         <DialogFooter>
@@ -740,6 +701,102 @@ function EditDialog({
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "حفظ"}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- Inline sign-in dialog (keeps user on the QR price list) -------------
+function SignInDialog({ onClose, lang }: { onClose: () => void; lang: "ar" | "en" }) {
+  const isAr = lang === "ar";
+  const tt = (a: string, e: string) => (isAr ? a : e);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const signIn = async () => {
+    if (!email.trim() || !password) {
+      toast.error(tt("ادخل البريد وكلمة المرور", "Enter email and password"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+      toast.success(tt("تم تسجيل الدخول", "Signed in"));
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? tt("فشل تسجيل الدخول", "Sign in failed"));
+    } finally { setBusy(false); }
+  };
+
+  const google = async () => {
+    setBusy(true);
+    try {
+      await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.href,
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? tt("تعذر فتح Google", "Google sign-in failed"));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent dir={isAr ? "rtl" : "ltr"} className="max-w-sm bg-[oklch(0.12_0.005_60)] text-white border-white/10">
+        <DialogHeader>
+          <DialogTitle className="text-[oklch(0.92_0.08_82)]">
+            {tt("تسجيل الدخول", "Sign In")}
+          </DialogTitle>
+          <DialogDescription className="text-white/60">
+            {tt("سجل دخولك للبدء في إضافة المنتجات للفاتورة.", "Sign in to start adding products to an invoice.")}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-white/80 text-xs">{tt("البريد الإلكتروني", "Email")}</Label>
+            <Input
+              type="email" value={email} dir="ltr"
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") signIn(); }}
+              className="mt-1 border-white/15 bg-white/5 text-white"
+              autoComplete="email"
+            />
+          </div>
+          <div>
+            <Label className="text-white/80 text-xs">{tt("كلمة المرور", "Password")}</Label>
+            <Input
+              type="password" value={password} dir="ltr"
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") signIn(); }}
+              className="mt-1 border-white/15 bg-white/5 text-white"
+              autoComplete="current-password"
+            />
+          </div>
+          <Button
+            onClick={signIn} disabled={busy}
+            className="w-full bg-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.004_60)] hover:bg-[oklch(0.84_0.1_82)]"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="ml-1 h-4 w-4" />}
+            {tt("دخول", "Sign in")}
+          </Button>
+          <div className="relative my-2">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10" /></div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+              <span className="bg-[oklch(0.12_0.005_60)] px-2 text-white/40">{tt("أو", "or")}</span>
+            </div>
+          </div>
+          <Button
+            type="button" variant="outline" onClick={google} disabled={busy}
+            className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10"
+          >
+            {tt("الدخول بـ Google", "Continue with Google")}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
