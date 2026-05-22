@@ -344,7 +344,7 @@ function InvoiceView() {
             <div>
               <div>{isAr ? "شروط التسليم:" : "Delivery Terms:"}</div>
               <ul className="mt-1 ms-6 list-disc">
-                <li>{isAr ? "21 يوم من تاريخ الفاتورة" : "21 days from invoice date"}</li>
+                <li>{isAr ? "21 يوم عمل من تاريخ الفاتورة" : "21 working days from invoice date"}</li>
               </ul>
             </div>
             {inv.notes && (
