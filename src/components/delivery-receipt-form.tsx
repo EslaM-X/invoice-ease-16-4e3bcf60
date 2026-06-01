@@ -14,6 +14,14 @@ import {
   fetchInvoiceItemsWithDelivered,
   type InvoiceItemWithDelivered,
 } from "@/lib/delivery-receipts";
+import {
+  isMultiPartProduct,
+  partLabel,
+  parsePartFromNote,
+  buildNoteWithPart,
+  remainingPartsLabel,
+  type PartKey,
+} from "@/lib/product-parts";
 import { SignaturePad } from "@/components/signature-pad";
 
 type Mode = "new" | "edit";
@@ -50,6 +58,9 @@ type Row = {
   qty: number; // current input
   note: string;
   selected: boolean;
+  isMultiPart: boolean;
+  part: PartKey;
+  priorNotes: string[]; // notes from OTHER receipts (for multi-part tracking)
 };
 
 export function DeliveryReceiptForm({
@@ -107,6 +118,24 @@ export function DeliveryReceiptForm({
         invoiceId,
         receiptId,
       );
+
+      // Fetch prior delivery notes (from OTHER receipts) for multi-part tracking
+      const itemIds = items.map((i) => i.id);
+      const priorNotesMap = new Map<string, string[]>();
+      if (itemIds.length > 0) {
+        const q = supabase
+          .from("delivery_receipt_items" as any)
+          .select("invoice_item_id, note, quantity, receipt_id")
+          .in("invoice_item_id", itemIds);
+        const { data: dris } = await q;
+        for (const r of (dris ?? []) as any[]) {
+          if (receiptId && r.receipt_id === receiptId) continue;
+          const arr = priorNotesMap.get(r.invoice_item_id) ?? [];
+          for (let k = 0; k < (r.quantity || 0); k++) arr.push(r.note ?? "");
+          priorNotesMap.set(r.invoice_item_id, arr);
+        }
+      }
+
       // map existing receipt selections
       const existingMap = new Map<string, { qty: number; note: string }>();
       if (existing) {
@@ -118,6 +147,8 @@ export function DeliveryReceiptForm({
       const next: Row[] = items.map((it) => {
         const ex = existingMap.get(it.id);
         const remainingForThisReceipt = it.remaining + (ex?.qty || 0);
+        const multi = isMultiPartProduct(it.product_name);
+        const parsed = parsePartFromNote(ex?.note ?? "");
         return {
           invoice_item_id: it.id,
           product_name: it.product_name,
@@ -126,8 +157,11 @@ export function DeliveryReceiptForm({
           invoice_qty: it.quantity,
           delivered_other: it.delivered_qty,
           qty: ex ? ex.qty : remainingForThisReceipt,
-          note: ex?.note ?? "",
+          note: ex ? parsed.cleanNote : "",
           selected: ex ? true : remainingForThisReceipt > 0,
+          isMultiPart: multi,
+          part: ex ? parsed.part : "full",
+          priorNotes: priorNotesMap.get(it.id) ?? [],
         };
       });
       setRows(next);
@@ -150,7 +184,7 @@ export function DeliveryReceiptForm({
       .map((r) => ({
         invoice_item_id: r.invoice_item_id,
         quantity: r.qty,
-        note: r.note || null,
+        note: r.isMultiPart ? buildNoteWithPart(r.part, r.note) : (r.note || null),
       }));
     if (items.length === 0) {
       toast.error(isAr ? "اختر بنداً واحداً على الأقل" : "Select at least one item");
@@ -301,6 +335,38 @@ export function DeliveryReceiptForm({
                         {r.serial_number && <span className="me-2">SN: {r.serial_number}</span>}
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
                       </div>
+                      {r.isMultiPart && (() => {
+                        const pendingParts = remainingPartsLabel(r.invoice_qty, r.priorNotes, isAr);
+                        return (
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] font-semibold text-muted-foreground">
+                                {isAr ? "الجزء المُسلَّم:" : "Part delivered:"}
+                              </span>
+                              {(["full", "mixer", "trim"] as PartKey[]).map((p) => (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  disabled={!r.selected}
+                                  onClick={() => setRow(idx, { part: p })}
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
+                                    r.part === p
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                                  } ${!r.selected ? "opacity-50" : ""}`}
+                                >
+                                  {partLabel(p, isAr)}
+                                </button>
+                              ))}
+                            </div>
+                            {pendingParts && (
+                              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                                {isAr ? "⚠ متبقي من السابق: " : "⚠ Still pending: "}{pendingParts}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2 text-center tabular-nums">{r.invoice_qty}</td>
                     <td className="px-3 py-2 text-center tabular-nums">{r.delivered_other}</td>
