@@ -184,7 +184,7 @@ export function DeliveryReceiptForm({
       .map((r) => ({
         invoice_item_id: r.invoice_item_id,
         quantity: r.qty,
-        note: r.note || null,
+        note: r.isMultiPart ? buildNoteWithPart(r.part, r.note) : (r.note || null),
       }));
     if (items.length === 0) {
       toast.error(isAr ? "اختر بنداً واحداً على الأقل" : "Select at least one item");
