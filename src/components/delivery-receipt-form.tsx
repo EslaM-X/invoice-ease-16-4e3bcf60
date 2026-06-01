@@ -14,6 +14,14 @@ import {
   fetchInvoiceItemsWithDelivered,
   type InvoiceItemWithDelivered,
 } from "@/lib/delivery-receipts";
+import {
+  isMultiPartProduct,
+  partLabel,
+  parsePartFromNote,
+  buildNoteWithPart,
+  remainingPartsLabel,
+  type PartKey,
+} from "@/lib/product-parts";
 import { SignaturePad } from "@/components/signature-pad";
 
 type Mode = "new" | "edit";
