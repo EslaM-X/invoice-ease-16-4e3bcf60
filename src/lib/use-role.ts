@@ -36,10 +36,16 @@ export function useRole() {
     };
   }, [user]);
 
+  // Email-based overrides: specific accounts get unconditional access to
+  // certain feature areas regardless of their assigned roles.
+  const email = (user?.email ?? "").trim().toLowerCase();
+  const CALL_CENTER_FULL_ACCESS = new Set(["f.hesham@steinheim-eg.com"]);
+  const hasCallCenterOverride = CALL_CENTER_FULL_ACCESS.has(email);
+
   const isAdmin = roles.includes("admin");
-  const isManager = isAdmin || roles.includes("manager");
+  const isManager = isAdmin || roles.includes("manager") || hasCallCenterOverride;
   const isCashier = isAdmin || roles.includes("cashier");
-  const isCallCenter = isAdmin || roles.includes("call_center");
+  const isCallCenter = isAdmin || roles.includes("call_center") || hasCallCenterOverride;
   const isPurchasing = isAdmin || roles.includes("purchasing");
   const isCFO = isAdmin || roles.includes("cfo");
 
