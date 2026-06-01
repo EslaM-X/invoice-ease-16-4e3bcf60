@@ -196,7 +196,7 @@ function DraftsPage() {
                             {lang === "ar" ? "عرض / PDF" : "View / PDF"}
                           </Button>
                         </Link>
-                        <Link to="/invoices_/$id/edit" params={{ id: i.id }}>
+                        <Link to="/invoices/$id/edit" params={{ id: i.id }}>
                           <Button variant="ghost" size="sm" className="gap-1">
                             <Pencil className="h-4 w-4" />
                             {t("edit")}
