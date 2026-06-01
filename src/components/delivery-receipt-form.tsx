@@ -58,6 +58,9 @@ type Row = {
   qty: number; // current input
   note: string;
   selected: boolean;
+  isMultiPart: boolean;
+  part: PartKey;
+  priorNotes: string[]; // notes from OTHER receipts (for multi-part tracking)
 };
 
 export function DeliveryReceiptForm({
