@@ -118,6 +118,24 @@ export function DeliveryReceiptForm({
         invoiceId,
         receiptId,
       );
+
+      // Fetch prior delivery notes (from OTHER receipts) for multi-part tracking
+      const itemIds = items.map((i) => i.id);
+      const priorNotesMap = new Map<string, string[]>();
+      if (itemIds.length > 0) {
+        const q = supabase
+          .from("delivery_receipt_items" as any)
+          .select("invoice_item_id, note, quantity, receipt_id")
+          .in("invoice_item_id", itemIds);
+        const { data: dris } = await q;
+        for (const r of (dris ?? []) as any[]) {
+          if (receiptId && r.receipt_id === receiptId) continue;
+          const arr = priorNotesMap.get(r.invoice_item_id) ?? [];
+          for (let k = 0; k < (r.quantity || 0); k++) arr.push(r.note ?? "");
+          priorNotesMap.set(r.invoice_item_id, arr);
+        }
+      }
+
       // map existing receipt selections
       const existingMap = new Map<string, { qty: number; note: string }>();
       if (existing) {
@@ -129,6 +147,8 @@ export function DeliveryReceiptForm({
       const next: Row[] = items.map((it) => {
         const ex = existingMap.get(it.id);
         const remainingForThisReceipt = it.remaining + (ex?.qty || 0);
+        const multi = isMultiPartProduct(it.product_name);
+        const parsed = parsePartFromNote(ex?.note ?? "");
         return {
           invoice_item_id: it.id,
           product_name: it.product_name,
@@ -137,8 +157,11 @@ export function DeliveryReceiptForm({
           invoice_qty: it.quantity,
           delivered_other: it.delivered_qty,
           qty: ex ? ex.qty : remainingForThisReceipt,
-          note: ex?.note ?? "",
+          note: ex ? parsed.cleanNote : "",
           selected: ex ? true : remainingForThisReceipt > 0,
+          isMultiPart: multi,
+          part: ex ? parsed.part : "full",
+          priorNotes: priorNotesMap.get(it.id) ?? [],
         };
       });
       setRows(next);
