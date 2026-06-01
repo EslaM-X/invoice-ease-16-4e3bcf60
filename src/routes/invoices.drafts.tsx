@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, FileText, ArrowRight, FileEdit } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, ArrowRight, FileEdit, Eye } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
 import {
