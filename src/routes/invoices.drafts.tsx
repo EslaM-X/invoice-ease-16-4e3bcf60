@@ -190,6 +190,12 @@ function DraftsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1.5">
+                        <Link to="/invoices/$id" params={{ id: i.id }}>
+                          <Button variant="ghost" size="sm" className="gap-1">
+                            <Eye className="h-4 w-4" />
+                            {lang === "ar" ? "عرض / PDF" : "View / PDF"}
+                          </Button>
+                        </Link>
                         <Link to="/invoices_/$id/edit" params={{ id: i.id }}>
                           <Button variant="ghost" size="sm" className="gap-1">
                             <Pencil className="h-4 w-4" />
