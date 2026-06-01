@@ -335,6 +335,38 @@ export function DeliveryReceiptForm({
                         {r.serial_number && <span className="me-2">SN: {r.serial_number}</span>}
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
                       </div>
+                      {r.isMultiPart && (() => {
+                        const pendingParts = remainingPartsLabel(r.invoice_qty, r.priorNotes, isAr);
+                        return (
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] font-semibold text-muted-foreground">
+                                {isAr ? "الجزء المُسلَّم:" : "Part delivered:"}
+                              </span>
+                              {(["full", "mixer", "trim"] as PartKey[]).map((p) => (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  disabled={!r.selected}
+                                  onClick={() => setRow(idx, { part: p })}
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
+                                    r.part === p
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                                  } ${!r.selected ? "opacity-50" : ""}`}
+                                >
+                                  {partLabel(p, isAr)}
+                                </button>
+                              ))}
+                            </div>
+                            {pendingParts && (
+                              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                                {isAr ? "⚠ متبقي من السابق: " : "⚠ Still pending: "}{pendingParts}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2 text-center tabular-nums">{r.invoice_qty}</td>
                     <td className="px-3 py-2 text-center tabular-nums">{r.delivered_other}</td>
