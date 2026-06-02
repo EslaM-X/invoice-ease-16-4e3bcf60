@@ -160,7 +160,7 @@ function ReportsPage() {
               </Card>
 
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">توزيع التقييمات</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "توزيع التقييمات" : "Rating distribution"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <BarChart data={stats.ratingDist}>
@@ -168,7 +168,7 @@ function ReportsPage() {
                       <XAxis dataKey="stars" fontSize={12} />
                       <YAxis fontSize={12} />
                       <Tooltip />
-                      <Bar dataKey="count" name="عدد" fill="#d4a017" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="count" name={isAr ? "عدد" : "Count"} fill="#d4a017" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
