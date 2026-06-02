@@ -143,7 +143,7 @@ function ReportsPage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">المكالمات — آخر 7 أيام</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "المكالمات — آخر 7 أيام" : "Calls — last 7 days"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <BarChart data={stats.last7Days}>
@@ -152,8 +152,8 @@ function ReportsPage() {
                       <YAxis fontSize={12} />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="incoming" name="واردة" fill="#10b981" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="outgoing" name="صادرة" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="incoming" name={isAr ? "واردة" : "Incoming"} fill="#10b981" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="outgoing" name={isAr ? "صادرة" : "Outgoing"} fill="#3b82f6" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
