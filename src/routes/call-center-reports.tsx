@@ -200,7 +200,7 @@ function ReportsPage() {
               </Card>
 
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">اتجاه المكالمات</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "اتجاه المكالمات" : "Calls trend"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <LineChart data={stats.last7Days}>
