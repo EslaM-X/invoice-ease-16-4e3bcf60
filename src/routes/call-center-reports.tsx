@@ -135,10 +135,10 @@ function ReportsPage() {
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-4">
-              <KPI icon={<Phone className="h-4 w-4" />} label="إجمالي المكالمات" value={calls.length} />
-              <KPI icon={<TrendingUp className="h-4 w-4" />} label="آخر 7 أيام" value={stats.last7Days.reduce((s, d) => s + d.calls, 0)} />
-              <KPI icon={<Star className="h-4 w-4" />} label="متوسط التقييم" value={stats.avgRating.toFixed(2)} suffix="★" />
-              <KPI icon={<Star className="h-4 w-4" />} label="عدد التقييمات" value={ratings.length} />
+              <KPI icon={<Phone className="h-4 w-4" />} label={isAr ? "إجمالي المكالمات" : "Total calls"} value={calls.length} />
+              <KPI icon={<TrendingUp className="h-4 w-4" />} label={isAr ? "آخر 7 أيام" : "Last 7 days"} value={stats.last7Days.reduce((s, d) => s + d.calls, 0)} />
+              <KPI icon={<Star className="h-4 w-4" />} label={isAr ? "متوسط التقييم" : "Avg rating"} value={stats.avgRating.toFixed(2)} suffix="★" />
+              <KPI icon={<Star className="h-4 w-4" />} label={isAr ? "عدد التقييمات" : "Ratings count"} value={ratings.length} />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
