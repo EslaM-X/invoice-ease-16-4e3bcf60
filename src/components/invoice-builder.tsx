@@ -678,6 +678,30 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       discount: it.discount,
     }));
 
+    // Confirm reservation from in-transit if any line exceeds physical stock
+    if (!isDraft) {
+      const reservedLines: string[] = [];
+      for (const it of items) {
+        if (!it.product_id) continue;
+        const p = products.find((x) => x.id === it.product_id);
+        if (!p) continue;
+        const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
+        const stockAvail = Math.max(0, (p.stock_quantity ?? 0) + baseline);
+        if (it.quantity > stockAvail) {
+          const short = it.quantity - stockAvail;
+          reservedLines.push(`• ${p.name} — ${lang === "ar" ? `حجز ${short} من القادم` : `reserve ${short} from incoming`}`);
+        }
+      }
+      if (reservedLines.length > 0) {
+        const msg = (lang === "ar"
+          ? "المخزن غير كافٍ لبعض المنتجات. سيتم حجز الكميات التالية من شحنات قادمة:\n\n"
+          : "Stock is insufficient for some products. The following quantities will be reserved from incoming shipments:\n\n")
+          + reservedLines.join("\n")
+          + (lang === "ar" ? "\n\nهل تريد المتابعة؟" : "\n\nProceed?");
+        if (!window.confirm(msg)) return;
+      }
+    }
+
     setSaving(true);
     try {
       // DRAFT path — no stock changes, no real invoice number
