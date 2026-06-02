@@ -21,6 +21,8 @@ const COLORS = ["#d4a017", "#1f2937", "#10b981", "#3b82f6", "#a855f7", "#ef4444"
 
 function ReportsPage() {
   const { isManager, loading: rl } = useRole();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const navigate = useNavigate();
   const [calls, setCalls] = useState<any[]>([]);
   const [ratings, setRatings] = useState<any[]>([]);
@@ -28,10 +30,10 @@ function ReportsPage() {
 
   useEffect(() => {
     if (!rl && !isManager) {
-      toast.error("غير مصرح");
+      toast.error(isAr ? "غير مصرح" : "Unauthorized");
       navigate({ to: "/dashboard" });
     }
-  }, [rl, isManager, navigate]);
+  }, [rl, isManager, navigate, isAr]);
 
   const load = async () => {
     setLoading(true);
