@@ -122,13 +122,17 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
 
   // Load customers/products (RLS handles company-wide visibility)
   const loadLists = async () => {
-    const [{ data: c }, { data: p }, { data: poItems }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: poItems }, { data: reservations }] = await Promise.all([
       supabase.from("customers").select("*").order("name"),
       supabase.from("products").select("*").order("name"),
       supabase
         .from("purchase_order_items")
         .select("product_id, quantity, received_qty, purchase_orders!inner(status)")
         .in("purchase_orders.status", ["ordered", "shipped", "in_warehouse"]),
+      supabase
+        .from("invoice_po_reservations" as any)
+        .select("product_id, quantity, invoice_id, status")
+        .eq("status", "active"),
     ]);
     setCustomers((c ?? []) as Customer[]);
     setProducts((p ?? []) as Product[]);
@@ -137,6 +141,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       const remaining = Math.max(0, Number(it.quantity || 0) - Number(it.received_qty || 0));
       if (!it.product_id || remaining <= 0) continue;
       map[it.product_id] = (map[it.product_id] ?? 0) + remaining;
+    }
+    // Subtract active reservations from OTHER invoices (exclude current invoice in edit mode)
+    for (const r of (reservations ?? []) as any[]) {
+      if (!r.product_id) continue;
+      if (mode === "edit" && invoiceId && r.invoice_id === invoiceId) continue;
+      map[r.product_id] = Math.max(0, (map[r.product_id] ?? 0) - Number(r.quantity || 0));
     }
     setInTransitQty(map);
   };
@@ -148,6 +158,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   useRealtimeTable("products", () => { loadLists(); });
   useRealtimeTable("purchase_orders", () => { loadLists(); });
   useRealtimeTable("purchase_order_items", () => { loadLists(); });
+  useRealtimeTable("invoice_po_reservations" as any, () => { loadLists(); });
 
   // Hydrate draft only in new mode
   useEffect(() => {
@@ -666,6 +677,30 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       unit_price: it.unit_price,
       discount: it.discount,
     }));
+
+    // Confirm reservation from in-transit if any line exceeds physical stock
+    if (!isDraft) {
+      const reservedLines: string[] = [];
+      for (const it of items) {
+        if (!it.product_id) continue;
+        const p = products.find((x) => x.id === it.product_id);
+        if (!p) continue;
+        const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
+        const stockAvail = Math.max(0, (p.stock_quantity ?? 0) + baseline);
+        if (it.quantity > stockAvail) {
+          const short = it.quantity - stockAvail;
+          reservedLines.push(`• ${p.name} — ${lang === "ar" ? `حجز ${short} من القادم` : `reserve ${short} from incoming`}`);
+        }
+      }
+      if (reservedLines.length > 0) {
+        const msg = (lang === "ar"
+          ? "المخزن غير كافٍ لبعض المنتجات. سيتم حجز الكميات التالية من شحنات قادمة:\n\n"
+          : "Stock is insufficient for some products. The following quantities will be reserved from incoming shipments:\n\n")
+          + reservedLines.join("\n")
+          + (lang === "ar" ? "\n\nهل تريد المتابعة؟" : "\n\nProceed?");
+        if (!window.confirm(msg)) return;
+      }
+    }
 
     setSaving(true);
     try {

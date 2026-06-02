@@ -1,110 +1,64 @@
-## الهدف
+## الخطة
 
-نظام تتبع لحظي وذكي لمحاضر الاستلام (Delivery Receipts) مع أرشيف للمحاضر المكتملة، يبان لكل حسابات الشركة فورًا.
+### 1. قاعدة البيانات — جدول حجز جديد
 
----
+جدول `invoice_po_reservations`:
+- `id`, `invoice_id`, `invoice_item_id`, `product_id`
+- `po_id`, `po_item_id`
+- `quantity` (الكمية المحجوزة من هذا PO Item للفاتورة دي)
+- `status`: `active` (محجوز) | `fulfilled` (الشحنة وصلت واتسلمت) | `cancelled`
+- `created_at`, `created_by`, `created_by_email`
 
-## 1. مراحل التتبع الجديدة (Workflow)
+مع RLS (نفس صلاحيات الفواتير) + GRANTs.
 
-نوسّع `delivery_receipts.status` ليشمل سلسلة مراحل واضحة:
+دالة helper `get_available_in_transit(product_id)` ترجع: إجمالي المتبقي في POs المفتوحة − إجمالي الحجوزات النشطة.
 
-| Status | عربي | متى |
-|---|---|---|
-| `draft` | مسودة | بعد الإنشاء قبل الإرسال |
-| `out_for_delivery` | في الطريق 🚚 | بعد طبع/تسليم للمندوب |
-| `signed` | مستلم وموقَّع ✍️ | العميل وقّع |
-| `paid` | مغلق ومدفوع ✅ | بعد تسجيل الدفع كاملاً |
-| `returned` | راجع ↩️ | المندوب رجع بالبضاعة |
-| `cancelled` | ملغي ✖️ | تم إلغاء المحضر |
+عند حذف فاتورة أو سطر منها → الحجوزات المرتبطة تتمسح (cascade منطقي عبر RLS + trigger).
 
-كل تغيير حالة يتسجل تلقائيًا في timeline (مع الوقت، المستخدم، السبب).
+### 2. منطق الحجز في إنشاء/تعديل الفاتورة
 
----
+`src/components/invoice-builder.tsx`:
+- `loadLists()` تحسب `inTransitQty` = (متبقي PO) − (حجوزات نشطة من فواتير تانية، باستثناء الفاتورة الحالية في وضع التعديل).
+- لما المستخدم يحاول يزود كمية تتعدى الستوك الفعلي → Dialog تأكيد:
+  > «المخزن غير كافٍ. سيتم حجز X قطعة من شحنة قادمة (PO رقم …). هل تريد المتابعة؟»
+- عند حفظ الفاتورة، بعد إنشاء `invoice_items`:
+  - لكل سطر فيه كمية > الستوك المتاح، نحجز الفرق من أقدم PO فيه متبقي للمنتج (FIFO).
+  - نكتب صفوف في `invoice_po_reservations`.
+- في وضع التعديل: نمسح حجوزات الفاتورة القديمة ونعيد بناءها (atomic).
 
-## 2. الأرشيف الذكي
+ملاحظة: الستوك `products.stock_quantity` ميتغيرش — يفضل صفر زي ما طلب المستخدم. لما الشحنة توصل (PO Receipt) الستوك بيزيد عادي، والحجز يتحول لـ `fulfilled` تلقائياً عبر trigger على `po_receipts`.
 
-- صفحة `/delivery-receipts/archive` تعرض المحاضر بحالات `paid` / `returned` / `cancelled` فقط.
-- صفحة `/delivery-receipts` الأساسية تعرض النشطة فقط (`draft` / `out_for_delivery` / `signed`).
-- شريط فلتر سريع + بحث برقم المحضر/الفاتورة/العميل/الحالة.
-- زرار "نقل للأرشيف" بيظهر تلقائيًا لما الفاتورة المرتبطة `paid_amount >= total` والمحضر `signed`.
+### 3. صفحة «قادم في الطريق» — تاب جديد + عمود ثالث
 
----
+`src/routes/in-transit.tsx`:
+- نضيف Tabs:
+  - **«قادم في الطريق»** (الكارد الحالي) + عمود/شريحة جديدة في كل كارد منتج: «محجوز للفواتير: N»، مع عدد متاح فعلي = القادم − المحجوز.
+  - **«المحجوز للفواتير»** (تاب جديد) — جدول/كروت: المنتج، الكولكشن، الكمية المحجوزة، رقم الفاتورة (link)، اسم العميل، تاريخ الفاتورة، رقم PO، حالة الحجز.
+  - فلاتر بحث + collection + لون مثل الموجود.
 
-## 3. التتبع اللحظي (Realtime)
+### 4. عمود ثالث في عرض المخزون
 
-- استخدام Supabase Realtime على `delivery_receipts` و `delivery_receipt_audit_log` — أي تغيير حالة يبان لكل المستخدمين فورًا بدون refresh.
-- إشعار داخل التطبيق (`notifications` table) لكل تحرك مهم لرول `manager` و`admin`:
-  - "محضر DR-... في الطريق"
-  - "محضر DR-... تم توقيعه"
-  - "محضر DR-... رجع"
-
----
-
-## 4. صفحة تفاصيل المحضر — Timeline ذكي
-
-في `/delivery-receipts/$id`:
-
-- **شريط مراحل (stepper)** ملوّن يعرض المرحلة الحالية والمراحل التالية.
-- **Timeline تفصيلي** يقرأ من `delivery_receipt_audit_log`:
-  - أيقونة + لون لكل حدث (إنشاء، تغيير حالة، تعديل عناصر، توقيع).
-  - من قام بالحدث + الإيميل + الوقت بالضبط.
-  - الحقول اللي اتغيرت (changed_fields).
-- **أزرار إجراءات سياقية**: حسب الحالة الحالية بتظهر الأزرار المسموحة فقط (مثلاً "تأكيد التوقيع" لا تظهر إلا للمحاضر `out_for_delivery`).
-
----
-
-## 5. التغييرات في قاعدة البيانات
-
-```sql
--- توسيع الحالات المسموحة (CHECK constraint)
-ALTER TABLE delivery_receipts
-  DROP CONSTRAINT IF EXISTS delivery_receipts_status_check,
-  ADD CONSTRAINT delivery_receipts_status_check
-  CHECK (status IN ('draft','out_for_delivery','signed','paid','returned','cancelled'));
-
--- عمود لسبب الإرجاع/الإلغاء
-ALTER TABLE delivery_receipts
-  ADD COLUMN IF NOT EXISTS status_reason text,
-  ADD COLUMN IF NOT EXISTS archived_at timestamptz;
-
--- RPC لتغيير الحالة بأمان مع تسجيل في الـ audit
-CREATE OR REPLACE FUNCTION change_delivery_receipt_status(
-  _receipt_id uuid, _new_status text, _reason text
-) RETURNS void ...;
-
--- Trigger: عند توقيع المحضر + الفاتورة مدفوعة بالكامل → أرشفة تلقائية (paid + archived_at = now())
-CREATE TRIGGER tg_auto_archive_dr ...;
-
--- إضافة الجدولين لـ realtime publication
-ALTER PUBLICATION supabase_realtime
-  ADD TABLE delivery_receipts, delivery_receipt_audit_log;
+نفس صفحة `in-transit.tsx` على مستوى كل كارد منتج: 3 خانات واضحة:
+```
+في المخزن: 2    |   قادم في الطريق: 31   |   محجوز في فواتير: 5
 ```
 
-(الجدول `delivery_receipt_audit_log` موجود بالفعل وبيلتقط كل تعديل عبر trigger `tg_dr_audit` — هنستفيد منه مباشرة في الـ timeline.)
+### 5. مراجعة لغة مركز الاتصال
+
+`src/routes/call-center.tsx` + `src/routes/call-center-reports.tsx`:
+- مسح كل النصوص العربية المكتوبة مباشرة (34 سطر تقريباً) ونقلها لـ `useI18n` keys أو `lang === 'ar' ? '…' : '…'` للترجمة الكاملة.
+- نتأكد إن كل التواريخ والأرقام تستخدم `fmtDate/fmtMoney` مع `lang`.
+
+### 6. التحقق
+
+- إنشاء فاتورة لمنتج ستوكه 0 و قادم 5 → كمية 2 → Dialog يظهر → عند التأكيد، تتسجل في `invoice_po_reservations` → تظهر في تاب «المحجوز».
+- إنشاء فاتورة تانية لنفس المنتج → المتاح يبقى 3 (مش 5).
+- تبديل اللغة في مركز الاتصال يحوّل كل النصوص بدون استثناء.
 
 ---
 
-## 6. الملفات اللي هتتعدل/تتعمل
-
-- **جديد**: `src/routes/delivery-receipts.archive.tsx` — صفحة الأرشيف.
-- **جديد**: `src/components/delivery-receipt-tracker.tsx` — stepper + timeline + أزرار إجراءات.
-- **جديد**: `src/lib/delivery-receipts.functions.ts` — server fn `changeReceiptStatus` تستدعي الـ RPC.
-- **تعديل**: `src/routes/delivery-receipts.index.tsx` — فلترة النشط فقط + بادچ حالة ملون + زرار "أرشيف".
-- **تعديل**: `src/routes/delivery-receipts.$id.tsx` — دمج `<DeliveryReceiptTracker />` أعلى الصفحة.
-- **تعديل**: `src/components/app-shell.tsx` (لو فيها لينك جانبي) — إضافة لينك الأرشيف.
-- **migration**: التغييرات أعلاه.
-
----
-
-## 7. الواجهة (UX)
-
-- ألوان واضحة لكل حالة (gray/sky/emerald/amber/rose) باستخدام design tokens.
-- Stepper أفقي على الديسكتوب، عمودي على الموبايل.
-- Timeline بتصميم zigzag مع خط رأسي وأيقونات Lucide.
-- كل تحديث realtime بيظهر toast صغير "محضر DR-... → في الطريق".
-
----
-
-## التأكيد
-
-موافق على البلان كده وأبدأ التنفيذ؟
+### تفاصيل تقنية
+- Migration واحد ينشئ الجدول + RLS + GRANT + trigger fulfillment.
+- لا تعديل على `stock_quantity` لحظة إنشاء الفاتورة لو الكمية بتيجي من القادم (طبقاً لاختيار المستخدم).
+- ترتيب الحجز FIFO حسب `purchase_orders.shipped_at NULLS LAST, created_at`.
+- التحويل من `active` → `fulfilled` يتم تلقائياً عبر trigger بعد `apply_po_receipt`.

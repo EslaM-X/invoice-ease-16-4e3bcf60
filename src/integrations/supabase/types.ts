@@ -990,6 +990,51 @@ export type Database = {
           },
         ]
       }
+      invoice_po_reservations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          fulfilled_at: string | null
+          id: string
+          invoice_id: string
+          invoice_item_id: string | null
+          po_id: string
+          po_item_id: string
+          product_id: string
+          quantity: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          invoice_id: string
+          invoice_item_id?: string | null
+          po_id: string
+          po_item_id: string
+          product_id: string
+          quantity: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          invoice_id?: string
+          invoice_item_id?: string | null
+          po_id?: string
+          po_item_id?: string
+          product_id?: string
+          quantity?: number
+          status?: string
+        }
+        Relationships: []
+      }
       invoice_system_notes_history: {
         Row: {
           changed_at: string

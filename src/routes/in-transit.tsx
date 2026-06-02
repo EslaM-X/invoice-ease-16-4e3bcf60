@@ -69,16 +69,22 @@ function InTransitPage() {
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: resv }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
+      supabase.from("invoice_po_reservations" as any)
+        .select("id,product_id,po_id,quantity,status,created_at,invoice_id,invoices(invoice_number,customer_name,total)")
+        .eq("status", "active").limit(2000),
     ]);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
     (posRows ?? []).forEach((p: any) => { posMap[p.id] = p; });
     setPos(posMap);
+    setReservations((resv as any) ?? []);
     const ids = Object.keys(posMap);
     if (ids.length > 0) {
       const { data: its } = await supabase
@@ -95,6 +101,16 @@ function InTransitPage() {
   useRealtimeTable("purchase_orders", () => { if (user) load(); });
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
+  useRealtimeTable("invoice_po_reservations" as any, () => { if (user) load(); });
+
+  const reservedByProduct = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of reservations) {
+      if (!r.product_id) continue;
+      m[r.product_id] = (m[r.product_id] ?? 0) + Number(r.quantity || 0);
+    }
+    return m;
+  }, [reservations]);
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
