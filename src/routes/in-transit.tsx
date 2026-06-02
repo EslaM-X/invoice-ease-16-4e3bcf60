@@ -254,10 +254,26 @@ function InTransitPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard icon={Boxes} label={isAr ? "إجمالي المخزون" : "Total in stock"} value={totals.inStock} color="text-emerald-600" bg="bg-emerald-500/10" />
         <SummaryCard icon={Truck} label={isAr ? "إجمالي في الطريق" : "Total in transit"} value={totals.inTransit} color="text-violet-600" bg="bg-violet-500/10" />
         <SummaryCard icon={Package} label={isAr ? "منتجات قادمة" : "Products incoming"} value={totals.transitProducts} color="text-primary" bg="bg-primary/10" />
+        <SummaryCard icon={ShoppingBag} label={isAr ? "محجوز في فواتير" : "Reserved in invoices"} value={totals.reserved} color="text-amber-600" bg="bg-amber-500/10" />
+      </div>
+
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setTab("transit")}
+          className={`px-4 py-2 text-sm font-semibold transition border-b-2 -mb-px ${tab === "transit" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          {isAr ? "القادم في الطريق" : "Incoming"}
+        </button>
+        <button
+          onClick={() => setTab("reserved")}
+          className={`px-4 py-2 text-sm font-semibold transition border-b-2 -mb-px ${tab === "reserved" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >
+          {isAr ? "المحجوز للفواتير" : "Reserved for Invoices"} ({reservations.length})
+        </button>
       </div>
 
       <div className="space-y-3">
