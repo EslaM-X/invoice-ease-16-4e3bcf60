@@ -58,7 +58,7 @@ function ReportsPage() {
       d.setDate(d.getDate() - (6 - i));
       const key = d.toISOString().slice(0, 10);
       return {
-        date: d.toLocaleDateString("ar-EG", { weekday: "short" }),
+        date: d.toLocaleDateString(isAr ? "ar-EG" : "en-US", { weekday: "short" }),
         key,
         calls: calls.filter((c) => c.called_at?.slice(0, 10) === key).length,
         incoming: calls.filter((c) => c.called_at?.slice(0, 10) === key && c.call_type === "incoming").length,
