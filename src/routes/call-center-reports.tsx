@@ -123,8 +123,8 @@ function ReportsPage() {
             <BarChart3 className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">تقارير مركز الاتصال</h1>
-            <p className="text-sm text-muted-foreground">تحليلات لحظية للمكالمات والتقييمات</p>
+            <h1 className="text-2xl font-bold tracking-tight">{isAr ? "تقارير مركز الاتصال" : "Call Center Reports"}</h1>
+            <p className="text-sm text-muted-foreground">{isAr ? "تحليلات لحظية للمكالمات والتقييمات" : "Real-time analytics for calls and ratings"}</p>
           </div>
         </div>
 
