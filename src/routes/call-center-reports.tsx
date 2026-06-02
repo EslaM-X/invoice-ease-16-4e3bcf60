@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useRole } from "@/lib/use-role";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeTable } from "@/lib/realtime";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,8 @@ const COLORS = ["#d4a017", "#1f2937", "#10b981", "#3b82f6", "#a855f7", "#ef4444"
 
 function ReportsPage() {
   const { isManager, loading: rl } = useRole();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const navigate = useNavigate();
   const [calls, setCalls] = useState<any[]>([]);
   const [ratings, setRatings] = useState<any[]>([]);
@@ -27,10 +30,10 @@ function ReportsPage() {
 
   useEffect(() => {
     if (!rl && !isManager) {
-      toast.error("غير مصرح");
+      toast.error(isAr ? "غير مصرح" : "Unauthorized");
       navigate({ to: "/dashboard" });
     }
-  }, [rl, isManager, navigate]);
+  }, [rl, isManager, navigate, isAr]);
 
   const load = async () => {
     setLoading(true);
@@ -55,7 +58,7 @@ function ReportsPage() {
       d.setDate(d.getDate() - (6 - i));
       const key = d.toISOString().slice(0, 10);
       return {
-        date: d.toLocaleDateString("ar-EG", { weekday: "short" }),
+        date: d.toLocaleDateString(isAr ? "ar-EG" : "en-US", { weekday: "short" }),
         key,
         calls: calls.filter((c) => c.called_at?.slice(0, 10) === key).length,
         incoming: calls.filter((c) => c.called_at?.slice(0, 10) === key && c.call_type === "incoming").length,
@@ -120,8 +123,8 @@ function ReportsPage() {
             <BarChart3 className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">تقارير مركز الاتصال</h1>
-            <p className="text-sm text-muted-foreground">تحليلات لحظية للمكالمات والتقييمات</p>
+            <h1 className="text-2xl font-bold tracking-tight">{isAr ? "تقارير مركز الاتصال" : "Call Center Reports"}</h1>
+            <p className="text-sm text-muted-foreground">{isAr ? "تحليلات لحظية للمكالمات والتقييمات" : "Real-time analytics for calls and ratings"}</p>
           </div>
         </div>
 
@@ -132,15 +135,15 @@ function ReportsPage() {
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-4">
-              <KPI icon={<Phone className="h-4 w-4" />} label="إجمالي المكالمات" value={calls.length} />
-              <KPI icon={<TrendingUp className="h-4 w-4" />} label="آخر 7 أيام" value={stats.last7Days.reduce((s, d) => s + d.calls, 0)} />
-              <KPI icon={<Star className="h-4 w-4" />} label="متوسط التقييم" value={stats.avgRating.toFixed(2)} suffix="★" />
-              <KPI icon={<Star className="h-4 w-4" />} label="عدد التقييمات" value={ratings.length} />
+              <KPI icon={<Phone className="h-4 w-4" />} label={isAr ? "إجمالي المكالمات" : "Total calls"} value={calls.length} />
+              <KPI icon={<TrendingUp className="h-4 w-4" />} label={isAr ? "آخر 7 أيام" : "Last 7 days"} value={stats.last7Days.reduce((s, d) => s + d.calls, 0)} />
+              <KPI icon={<Star className="h-4 w-4" />} label={isAr ? "متوسط التقييم" : "Avg rating"} value={stats.avgRating.toFixed(2)} suffix="★" />
+              <KPI icon={<Star className="h-4 w-4" />} label={isAr ? "عدد التقييمات" : "Ratings count"} value={ratings.length} />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">المكالمات — آخر 7 أيام</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "المكالمات — آخر 7 أيام" : "Calls — last 7 days"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <BarChart data={stats.last7Days}>
@@ -149,15 +152,15 @@ function ReportsPage() {
                       <YAxis fontSize={12} />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="incoming" name="واردة" fill="#10b981" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="outgoing" name="صادرة" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="incoming" name={isAr ? "واردة" : "Incoming"} fill="#10b981" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="outgoing" name={isAr ? "صادرة" : "Outgoing"} fill="#3b82f6" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">توزيع التقييمات</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "توزيع التقييمات" : "Rating distribution"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <BarChart data={stats.ratingDist}>
@@ -165,14 +168,14 @@ function ReportsPage() {
                       <XAxis dataKey="stars" fontSize={12} />
                       <YAxis fontSize={12} />
                       <Tooltip />
-                      <Bar dataKey="count" name="عدد" fill="#d4a017" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="count" name={isAr ? "عدد" : "Count"} fill="#d4a017" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
 
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">نتائج المكالمات</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "نتائج المكالمات" : "Call outcomes"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <PieChart>
@@ -197,7 +200,7 @@ function ReportsPage() {
               </Card>
 
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">اتجاه المكالمات</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "اتجاه المكالمات" : "Calls trend"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <LineChart data={stats.last7Days}>
@@ -213,15 +216,15 @@ function ReportsPage() {
             </div>
 
             <Card className="p-5">
-              <h2 className="mb-3 text-sm font-semibold">أداء الموظفين (Top 10)</h2>
+              <h2 className="mb-3 text-sm font-semibold">{isAr ? "أداء الموظفين (Top 10)" : "Agent performance (Top 10)"}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="border-b border-border/60 text-xs text-muted-foreground">
                     <tr>
-                      <th className="py-2 text-start">الموظف</th>
-                      <th className="text-end">المكالمات</th>
-                      <th className="text-end">التقييمات</th>
-                      <th className="text-end">المتوسط</th>
+                      <th className="py-2 text-start">{isAr ? "الموظف" : "Agent"}</th>
+                      <th className="text-end">{isAr ? "المكالمات" : "Calls"}</th>
+                      <th className="text-end">{isAr ? "التقييمات" : "Ratings"}</th>
+                      <th className="text-end">{isAr ? "المتوسط" : "Average"}</th>
                     </tr>
                   </thead>
                   <tbody>
