@@ -225,14 +225,15 @@ function InTransitPage() {
   }, [products, items, productMap, collectionFilter]);
 
   const totals = useMemo(() => {
-    let inStock = 0, inTransit = 0, transitProducts = 0;
+    let inStock = 0, inTransit = 0, transitProducts = 0, reserved = 0;
     rows.forEach((r) => {
       inStock += r.in_stock;
       inTransit += r.in_transit;
       if (r.in_transit > 0) transitProducts++;
+      reserved += reservedByProduct[r.product_id] ?? 0;
     });
-    return { inStock, inTransit, transitProducts };
-  }, [rows]);
+    return { inStock, inTransit, transitProducts, reserved };
+  }, [rows, reservedByProduct]);
 
   return (
     <div className="space-y-6">
