@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useRole } from "@/lib/use-role";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeTable } from "@/lib/realtime";
 import { Card } from "@/components/ui/card";
@@ -46,7 +47,7 @@ type CallLog = {
 
 type CustomerOpt = { id: string; name: string; phone: string | null };
 
-const OUTCOMES = [
+const OUTCOMES_AR = [
   { v: "resolved", label: "تم الحل" },
   { v: "follow_up", label: "متابعة" },
   { v: "no_answer", label: "لم يرد" },
@@ -54,10 +55,21 @@ const OUTCOMES = [
   { v: "sale", label: "بيع" },
   { v: "other", label: "أخرى" },
 ];
+const OUTCOMES_EN = [
+  { v: "resolved", label: "Resolved" },
+  { v: "follow_up", label: "Follow up" },
+  { v: "no_answer", label: "No answer" },
+  { v: "complaint", label: "Complaint" },
+  { v: "sale", label: "Sale" },
+  { v: "other", label: "Other" },
+];
 
 function CallCenterPage() {
   const { user } = useAuth();
   const { isCallCenter, isManager, loading: roleLoading } = useRole();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const OUTCOMES = isAr ? OUTCOMES_AR : OUTCOMES_EN;
   const navigate = useNavigate();
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [customers, setCustomers] = useState<CustomerOpt[]>([]);
@@ -70,10 +82,10 @@ function CallCenterPage() {
 
   useEffect(() => {
     if (!roleLoading && !isCallCenter) {
-      toast.error("غير مصرح");
+      toast.error(isAr ? "غير مصرح" : "Unauthorized");
       navigate({ to: "/dashboard" });
     }
-  }, [isCallCenter, roleLoading, navigate]);
+  }, [isCallCenter, roleLoading, navigate, isAr]);
 
   const load = async () => {
     setLoading(true);
@@ -95,7 +107,7 @@ function CallCenterPage() {
   const deleteCall = async (id: string) => {
     const { error } = await supabase.from("call_logs").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("تم الحذف");
+    toast.success(isAr ? "تم الحذف" : "Deleted");
     load();
   };
 
@@ -134,16 +146,16 @@ function CallCenterPage() {
               <Phone className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">مركز الاتصال</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{isAr ? "مركز الاتصال" : "Call Center"}</h1>
               <p className="text-sm text-muted-foreground">
-                {todayCount} مكالمة اليوم · {calls.length} إجمالي
+                {isAr ? `${todayCount} مكالمة اليوم · ${calls.length} إجمالي` : `${todayCount} calls today · ${calls.length} total`}
               </p>
             </div>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
-                <Plus className="h-4 w-4" /> تسجيل مكالمة
+                <Plus className="h-4 w-4" /> {isAr ? "تسجيل مكالمة" : "Log call"}
               </Button>
             </DialogTrigger>
             {dialogOpen && (
@@ -151,6 +163,8 @@ function CallCenterPage() {
                 userId={user!.id}
                 userEmail={user!.email ?? null}
                 customers={customers}
+                isAr={isAr}
+                outcomes={OUTCOMES}
                 onDone={() => {
                   setDialogOpen(false);
                   load();
@@ -162,19 +176,19 @@ function CallCenterPage() {
 
         <Card className="p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-lg font-semibold flex-1">سجل المكالمات</h2>
+            <h2 className="text-lg font-semibold flex-1">{isAr ? "سجل المكالمات" : "Call log"}</h2>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث بالاسم، رقم، ملخص…"
+              placeholder={isAr ? "ابحث بالاسم، رقم، ملخص…" : "Search by name, phone, summary…"}
               className="w-full sm:w-64"
             />
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
               <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="incoming">واردة</SelectItem>
-                <SelectItem value="outgoing">صادرة</SelectItem>
+                <SelectItem value="all">{isAr ? "الكل" : "All"}</SelectItem>
+                <SelectItem value="incoming">{isAr ? "واردة" : "Incoming"}</SelectItem>
+                <SelectItem value="outgoing">{isAr ? "صادرة" : "Outgoing"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -184,7 +198,7 @@ function CallCenterPage() {
             </div>
           ) : filteredCalls.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              لا توجد مكالمات مطابقة
+              {isAr ? "لا توجد مكالمات مطابقة" : "No matching calls"}
             </div>
           ) : (
             <div className="divide-y divide-border/60">
@@ -209,7 +223,7 @@ function CallCenterPage() {
                     <div className="font-medium">{c.customer_name || c.customer_phone || "—"}</div>
                     <div className="truncate text-xs text-muted-foreground">
                       {c.customer_phone} · {c.agent_email} ·{" "}
-                      {new Date(c.called_at).toLocaleString("ar-EG")}
+                      {new Date(c.called_at).toLocaleString(isAr ? "ar-EG" : "en-US")}
                     </div>
                     {c.summary && (
                       <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">
@@ -230,28 +244,28 @@ function CallCenterPage() {
                       </span>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => setRatingFor(c)} className="gap-1">
-                      <Star className="h-3.5 w-3.5" /> تقييم
+                      <Star className="h-3.5 w-3.5" /> {isAr ? "تقييم" : "Rate"}
                     </Button>
                     {canEdit && (
-                      <Button size="icon" variant="ghost" onClick={() => setEditing(c)} title="تعديل">
+                      <Button size="icon" variant="ghost" onClick={() => setEditing(c)} title={isAr ? "تعديل" : "Edit"}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                     )}
                     {isManager && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="icon" variant="ghost" title="حذف">
+                          <Button size="icon" variant="ghost" title={isAr ? "حذف" : "Delete"}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>حذف المكالمة</AlertDialogTitle>
-                            <AlertDialogDescription>سيتم حذف سجل المكالمة نهائياً.</AlertDialogDescription>
+                            <AlertDialogTitle>{isAr ? "حذف المكالمة" : "Delete call"}</AlertDialogTitle>
+                            <AlertDialogDescription>{isAr ? "سيتم حذف سجل المكالمة نهائياً." : "The call log will be permanently deleted."}</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteCall(c.id)}>تأكيد</AlertDialogAction>
+                            <AlertDialogCancel>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteCall(c.id)}>{isAr ? "تأكيد" : "Confirm"}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -266,12 +280,12 @@ function CallCenterPage() {
 
         {isManager && (
           <Card className="p-5">
-            <h2 className="mb-2 text-lg font-semibold">📊 إحصائيات سريعة</h2>
+            <h2 className="mb-2 text-lg font-semibold">📊 {isAr ? "إحصائيات سريعة" : "Quick stats"}</h2>
             <div className="grid gap-3 sm:grid-cols-4">
-              <Stat label="المكالمات" value={calls.length} />
-              <Stat label="اليوم" value={todayCount} />
-              <Stat label="واردة" value={calls.filter((c) => c.call_type === "incoming").length} />
-              <Stat label="صادرة" value={calls.filter((c) => c.call_type === "outgoing").length} />
+              <Stat label={isAr ? "المكالمات" : "Calls"} value={calls.length} />
+              <Stat label={isAr ? "اليوم" : "Today"} value={todayCount} />
+              <Stat label={isAr ? "واردة" : "Incoming"} value={calls.filter((c) => c.call_type === "incoming").length} />
+              <Stat label={isAr ? "صادرة" : "Outgoing"} value={calls.filter((c) => c.call_type === "outgoing").length} />
             </div>
           </Card>
         )}
@@ -282,6 +296,7 @@ function CallCenterPage() {
           call={ratingFor}
           userId={user!.id}
           userEmail={user!.email ?? null}
+          isAr={isAr}
           onClose={() => setRatingFor(null)}
         />
       )}
@@ -293,6 +308,8 @@ function CallCenterPage() {
             userEmail={user!.email ?? null}
             customers={customers}
             existing={editing}
+            isAr={isAr}
+            outcomes={OUTCOMES}
             onDone={() => { setEditing(null); load(); }}
           />
         </Dialog>
@@ -315,12 +332,16 @@ function CallDialog({
   userEmail,
   customers,
   existing,
+  isAr,
+  outcomes,
   onDone,
 }: {
   userId: string;
   userEmail: string | null;
   customers: CustomerOpt[];
   existing?: CallLog;
+  isAr: boolean;
+  outcomes: { v: string; label: string }[];
   onDone: () => void;
 }) {
   const [customerId, setCustomerId] = useState<string | null>(existing?.customer_id ?? null);
@@ -348,7 +369,7 @@ function CallDialog({
 
   const save = async () => {
     if (!phone.trim() && !name.trim()) {
-      toast.error("اختر عميلاً أو أدخل اسم/رقم");
+      toast.error(isAr ? "اختر عميلاً أو أدخل اسم/رقم" : "Select a customer or enter a name/phone");
       return;
     }
     setSaving(true);
@@ -368,33 +389,33 @@ function CallDialog({
       : await supabase.from("call_logs").insert({ ...payload, agent_id: userId, agent_email: userEmail });
     setSaving(false);
     if (error) {
-      toast.error("فشل الحفظ: " + error.message);
+      toast.error((isAr ? "فشل الحفظ: " : "Save failed: ") + error.message);
       return;
     }
-    toast.success(existing ? "تم تحديث المكالمة" : "تم تسجيل المكالمة");
+    toast.success(existing ? (isAr ? "تم تحديث المكالمة" : "Call updated") : (isAr ? "تم تسجيل المكالمة" : "Call logged"));
     onDone();
   };
 
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader>
-        <DialogTitle>{existing ? "تعديل مكالمة" : "تسجيل مكالمة جديدة"}</DialogTitle>
+        <DialogTitle>{existing ? (isAr ? "تعديل مكالمة" : "Edit call") : (isAr ? "تسجيل مكالمة جديدة" : "Log new call")}</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
         <div>
-          <Label>اختيار عميل من القاعدة</Label>
+          <Label>{isAr ? "اختيار عميل من القاعدة" : "Pick customer from database"}</Label>
           <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                {customerId ? (customers.find((c) => c.id === customerId)?.name ?? "—") : "ابحث عن عميل…"}
+                {customerId ? (customers.find((c) => c.id === customerId)?.name ?? "—") : (isAr ? "ابحث عن عميل…" : "Search customer…")}
                 <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
               <Command>
-                <CommandInput placeholder="ابحث بالاسم أو الرقم…" />
+                <CommandInput placeholder={isAr ? "ابحث بالاسم أو الرقم…" : "Search by name or phone…"} />
                 <CommandList>
-                  <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                  <CommandEmpty>{isAr ? "لا توجد نتائج" : "No results"}</CommandEmpty>
                   <CommandGroup>
                     {customers.slice(0, 200).map((c) => (
                       <CommandItem
@@ -419,34 +440,34 @@ function CallDialog({
               className="mt-1 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => { setCustomerId(null); }}
             >
-              إلغاء الربط بالعميل
+              {isAr ? "إلغاء الربط بالعميل" : "Unlink customer"}
             </button>
           )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>اسم العميل</Label>
+            <Label>{isAr ? "اسم العميل" : "Customer name"}</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <Label>رقم الهاتف</Label>
+            <Label>{isAr ? "رقم الهاتف" : "Phone"}</Label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <Label>النوع</Label>
+            <Label>{isAr ? "النوع" : "Type"}</Label>
             <Select value={type} onValueChange={(v) => setType(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="incoming">واردة</SelectItem>
-                <SelectItem value="outgoing">صادرة</SelectItem>
+                <SelectItem value="incoming">{isAr ? "واردة" : "Incoming"}</SelectItem>
+                <SelectItem value="outgoing">{isAr ? "صادرة" : "Outgoing"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>المدة (ثواني)</Label>
+            <Label>{isAr ? "المدة (ثواني)" : "Duration (sec)"}</Label>
             <Input
               type="number"
               min={0}
@@ -455,11 +476,11 @@ function CallDialog({
             />
           </div>
           <div>
-            <Label>النتيجة</Label>
+            <Label>{isAr ? "النتيجة" : "Outcome"}</Label>
             <Select value={outcome} onValueChange={setOutcome}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {OUTCOMES.map((o) => (
+                {outcomes.map((o) => (
                   <SelectItem key={o.v} value={o.v}>{o.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -467,30 +488,30 @@ function CallDialog({
           </div>
         </div>
         <div>
-          <Label>تاريخ ووقت المكالمة</Label>
+          <Label>{isAr ? "تاريخ ووقت المكالمة" : "Call date & time"}</Label>
           <Input type="datetime-local" value={calledAt} onChange={(e) => setCalledAt(e.target.value)} />
         </div>
         <div>
-          <Label>ملخص المكالمة</Label>
+          <Label>{isAr ? "ملخص المكالمة" : "Call summary"}</Label>
           <Textarea
             rows={3}
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            placeholder="ما الذي تمت مناقشته؟"
+            placeholder={isAr ? "ما الذي تمت مناقشته؟" : "What was discussed?"}
           />
         </div>
         <div>
-          <Label>ملاحظات داخلية</Label>
+          <Label>{isAr ? "ملاحظات داخلية" : "Internal notes"}</Label>
           <Textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="ملاحظات للفريق…"
+            placeholder={isAr ? "ملاحظات للفريق…" : "Notes for the team…"}
           />
         </div>
         <Button onClick={save} disabled={saving} className="w-full">
           {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
-          {existing ? "حفظ التعديلات" : "حفظ المكالمة"}
+          {existing ? (isAr ? "حفظ التعديلات" : "Save changes") : (isAr ? "حفظ المكالمة" : "Save call")}
         </Button>
       </div>
     </DialogContent>
@@ -501,11 +522,13 @@ function RatingDialog({
   call,
   userId,
   userEmail,
+  isAr,
   onClose,
 }: {
   call: CallLog;
   userId: string;
   userEmail: string | null;
+  isAr: boolean;
   onClose: () => void;
 }) {
   const [rating, setRating] = useState(5);
@@ -524,10 +547,10 @@ function RatingDialog({
     });
     setSaving(false);
     if (error) {
-      toast.error("فشل: " + error.message);
+      toast.error((isAr ? "فشل: " : "Failed: ") + error.message);
       return;
     }
-    toast.success("تم حفظ التقييم");
+    toast.success(isAr ? "تم حفظ التقييم" : "Rating saved");
     onClose();
   };
 
@@ -535,14 +558,14 @@ function RatingDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>تقييم خدمة العميل</DialogTitle>
+          <DialogTitle>{isAr ? "تقييم خدمة العميل" : "Customer service rating"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground">
             {call.customer_name || call.customer_phone}
           </div>
           <div>
-            <Label>التقييم</Label>
+            <Label>{isAr ? "التقييم" : "Rating"}</Label>
             <div className="mt-2 flex gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -560,7 +583,7 @@ function RatingDialog({
             </div>
           </div>
           <div>
-            <Label>تعليق (اختياري)</Label>
+            <Label>{isAr ? "تعليق (اختياري)" : "Comment (optional)"}</Label>
             <Textarea
               rows={3}
               value={comment}
@@ -569,7 +592,7 @@ function RatingDialog({
           </div>
           <Button onClick={save} disabled={saving} className="w-full">
             {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
-            حفظ التقييم
+            {isAr ? "حفظ التقييم" : "Save rating"}
           </Button>
         </div>
       </DialogContent>
