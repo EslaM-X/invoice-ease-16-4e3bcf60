@@ -436,6 +436,70 @@ function InTransitPage() {
           ))}
         </div>
       </Card>
+      </>
+      )}
+
+      {tab === "reserved" && (
+        <Card className="overflow-hidden">
+          <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {reservations.length} {isAr ? "حجز نشط" : "active reservations"}
+          </div>
+          <div className="divide-y">
+            {reservations.length === 0 && (
+              <div className="p-10 text-center text-sm text-muted-foreground">
+                {isAr ? "لا توجد حجوزات حالياً." : "No active reservations."}
+              </div>
+            )}
+            {reservations.map((r: any) => {
+              const prod = productMap.get(r.product_id);
+              const po = pos[r.po_id];
+              const inv = r.invoices;
+              return (
+                <div key={r.id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
+                    {prod?.image_url ? <img src={prod.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{prod?.name ?? "—"}</div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      {prod?.serial_number && <span className="font-mono">S/N: {prod.serial_number}</span>}
+                      {prod?.color && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <ColorSwatch value={prod.color} size="sm" />{prod.color}
+                        </span>
+                      )}
+                      <span>{fmtDateTime(r.created_at, lang)}</span>
+                    </div>
+                  </div>
+                  {inv && (
+                    <Link
+                      to="/invoices/$id"
+                      params={{ id: r.invoice_id }}
+                      className="rounded-md bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                    >
+                      #{inv.invoice_number} · {inv.customer_name || (isAr ? "بدون اسم" : "No name")}
+                    </Link>
+                  )}
+                  {po && (
+                    <button
+                      type="button"
+                      onClick={() => setTrackId(po.id)}
+                      className="rounded-md bg-violet-500/10 px-3 py-1.5 text-xs font-mono font-semibold text-violet-700 hover:bg-violet-500/20"
+                    >
+                      {po.po_number}
+                    </button>
+                  )}
+                  <div className="rounded-md bg-amber-500/10 px-3 py-1.5 text-end">
+                    <div className="text-[10px] font-medium text-amber-700">{isAr ? "محجوز" : "Reserved"}</div>
+                    <div className="text-lg font-bold tabular-nums text-amber-700">{r.quantity}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
 
       {trackId && (
         <POTrackerDialog
