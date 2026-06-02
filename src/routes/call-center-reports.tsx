@@ -175,7 +175,7 @@ function ReportsPage() {
               </Card>
 
               <Card className="p-5">
-                <h2 className="mb-3 text-sm font-semibold">نتائج المكالمات</h2>
+                <h2 className="mb-3 text-sm font-semibold">{isAr ? "نتائج المكالمات" : "Call outcomes"}</h2>
                 <div className="h-64">
                   <ResponsiveContainer>
                     <PieChart>
