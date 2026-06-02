@@ -216,15 +216,15 @@ function ReportsPage() {
             </div>
 
             <Card className="p-5">
-              <h2 className="mb-3 text-sm font-semibold">أداء الموظفين (Top 10)</h2>
+              <h2 className="mb-3 text-sm font-semibold">{isAr ? "أداء الموظفين (Top 10)" : "Agent performance (Top 10)"}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="border-b border-border/60 text-xs text-muted-foreground">
                     <tr>
-                      <th className="py-2 text-start">الموظف</th>
-                      <th className="text-end">المكالمات</th>
-                      <th className="text-end">التقييمات</th>
-                      <th className="text-end">المتوسط</th>
+                      <th className="py-2 text-start">{isAr ? "الموظف" : "Agent"}</th>
+                      <th className="text-end">{isAr ? "المكالمات" : "Calls"}</th>
+                      <th className="text-end">{isAr ? "التقييمات" : "Ratings"}</th>
+                      <th className="text-end">{isAr ? "المتوسط" : "Average"}</th>
                     </tr>
                   </thead>
                   <tbody>
