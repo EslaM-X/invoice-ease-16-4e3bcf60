@@ -15,6 +15,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { SalesOverview } from "@/components/sales-overview";
+import { TopProductsInteractive } from "@/components/top-products-interactive";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -174,38 +175,7 @@ function Dashboard() {
             </div>
           )}
         </div>
-        <div className="ios-card p-5 sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="eyebrow">{t("top_products")}</h3>
-            <div className="h-px flex-1 mx-4 bg-border" />
-          </div>
-          {top.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {top.map((p) => (
-                <div key={p.key} className="flex items-start justify-between gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{p.name}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span className="tabular-nums">× {p.qty}</span>
-                      {p.serial && (
-                        <span className="font-mono">{lang === "ar" ? "ت: " : "S/N: "}{p.serial}</span>
-                      )}
-                      {p.color && (
-                        <span className="inline-flex items-center gap-1">
-                          <ColorSwatch value={p.color} size="sm" />
-                          {p.color}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold tabular-nums whitespace-nowrap">{fmtMoney(p.total, "EGP", lang)}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <TopProductsInteractive rangeDays={30} limit={8} />
       </div>
 
       <ActivityFeed limit={10} />
