@@ -1,20 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, Calendar as CalendarIcon, ArrowUpRight, ArrowDownRight, Receipt, Wallet } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { TrendingUp, Calendar as CalendarIcon, ArrowUpRight, ArrowDownRight, Receipt, Wallet, Truck, ArrowRight, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useRealtimeTable } from "@/lib/realtime";
 import { fmtMoney } from "@/lib/utils-money";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type RangeKey = "1" | "7" | "30" | "90" | "custom";
+type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function fmtDayLabel(d: Date, isAr: boolean) {
   return new Intl.DateTimeFormat((isAr ? "ar-EG" : "en-GB") + "-u-nu-latn", { day: "2-digit", month: "short" }).format(d);
+}
+
+type Invoice = { created_at: string; total: number; paid_amount: number | null };
+
+function classifyPay(i: Invoice): "paid" | "partial" | "outstanding" {
+  const t = Number(i.total || 0);
+  const p = Number(i.paid_amount || 0);
+  if (t > 0 && p >= t - 0.001) return "paid";
+  if (p > 0) return "partial";
+  return "outstanding";
 }
 
 export function SalesOverview() {
@@ -23,13 +34,15 @@ export function SalesOverview() {
   const isAr = lang === "ar";
 
   const [range, setRange] = useState<RangeKey>("7");
+  const [payFilter, setPayFilter] = useState<PayStatus>("all");
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
-  const [invoices, setInvoices] = useState<{ created_at: string; total: number; paid_amount: number | null }[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [incoming, setIncoming] = useState<{ pos: number; units: number }>({ pos: 0, units: 0 });
 
   const { from, to } = useMemo(() => {
     const end = startOfDay(new Date());
-    end.setDate(end.getDate() + 1); // exclusive
+    end.setDate(end.getDate() + 1);
     if (range === "custom" && customFrom && customTo) {
       const f = startOfDay(new Date(customFrom));
       const t = startOfDay(new Date(customTo));
@@ -53,10 +66,29 @@ export function SalesOverview() {
     setInvoices((data as any) ?? []);
   };
 
-  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user, from.getTime(), to.getTime()]);
-  useRealtimeTable("invoices", () => { if (user) load(); });
+  const loadIncoming = async () => {
+    // POs expected to arrive within the same period
+    const { data: pos } = await supabase
+      .from("purchase_orders")
+      .select("id")
+      .in("status", ["ordered", "shipped", "in_warehouse"])
+      .gte("expected_arrival_at", from.toISOString())
+      .lt("expected_arrival_at", to.toISOString());
+    const ids = ((pos as any) ?? []).map((p: any) => p.id);
+    if (ids.length === 0) { setIncoming({ pos: 0, units: 0 }); return; }
+    const { data: items } = await supabase
+      .from("purchase_order_items")
+      .select("po_id,quantity,received_qty")
+      .in("po_id", ids);
+    const units = ((items as any) ?? []).reduce((s: number, it: any) => s + Math.max(0, Number(it.quantity || 0) - Number(it.received_qty || 0)), 0);
+    setIncoming({ pos: ids.length, units });
+  };
 
-  // previous period comparison
+  useEffect(() => { if (user) { load(); loadIncoming(); } /* eslint-disable-next-line */ }, [user, from.getTime(), to.getTime()]);
+  useRealtimeTable("invoices", () => { if (user) load(); });
+  useRealtimeTable("purchase_orders", () => { if (user) loadIncoming(); });
+  useRealtimeTable("purchase_order_items", () => { if (user) loadIncoming(); });
+
   const [prevTotal, setPrevTotal] = useState<number>(0);
   useEffect(() => {
     if (!user) return;
@@ -65,14 +97,17 @@ export function SalesOverview() {
     const prevFrom = new Date(from.getTime() - span);
     supabase
       .from("invoices")
-      .select("total")
+      .select("total,paid_amount,status")
       .not("status", "in", "(voided,draft,cancelled)")
       .gte("created_at", prevFrom.toISOString())
       .lt("created_at", prevTo.toISOString())
       .then(({ data }) => {
-        setPrevTotal(((data as any) ?? []).reduce((s: number, i: any) => s + Number(i.total || 0), 0));
+        const filtered = ((data as any) ?? []).filter((i: any) => payFilter === "all" || classifyPay(i) === payFilter);
+        setPrevTotal(filtered.reduce((s: number, i: any) => s + Number(i.total || 0), 0));
       });
-  }, [user, from.getTime(), to.getTime()]);
+  }, [user, from.getTime(), to.getTime(), payFilter]);
+
+  const filtered = useMemo(() => invoices.filter((i) => payFilter === "all" || classifyPay(i) === payFilter), [invoices, payFilter]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
     const buckets = new Map<string, { date: Date; sales: number; count: number }>();
@@ -83,7 +118,7 @@ export function SalesOverview() {
       cursor.setDate(cursor.getDate() + 1);
     }
     let totalSales = 0, totalPaid = 0, count = 0;
-    invoices.forEach((i) => {
+    filtered.forEach((i) => {
       const key = new Date(i.created_at).toISOString().slice(0, 10);
       const b = buckets.get(key);
       const t = Number(i.total || 0);
@@ -101,8 +136,10 @@ export function SalesOverview() {
     const avg = count > 0 ? totalSales / count : 0;
     const delta = prevTotal > 0 ? ((totalSales - prevTotal) / prevTotal) * 100 : (totalSales > 0 ? 100 : 0);
     return { series, totalSales, totalPaid, count, avg, delta };
-  }, [invoices, from, to, isAr, prevTotal]);
+  }, [filtered, from, to, isAr, prevTotal]);
 
+  const outstanding = Math.max(totalSales - totalPaid, 0);
+  const collectionRate = totalSales > 0 ? (totalPaid / totalSales) * 100 : 0;
   const positive = delta >= 0;
 
   const rangeOptions: { key: RangeKey; label: string }[] = [
@@ -111,6 +148,13 @@ export function SalesOverview() {
     { key: "30", label: isAr ? "30 يوم" : "30 days" },
     { key: "90", label: isAr ? "90 يوم" : "90 days" },
     { key: "custom", label: isAr ? "مخصص" : "Custom" },
+  ];
+
+  const payOptions: { key: PayStatus; label: string }[] = [
+    { key: "all", label: isAr ? "الكل" : "All" },
+    { key: "paid", label: isAr ? "مدفوع" : "Paid" },
+    { key: "partial", label: isAr ? "جزئي" : "Partial" },
+    { key: "outstanding", label: isAr ? "متبقي" : "Outstanding" },
   ];
 
   return (
@@ -182,9 +226,29 @@ export function SalesOverview() {
         )}
       </AnimatePresence>
 
+      {/* Pay status filter */}
+      <div className="relative mt-4 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {isAr ? "حالة الدفع" : "Payment status"}:
+        </span>
+        {payOptions.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => setPayFilter(o.key)}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+              payFilter === o.key
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background/60 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
       <div className="relative mt-6 grid gap-4 sm:grid-cols-3">
         <motion.div
-          key={`total-${totalSales}`}
+          key={`total-${totalSales}-${payFilter}`}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           className="col-span-1 sm:col-span-1 rounded-2xl border bg-background/50 p-4 backdrop-blur"
@@ -209,14 +273,53 @@ export function SalesOverview() {
 
         <div className="rounded-2xl border bg-background/50 p-4 backdrop-blur">
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <Wallet className="h-3 w-3" /> {isAr ? "المحصّل" : "Collected"}
+            <Wallet className="h-3 w-3" /> {isAr ? "المحصّل / المتوقع" : "Collected / Expected"}
           </div>
-          <div className="mt-1 font-display text-2xl font-semibold tabular-nums">{fmtMoney(totalPaid, "EGP", lang)}</div>
-          <div className="mt-2 text-[11px] text-muted-foreground">
-            {isAr ? "المتبقي" : "Outstanding"}: <span className="font-semibold text-foreground">{fmtMoney(Math.max(totalSales - totalPaid, 0), "EGP", lang)}</span>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="font-display text-2xl font-semibold tabular-nums">{fmtMoney(totalPaid, "EGP", lang)}</span>
+            <span className="text-xs text-muted-foreground">/ {fmtMoney(totalSales, "EGP", lang)}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+              style={{ width: `${Math.min(100, collectionRate)}%` }}
+            />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>{collectionRate.toFixed(1)}% {isAr ? "تحصيل" : "collected"}</span>
+            <span className="text-amber-700 dark:text-amber-400 font-semibold">
+              {isAr ? "متبقي" : "Outstanding"}: {fmtMoney(outstanding, "EGP", lang)}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Sales vs Incoming link card */}
+      <Link
+        to="/in-transit"
+        className="relative mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed bg-background/40 p-4 backdrop-blur transition hover:border-primary/50 hover:bg-background/70"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/20 to-sky-500/20">
+            <Truck className="h-5 w-5 text-violet-700 dark:text-violet-400" />
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Target className="h-3 w-3" />
+              {isAr ? "ربط مع الشحنات القادمة" : "Linked to incoming"}
+            </div>
+            <div className="mt-0.5 text-sm font-semibold">
+              {isAr
+                ? `${incoming.pos} أمر شراء متوقع وصوله • ${incoming.units} وحدة قادمة خلال نفس الفترة`
+                : `${incoming.pos} POs expected • ${incoming.units} units arriving in this window`}
+            </div>
+          </div>
+        </div>
+        <div className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+          {isAr ? "عرض تفاصيل المنتجات" : "View product breakdown"}
+          <ArrowRight className={`h-3.5 w-3.5 ${isAr ? "rotate-180" : ""}`} />
+        </div>
+      </Link>
 
       <div className="relative mt-6 h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
