@@ -14,6 +14,7 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
+import { SalesOverview } from "@/components/sales-overview";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
