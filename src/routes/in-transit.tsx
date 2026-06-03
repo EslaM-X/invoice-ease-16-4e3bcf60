@@ -281,7 +281,7 @@ function InTransitPage() {
           onClick={() => setTab("reserved")}
           className={`px-4 py-2 text-sm font-semibold transition border-b-2 -mb-px ${tab === "reserved" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >
-          {isAr ? "المحجوز للفواتير" : "Reserved for Invoices"} ({reservations.length})
+          {isAr ? "المحجوز للفواتير" : "Reserved for Invoices"} ({reservedTotalUnits})
         </button>
       </div>
 
