@@ -412,7 +412,7 @@ function InTransitPage() {
                       {r.in_transit}
                     </div>
                   </div>
-                  {(() => { const rv = reservedByProduct[r.product_id] ?? 0; return (
+                  {(() => { const rv = reservedByProductMap[r.product_id] ?? 0; return (
                     <div className={`rounded-md px-3 py-1.5 text-end ${rv > 0 ? "bg-amber-500/10" : "bg-muted/40"}`}>
                       <div className={`text-[10px] font-medium ${rv > 0 ? "text-amber-700" : "text-muted-foreground"}`}>
                         {isAr ? "محجوز في فواتير" : "Reserved"}
