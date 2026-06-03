@@ -3046,6 +3046,13 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_reserved_qty_by_product: {
+        Args: never
+        Returns: {
+          product_id: string
+          reserved_qty: number
+        }[]
+      }
       get_sold_qty_by_product: {
         Args: never
         Returns: {
