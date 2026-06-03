@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp } from "lucide-react";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
 import { COLLECTIONS } from "@/lib/data";
 import { collectionPillClass, collectionDotClass } from "@/lib/collection-styles";
