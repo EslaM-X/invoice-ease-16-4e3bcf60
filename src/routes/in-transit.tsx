@@ -69,18 +69,16 @@ function InTransitPage() {
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
-  const [reservations, setReservations] = useState<any[]>([]);
+  const [activeReservations, setActiveReservations] = useState<any[]>([]);
   const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [reservedByProductMap, setReservedByProductMap] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: resv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
-      supabase.from("invoice_po_reservations" as any)
-        .select("id,product_id,po_id,quantity,status,created_at,invoice_id,invoices(invoice_number,customer_name,total)")
-        .eq("status", "active").limit(2000),
+      supabase.rpc("get_active_invoice_reservations" as any),
       supabase.rpc("get_sold_qty_by_product" as any),
       supabase.rpc("get_reserved_qty_by_product" as any),
     ]);
@@ -88,7 +86,7 @@ function InTransitPage() {
     const posMap: Record<string, PO> = {};
     (posRows ?? []).forEach((p: any) => { posMap[p.id] = p; });
     setPos(posMap);
-    setReservations((resv as any) ?? []);
+    setActiveReservations((activeResv as any) ?? []);
     const soldMap: Record<string, number> = {};
     ((sold as any) ?? []).forEach((row: any) => { soldMap[row.product_id] = Number(row.sold_qty || 0); });
     setSoldByProduct(soldMap);
@@ -111,18 +109,15 @@ function InTransitPage() {
   useRealtimeTable("purchase_orders", () => { if (user) load(); });
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
-  useRealtimeTable("invoice_po_reservations" as any, () => { if (user) load(); });
   useRealtimeTable("invoice_items" as any, () => { if (user) load(); });
   useRealtimeTable("invoices" as any, () => { if (user) load(); });
+  useRealtimeTable("delivery_receipts" as any, () => { if (user) load(); });
+  useRealtimeTable("delivery_receipt_items" as any, () => { if (user) load(); });
 
-  const reservedByProduct = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const r of reservations) {
-      if (!r.product_id) continue;
-      m[r.product_id] = (m[r.product_id] ?? 0) + Number(r.quantity || 0);
-    }
-    return m;
-  }, [reservations]);
+  const reservedTotalUnits = useMemo(
+    () => activeReservations.reduce((s, r: any) => s + Number(r.reserved_qty || 0), 0),
+    [activeReservations]
+  );
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
@@ -286,7 +281,7 @@ function InTransitPage() {
           onClick={() => setTab("reserved")}
           className={`px-4 py-2 text-sm font-semibold transition border-b-2 -mb-px ${tab === "reserved" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >
-          {isAr ? "المحجوز للفواتير" : "Reserved for Invoices"} ({reservations.length})
+          {isAr ? "المحجوز للفواتير" : "Reserved for Invoices"} ({reservedTotalUnits})
         </button>
       </div>
 
@@ -476,25 +471,23 @@ function InTransitPage() {
       {tab === "reserved" && (
         <Card className="overflow-hidden">
           <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {reservations.length} {isAr ? "حجز نشط" : "active reservations"}
+            {activeReservations.length} {isAr ? "بند فاتورة" : "invoice lines"} · {reservedTotalUnits} {isAr ? "قطعة محجوزة" : "units reserved"}
           </div>
           <div className="divide-y">
-            {reservations.length === 0 && (
+            {activeReservations.length === 0 && (
               <div className="p-10 text-center text-sm text-muted-foreground">
                 {isAr ? "لا توجد حجوزات حالياً." : "No active reservations."}
               </div>
             )}
-            {reservations.map((r: any) => {
+            {activeReservations.map((r: any) => {
               const prod = productMap.get(r.product_id);
-              const po = pos[r.po_id];
-              const inv = r.invoices;
               return (
-                <div key={r.id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+                <div key={r.invoice_item_id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
                   <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
                     {prod?.image_url ? <img src={prod.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{prod?.name ?? "—"}</div>
+                    <div className="truncate text-sm font-semibold">{prod?.name ?? r.product_name ?? "—"}</div>
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                       {prod?.serial_number && <span className="font-mono">S/N: {prod.serial_number}</span>}
                       {prod?.color && (
@@ -505,27 +498,16 @@ function InTransitPage() {
                       <span>{fmtDateTime(r.created_at, lang)}</span>
                     </div>
                   </div>
-                  {inv && (
-                    <Link
-                      to="/invoices/$id"
-                      params={{ id: r.invoice_id }}
-                      className="rounded-md bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
-                    >
-                      #{inv.invoice_number} · {inv.customer_name || (isAr ? "بدون اسم" : "No name")}
-                    </Link>
-                  )}
-                  {po && (
-                    <button
-                      type="button"
-                      onClick={() => setTrackId(po.id)}
-                      className="rounded-md bg-violet-500/10 px-3 py-1.5 text-xs font-mono font-semibold text-violet-700 hover:bg-violet-500/20"
-                    >
-                      {po.po_number}
-                    </button>
-                  )}
+                  <Link
+                    to="/invoices/$id"
+                    params={{ id: r.invoice_id }}
+                    className="rounded-md bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                  >
+                    #{r.invoice_number} · {r.customer_name || (isAr ? "بدون اسم" : "No name")}
+                  </Link>
                   <div className="rounded-md bg-amber-500/10 px-3 py-1.5 text-end">
                     <div className="text-[10px] font-medium text-amber-700">{isAr ? "محجوز" : "Reserved"}</div>
-                    <div className="text-lg font-bold tabular-nums text-amber-700">{r.quantity}</div>
+                    <div className="text-lg font-bold tabular-nums text-amber-700">{r.reserved_qty}</div>
                   </div>
                 </div>
               );
