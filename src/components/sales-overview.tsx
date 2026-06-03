@@ -1,0 +1,248 @@
+import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { TrendingUp, Calendar as CalendarIcon, ArrowUpRight, ArrowDownRight, Receipt, Wallet } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
+import { useRealtimeTable } from "@/lib/realtime";
+import { fmtMoney } from "@/lib/utils-money";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+type RangeKey = "1" | "7" | "30" | "90" | "custom";
+
+function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function fmtDayLabel(d: Date, isAr: boolean) {
+  return new Intl.DateTimeFormat((isAr ? "ar-EG" : "en-GB") + "-u-nu-latn", { day: "2-digit", month: "short" }).format(d);
+}
+
+export function SalesOverview() {
+  const { user } = useAuth();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+
+  const [range, setRange] = useState<RangeKey>("7");
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>("");
+  const [invoices, setInvoices] = useState<{ created_at: string; total: number; paid_amount: number | null }[]>([]);
+
+  const { from, to } = useMemo(() => {
+    const end = startOfDay(new Date());
+    end.setDate(end.getDate() + 1); // exclusive
+    if (range === "custom" && customFrom && customTo) {
+      const f = startOfDay(new Date(customFrom));
+      const t = startOfDay(new Date(customTo));
+      t.setDate(t.getDate() + 1);
+      return { from: f, to: t };
+    }
+    const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : range === "90" ? 90 : 7;
+    const f = startOfDay(new Date());
+    f.setDate(f.getDate() - (days - 1));
+    return { from: f, to: end };
+  }, [range, customFrom, customTo]);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from("invoices")
+      .select("created_at,total,paid_amount,status")
+      .not("status", "in", "(voided,draft,cancelled)")
+      .gte("created_at", from.toISOString())
+      .lt("created_at", to.toISOString())
+      .order("created_at", { ascending: true });
+    setInvoices((data as any) ?? []);
+  };
+
+  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user, from.getTime(), to.getTime()]);
+  useRealtimeTable("invoices", () => { if (user) load(); });
+
+  // previous period comparison
+  const [prevTotal, setPrevTotal] = useState<number>(0);
+  useEffect(() => {
+    if (!user) return;
+    const span = to.getTime() - from.getTime();
+    const prevTo = new Date(from);
+    const prevFrom = new Date(from.getTime() - span);
+    supabase
+      .from("invoices")
+      .select("total")
+      .not("status", "in", "(voided,draft,cancelled)")
+      .gte("created_at", prevFrom.toISOString())
+      .lt("created_at", prevTo.toISOString())
+      .then(({ data }) => {
+        setPrevTotal(((data as any) ?? []).reduce((s: number, i: any) => s + Number(i.total || 0), 0));
+      });
+  }, [user, from.getTime(), to.getTime()]);
+
+  const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
+    const buckets = new Map<string, { date: Date; sales: number; count: number }>();
+    const cursor = new Date(from);
+    while (cursor < to) {
+      const key = cursor.toISOString().slice(0, 10);
+      buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    let totalSales = 0, totalPaid = 0, count = 0;
+    invoices.forEach((i) => {
+      const key = new Date(i.created_at).toISOString().slice(0, 10);
+      const b = buckets.get(key);
+      const t = Number(i.total || 0);
+      const p = Number(i.paid_amount || 0);
+      totalSales += t;
+      totalPaid += p;
+      count += 1;
+      if (b) { b.sales += t; b.count += 1; }
+    });
+    const series = Array.from(buckets.values()).map((b) => ({
+      label: fmtDayLabel(b.date, isAr),
+      sales: Math.round(b.sales * 100) / 100,
+      count: b.count,
+    }));
+    const avg = count > 0 ? totalSales / count : 0;
+    const delta = prevTotal > 0 ? ((totalSales - prevTotal) / prevTotal) * 100 : (totalSales > 0 ? 100 : 0);
+    return { series, totalSales, totalPaid, count, avg, delta };
+  }, [invoices, from, to, isAr, prevTotal]);
+
+  const positive = delta >= 0;
+
+  const rangeOptions: { key: RangeKey; label: string }[] = [
+    { key: "1", label: isAr ? "اليوم" : "Today" },
+    { key: "7", label: isAr ? "7 أيام" : "7 days" },
+    { key: "30", label: isAr ? "30 يوم" : "30 days" },
+    { key: "90", label: isAr ? "90 يوم" : "90 days" },
+    { key: "custom", label: isAr ? "مخصص" : "Custom" },
+  ];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative overflow-hidden rounded-3xl border bg-card p-5 sm:p-7 shadow-[0_30px_60px_-30px_color-mix(in_oklab,var(--primary)_30%,transparent)]"
+    >
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <div className="absolute -top-32 -end-32 h-72 w-72 rounded-full bg-gradient-to-br from-primary/30 to-transparent blur-3xl" />
+        <div className="absolute -bottom-32 -start-24 h-72 w-72 rounded-full bg-gradient-to-tr from-amber-500/20 to-transparent blur-3xl" />
+      </div>
+
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="eyebrow flex items-center gap-2">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {isAr ? "نظرة شاملة على المبيعات" : "Sales overview"}
+          </div>
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+            {isAr ? "كم مبيعاتي؟" : "How much did I sell?"}
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {isAr ? "أرقام دقيقة لحظية — يستبعد المسودات والملغية والمعدومة." : "Live, accurate — excludes drafts, voided & cancelled."}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 rounded-full border bg-background/60 p-1 backdrop-blur">
+          {rangeOptions.map((o) => (
+            <button
+              key={o.key}
+              onClick={() => setRange(o.key)}
+              className={`relative rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                range === o.key ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {range === o.key && (
+                <motion.span
+                  layoutId="sales-range-pill"
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-primary/80 shadow"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                {o.key === "custom" && <CalendarIcon className="h-3 w-3" />}
+                {o.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {range === "custom" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="relative mt-4 flex flex-wrap items-center gap-2"
+          >
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 w-auto" />
+            <span className="text-xs text-muted-foreground">→</span>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-auto" />
+            {(!customFrom || !customTo) && (
+              <span className="text-xs text-muted-foreground">{isAr ? "اختر الفترة" : "Pick a range"}</span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative mt-6 grid gap-4 sm:grid-cols-3">
+        <motion.div
+          key={`total-${totalSales}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="col-span-1 sm:col-span-1 rounded-2xl border bg-background/50 p-4 backdrop-blur"
+        >
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{isAr ? "إجمالي المبيعات" : "Total sales"}</div>
+          <div className="mt-1 font-display text-3xl font-bold tabular-nums">{fmtMoney(totalSales, "EGP", lang)}</div>
+          <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${positive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-rose-500/10 text-rose-700 dark:text-rose-400"}`}>
+            {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {Math.abs(delta).toFixed(1)}% {isAr ? "مقارنة بالفترة السابقة" : "vs previous"}
+          </div>
+        </motion.div>
+
+        <div className="rounded-2xl border bg-background/50 p-4 backdrop-blur">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Receipt className="h-3 w-3" /> {isAr ? "عدد الفواتير" : "Invoices"}
+          </div>
+          <div className="mt-1 font-display text-2xl font-semibold tabular-nums">{count}</div>
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            {isAr ? "متوسط الفاتورة" : "Avg invoice"}: <span className="font-semibold text-foreground">{fmtMoney(avg, "EGP", lang)}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-background/50 p-4 backdrop-blur">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Wallet className="h-3 w-3" /> {isAr ? "المحصّل" : "Collected"}
+          </div>
+          <div className="mt-1 font-display text-2xl font-semibold tabular-nums">{fmtMoney(totalPaid, "EGP", lang)}</div>
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            {isAr ? "المتبقي" : "Outstanding"}: <span className="font-semibold text-foreground">{fmtMoney(Math.max(totalSales - totalPaid, 0), "EGP", lang)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-6 h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={series} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary, 220 90% 56%))" stopOpacity={0.5} />
+                <stop offset="100%" stopColor="hsl(var(--primary, 220 90% 56%))" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v) => Intl.NumberFormat("en-US", { notation: "compact" }).format(v)} />
+            <Tooltip
+              contentStyle={{
+                background: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 12,
+                fontSize: 12,
+              }}
+              formatter={(v: any) => [fmtMoney(Number(v), "EGP", lang), isAr ? "المبيعات" : "Sales"]}
+            />
+            <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#salesGradient)" activeDot={{ r: 5 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </motion.section>
+  );
+}

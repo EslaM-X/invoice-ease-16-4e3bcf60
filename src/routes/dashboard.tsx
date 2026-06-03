@@ -14,6 +14,7 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
+import { SalesOverview } from "@/components/sales-overview";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -148,7 +149,10 @@ function Dashboard() {
 
       <IncomingShipmentsStrip />
 
+      <SalesOverview />
+
       <div className="grid gap-3 lg:grid-cols-2">
+
         <div className="ios-card p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="eyebrow">{t("recent_invoices")}</h3>
