@@ -417,6 +417,16 @@ function InTransitPage() {
                       </div>
                     </div>
                   ); })()}
+                  {(() => { const sv = soldByProduct[r.product_id] ?? 0; return (
+                    <div className={`rounded-md px-3 py-1.5 text-end ${sv > 0 ? "bg-blue-500/10" : "bg-muted/40"}`}>
+                      <div className={`text-[10px] font-medium ${sv > 0 ? "text-blue-700" : "text-muted-foreground"}`}>
+                        {isAr ? "تم بيعه" : "Sold"}
+                      </div>
+                      <div className={`text-lg font-bold tabular-nums ${sv > 0 ? "text-blue-700" : "text-muted-foreground"}`}>
+                        {sv}
+                      </div>
+                    </div>
+                  ); })()}
                 </div>
               </div>
 
