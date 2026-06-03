@@ -3029,6 +3029,19 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_active_invoice_reservations: {
+        Args: never
+        Returns: {
+          created_at: string
+          customer_name: string
+          invoice_id: string
+          invoice_item_id: string
+          invoice_number: string
+          product_id: string
+          product_name: string
+          reserved_qty: number
+        }[]
+      }
       get_my_role: { Args: never; Returns: string }
       get_public_price_list: {
         Args: never
