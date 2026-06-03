@@ -74,18 +74,22 @@ function InTransitPage() {
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: resv }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: resv }, { data: sold }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.from("invoice_po_reservations" as any)
         .select("id,product_id,po_id,quantity,status,created_at,invoice_id,invoices(invoice_number,customer_name,total)")
         .eq("status", "active").limit(2000),
+      supabase.rpc("get_sold_qty_by_product" as any),
     ]);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
     (posRows ?? []).forEach((p: any) => { posMap[p.id] = p; });
     setPos(posMap);
     setReservations((resv as any) ?? []);
+    const soldMap: Record<string, number> = {};
+    ((sold as any) ?? []).forEach((row: any) => { soldMap[row.product_id] = Number(row.sold_qty || 0); });
+    setSoldByProduct(soldMap);
     const ids = Object.keys(posMap);
     if (ids.length > 0) {
       const { data: its } = await supabase
