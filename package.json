@@ -66,6 +66,7 @@
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
+    "nitro": "3.0.260429-beta",
     "papaparse": "^5.5.3",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
@@ -89,7 +90,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^1.4.0",
+    "@lovable.dev/vite-tanstack-config": "2.3.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
