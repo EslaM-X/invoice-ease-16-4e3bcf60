@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp } from "lucide-react";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
 import { COLLECTIONS } from "@/lib/data";
 import { collectionPillClass, collectionDotClass } from "@/lib/collection-styles";
@@ -70,21 +70,26 @@ function InTransitPage() {
   const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: resv }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: resv }, { data: sold }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.from("invoice_po_reservations" as any)
         .select("id,product_id,po_id,quantity,status,created_at,invoice_id,invoices(invoice_number,customer_name,total)")
         .eq("status", "active").limit(2000),
+      supabase.rpc("get_sold_qty_by_product" as any),
     ]);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
     (posRows ?? []).forEach((p: any) => { posMap[p.id] = p; });
     setPos(posMap);
     setReservations((resv as any) ?? []);
+    const soldMap: Record<string, number> = {};
+    ((sold as any) ?? []).forEach((row: any) => { soldMap[row.product_id] = Number(row.sold_qty || 0); });
+    setSoldByProduct(soldMap);
     const ids = Object.keys(posMap);
     if (ids.length > 0) {
       const { data: its } = await supabase
@@ -102,6 +107,8 @@ function InTransitPage() {
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
   useRealtimeTable("invoice_po_reservations" as any, () => { if (user) load(); });
+  useRealtimeTable("invoice_items" as any, () => { if (user) load(); });
+  useRealtimeTable("invoices" as any, () => { if (user) load(); });
 
   const reservedByProduct = useMemo(() => {
     const m: Record<string, number> = {};
@@ -225,15 +232,16 @@ function InTransitPage() {
   }, [products, items, productMap, collectionFilter]);
 
   const totals = useMemo(() => {
-    let inStock = 0, inTransit = 0, transitProducts = 0, reserved = 0;
+    let inStock = 0, inTransit = 0, transitProducts = 0, reserved = 0, sold = 0;
     rows.forEach((r) => {
       inStock += r.in_stock;
       inTransit += r.in_transit;
       if (r.in_transit > 0) transitProducts++;
       reserved += reservedByProduct[r.product_id] ?? 0;
+      sold += soldByProduct[r.product_id] ?? 0;
     });
-    return { inStock, inTransit, transitProducts, reserved };
-  }, [rows, reservedByProduct]);
+    return { inStock, inTransit, transitProducts, reserved, sold };
+  }, [rows, reservedByProduct, soldByProduct]);
 
   return (
     <div className="space-y-6">
@@ -254,11 +262,12 @@ function InTransitPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard icon={Boxes} label={isAr ? "إجمالي المخزون" : "Total in stock"} value={totals.inStock} color="text-emerald-600" bg="bg-emerald-500/10" />
         <SummaryCard icon={Truck} label={isAr ? "إجمالي في الطريق" : "Total in transit"} value={totals.inTransit} color="text-violet-600" bg="bg-violet-500/10" />
         <SummaryCard icon={Package} label={isAr ? "منتجات قادمة" : "Products incoming"} value={totals.transitProducts} color="text-primary" bg="bg-primary/10" />
         <SummaryCard icon={ShoppingBag} label={isAr ? "محجوز في فواتير" : "Reserved in invoices"} value={totals.reserved} color="text-amber-600" bg="bg-amber-500/10" />
+        <SummaryCard icon={TrendingUp} label={isAr ? "إجمالي المباع" : "Total sold"} value={totals.sold} color="text-blue-600" bg="bg-blue-500/10" />
       </div>
 
       <div className="flex gap-2 border-b">
@@ -405,6 +414,16 @@ function InTransitPage() {
                       </div>
                       <div className={`text-lg font-bold tabular-nums ${rv > 0 ? "text-amber-700" : "text-muted-foreground"}`}>
                         {rv}
+                      </div>
+                    </div>
+                  ); })()}
+                  {(() => { const sv = soldByProduct[r.product_id] ?? 0; return (
+                    <div className={`rounded-md px-3 py-1.5 text-end ${sv > 0 ? "bg-blue-500/10" : "bg-muted/40"}`}>
+                      <div className={`text-[10px] font-medium ${sv > 0 ? "text-blue-700" : "text-muted-foreground"}`}>
+                        {isAr ? "تم بيعه" : "Sold"}
+                      </div>
+                      <div className={`text-lg font-bold tabular-nums ${sv > 0 ? "text-blue-700" : "text-muted-foreground"}`}>
+                        {sv}
                       </div>
                     </div>
                   ); })()}

@@ -1,64 +1,46 @@
-## الخطة
+## المشكلة الجذرية لـ «محجوز في فواتير = 0»
 
-### 1. قاعدة البيانات — جدول حجز جديد
-
-جدول `invoice_po_reservations`:
-- `id`, `invoice_id`, `invoice_item_id`, `product_id`
-- `po_id`, `po_item_id`
-- `quantity` (الكمية المحجوزة من هذا PO Item للفاتورة دي)
-- `status`: `active` (محجوز) | `fulfilled` (الشحنة وصلت واتسلمت) | `cancelled`
-- `created_at`, `created_by`, `created_by_email`
-
-مع RLS (نفس صلاحيات الفواتير) + GRANTs.
-
-دالة helper `get_available_in_transit(product_id)` ترجع: إجمالي المتبقي في POs المفتوحة − إجمالي الحجوزات النشطة.
-
-عند حذف فاتورة أو سطر منها → الحجوزات المرتبطة تتمسح (cascade منطقي عبر RLS + trigger).
-
-### 2. منطق الحجز في إنشاء/تعديل الفاتورة
-
-`src/components/invoice-builder.tsx`:
-- `loadLists()` تحسب `inTransitQty` = (متبقي PO) − (حجوزات نشطة من فواتير تانية، باستثناء الفاتورة الحالية في وضع التعديل).
-- لما المستخدم يحاول يزود كمية تتعدى الستوك الفعلي → Dialog تأكيد:
-  > «المخزن غير كافٍ. سيتم حجز X قطعة من شحنة قادمة (PO رقم …). هل تريد المتابعة؟»
-- عند حفظ الفاتورة، بعد إنشاء `invoice_items`:
-  - لكل سطر فيه كمية > الستوك المتاح، نحجز الفرق من أقدم PO فيه متبقي للمنتج (FIFO).
-  - نكتب صفوف في `invoice_po_reservations`.
-- في وضع التعديل: نمسح حجوزات الفاتورة القديمة ونعيد بناءها (atomic).
-
-ملاحظة: الستوك `products.stock_quantity` ميتغيرش — يفضل صفر زي ما طلب المستخدم. لما الشحنة توصل (PO Receipt) الستوك بيزيد عادي، والحجز يتحول لـ `fulfilled` تلقائياً عبر trigger على `po_receipts`.
-
-### 3. صفحة «قادم في الطريق» — تاب جديد + عمود ثالث
-
-`src/routes/in-transit.tsx`:
-- نضيف Tabs:
-  - **«قادم في الطريق»** (الكارد الحالي) + عمود/شريحة جديدة في كل كارد منتج: «محجوز للفواتير: N»، مع عدد متاح فعلي = القادم − المحجوز.
-  - **«المحجوز للفواتير»** (تاب جديد) — جدول/كروت: المنتج، الكولكشن، الكمية المحجوزة، رقم الفاتورة (link)، اسم العميل، تاريخ الفاتورة، رقم PO، حالة الحجز.
-  - فلاتر بحث + collection + لون مثل الموجود.
-
-### 4. عمود ثالث في عرض المخزون
-
-نفس صفحة `in-transit.tsx` على مستوى كل كارد منتج: 3 خانات واضحة:
+في `src/routes/in-transit.tsx` الاستعلام بيستخدم embed:
+```ts
+.from("invoice_po_reservations")
+.select("...,invoices(invoice_number,customer_name,total)")
 ```
-في المخزن: 2    |   قادم في الطريق: 31   |   محجوز في فواتير: 5
-```
-
-### 5. مراجعة لغة مركز الاتصال
-
-`src/routes/call-center.tsx` + `src/routes/call-center-reports.tsx`:
-- مسح كل النصوص العربية المكتوبة مباشرة (34 سطر تقريباً) ونقلها لـ `useI18n` keys أو `lang === 'ar' ? '…' : '…'` للترجمة الكاملة.
-- نتأكد إن كل التواريخ والأرقام تستخدم `fmtDate/fmtMoney` مع `lang`.
-
-### 6. التحقق
-
-- إنشاء فاتورة لمنتج ستوكه 0 و قادم 5 → كمية 2 → Dialog يظهر → عند التأكيد، تتسجل في `invoice_po_reservations` → تظهر في تاب «المحجوز».
-- إنشاء فاتورة تانية لنفس المنتج → المتاح يبقى 3 (مش 5).
-- تبديل اللغة في مركز الاتصال يحوّل كل النصوص بدون استثناء.
+بس جدول `invoice_po_reservations` **مفيهوش Foreign Keys** (PK + CHECK بس). PostgREST بيفشل في الـ embed والاستعلام يرجع فاضي → الرقم يفضل صفر، رغم إن في DB فعلاً **2 حجز نشط بمجموع 3 قطع**.
 
 ---
 
-### تفاصيل تقنية
-- Migration واحد ينشئ الجدول + RLS + GRANT + trigger fulfillment.
-- لا تعديل على `stock_quantity` لحظة إنشاء الفاتورة لو الكمية بتيجي من القادم (طبقاً لاختيار المستخدم).
-- ترتيب الحجز FIFO حسب `purchase_orders.shipped_at NULLS LAST, created_at`.
-- التحويل من `active` → `fulfilled` يتم تلقائياً عبر trigger بعد `apply_po_receipt`.
+## الخطة
+
+### 1) Migration: إضافة Foreign Keys + Indexes
+على `invoice_po_reservations`:
+- `invoice_id` → `invoices(id) ON DELETE CASCADE`
+- `invoice_item_id` → `invoice_items(id) ON DELETE CASCADE`
+- `product_id` → `products(id)`
+- `po_id` → `purchase_orders(id)`
+- `po_item_id` → `purchase_order_items(id)`
+- Indexes على `product_id`, `invoice_id`, `po_id`.
+
+### 2) Migration: دالة `get_sold_qty_by_product()`
+RPC ترجع `(product_id uuid, sold_qty bigint)` بجمع `invoice_items.quantity` للفواتير اللي حالتها مش `cancelled` للمستخدمين اللي عندهم صلاحية الوصول (`can_access_user_data`). SECURITY DEFINER.
+
+### 3) تعديل `src/routes/in-transit.tsx`
+- استدعاء `supabase.rpc("get_sold_qty_by_product")` مع التحميل وتخزين النتيجة في `soldByProduct`.
+- إضافة **خانة رابعة** في كارد كل منتج جنب الـ 3 الحالية:
+  ```
+  في المخزن | قادم في الطريق | محجوز في فواتير | تم بيعه
+  ```
+  بلون مميز (`bg-blue-500/10 text-blue-700`).
+- إضافة **كارد Summary رابع** أعلى الصفحة: «إجمالي المباع / Total Sold» بأيقونة `TrendingUp`.
+- دعم عربي/إنجليزي.
+- realtime: لما تتعدل `invoices` أو `invoice_items` يعاد تحميل soldByProduct.
+
+### 4) التحقق
+- "محجوز في فواتير" يطلع 3 (بدل 0).
+- تاب «المحجوز للفواتير» يعرض رقم الفاتورة + اسم العميل (embed شغال).
+- الخانة الرابعة بتعرض المباع الفعلي لكل منتج، وكارد الإجمالي صح.
+
+---
+
+### الملفات
+- migration: FKs + indexes + RPC.
+- `src/routes/in-transit.tsx`: state + UI + realtime.
