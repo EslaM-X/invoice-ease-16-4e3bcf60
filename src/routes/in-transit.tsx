@@ -70,6 +70,7 @@ function InTransitPage() {
   const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
