@@ -71,16 +71,18 @@ function InTransitPage() {
   const [trackId, setTrackId] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
   const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
+  const [reservedByProductMap, setReservedByProductMap] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: resv }, { data: sold }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: resv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.from("invoice_po_reservations" as any)
         .select("id,product_id,po_id,quantity,status,created_at,invoice_id,invoices(invoice_number,customer_name,total)")
         .eq("status", "active").limit(2000),
       supabase.rpc("get_sold_qty_by_product" as any),
+      supabase.rpc("get_reserved_qty_by_product" as any),
     ]);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
@@ -90,6 +92,9 @@ function InTransitPage() {
     const soldMap: Record<string, number> = {};
     ((sold as any) ?? []).forEach((row: any) => { soldMap[row.product_id] = Number(row.sold_qty || 0); });
     setSoldByProduct(soldMap);
+    const reservedMap: Record<string, number> = {};
+    ((reservedRpc as any) ?? []).forEach((row: any) => { reservedMap[row.product_id] = Number(row.reserved_qty || 0); });
+    setReservedByProductMap(reservedMap);
     const ids = Object.keys(posMap);
     if (ids.length > 0) {
       const { data: its } = await supabase
@@ -237,11 +242,11 @@ function InTransitPage() {
       inStock += r.in_stock;
       inTransit += r.in_transit;
       if (r.in_transit > 0) transitProducts++;
-      reserved += reservedByProduct[r.product_id] ?? 0;
+      reserved += reservedByProductMap[r.product_id] ?? 0;
       sold += soldByProduct[r.product_id] ?? 0;
     });
     return { inStock, inTransit, transitProducts, reserved, sold };
-  }, [rows, reservedByProduct, soldByProduct]);
+  }, [rows, reservedByProductMap, soldByProduct]);
 
   return (
     <div className="space-y-6">
@@ -407,7 +412,7 @@ function InTransitPage() {
                       {r.in_transit}
                     </div>
                   </div>
-                  {(() => { const rv = reservedByProduct[r.product_id] ?? 0; return (
+                  {(() => { const rv = reservedByProductMap[r.product_id] ?? 0; return (
                     <div className={`rounded-md px-3 py-1.5 text-end ${rv > 0 ? "bg-amber-500/10" : "bg-muted/40"}`}>
                       <div className={`text-[10px] font-medium ${rv > 0 ? "text-amber-700" : "text-muted-foreground"}`}>
                         {isAr ? "محجوز في فواتير" : "Reserved"}
