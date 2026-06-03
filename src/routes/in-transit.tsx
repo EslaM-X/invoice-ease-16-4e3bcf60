@@ -242,11 +242,11 @@ function InTransitPage() {
       inStock += r.in_stock;
       inTransit += r.in_transit;
       if (r.in_transit > 0) transitProducts++;
-      reserved += reservedByProduct[r.product_id] ?? 0;
+      reserved += reservedByProductMap[r.product_id] ?? 0;
       sold += soldByProduct[r.product_id] ?? 0;
     });
     return { inStock, inTransit, transitProducts, reserved, sold };
-  }, [rows, reservedByProduct, soldByProduct]);
+  }, [rows, reservedByProductMap, soldByProduct]);
 
   return (
     <div className="space-y-6">
