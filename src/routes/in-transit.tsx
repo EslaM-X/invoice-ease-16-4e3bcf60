@@ -107,6 +107,8 @@ function InTransitPage() {
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
   useRealtimeTable("invoice_po_reservations" as any, () => { if (user) load(); });
+  useRealtimeTable("invoice_items" as any, () => { if (user) load(); });
+  useRealtimeTable("invoices" as any, () => { if (user) load(); });
 
   const reservedByProduct = useMemo(() => {
     const m: Record<string, number> = {};
