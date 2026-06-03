@@ -69,18 +69,16 @@ function InTransitPage() {
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [colorFilter, setColorFilter] = useState<string>("");
   const [trackId, setTrackId] = useState<string | null>(null);
-  const [reservations, setReservations] = useState<any[]>([]);
+  const [activeReservations, setActiveReservations] = useState<any[]>([]);
   const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [reservedByProductMap, setReservedByProductMap] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: resv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
-      supabase.from("invoice_po_reservations" as any)
-        .select("id,product_id,po_id,quantity,status,created_at,invoice_id,invoices(invoice_number,customer_name,total)")
-        .eq("status", "active").limit(2000),
+      supabase.rpc("get_active_invoice_reservations" as any),
       supabase.rpc("get_sold_qty_by_product" as any),
       supabase.rpc("get_reserved_qty_by_product" as any),
     ]);
@@ -88,7 +86,7 @@ function InTransitPage() {
     const posMap: Record<string, PO> = {};
     (posRows ?? []).forEach((p: any) => { posMap[p.id] = p; });
     setPos(posMap);
-    setReservations((resv as any) ?? []);
+    setActiveReservations((activeResv as any) ?? []);
     const soldMap: Record<string, number> = {};
     ((sold as any) ?? []).forEach((row: any) => { soldMap[row.product_id] = Number(row.sold_qty || 0); });
     setSoldByProduct(soldMap);
@@ -111,18 +109,15 @@ function InTransitPage() {
   useRealtimeTable("purchase_orders", () => { if (user) load(); });
   useRealtimeTable("purchase_order_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
-  useRealtimeTable("invoice_po_reservations" as any, () => { if (user) load(); });
   useRealtimeTable("invoice_items" as any, () => { if (user) load(); });
   useRealtimeTable("invoices" as any, () => { if (user) load(); });
+  useRealtimeTable("delivery_receipts" as any, () => { if (user) load(); });
+  useRealtimeTable("delivery_receipt_items" as any, () => { if (user) load(); });
 
-  const reservedByProduct = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const r of reservations) {
-      if (!r.product_id) continue;
-      m[r.product_id] = (m[r.product_id] ?? 0) + Number(r.quantity || 0);
-    }
-    return m;
-  }, [reservations]);
+  const reservedTotalUnits = useMemo(
+    () => activeReservations.reduce((s, r: any) => s + Number(r.reserved_qty || 0), 0),
+    [activeReservations]
+  );
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
