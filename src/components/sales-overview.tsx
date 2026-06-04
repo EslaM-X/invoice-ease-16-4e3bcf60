@@ -14,6 +14,16 @@ type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+// Robust YYYY-MM-DD parser → local midnight (avoids UTC drift from new Date(str))
+function parseLocalISO(s: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, mo - 1, d, 0, 0, 0, 0);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return dt;
+}
 function fmtDayLabel(d: Date, isAr: boolean) {
   return new Intl.DateTimeFormat((isAr ? "ar-EG" : "en-GB") + "-u-nu-latn", { day: "2-digit", month: "short" }).format(d);
 }
