@@ -90,6 +90,13 @@ export function PwaVersionGuard() {
               logPwaEvent("info", "sw_update_activated");
             }
           });
+
+        // Listen for the new service worker taking control, and reload the page.
+        // This ensures the page is always running the latest version of the code.
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          logPwaEvent("info", "sw_controller_changed_reloading");
+          window.location.reload();
+        });
         });
       } catch (error) {
         logPwaEvent("error", "sw_bootstrap_failed", String(error));
