@@ -33,6 +33,11 @@ type Invoice = {
   status: string;
 };
 
+type ProductRef = {
+  id: string;
+  name: string;
+};
+
 type IncomingProduct = {
   product_id: string | null;
   product_name: string;
@@ -87,6 +92,12 @@ function parseDateInput(value: string): Date | null {
   return dt.getFullYear() === y && dt.getMonth() === month - 1 && dt.getDate() === day ? dt : null;
 }
 
+function parseServerTimestampLocal(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
 function classifyPay(i: Pick<Invoice, "total" | "paid_amount">): "paid" | "partial" | "outstanding" {
   const total = Number(i.total || 0);
   const paid = Number(i.paid_amount || 0);
@@ -122,6 +133,7 @@ export function SalesOverview() {
     nextEta: null,
   });
   const [showZeroWhy, setShowZeroWhy] = useState(false);
+  const [productRefs, setProductRefs] = useState<Map<string, ProductRef>>(new Map());
 
   const activeInvoices = useMemo(
     () => allInvoices.filter((i) => !["voided", "draft", "cancelled"].includes(i.status)),
@@ -242,7 +254,8 @@ export function SalesOverview() {
       if (remaining <= 0) return;
       allOpenUnits += remaining;
 
-      const eta = new Date(po.expected_arrival_at);
+      const eta = parseServerTimestampLocal(po.expected_arrival_at);
+      if (!eta) return;
       const inRange = eta.getTime() >= from.getTime() && eta.getTime() < to.getTime();
       if (inRange) {
         inWindowPos.add(po.id);
@@ -271,7 +284,23 @@ export function SalesOverview() {
     if (!user) return;
     loadInvoices();
     loadIncoming();
+    supabase
+      .from("products")
+      .select("id,name")
+      .limit(5000)
+      .then(({ data }) => {
+        const map = new Map<string, ProductRef>();
+        ((data as ProductRef[] | null) ?? []).forEach((product) => {
+          map.set(product.id, product);
+        });
+        setProductRefs(map);
+      });
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    loadIncoming();
+  }, [user, from.getTime(), to.getTime()]);
 
   useRealtimeTable("invoices", () => { if (user) loadInvoices(); });
   useRealtimeTable("purchase_orders", () => { if (user) loadIncoming(); });
@@ -279,7 +308,9 @@ export function SalesOverview() {
 
   const filtered = useMemo(() => {
     return activeInvoices.filter((i) => {
-      const stamp = new Date(i.created_at).getTime();
+      const parsed = parseServerTimestampLocal(i.created_at);
+      if (!parsed) return false;
+      const stamp = parsed.getTime();
       if (stamp < from.getTime() || stamp >= to.getTime()) return false;
       return payFilter === "all" || classifyPay(i) === payFilter;
     });
@@ -291,7 +322,9 @@ export function SalesOverview() {
     const prevTo = new Date(from.getTime());
     return activeInvoices
       .filter((i) => {
-        const stamp = new Date(i.created_at).getTime();
+        const parsed = parseServerTimestampLocal(i.created_at);
+        if (!parsed) return false;
+        const stamp = parsed.getTime();
         if (stamp < prevFrom.getTime() || stamp >= prevTo.getTime()) return false;
         return payFilter === "all" || classifyPay(i) === payFilter;
       })
@@ -299,10 +332,18 @@ export function SalesOverview() {
   }, [activeInvoices, from, to, payFilter]);
 
   const zeroStats = useMemo(() => {
-    const before = activeInvoices.filter((i) => new Date(i.created_at).getTime() < from.getTime()).length;
-    const after = activeInvoices.filter((i) => new Date(i.created_at).getTime() >= to.getTime()).length;
+    const before = activeInvoices.filter((i) => {
+      const parsed = parseServerTimestampLocal(i.created_at);
+      return parsed ? parsed.getTime() < from.getTime() : false;
+    }).length;
+    const after = activeInvoices.filter((i) => {
+      const parsed = parseServerTimestampLocal(i.created_at);
+      return parsed ? parsed.getTime() >= to.getTime() : false;
+    }).length;
     const inRangeBeforePay = activeInvoices.filter((i) => {
-      const stamp = new Date(i.created_at).getTime();
+      const parsed = parseServerTimestampLocal(i.created_at);
+      if (!parsed) return false;
+      const stamp = parsed.getTime();
       return stamp >= from.getTime() && stamp < to.getTime();
     });
     return { before, after, inRangeBeforePay, activeCount: activeInvoices.length };
@@ -333,7 +374,8 @@ export function SalesOverview() {
     let invoicesCount = 0;
 
     filtered.forEach((invoice) => {
-      const d = new Date(invoice.created_at);
+      const d = parseServerTimestampLocal(invoice.created_at);
+      if (!d) return;
       const key = byMonth
         ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
         : startOfDay(d).toISOString().slice(0, 10);
@@ -531,8 +573,14 @@ export function SalesOverview() {
                     <div className="flex items-center justify-between gap-2"><div className="font-semibold text-foreground">{product.product_name}</div><div className="font-bold tabular-nums text-violet-700">{product.qty}</div></div>
                     <div className="mt-1 text-muted-foreground">{isAr ? "السبب" : "Reason"}: {isAr ? "أمر شراء نشط" : "Active purchase order"}</div>
                     <div className="mt-1 text-muted-foreground">POs: <span className="font-medium text-foreground">{product.poNumbers.join(", ")}</span></div>
-                    {product.product_id && <div className="mt-1 text-muted-foreground">ID: <span className="font-mono text-foreground">{product.product_id}</span></div>}
-                    <Link to="/products" className="mt-2 inline-flex items-center gap-1 font-semibold text-primary">{isAr ? "فتح المنتج" : "Open product"}<ArrowRight className={`h-3 w-3 ${isAr ? "rotate-180" : ""}`} /></Link>
+                     {product.product_id && <div className="mt-1 text-muted-foreground">ID: <span className="font-mono text-foreground">{product.product_id}</span></div>}
+                     <Link
+                       to="/products"
+                       search={(prev: any) => ({ ...prev, q: product.product_name || productRefs.get(product.product_id ?? "")?.name || "" })}
+                       className="mt-2 inline-flex items-center gap-1 font-semibold text-primary"
+                     >
+                       {isAr ? "فتح المنتج" : "Open product"}<ArrowRight className={`h-3 w-3 ${isAr ? "rotate-180" : ""}`} />
+                     </Link>
                   </div>
                 ))}
               </div>
@@ -550,7 +598,7 @@ export function SalesOverview() {
                     <div className="flex items-center justify-between gap-2"><div className="font-semibold text-foreground">{product.product_name}</div><div className="font-bold tabular-nums text-primary">{product.qty}</div></div>
                     <div className="mt-1 text-muted-foreground">{isAr ? "خارج المدى الحالي لكن ما زالت قادمة ضمن الشحنات المفتوحة." : "Outside the current range, but still on the open incoming list."}</div>
                     <div className="mt-1 text-muted-foreground">POs: <span className="font-medium text-foreground">{product.poNumbers.join(", ")}</span></div>
-                    {product.product_id && <div className="mt-1 text-muted-foreground">ID: <span className="font-mono text-foreground">{product.product_id}</span></div>}
+                     {product.product_id && <div className="mt-1 text-muted-foreground">ID: <span className="font-mono text-foreground">{product.product_id}</span></div>}
                   </div>
                 ))}
               </div>
