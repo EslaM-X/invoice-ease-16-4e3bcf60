@@ -55,7 +55,6 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
   // If no profile exists yet, treat as pending but allow the UI to show the type picker
   const activeProfile = profile || { account_type: null, approval_status: "pending", approval_notes: null };
   if (activeProfile.approval_status === "approved") return <>{children}</>;
-  if (activeProfile.approval_status === "approved") return <>{children}</>;
 
   const saveType = async () => {
     if (!picked || !user) return;
