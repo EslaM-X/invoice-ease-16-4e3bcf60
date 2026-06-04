@@ -10,7 +10,7 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { fmtMoney } from "@/lib/utils-money";
 import { Input } from "@/components/ui/input";
 
-type RangeKey = "1" | "7" | "30" | "90" | "custom";
+type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
@@ -39,6 +39,7 @@ export function SalesOverview() {
   const [customTo, setCustomTo] = useState<string>("");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [incoming, setIncoming] = useState<{ pos: number; units: number }>({ pos: 0, units: 0 });
+  const [allFrom, setAllFrom] = useState<Date | null>(null);
 
   const { from, to } = useMemo(() => {
     const end = startOfDay(new Date());
@@ -49,11 +50,31 @@ export function SalesOverview() {
       t.setDate(t.getDate() + 1);
       return { from: f, to: t };
     }
+    if (range === "all") {
+      const f = allFrom ? startOfDay(allFrom) : (() => { const d = startOfDay(new Date()); d.setDate(d.getDate() - 365); return d; })();
+      return { from: f, to: end };
+    }
     const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : range === "90" ? 90 : 7;
     const f = startOfDay(new Date());
     f.setDate(f.getDate() - (days - 1));
     return { from: f, to: end };
-  }, [range, customFrom, customTo]);
+  }, [range, customFrom, customTo, allFrom]);
+
+  // For "all", discover the earliest invoice date once
+  useEffect(() => {
+    if (range !== "all" || allFrom || !user) return;
+    supabase
+      .from("invoices")
+      .select("created_at")
+      .not("status", "in", "(voided,draft,cancelled)")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .then(({ data }) => {
+        const first = (data as any)?.[0]?.created_at;
+        if (first) setAllFrom(new Date(first));
+        else setAllFrom(new Date()); // no data — collapse to today
+      });
+  }, [range, allFrom, user]);
 
   const load = async () => {
     const { data } = await supabase
@@ -110,16 +131,30 @@ export function SalesOverview() {
   const filtered = useMemo(() => invoices.filter((i) => payFilter === "all" || classifyPay(i) === payFilter), [invoices, payFilter]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
+    const spanDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000));
+    const byMonth = spanDays > 120;
     const buckets = new Map<string, { date: Date; sales: number; count: number }>();
     const cursor = new Date(from);
-    while (cursor < to) {
-      const key = cursor.toISOString().slice(0, 10);
-      buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
-      cursor.setDate(cursor.getDate() + 1);
+    if (byMonth) {
+      cursor.setDate(1);
+      while (cursor < to) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+        buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    } else {
+      while (cursor < to) {
+        const key = cursor.toISOString().slice(0, 10);
+        buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
+        cursor.setDate(cursor.getDate() + 1);
+      }
     }
     let totalSales = 0, totalPaid = 0, count = 0;
     filtered.forEach((i) => {
-      const key = new Date(i.created_at).toISOString().slice(0, 10);
+      const d = new Date(i.created_at);
+      const key = byMonth
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        : d.toISOString().slice(0, 10);
       const b = buckets.get(key);
       const t = Number(i.total || 0);
       const p = Number(i.paid_amount || 0);
@@ -128,8 +163,9 @@ export function SalesOverview() {
       count += 1;
       if (b) { b.sales += t; b.count += 1; }
     });
+    const monthFmt = new Intl.DateTimeFormat((isAr ? "ar-EG" : "en-GB") + "-u-nu-latn", { month: "short", year: "2-digit" });
     const series = Array.from(buckets.values()).map((b) => ({
-      label: fmtDayLabel(b.date, isAr),
+      label: byMonth ? monthFmt.format(b.date) : fmtDayLabel(b.date, isAr),
       sales: Math.round(b.sales * 100) / 100,
       count: b.count,
     }));
@@ -147,6 +183,7 @@ export function SalesOverview() {
     { key: "7", label: isAr ? "7 أيام" : "7 days" },
     { key: "30", label: isAr ? "30 يوم" : "30 days" },
     { key: "90", label: isAr ? "90 يوم" : "90 days" },
+    { key: "all", label: isAr ? "الكل" : "All" },
     { key: "custom", label: isAr ? "مخصص" : "Custom" },
   ];
 

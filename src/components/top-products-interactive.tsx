@@ -30,15 +30,19 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
   const [rows, setRows] = useState<Row[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>("value");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const load = async () => {
-    const from = new Date();
-    from.setDate(from.getDate() - rangeDays);
-    const { data: items } = await supabase
+    let q = supabase
       .from("invoice_items")
       .select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status, created_at)")
-      .not("invoices.status", "in", "(voided,draft,cancelled)")
-      .gte("invoices.created_at", from.toISOString());
+      .not("invoices.status", "in", "(voided,draft,cancelled)");
+    if (!showAll) {
+      const from = new Date();
+      from.setDate(from.getDate() - rangeDays);
+      q = q.gte("invoices.created_at", from.toISOString());
+    }
+    const { data: items } = await q;
     const map = new Map<string, Row>();
     ((items as any) ?? []).forEach((it: any) => {
       const key = `${it.product_id ?? it.product_name}|${it.serial_number ?? ""}|${it.color ?? ""}`;
@@ -63,7 +67,7 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
     setRows([...map.values()]);
   };
 
-  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user, rangeDays]);
+  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user, rangeDays, showAll]);
   useRealtimeTable("invoice_items", () => { if (user) load(); });
   useRealtimeTable("invoices", () => { if (user) load(); });
 
@@ -78,12 +82,27 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
   return (
     <div className="ios-card p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Crown className="h-4 w-4 text-amber-500" />
           <h3 className="eyebrow">{isAr ? "المنتجات الأكثر مبيعًا" : "Top products"}</h3>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-            {isAr ? `آخر ${rangeDays} يوم` : `Last ${rangeDays}d`}
-          </span>
+          <div className="flex items-center gap-1 rounded-full border bg-background/60 p-0.5">
+            <button
+              onClick={() => setShowAll(false)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                !showAll ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isAr ? `آخر ${rangeDays} يوم` : `Last ${rangeDays}d`}
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                showAll ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isAr ? "الكل" : "All"}
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-1 rounded-full border bg-background/60 p-1">
           <button
