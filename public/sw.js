@@ -15,8 +15,15 @@ const ASSET_CACHE = `assets-${SW_VERSION}`;
 const ALL_CACHES = [HTML_CACHE, ASSET_CACHE];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
-});
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(HTML_CACHE);
+      // Pre-cache the root and common assets to ensure the shell works offline.
+      // We ignore errors here so installation continues even if network fails.
+      try { await cache.add("/"); } catch (e) { console.warn("[sw] pre-cache failed", e); }
+      return self.skipWaiting();
+    })()
+  );
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(

@@ -45,14 +45,16 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   if (authLoading || !user) return <>{children}</>;
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
-  if (profile.approval_status === "approved") return <>{children}</>;
+  // If no profile exists yet, treat as pending but allow the UI to show the type picker
+  const activeProfile = profile || { account_type: null, approval_status: "pending", approval_notes: null };
+  if (activeProfile.approval_status === "approved") return <>{children}</>;
 
   const saveType = async () => {
     if (!picked || !user) return;
@@ -67,8 +69,8 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
     load(user.id);
   };
 
-  const needsType = profile.approval_status === "pending" && !profile.account_type;
-  const rejected = profile.approval_status === "rejected";
+  const needsType = activeProfile.approval_status === "pending" && !activeProfile.account_type;
+  const rejected = activeProfile.approval_status === "rejected";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0b0b0c] p-4 text-white">
@@ -91,7 +93,7 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
 
         {rejected ? (
           <p className="mb-4 text-sm text-white/70">
-            {profile.approval_notes
+            {activeProfile.approval_notes
               || (lang === "ar"
                 ? "تم رفض طلبك من الإدارة. تواصل مع المسؤول لمزيد من التفاصيل."
                 : "Your request was rejected. Please contact the admin for details.")}
@@ -135,8 +137,8 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
         ) : (
           <p className="mb-4 text-sm text-white/70">
             {lang === "ar"
-              ? `طلبك (${profile.account_type === "employee" ? "موظف" : "موزّع"}) في انتظار موافقة الإدارة. سيتم تفعيل الحساب فور الموافقة.`
-              : `Your request (${profile.account_type}) is awaiting admin approval. Access will be granted once approved.`}
+              ? `طلبك (${activeProfile.account_type === "employee" ? "موظف" : "موزّع"}) في انتظار موافقة الإدارة. سيتم تفعيل الحساب فور الموافقة.`
+              : `Your request (${activeProfile.account_type}) is awaiting admin approval. Access will be granted once approved.`}
           </p>
         )}
 
