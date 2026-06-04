@@ -82,12 +82,27 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
   return (
     <div className="ios-card p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Crown className="h-4 w-4 text-amber-500" />
           <h3 className="eyebrow">{isAr ? "المنتجات الأكثر مبيعًا" : "Top products"}</h3>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-            {isAr ? `آخر ${rangeDays} يوم` : `Last ${rangeDays}d`}
-          </span>
+          <div className="flex items-center gap-1 rounded-full border bg-background/60 p-0.5">
+            <button
+              onClick={() => setShowAll(false)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                !showAll ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isAr ? `آخر ${rangeDays} يوم` : `Last ${rangeDays}d`}
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                showAll ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isAr ? "الكل" : "All"}
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-1 rounded-full border bg-background/60 p-1">
           <button
