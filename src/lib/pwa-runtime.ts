@@ -12,7 +12,14 @@ export function isPreviewHost(hostname?: string) {
   const currentHostname = hostname ?? (typeof window !== "undefined" ? window.location.hostname : "");
   return (
     currentHostname.startsWith("id-preview--") ||
+    currentHostname.startsWith("preview--") ||
+    currentHostname === "lovableproject.com" ||
     currentHostname.endsWith(".lovableproject.com") ||
+    currentHostname === "lovableproject-dev.com" ||
+    currentHostname.endsWith(".lovableproject-dev.com") ||
+    currentHostname === "beta.lovable.dev" ||
+    currentHostname.endsWith(".beta.lovable.dev") ||
+    currentHostname.endsWith(".lovable.dev") ||
     (currentHostname.startsWith("project--") && currentHostname.endsWith("-dev.lovable.app"))
   );
 }
@@ -28,7 +35,8 @@ export function isTopLevelWindow() {
 
 export function shouldDisablePwaFeatures() {
   if (typeof window === "undefined") return true;
-  return isPreviewHost() || !isTopLevelWindow();
+  const params = new URLSearchParams(window.location.search);
+  return isPreviewHost() || !isTopLevelWindow() || params.get("sw") === "off";
 }
 
 export function getStableAppUrl(path = "/dashboard") {
