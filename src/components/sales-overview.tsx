@@ -10,7 +10,7 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { fmtMoney } from "@/lib/utils-money";
 import { Input } from "@/components/ui/input";
 
-type RangeKey = "1" | "7" | "30" | "90" | "custom";
+type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
