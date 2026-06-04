@@ -52,22 +52,24 @@ export function SalesOverview() {
   const [allFrom, setAllFrom] = useState<Date | null>(null);
 
   const { from, to } = useMemo(() => {
-    const end = startOfDay(new Date());
-    end.setDate(end.getDate() + 1);
-    if (range === "custom" && customFrom && customTo) {
-      const f = startOfDay(new Date(customFrom));
-      const t = startOfDay(new Date(customTo));
-      t.setDate(t.getDate() + 1);
+    const todayEnd = startOfDay(new Date());
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    if (range === "custom") {
+      const f = parseLocalISO(customFrom) ?? (allFrom ? startOfDay(allFrom) : (() => { const d = startOfDay(new Date()); d.setDate(d.getDate() - 30); return d; })());
+      const tParsed = parseLocalISO(customTo);
+      const t = tParsed ? (() => { const x = new Date(tParsed); x.setDate(x.getDate() + 1); return x; })() : todayEnd;
+      // Guard: swap if user picked them backwards
+      if (f.getTime() >= t.getTime()) return { from: t, to: new Date(f.getTime() + 86400000) };
       return { from: f, to: t };
     }
     if (range === "all") {
       const f = allFrom ? startOfDay(allFrom) : (() => { const d = startOfDay(new Date()); d.setDate(d.getDate() - 365); return d; })();
-      return { from: f, to: end };
+      return { from: f, to: todayEnd };
     }
     const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : range === "90" ? 90 : 7;
     const f = startOfDay(new Date());
     f.setDate(f.getDate() - (days - 1));
-    return { from: f, to: end };
+    return { from: f, to: todayEnd };
   }, [range, customFrom, customTo, allFrom]);
 
   // For "all", discover the earliest invoice date once
