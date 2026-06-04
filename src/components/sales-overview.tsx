@@ -215,7 +215,7 @@ export function SalesOverview() {
 
     const addAgg = (map: Map<string, IncomingProduct>, item: any, po: any, qty: number) => {
       const key = `${item.product_id ?? item.product_name}`;
-      const prev = map.get(key) ?? {
+      const prev: IncomingProduct = map.get(key) ?? {
         product_id: item.product_id ?? null,
         product_name: item.product_name,
         qty: 0,
