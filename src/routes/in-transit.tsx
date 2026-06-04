@@ -468,53 +468,163 @@ function InTransitPage() {
       </>
       )}
 
-      {tab === "reserved" && (
-        <Card className="overflow-hidden">
-          <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {activeReservations.length} {isAr ? "بند فاتورة" : "invoice lines"} · {reservedTotalUnits} {isAr ? "قطعة محجوزة" : "units reserved"}
-          </div>
-          <div className="divide-y">
-            {activeReservations.length === 0 && (
-              <div className="p-10 text-center text-sm text-muted-foreground">
-                {isAr ? "لا توجد حجوزات حالياً." : "No active reservations."}
+      {tab === "reserved" && (() => {
+        // Enrich reservations with product info, then filter
+        const enriched = activeReservations.map((r: any) => {
+          const prod = productMap.get(r.product_id);
+          return { ...r, _prod: prod, _color: prod?.color ?? null, _collection: prod?.collection ?? null };
+        });
+        // Collection counts within reservations
+        const rColCounts: Record<string, number> = { __all__: enriched.length, __none__: 0 };
+        COLLECTIONS.forEach((c) => (rColCounts[c] = 0));
+        enriched.forEach((r) => {
+          const c = r._collection;
+          if (c && rColCounts[c] !== undefined) rColCounts[c]++;
+          else if (!c) rColCounts.__none__++;
+        });
+        // Color counts (after collection filter)
+        const colorMap = new Map<string, number>();
+        enriched.forEach((r) => {
+          if (collectionFilter) {
+            if (collectionFilter === "__none__" && r._collection) return;
+            if (collectionFilter !== "__none__" && r._collection !== collectionFilter) return;
+          }
+          if (!r._color) return;
+          colorMap.set(r._color, (colorMap.get(r._color) ?? 0) + 1);
+        });
+        const rColors = Array.from(colorMap.entries()).sort((a, b) => b[1] - a[1]);
+        // Filter
+        const filteredR = enriched.filter((r) => {
+          if (collectionFilter) {
+            if (collectionFilter === "__none__" && r._collection) return false;
+            if (collectionFilter !== "__none__" && r._collection !== collectionFilter) return false;
+          }
+          if (colorFilter && (r._color ?? "").toLowerCase() !== colorFilter.toLowerCase()) return false;
+          return true;
+        });
+        const filteredUnits = filteredR.reduce((s: number, r: any) => s + Number(r.reserved_qty || 0), 0);
+        return (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setCollectionFilter("")}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {isAr ? "كل الكولكشن" : "All collections"} ({rColCounts.__all__})
+              </button>
+              {COLLECTIONS.map((c) => (
+                rColCounts[c] > 0 && (
+                  <button
+                    key={c}
+                    onClick={() => setCollectionFilter(c)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
+                  >
+                    <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+                    {c} ({rColCounts[c]})
+                  </button>
+                )
+              ))}
+              {rColCounts.__none__ > 0 && (
+                <button
+                  onClick={() => setCollectionFilter("__none__")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                >
+                  {isAr ? "بدون كولكشن" : "No collection"} ({rColCounts.__none__})
+                </button>
+              )}
+            </div>
+
+            {rColors.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {isAr ? "اللون" : "Color"}
+                </span>
+                <button
+                  onClick={() => setColorFilter("")}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                >
+                  {isAr ? "الكل" : "All"}
+                </button>
+                {rColors.map(([color, count]) => {
+                  const active = colorFilter.toLowerCase() === color.toLowerCase();
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setColorFilter(active ? "" : color)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted hover:bg-muted/70"}`}
+                      title={color}
+                    >
+                      <ColorSwatch value={color} size="sm" />
+                      <span className="max-w-[80px] truncate">{color}</span>
+                      <span className="text-muted-foreground">({count})</span>
+                    </button>
+                  );
+                })}
+                {(colorFilter || collectionFilter) && (
+                  <button
+                    onClick={() => { setColorFilter(""); setCollectionFilter(""); }}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] hover:bg-muted/70"
+                  >
+                    <X className="h-3 w-3" /> {isAr ? "مسح الفلتر" : "Clear filters"}
+                  </button>
+                )}
               </div>
             )}
-            {activeReservations.map((r: any) => {
-              const prod = productMap.get(r.product_id);
-              return (
-                <div key={r.invoice_item_id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
-                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
-                    {prod?.image_url ? <img src={prod.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+
+            <Card className="overflow-hidden">
+              <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {filteredR.length} {isAr ? "بند فاتورة" : "invoice lines"} · {filteredUnits} {isAr ? "قطعة محجوزة" : "units reserved"}
+              </div>
+              <div className="divide-y">
+                {filteredR.length === 0 && (
+                  <div className="p-10 text-center text-sm text-muted-foreground">
+                    {isAr ? "لا توجد حجوزات مطابقة." : "No matching reservations."}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{prod?.name ?? r.product_name ?? "—"}</div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                      {prod?.serial_number && <span className="font-mono">S/N: {prod.serial_number}</span>}
-                      {prod?.color && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <ColorSwatch value={prod.color} size="sm" />{prod.color}
-                        </span>
-                      )}
-                      <span>{fmtDateTime(r.created_at, lang)}</span>
+                )}
+                {filteredR.map((r: any) => {
+                  const prod = r._prod as Product | undefined;
+                  return (
+                    <div key={r.invoice_item_id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+                      <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
+                        {prod?.image_url ? <img src={prod.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold">{prod?.name ?? r.product_name ?? "—"}</div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                          {prod?.serial_number && <span className="font-mono">S/N: {prod.serial_number}</span>}
+                          {prod?.color && (
+                            <span className="inline-flex items-center gap-1.5">
+                              <ColorSwatch value={prod.color} size="sm" />{prod.color}
+                            </span>
+                          )}
+                          {prod?.collection && (
+                            <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ${collectionPillClass(prod.collection, false)}`}>
+                              <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(prod.collection)}`} aria-hidden />
+                              {prod.collection}
+                            </span>
+                          )}
+                          <span>{fmtDateTime(r.created_at, lang)}</span>
+                        </div>
+                      </div>
+                      <Link
+                        to="/invoices/$id"
+                        params={{ id: r.invoice_id }}
+                        className="rounded-md bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                      >
+                        #{r.invoice_number} · {r.customer_name || (isAr ? "بدون اسم" : "No name")}
+                      </Link>
+                      <div className="rounded-md bg-amber-500/10 px-3 py-1.5 text-end">
+                        <div className="text-[10px] font-medium text-amber-700">{isAr ? "محجوز" : "Reserved"}</div>
+                        <div className="text-lg font-bold tabular-nums text-amber-700">{r.reserved_qty}</div>
+                      </div>
                     </div>
-                  </div>
-                  <Link
-                    to="/invoices/$id"
-                    params={{ id: r.invoice_id }}
-                    className="rounded-md bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
-                  >
-                    #{r.invoice_number} · {r.customer_name || (isAr ? "بدون اسم" : "No name")}
-                  </Link>
-                  <div className="rounded-md bg-amber-500/10 px-3 py-1.5 text-end">
-                    <div className="text-[10px] font-medium text-amber-700">{isAr ? "محجوز" : "Reserved"}</div>
-                    <div className="text-lg font-bold tabular-nums text-amber-700">{r.reserved_qty}</div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </Card>
           </div>
-        </Card>
-      )}
+        );
+      })()}
 
 
       {trackId && (
