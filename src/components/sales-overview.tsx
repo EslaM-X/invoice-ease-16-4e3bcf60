@@ -131,16 +131,30 @@ export function SalesOverview() {
   const filtered = useMemo(() => invoices.filter((i) => payFilter === "all" || classifyPay(i) === payFilter), [invoices, payFilter]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
+    const spanDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000));
+    const byMonth = spanDays > 120;
     const buckets = new Map<string, { date: Date; sales: number; count: number }>();
     const cursor = new Date(from);
-    while (cursor < to) {
-      const key = cursor.toISOString().slice(0, 10);
-      buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
-      cursor.setDate(cursor.getDate() + 1);
+    if (byMonth) {
+      cursor.setDate(1);
+      while (cursor < to) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+        buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    } else {
+      while (cursor < to) {
+        const key = cursor.toISOString().slice(0, 10);
+        buckets.set(key, { date: new Date(cursor), sales: 0, count: 0 });
+        cursor.setDate(cursor.getDate() + 1);
+      }
     }
     let totalSales = 0, totalPaid = 0, count = 0;
     filtered.forEach((i) => {
-      const key = new Date(i.created_at).toISOString().slice(0, 10);
+      const d = new Date(i.created_at);
+      const key = byMonth
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        : d.toISOString().slice(0, 10);
       const b = buckets.get(key);
       const t = Number(i.total || 0);
       const p = Number(i.paid_amount || 0);
@@ -149,8 +163,9 @@ export function SalesOverview() {
       count += 1;
       if (b) { b.sales += t; b.count += 1; }
     });
+    const monthFmt = new Intl.DateTimeFormat((isAr ? "ar-EG" : "en-GB") + "-u-nu-latn", { month: "short", year: "2-digit" });
     const series = Array.from(buckets.values()).map((b) => ({
-      label: fmtDayLabel(b.date, isAr),
+      label: byMonth ? monthFmt.format(b.date) : fmtDayLabel(b.date, isAr),
       sales: Math.round(b.sales * 100) / 100,
       count: b.count,
     }));
