@@ -17,10 +17,12 @@ type Row = {
   color: string | null;
   qty: number;
   total: number;
+  grossTotal: number;
+  discountTotal: number;
   invoiceCount: number;
   lastSoldAt: string | null;
 };
-type SortKey = "qty" | "value";
+type SortKey = "qty" | "value" | "ratio";
 
 export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDays?: number; limit?: number }) {
   const { user } = useAuth();
@@ -35,7 +37,7 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
   const load = async () => {
     let q = supabase
       .from("invoice_items")
-      .select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status, created_at)")
+      .select("product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(status, created_at)")
       .not("invoices.status", "in", "(voided,draft,cancelled)");
     if (!showAll) {
       const from = new Date();
@@ -64,11 +66,20 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
         color: it.color ?? null,
         qty: 0,
         total: 0,
+        grossTotal: 0,
+        discountTotal: 0,
         invoiceCount: 0,
         lastSoldAt: null,
       };
+      const qty = Number(it.quantity || 0);
+      const unitPrice = Number(it.unit_price || 0);
+      const gross = qty * unitPrice;
+      const net = Number(it.line_total || 0);
+      const discount = Math.max(0, gross - net, Number(it.discount || 0));
       prev.qty += Number(it.quantity || 0);
-      prev.total += Number(it.line_total || 0);
+      prev.total += net;
+      prev.grossTotal += gross;
+      prev.discountTotal += discount;
       prev.invoiceCount += 1;
       const created = it.invoices?.created_at ?? null;
       if (created && (!prev.lastSoldAt || created > prev.lastSoldAt)) prev.lastSoldAt = created;
@@ -81,13 +92,30 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
   useRealtimeTable("invoice_items", () => { if (user) load(); });
   useRealtimeTable("invoices", () => { if (user) load(); });
 
+  const grandTotal = useMemo(() => rows.reduce((sum, row) => sum + row.total, 0), [rows]);
+
   const sorted = useMemo(() => {
     const arr = [...rows];
-    arr.sort((a, b) => (sortBy === "qty" ? b.qty - a.qty : b.total - a.total));
+    arr.sort((a, b) => {
+      if (sortBy === "qty") return b.qty - a.qty;
+      if (sortBy === "ratio") {
+        const aRatio = grandTotal > 0 ? a.total / grandTotal : 0;
+        const bRatio = grandTotal > 0 ? b.total / grandTotal : 0;
+        return bRatio - aRatio;
+      }
+      return b.total - a.total;
+    });
     return arr.slice(0, limit);
-  }, [rows, sortBy, limit]);
+  }, [rows, sortBy, limit, grandTotal]);
 
-  const maxValue = Math.max(1, ...sorted.map((r) => (sortBy === "qty" ? r.qty : r.total)));
+  const maxValue = Math.max(
+    1,
+    ...sorted.map((r) => {
+      if (sortBy === "qty") return r.qty;
+      if (sortBy === "ratio") return grandTotal > 0 ? (r.total / grandTotal) * 100 : 0;
+      return r.total;
+    }),
+  );
 
   return (
     <div className="ios-card p-5 sm:p-6">
@@ -116,6 +144,14 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
         </div>
         <div className="flex items-center gap-1 rounded-full border bg-background/60 p-1">
           <button
+            onClick={() => setSortBy("ratio")}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+              sortBy === "ratio" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Crown className="h-3 w-3" /> {isAr ? "بالنسبة" : "Ratio"}
+          </button>
+          <button
             onClick={() => setSortBy("value")}
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
               sortBy === "value" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
@@ -139,7 +175,8 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
       ) : (
         <ul className="divide-y divide-border">
           {sorted.map((r, idx) => {
-            const metric = sortBy === "qty" ? r.qty : r.total;
+            const ratio = grandTotal > 0 ? (r.total / grandTotal) * 100 : 0;
+            const metric = sortBy === "qty" ? r.qty : sortBy === "ratio" ? ratio : r.total;
             const pct = (metric / maxValue) * 100;
             const isOpen = expanded === r.key;
             return (
@@ -155,7 +192,7 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
                     <div className="flex items-center justify-between gap-2">
                       <div className="truncate text-sm font-medium">{r.name}</div>
                       <div className="shrink-0 text-sm font-semibold tabular-nums">
-                        {sortBy === "qty" ? `× ${r.qty}` : fmtMoney(r.total, "EGP", lang)}
+                        {sortBy === "qty" ? `× ${r.qty}` : sortBy === "ratio" ? `${ratio.toFixed(1)}%` : fmtMoney(r.total, "EGP", lang)}
                       </div>
                     </div>
                     <div className="mt-1.5 flex items-center gap-2">
@@ -182,9 +219,14 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
                     >
                       <div className="mx-2 mt-1 grid gap-2 rounded-xl border bg-muted/30 p-3 text-xs sm:grid-cols-2">
                         <Stat label={isAr ? "الكمية المباعة" : "Units sold"} value={`× ${r.qty}`} />
+                        <Stat label={isAr ? "نسبة المساهمة" : "Contribution"} value={`${ratio.toFixed(1)}%`} />
                         <Stat label={isAr ? "إجمالي القيمة" : "Total value"} value={fmtMoney(r.total, "EGP", lang)} />
+                        <Stat label={isAr ? "قبل الخصم" : "Before discount"} value={fmtMoney(r.grossTotal, "EGP", lang)} />
+                        <Stat label={isAr ? "الخصم" : "Discount"} value={fmtMoney(r.discountTotal, "EGP", lang)} />
+                        <Stat label={isAr ? "بعد الخصم" : "After discount"} value={fmtMoney(r.total, "EGP", lang)} />
                         <Stat label={isAr ? "عدد الفواتير" : "Invoices"} value={String(r.invoiceCount)} />
-                        <Stat label={isAr ? "متوسط سعر البيع" : "Avg sell price"} value={fmtMoney(r.qty > 0 ? r.total / r.qty : 0, "EGP", lang)} />
+                        <Stat label={isAr ? "متوسط السعر قبل الخصم" : "Avg before discount"} value={fmtMoney(r.qty > 0 ? r.grossTotal / r.qty : 0, "EGP", lang)} />
+                        <Stat label={isAr ? "متوسط السعر بعد الخصم" : "Avg after discount"} value={fmtMoney(r.qty > 0 ? r.total / r.qty : 0, "EGP", lang)} />
                         {r.serial && <Stat label={isAr ? "الرقم التسلسلي" : "Serial"} value={r.serial} mono />}
                         {r.color && (
                           <div className="flex items-center gap-2">
