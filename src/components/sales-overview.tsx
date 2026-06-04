@@ -33,11 +33,6 @@ type Invoice = {
   status: string;
 };
 
-type ProductRef = {
-  id: string;
-  name: string;
-};
-
 type IncomingProduct = {
   product_id: string | null;
   product_name: string;
@@ -123,6 +118,7 @@ export function SalesOverview() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [windowInvoices, setWindowInvoices] = useState<Invoice[]>([]);
   const [incoming, setIncoming] = useState<IncomingData>({
     inWindowPos: 0,
     inWindowUnits: 0,
@@ -133,7 +129,6 @@ export function SalesOverview() {
     nextEta: null,
   });
   const [showZeroWhy, setShowZeroWhy] = useState(false);
-  const [productRefs, setProductRefs] = useState<Map<string, ProductRef>>(new Map());
 
   const activeInvoices = useMemo(
     () => allInvoices.filter((i) => !["voided", "draft", "cancelled"].includes(i.status)),
@@ -195,6 +190,18 @@ export function SalesOverview() {
       .order("created_at", { ascending: true })
       .limit(5000);
     setAllInvoices((data as Invoice[]) ?? []);
+  };
+
+  const loadWindowInvoices = async () => {
+    const { data } = await supabase
+      .from("invoices")
+      .select("id,invoice_number,created_at,total,paid_amount,status")
+      .not("status", "in", "(voided,draft,cancelled)")
+      .gte("created_at", from.toISOString())
+      .lt("created_at", to.toISOString())
+      .order("created_at", { ascending: true })
+      .limit(5000);
+    setWindowInvoices((data as Invoice[]) ?? []);
   };
 
   const loadIncoming = async () => {
@@ -284,21 +291,11 @@ export function SalesOverview() {
     if (!user) return;
     loadInvoices();
     loadIncoming();
-    supabase
-      .from("products")
-      .select("id,name")
-      .limit(5000)
-      .then(({ data }) => {
-        const map = new Map<string, ProductRef>();
-        ((data as ProductRef[] | null) ?? []).forEach((product) => {
-          map.set(product.id, product);
-        });
-        setProductRefs(map);
-      });
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
+    loadWindowInvoices();
     loadIncoming();
   }, [user, from.getTime(), to.getTime()]);
 
@@ -307,14 +304,10 @@ export function SalesOverview() {
   useRealtimeTable("purchase_order_items", () => { if (user) loadIncoming(); });
 
   const filtered = useMemo(() => {
-    return activeInvoices.filter((i) => {
-      const parsed = parseServerTimestampLocal(i.created_at);
-      if (!parsed) return false;
-      const stamp = parsed.getTime();
-      if (stamp < from.getTime() || stamp >= to.getTime()) return false;
+    return windowInvoices.filter((i) => {
       return payFilter === "all" || classifyPay(i) === payFilter;
     });
-  }, [activeInvoices, from, to, payFilter]);
+  }, [windowInvoices, payFilter]);
 
   const prevTotal = useMemo(() => {
     const span = to.getTime() - from.getTime();
