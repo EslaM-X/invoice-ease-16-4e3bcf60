@@ -14,6 +14,16 @@ type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+// Robust YYYY-MM-DD parser → local midnight (avoids UTC drift from new Date(str))
+function parseLocalISO(s: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, mo - 1, d, 0, 0, 0, 0);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return dt;
+}
 function fmtDayLabel(d: Date, isAr: boolean) {
   return new Intl.DateTimeFormat((isAr ? "ar-EG" : "en-GB") + "-u-nu-latn", { day: "2-digit", month: "short" }).format(d);
 }
@@ -42,27 +52,29 @@ export function SalesOverview() {
   const [allFrom, setAllFrom] = useState<Date | null>(null);
 
   const { from, to } = useMemo(() => {
-    const end = startOfDay(new Date());
-    end.setDate(end.getDate() + 1);
-    if (range === "custom" && customFrom && customTo) {
-      const f = startOfDay(new Date(customFrom));
-      const t = startOfDay(new Date(customTo));
-      t.setDate(t.getDate() + 1);
+    const todayEnd = startOfDay(new Date());
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    if (range === "custom") {
+      const f = parseLocalISO(customFrom) ?? (allFrom ? startOfDay(allFrom) : (() => { const d = startOfDay(new Date()); d.setDate(d.getDate() - 30); return d; })());
+      const tParsed = parseLocalISO(customTo);
+      const t = tParsed ? (() => { const x = new Date(tParsed); x.setDate(x.getDate() + 1); return x; })() : todayEnd;
+      // Guard: swap if user picked them backwards
+      if (f.getTime() >= t.getTime()) return { from: t, to: new Date(f.getTime() + 86400000) };
       return { from: f, to: t };
     }
     if (range === "all") {
       const f = allFrom ? startOfDay(allFrom) : (() => { const d = startOfDay(new Date()); d.setDate(d.getDate() - 365); return d; })();
-      return { from: f, to: end };
+      return { from: f, to: todayEnd };
     }
     const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : range === "90" ? 90 : 7;
     const f = startOfDay(new Date());
     f.setDate(f.getDate() - (days - 1));
-    return { from: f, to: end };
+    return { from: f, to: todayEnd };
   }, [range, customFrom, customTo, allFrom]);
 
   // For "all", discover the earliest invoice date once
   useEffect(() => {
-    if (range !== "all" || allFrom || !user) return;
+    if ((range !== "all" && range !== "custom") || allFrom || !user) return;
     supabase
       .from("invoices")
       .select("created_at")
@@ -349,6 +361,11 @@ export function SalesOverview() {
               {isAr
                 ? `${incoming.pos} أمر شراء متوقع وصوله • ${incoming.units} وحدة قادمة خلال نفس الفترة`
                 : `${incoming.pos} POs expected • ${incoming.units} units arriving in this window`}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+              {isAr
+                ? "يقارن مبيعاتك خلال الفترة بأوامر الشراء (ordered / shipped / in_warehouse) المتوقع وصولها في نفس الفترة — يساعدك تعرف هل القادم يغطي الطلب الفعلي."
+                : "Compares your sales in this window against POs (ordered / shipped / in_warehouse) expected to arrive in the same window — shows if incoming stock covers actual demand."}
             </div>
           </div>
         </div>
