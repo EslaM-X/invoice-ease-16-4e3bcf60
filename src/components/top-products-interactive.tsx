@@ -30,15 +30,19 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
   const [rows, setRows] = useState<Row[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>("value");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const load = async () => {
-    const from = new Date();
-    from.setDate(from.getDate() - rangeDays);
-    const { data: items } = await supabase
+    let q = supabase
       .from("invoice_items")
       .select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status, created_at)")
-      .not("invoices.status", "in", "(voided,draft,cancelled)")
-      .gte("invoices.created_at", from.toISOString());
+      .not("invoices.status", "in", "(voided,draft,cancelled)");
+    if (!showAll) {
+      const from = new Date();
+      from.setDate(from.getDate() - rangeDays);
+      q = q.gte("invoices.created_at", from.toISOString());
+    }
+    const { data: items } = await q;
     const map = new Map<string, Row>();
     ((items as any) ?? []).forEach((it: any) => {
       const key = `${it.product_id ?? it.product_name}|${it.serial_number ?? ""}|${it.color ?? ""}`;
