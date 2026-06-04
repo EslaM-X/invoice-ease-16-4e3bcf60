@@ -39,6 +39,7 @@ export function SalesOverview() {
   const [customTo, setCustomTo] = useState<string>("");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [incoming, setIncoming] = useState<{ pos: number; units: number }>({ pos: 0, units: 0 });
+  const [allFrom, setAllFrom] = useState<Date | null>(null);
 
   const { from, to } = useMemo(() => {
     const end = startOfDay(new Date());
@@ -49,11 +50,31 @@ export function SalesOverview() {
       t.setDate(t.getDate() + 1);
       return { from: f, to: t };
     }
+    if (range === "all") {
+      const f = allFrom ? startOfDay(allFrom) : (() => { const d = startOfDay(new Date()); d.setDate(d.getDate() - 365); return d; })();
+      return { from: f, to: end };
+    }
     const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : range === "90" ? 90 : 7;
     const f = startOfDay(new Date());
     f.setDate(f.getDate() - (days - 1));
     return { from: f, to: end };
-  }, [range, customFrom, customTo]);
+  }, [range, customFrom, customTo, allFrom]);
+
+  // For "all", discover the earliest invoice date once
+  useEffect(() => {
+    if (range !== "all" || allFrom || !user) return;
+    supabase
+      .from("invoices")
+      .select("created_at")
+      .not("status", "in", "(voided,draft,cancelled)")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .then(({ data }) => {
+        const first = (data as any)?.[0]?.created_at;
+        if (first) setAllFrom(new Date(first));
+        else setAllFrom(new Date()); // no data — collapse to today
+      });
+  }, [range, allFrom, user]);
 
   const load = async () => {
     const { data } = await supabase
