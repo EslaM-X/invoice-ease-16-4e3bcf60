@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { logPwaEvent } from "@/lib/pwa-diagnostics";
+import { shouldDisablePwaFeatures } from "@/lib/pwa-runtime";
 
 const SW_PATH = "/sw.js";
 
@@ -20,20 +21,12 @@ export function PwaVersionGuard() {
       return;
     }
 
-    // Guard 1: never inside an iframe (Lovable editor preview)
-    let inIframe = false;
-    try { inIframe = window.self !== window.top; } catch { inIframe = true; }
-
-    // Guard 2: skip Lovable preview / sandbox hosts
-    const host = window.location.hostname;
-    const isPreviewHost =
-      host.includes("id-preview--") ||
-      host.includes("preview--") ||
-      host.includes("lovableproject.com") ||
-      host.includes("lovableproject-dev.com") ||
-      host.includes("lovable.dev");
-
-    const skipRegister = inIframe || isPreviewHost;
+    let reloadedForController = false;
+    const skipRegister = shouldDisablePwaFeatures();
+    const inIframe = (() => {
+      try { return window.self !== window.top; } catch { return true; }
+    })();
+    const isPreviewHost = skipRegister && !inIframe;
 
     const run = async () => {
       try {
@@ -75,6 +68,14 @@ export function PwaVersionGuard() {
           logPwaEvent("info", "sw_skip_register", { reason: inIframe ? "iframe" : "preview-host" });
           return;
         }
+
+        const onControllerChange = () => {
+          if (reloadedForController) return;
+          reloadedForController = true;
+          logPwaEvent("info", "sw_controller_changed_reload");
+          window.location.reload();
+        };
+        navigator.serviceWorker.addEventListener("controllerchange", onControllerChange, { once: true });
 
         // Register the canonical SW.
         const reg = await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
