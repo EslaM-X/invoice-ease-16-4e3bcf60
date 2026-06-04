@@ -31,9 +31,13 @@ function createWindow() {
     },
   });
 
-  // Load the production URL so users always get the latest deployed build
-  // (acts like an always-fresh shell + native notifications / shortcuts).
-  win.loadURL(PROD_URL);
+  // Try loading local files first (for offline reliability), fallback to remote URL
+  const indexPath = path.join(__dirname, "..", "dist", "index.html");
+  if (require("fs").existsSync(indexPath)) {
+    win.loadFile(indexPath);
+  } else {
+    win.loadURL(PROD_URL);
+  }
 
   // Open external links in the user's default browser, keep app navigation in-app
   win.webContents.setWindowOpenHandler(({ url }) => {
