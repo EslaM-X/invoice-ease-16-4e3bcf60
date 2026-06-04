@@ -362,6 +362,11 @@ export function SalesOverview() {
                 ? `${incoming.pos} أمر شراء متوقع وصوله • ${incoming.units} وحدة قادمة خلال نفس الفترة`
                 : `${incoming.pos} POs expected • ${incoming.units} units arriving in this window`}
             </div>
+            <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+              {isAr
+                ? "يقارن مبيعاتك خلال الفترة بأوامر الشراء (ordered / shipped / in_warehouse) المتوقع وصولها في نفس الفترة — يساعدك تعرف هل القادم يغطي الطلب الفعلي."
+                : "Compares your sales in this window against POs (ordered / shipped / in_warehouse) expected to arrive in the same window — shows if incoming stock covers actual demand."}
+            </div>
           </div>
         </div>
         <div className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
