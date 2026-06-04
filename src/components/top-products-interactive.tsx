@@ -67,7 +67,7 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
     setRows([...map.values()]);
   };
 
-  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user, rangeDays]);
+  useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user, rangeDays, showAll]);
   useRealtimeTable("invoice_items", () => { if (user) load(); });
   useRealtimeTable("invoices", () => { if (user) load(); });
 
