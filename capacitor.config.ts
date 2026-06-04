@@ -20,9 +20,10 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   server: {
     androidScheme: "https",
-    // Set to your production URL so the shell loads the latest deployed version
-    // on first run; Capgo OTA takes over afterwards for subsequent updates.
-    url: "https://admin.steinheim-eg.com",
+    // WARNING: If "url" is set, Capacitor loads that remote site instead of the 
+    // local bundled files in /dist. This bypasses Capgo OTA updates for local files.
+    // To use local files + Capgo OTA: comment out the "url" line below.
+    // url: "https://admin.steinheim-eg.com",
     cleartext: false,
   },
   ios: {
