@@ -74,7 +74,7 @@ export function SalesOverview() {
 
   // For "all", discover the earliest invoice date once
   useEffect(() => {
-    if (range !== "all" || allFrom || !user) return;
+    if ((range !== "all" && range !== "custom") || allFrom || !user) return;
     supabase
       .from("invoices")
       .select("created_at")
