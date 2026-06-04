@@ -569,7 +569,6 @@ export function SalesOverview() {
                      {product.product_id && <div className="mt-1 text-muted-foreground">ID: <span className="font-mono text-foreground">{product.product_id}</span></div>}
                      <Link
                        to="/products"
-                       search={(prev: any) => ({ ...prev, q: product.product_name || productRefs.get(product.product_id ?? "")?.name || "" })}
                        className="mt-2 inline-flex items-center gap-1 font-semibold text-primary"
                      >
                        {isAr ? "فتح المنتج" : "Open product"}<ArrowRight className={`h-3 w-3 ${isAr ? "rotate-180" : ""}`} />
