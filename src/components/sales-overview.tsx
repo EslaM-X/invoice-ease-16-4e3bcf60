@@ -197,7 +197,7 @@ export function SalesOverview() {
   const loadInvoices = async () => {
     const { data } = await supabase
       .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status")
+      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
       .order("created_at", { ascending: true })
       .limit(1000);
     setAllInvoices((data as Invoice[]) ?? []);
@@ -206,13 +206,37 @@ export function SalesOverview() {
   const loadWindowInvoices = async () => {
     const { data } = await supabase
       .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status")
+      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
       .not("status", "in", "(voided,draft,cancelled)")
       .gte("created_at", from.toISOString())
       .lt("created_at", to.toISOString())
       .order("created_at", { ascending: true })
       .limit(1000);
     setWindowInvoices((data as Invoice[]) ?? []);
+  };
+
+  const loadReceiptSummary = async () => {
+    const { data } = await supabase
+      .from("delivery_receipts" as any)
+      .select("invoice_id,status,shipping_fees")
+      .not("invoice_id", "is", null);
+
+    const map: Record<string, ReceiptSummary> = {};
+    ((data as any[]) ?? []).forEach((row) => {
+      const invoiceId = String(row.invoice_id || "");
+      if (!invoiceId) return;
+      const current = map[invoiceId] ?? {
+        invoice_id: invoiceId,
+        receipts_count: 0,
+        delivered_count: 0,
+        shipping_fees_total: 0,
+      };
+      current.receipts_count += 1;
+      if (row.status === "delivered") current.delivered_count += 1;
+      current.shipping_fees_total += Number(row.shipping_fees || 0);
+      map[invoiceId] = current;
+    });
+    setReceiptMap(map);
   };
 
   const loadIncoming = async () => {
