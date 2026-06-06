@@ -7,6 +7,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   Calendar as CalendarIcon,
+  FileSpreadsheet,
+  FileText,
   HelpCircle,
   Receipt,
   Target,
@@ -18,8 +20,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
-import { fmtDate, fmtMoney } from "@/lib/utils-money";
+import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { exportRowsToExcel, exportRowsToPDF, type ExportColumn } from "@/lib/critical-export";
 
 type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
@@ -194,25 +198,41 @@ export function SalesOverview() {
 
   const { from, to, customMeta } = rangeState;
 
+  const fetchAllInvoices = async (filter: (q: any) => any): Promise<Invoice[]> => {
+    const pageSize = 1000;
+    let from = 0;
+    const all: Invoice[] = [];
+    // Loop until a short page (covers up to millions in theory).
+    while (true) {
+      let q = supabase
+        .from("invoices")
+        .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
+        .order("created_at", { ascending: true })
+        .range(from, from + pageSize - 1);
+      q = filter(q);
+      const { data, error } = await q;
+      if (error) break;
+      const rows = (data as Invoice[]) ?? [];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+      if (from > 200000) break; // hard safety
+    }
+    return all;
+  };
+
   const loadInvoices = async () => {
-    const { data } = await supabase
-      .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
-      .order("created_at", { ascending: true })
-      .limit(1000);
-    setAllInvoices((data as Invoice[]) ?? []);
+    const data = await fetchAllInvoices((q) => q);
+    setAllInvoices(data);
   };
 
   const loadWindowInvoices = async () => {
-    const { data } = await supabase
-      .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
-      .not("status", "in", "(voided,draft,cancelled)")
-      .gte("created_at", from.toISOString())
-      .lt("created_at", to.toISOString())
-      .order("created_at", { ascending: true })
-      .limit(1000);
-    setWindowInvoices((data as Invoice[]) ?? []);
+    const data = await fetchAllInvoices((q) =>
+      q.not("status", "in", "(voided,draft,cancelled)")
+        .gte("created_at", from.toISOString())
+        .lt("created_at", to.toISOString()),
+    );
+    setWindowInvoices(data);
   };
 
   const scheduleWindowRefresh = () => {
@@ -669,6 +689,118 @@ export function SalesOverview() {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+
+      <SalesAuditPanel
+        rows={filtered}
+        receiptMap={receiptMap}
+        from={from}
+        to={to}
+        isAr={isAr}
+        lang={lang}
+        payFilterLabel={payOptions.find((o) => o.key === payFilter)?.label ?? ""}
+        totalSales={totalSales}
+        totalPaid={totalPaid}
+      />
     </motion.section>
+  );
+}
+
+type AuditRow = Invoice & { _classified: "paid" | "partial" | "outstanding"; _outstanding: number };
+
+function SalesAuditPanel({
+  rows,
+  receiptMap,
+  from,
+  to,
+  isAr,
+  lang,
+  payFilterLabel,
+  totalSales,
+  totalPaid,
+}: {
+  rows: Invoice[];
+  receiptMap: Record<string, ReceiptSummary>;
+  from: Date;
+  to: Date;
+  isAr: boolean;
+  lang: "ar" | "en";
+  payFilterLabel: string;
+  totalSales: number;
+  totalPaid: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const audit: AuditRow[] = useMemo(() => {
+    return rows.map((i) => {
+      const classified = classifyPay(i, receiptMap[i.id]);
+      return {
+        ...i,
+        _classified: classified,
+        _outstanding: Math.max(0, Number(i.total || 0) - Number(i.paid_amount || 0)),
+      };
+    });
+  }, [rows, receiptMap]);
+
+  const columns: ExportColumn<AuditRow>[] = [
+    { header: isAr ? "رقم الفاتورة" : "Invoice #", value: (r) => r.invoice_number, width: 18 },
+    { header: isAr ? "التاريخ والوقت" : "Date & Time", value: (r) => fmtDateTime(r.created_at, lang), width: 32 },
+    { header: isAr ? "الحالة" : "Status", value: (r) => r.status, width: 14 },
+    { header: isAr ? "حالة التسليم" : "Delivery", value: (r) => r.delivery_status ?? "", width: 16 },
+    { header: isAr ? "تصنيف الدفع" : "Pay Class", value: (r) => r._classified, width: 12 },
+    { header: isAr ? "الإجمالي" : "Total", value: (r) => Number(r.total || 0), pdf: (r) => fmtMoney(Number(r.total || 0), "EGP", lang), width: 14 },
+    { header: isAr ? "المدفوع" : "Paid", value: (r) => Number(r.paid_amount || 0), pdf: (r) => fmtMoney(Number(r.paid_amount || 0), "EGP", lang), width: 14 },
+    { header: isAr ? "المتبقي" : "Outstanding", value: (r) => r._outstanding, pdf: (r) => fmtMoney(r._outstanding, "EGP", lang), width: 14 },
+    { header: isAr ? "محاضر مسلّمة" : "Delivered Receipts", value: (r) => Number(receiptMap[r.id]?.delivered_count || 0), width: 12 },
+    { header: "ID", value: (r) => r.id, width: 38 },
+  ];
+
+  const title = `${isAr ? "تدقيق المبيعات" : "Sales Audit"} ${fmtDate(from, lang)} → ${fmtDate(new Date(to.getTime() - 1), lang)} • ${payFilterLabel}`;
+
+  return (
+    <div className="mt-6 rounded-2xl border bg-background/50">
+      <div className="flex flex-wrap items-center gap-2 border-b p-3">
+        <button onClick={() => setOpen((v) => !v)} className="me-auto text-sm font-semibold text-foreground">
+          {isAr ? "تدقيق دقيق — كل فاتورة بحسابها" : "Full audit — every invoice line"} ({audit.length})
+        </button>
+        <span className="text-[11px] text-muted-foreground">
+          {isAr ? "إجمالي" : "Total"}: <span className="font-semibold text-foreground">{fmtMoney(totalSales, "EGP", lang)}</span>
+          {" • "}
+          {isAr ? "محصّل" : "Paid"}: <span className="font-semibold text-foreground">{fmtMoney(totalPaid, "EGP", lang)}</span>
+        </span>
+        <Button size="sm" variant="outline" onClick={() => exportRowsToExcel(audit, columns, { fileName: "sales_audit", sheetName: "Audit", title })}>
+          <FileSpreadsheet className="h-3.5 w-3.5 me-1" /> Excel
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => exportRowsToPDF(audit, columns, { fileName: "sales_audit", title, orientation: "l" })}>
+          <FileText className="h-3.5 w-3.5 me-1" /> PDF
+        </Button>
+      </div>
+      {open && (
+        <div className="max-h-[420px] overflow-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="p-2 text-start">{isAr ? "الفاتورة" : "Invoice"}</th>
+                <th className="p-2 text-start">{isAr ? "التاريخ" : "Date"}</th>
+                <th className="p-2 text-start">{isAr ? "الدفع" : "Pay"}</th>
+                <th className="p-2 text-end">{isAr ? "الإجمالي" : "Total"}</th>
+                <th className="p-2 text-end">{isAr ? "المدفوع" : "Paid"}</th>
+                <th className="p-2 text-end">{isAr ? "المتبقي" : "Outstanding"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.map((r) => (
+                <tr key={r.id} className="border-t hover:bg-muted/30">
+                  <td className="p-2 font-mono">{r.invoice_number}</td>
+                  <td className="p-2 text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
+                  <td className="p-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${r._classified === "paid" ? "bg-emerald-500/15 text-emerald-700" : r._classified === "partial" ? "bg-amber-500/15 text-amber-700" : "bg-rose-500/15 text-rose-700"}`}>{r._classified}</span></td>
+                  <td className="p-2 text-end tabular-nums">{fmtMoney(Number(r.total || 0), "EGP", lang)}</td>
+                  <td className="p-2 text-end tabular-nums">{fmtMoney(Number(r.paid_amount || 0), "EGP", lang)}</td>
+                  <td className="p-2 text-end tabular-nums font-semibold text-amber-700">{fmtMoney(r._outstanding, "EGP", lang)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

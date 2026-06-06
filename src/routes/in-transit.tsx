@@ -12,12 +12,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp, AlertTriangle, AlertCircle, Bell, ChevronDown, ChevronUp } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp, AlertTriangle, AlertCircle, Bell, ChevronDown, ChevronUp, FileSpreadsheet, FileText } from "lucide-react";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
 import { RestockOrderDialog } from "@/components/restock-order-dialog";
 import { COLLECTIONS } from "@/lib/data";
 import { collectionPillClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
+import { exportRowsToExcel, exportRowsToPDF, type ExportColumn } from "@/lib/critical-export";
 
 export const Route = createFileRoute("/in-transit")({
   component: () => (
@@ -322,6 +323,33 @@ function InTransitPage() {
 
   const openRestock = (pid: string) => { setRestockPid(pid); setRestockOpen(true); };
 
+  const alertColumns: ExportColumn<typeof alerts[number]>[] = [
+    { header: isAr ? "الخطورة" : "Severity", value: (a) => a.severity, width: 12 },
+    { header: isAr ? "اسم المنتج" : "Product Name", value: (a) => a.product.name, width: 40 },
+    { header: "S/N", value: (a) => a.product.serial_number ?? "", width: 18 },
+    { header: isAr ? "اللون" : "Color", value: (a) => a.product.color ?? "", width: 14 },
+    { header: isAr ? "المجموعة" : "Collection", value: (a) => a.product.collection ?? "", width: 16 },
+    { header: isAr ? "محجوز" : "Reserved", value: (a) => a.reserved, width: 10 },
+    { header: isAr ? "بالمخزن" : "In Stock", value: (a) => a.inStock, width: 10 },
+    { header: isAr ? "قادم" : "Incoming", value: (a) => a.inTransit, width: 10 },
+    { header: isAr ? "النقص" : "Short By", value: (a) => a.shortBy, width: 10 },
+    { header: isAr ? "سعر التكلفة" : "Cost Price", value: (a) => Number(a.product.cost_price ?? 0), width: 14 },
+    { header: isAr ? "سعر البيع" : "Sale Price", value: (a) => Number(a.product.price ?? 0), width: 14 },
+    { header: isAr ? "قيمة النقص" : "Shortfall Value", value: (a) => Math.round(a.shortBy * Number(a.product.cost_price ?? a.product.price ?? 0) * 100) / 100, width: 16 },
+    { header: "Product ID", value: (a) => a.product.id, width: 38 },
+  ];
+  const exportAlertsExcel = () => exportRowsToExcel(alerts, alertColumns, {
+    fileName: "critical_inventory_alerts",
+    sheetName: isAr ? "تنبيهات" : "Alerts",
+    title: isAr ? "تنبيهات المخزون الحرجة" : "Critical Inventory Alerts",
+  });
+  const exportAlertsPDF = () => exportRowsToPDF(alerts, alertColumns, {
+    fileName: "critical_inventory_alerts",
+    title: isAr ? "تنبيهات المخزون الحرجة" : "Critical Inventory Alerts",
+    orientation: "l",
+  });
+
+
 
 
   return (
@@ -393,6 +421,20 @@ function InTransitPage() {
             </div>
             {alertsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
+
+          {alertsOpen && alerts.length > 0 && (
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-background/40 px-4 py-2">
+              <span className="me-auto text-[11px] text-muted-foreground">
+                {isAr ? `تصدير الكل (${alerts.length} منتج) — يشمل كل البيانات حتى لو آلاف المنتجات.` : `Export all (${alerts.length} items) — full details, scales to thousands of products.`}
+              </span>
+              <Button size="sm" variant="outline" onClick={exportAlertsExcel}>
+                <FileSpreadsheet className="h-3.5 w-3.5 me-1" /> Excel
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportAlertsPDF}>
+                <FileText className="h-3.5 w-3.5 me-1" /> PDF
+              </Button>
+            </div>
+          )}
 
           {alertsOpen && (
             <div className="divide-y border-t">
