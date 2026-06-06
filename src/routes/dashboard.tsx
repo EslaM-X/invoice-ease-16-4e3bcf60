@@ -32,13 +32,22 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const load = async () => {
-    const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-      supabase.from("invoices").select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(500),
+    // Only fetch what's needed for the top stats and recent list.
+    // We count customers head-only. We count low stock by only fetching necessary fields.
+    // Removed invoice_items and top products calculation as it's handled by TopProductsInteractive.
+    const [{ data: invs }, { count: cust }, { data: prods }] = await Promise.all([
+      supabase.from("invoices")
+        .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
+        .not("status", "in", "(voided,draft)")
+        .order("created_at", { ascending: false })
+        .limit(200), // Reduced from 500
       supabase.from("customers").select("*", { count: "exact", head: true }),
-      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
-      supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").not("invoices.status", "in", "(voided,draft)"),
+      supabase.from("products").select("stock_quantity, low_stock_threshold"),
+    ]);
+
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
+    
     let closed = 0, partial = 0, open = 0;
     (invs ?? []).forEach((i: any) => {
       const total = Number(i.total ?? 0);
@@ -48,6 +57,7 @@ function Dashboard() {
       else if (i.delivery_status === "partial") partial++;
       else open++;
     });
+
     setStats({
       sales,
       invoices: invs?.length ?? 0,
@@ -59,11 +69,13 @@ function Dashboard() {
       lowStock,
     });
     setRecent((invs ?? []).slice(0, 5));
-    const prodMap = new Map<string, any>();
-    (prods ?? []).forEach((p: any) => prodMap.set(p.id, p));
+  };
+
   useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
+  
+  // Realtime updates: only refetch when relevant tables change.
+  // We removed invoice_items subscription because we don't use it here anymore.
   useRealtimeTable("invoices", () => { if (user) load(); });
-  useRealtimeTable("invoice_items", () => { if (user) load(); });
   useRealtimeTable("products", () => { if (user) load(); });
   useRealtimeTable("customers", () => { if (user) load(); });
 
@@ -79,6 +91,7 @@ function Dashboard() {
   return (
     <div className="space-y-10">
       <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-6">
+        <div>
           <div className="eyebrow mb-3">{t("welcome")}</div>
           <h1 className="display-xl text-foreground">{t("dashboard")}</h1>
         </div>
@@ -136,7 +149,6 @@ function Dashboard() {
       <SalesOverview />
 
       <div className="grid gap-3 lg:grid-cols-2">
-
         <div className="ios-card p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="eyebrow">{t("recent_invoices")}</h3>
