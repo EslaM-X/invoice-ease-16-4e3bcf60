@@ -9,7 +9,7 @@
 // Intentionally minimal: no offline DB writes here. The app's IndexedDB
 // outbox layer (src/lib/db.ts) handles write queueing in the page context.
 
-const SW_VERSION = "v1-2026-05-14";
+const SW_VERSION = "v2-2026-06-06";
 const HTML_CACHE = `html-${SW_VERSION}`;
 const ASSET_CACHE = `assets-${SW_VERSION}`;
 const ALL_CACHES = [HTML_CACHE, ASSET_CACHE];
@@ -35,12 +35,17 @@ self.addEventListener("activate", (event) => {
         names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n))
       );
       await self.clients.claim();
+      const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      await Promise.allSettled(windowClients.map((client) => client.postMessage({ type: "SW_ACTIVATED", version: SW_VERSION })));
     })()
   );
 });
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data?.type === "PING") {
+    event.source?.postMessage?.({ type: "PONG", version: SW_VERSION });
+  }
 });
 
 const isHtmlNavigation = (request) =>
@@ -68,7 +73,7 @@ self.addEventListener("fetch", (event) => {
         try {
           const fresh = await fetch(request);
           const cache = await caches.open(HTML_CACHE);
-          cache.put(request, fresh.clone());
+          if (fresh.ok) await cache.put(request, fresh.clone());
           return fresh;
         } catch {
           const cached = await caches.match(request, { cacheName: HTML_CACHE });
