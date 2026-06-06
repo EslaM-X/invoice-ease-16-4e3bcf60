@@ -618,7 +618,7 @@ function SuggestionCard({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{n.product_name}</span>
                   {n.serial && <span className="font-mono text-xs text-muted-foreground">#{n.serial}</span>}
-                  {n.color && <ColorSwatch color={n.color} size="sm" />}
+                  {n.color && <ColorSwatch value={n.color} size="sm" />}
                   <span className="ms-auto text-xs text-muted-foreground">
                     {isAr ? "مطلوب" : "Need"}: <b>{n.needed}</b>
                   </span>
