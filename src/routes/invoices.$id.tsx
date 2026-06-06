@@ -67,16 +67,9 @@ function InvoiceView() {
     load();
   };
 
-  const payRemaining = async () => {
-    if (!inv) return;
-    const { error } = await supabase
-      .from("invoices")
-      .update({ paid_amount: Number(inv.total) } as any)
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(lang === "ar" ? "تم سداد المتبقي" : "Remaining marked paid");
-    load();
-  };
+  // Payments are managed via PaymentsManager dialog (adds/removes rows in `payments` table);
+  // a DB trigger keeps invoices.paid_amount synced.
+
 
   if (!inv) return <div className="text-muted-foreground">{t("loading")}</div>;
 
