@@ -339,13 +339,13 @@ function InTransitPage() {
     { header: "Product ID", value: (a) => a.product.id, width: 38 },
   ];
   const exportAlertsExcel = () => exportRowsToExcel(alerts, alertColumns, {
-    fileName: "critical_inventory_alerts",
+    fileName: "inventory_alerts_critical_and_shortfall",
     sheetName: isAr ? "تنبيهات" : "Alerts",
-    title: isAr ? "تنبيهات المخزون الحرجة" : "Critical Inventory Alerts",
+    title: isAr ? "تنبيهات المخزون — الحرج والنقص" : "Inventory Alerts — Critical & Shortfall",
   });
   const exportAlertsPDF = () => exportRowsToPDF(alerts, alertColumns, {
-    fileName: "critical_inventory_alerts",
-    title: isAr ? "تنبيهات المخزون الحرجة" : "Critical Inventory Alerts",
+    fileName: "inventory_alerts_critical_and_shortfall",
+    title: isAr ? "تنبيهات المخزون — الحرج والنقص" : "Inventory Alerts — Critical & Shortfall",
     orientation: "l",
   });
 

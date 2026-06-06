@@ -63,6 +63,19 @@ type IncomingData = {
   nextEta: string | null;
 };
 
+function effectivePaidAmount(i: Pick<Invoice, "total" | "paid_amount">) {
+  const total = Math.max(0, Number(i.total || 0));
+  const raw = Number(i.paid_amount ?? 0);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return Math.min(raw, total);
+}
+
+function paymentStatusLabel(status: "paid" | "partial" | "outstanding", isAr: boolean) {
+  if (status === "paid") return isAr ? "مدفوع" : "Paid";
+  if (status === "partial") return isAr ? "جزئي" : "Partial";
+  return isAr ? "متبقي" : "Outstanding";
+}
+
 function startOfDay(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -105,12 +118,11 @@ function parseServerTimestampLocal(value: string | null | undefined): Date | nul
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-function classifyPay(i: Pick<Invoice, "id" | "total" | "paid_amount">, receipts?: ReceiptSummary): "paid" | "partial" | "outstanding" {
+function classifyPay(i: Pick<Invoice, "id" | "total" | "paid_amount">): "paid" | "partial" | "outstanding" {
   const total = Number(i.total || 0);
-  const paid = Number(i.paid_amount || 0);
-  const deliveredCount = Number(receipts?.delivered_count || 0);
+  const paid = effectivePaidAmount(i);
   if (total > 0 && paid >= total - 0.001) return "paid";
-  if (paid > 0 || deliveredCount > 0) return "partial";
+  if (paid > 0) return "partial";
   return "outstanding";
 }
 
@@ -373,9 +385,9 @@ export function SalesOverview() {
 
   const filtered = useMemo(() => {
     return windowInvoices.filter((i) => {
-      return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
+      return payFilter === "all" || classifyPay(i) === payFilter;
     });
-  }, [windowInvoices, payFilter, receiptMap]);
+  }, [windowInvoices, payFilter]);
 
   const prevTotal = useMemo(() => {
     const span = to.getTime() - from.getTime();
@@ -387,10 +399,10 @@ export function SalesOverview() {
         if (!parsed) return false;
         const stamp = parsed.getTime();
         if (stamp < prevFrom.getTime() || stamp >= prevTo.getTime()) return false;
-        return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
+        return payFilter === "all" || classifyPay(i) === payFilter;
       })
       .reduce((sum, i) => sum + Number(i.total || 0), 0);
-  }, [activeInvoices, from, to, payFilter, receiptMap]);
+  }, [activeInvoices, from, to, payFilter]);
 
   const zeroStats = useMemo(() => {
     const before = activeInvoices.filter((i) => {
@@ -407,11 +419,12 @@ export function SalesOverview() {
       const stamp = parsed.getTime();
       return stamp >= from.getTime() && stamp < to.getTime();
     });
-    const receiptDrivenPartial = inRangeBeforePay.filter((i) => {
+    const deliveredYetOutstanding = inRangeBeforePay.filter((i) => {
       const summary = receiptMap[i.id];
-      return Number(i.paid_amount || 0) <= 0 && Number(summary?.delivered_count || 0) > 0;
+      const delivered = i.delivery_status === "delivered" || Number(summary?.delivered_count || 0) > 0;
+      return delivered && effectivePaidAmount(i) + 0.001 < Number(i.total || 0);
     }).length;
-    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length, receiptDrivenPartial };
+    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length, deliveredYetOutstanding };
   }, [activeInvoices, from, to, receiptMap]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
@@ -447,7 +460,7 @@ export function SalesOverview() {
       const bucket = buckets.get(key);
       const invoiceTotal = Number(invoice.total || 0);
       total += invoiceTotal;
-      paid += Number(invoice.paid_amount || 0);
+      paid += effectivePaidAmount(invoice);
       invoicesCount += 1;
       if (bucket) {
         bucket.sales += invoiceTotal;
@@ -579,7 +592,7 @@ export function SalesOverview() {
               <li>• {isAr ? "فواتير قبل المدى" : "Invoices before range"}: <span className="font-semibold text-foreground">{zeroStats.before}</span></li>
               <li>• {isAr ? "فواتير بعد المدى" : "Invoices after range"}: <span className="font-semibold text-foreground">{zeroStats.after}</span></li>
               <li>• {isAr ? "فواتير داخل المدى قبل فلتر الدفع" : "Invoices in range before payment filter"}: <span className="font-semibold text-foreground">{zeroStats.inRangeBeforePay.length}</span></li>
-              <li>• {isAr ? "فواتير صُنّفت جزئيًا بسبب محاضر الاستلام" : "Invoices marked partial via receipts"}: <span className="font-semibold text-foreground">{zeroStats.receiptDrivenPartial}</span></li>
+              <li>• {isAr ? "فواتير مسلَّمة لكن ما زال عليها متبقي" : "Delivered invoices still carrying balance"}: <span className="font-semibold text-foreground">{zeroStats.deliveredYetOutstanding}</span></li>
               {count === 0 && <li>• <span className="font-semibold text-foreground">{isAr ? "السبب الحالي للصفر" : "Current zero reason"}</span>: {zeroStats.inRangeBeforePay.length === 0 ? (isAr ? "لا توجد فواتير فعّالة داخل المدى الزمني بعد استبعاد المسودات والملغية." : "No active invoices exist inside the selected date range.") : (isAr ? "هناك فواتير داخل المدى لكن فلتر حالة الدفع الحالي استبعدها كلها." : "There are invoices in range, but the current payment filter removed them all.")}</li>}
             </ul>
           </motion.div>
@@ -705,7 +718,7 @@ export function SalesOverview() {
   );
 }
 
-type AuditRow = Invoice & { _classified: "paid" | "partial" | "outstanding"; _outstanding: number };
+type AuditRow = Invoice & { _classified: "paid" | "partial" | "outstanding"; _classifiedLabel: string; _outstanding: number };
 
 function SalesAuditPanel({
   rows,
@@ -731,21 +744,24 @@ function SalesAuditPanel({
   const [open, setOpen] = useState(false);
   const audit: AuditRow[] = useMemo(() => {
     return rows.map((i) => {
-      const classified = classifyPay(i, receiptMap[i.id]);
+      const classified = classifyPay(i);
+      const paid = effectivePaidAmount(i);
       return {
         ...i,
         _classified: classified,
-        _outstanding: Math.max(0, Number(i.total || 0) - Number(i.paid_amount || 0)),
+        _classifiedLabel: paymentStatusLabel(classified, isAr),
+        paid_amount: paid,
+        _outstanding: Math.max(0, Number(i.total || 0) - paid),
       };
     });
-  }, [rows, receiptMap]);
+  }, [rows, isAr]);
 
   const columns: ExportColumn<AuditRow>[] = [
     { header: isAr ? "رقم الفاتورة" : "Invoice #", value: (r) => r.invoice_number, width: 18 },
     { header: isAr ? "التاريخ والوقت" : "Date & Time", value: (r) => fmtDateTime(r.created_at, lang), width: 32 },
     { header: isAr ? "الحالة" : "Status", value: (r) => r.status, width: 14 },
     { header: isAr ? "حالة التسليم" : "Delivery", value: (r) => r.delivery_status ?? "", width: 16 },
-    { header: isAr ? "تصنيف الدفع" : "Pay Class", value: (r) => r._classified, width: 12 },
+    { header: isAr ? "تصنيف الدفع" : "Pay Class", value: (r) => r._classifiedLabel, width: 12 },
     { header: isAr ? "الإجمالي" : "Total", value: (r) => Number(r.total || 0), pdf: (r) => fmtMoney(Number(r.total || 0), "EGP", lang), width: 14 },
     { header: isAr ? "المدفوع" : "Paid", value: (r) => Number(r.paid_amount || 0), pdf: (r) => fmtMoney(Number(r.paid_amount || 0), "EGP", lang), width: 14 },
     { header: isAr ? "المتبقي" : "Outstanding", value: (r) => r._outstanding, pdf: (r) => fmtMoney(r._outstanding, "EGP", lang), width: 14 },
@@ -791,7 +807,7 @@ function SalesAuditPanel({
                 <tr key={r.id} className="border-t hover:bg-muted/30">
                   <td className="p-2 font-mono">{r.invoice_number}</td>
                   <td className="p-2 text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
-                  <td className="p-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${r._classified === "paid" ? "bg-emerald-500/15 text-emerald-700" : r._classified === "partial" ? "bg-amber-500/15 text-amber-700" : "bg-rose-500/15 text-rose-700"}`}>{r._classified}</span></td>
+                  <td className="p-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${r._classified === "paid" ? "bg-emerald-500/15 text-emerald-700" : r._classified === "partial" ? "bg-amber-500/15 text-amber-700" : "bg-rose-500/15 text-rose-700"}`}>{r._classifiedLabel}</span></td>
                   <td className="p-2 text-end tabular-nums">{fmtMoney(Number(r.total || 0), "EGP", lang)}</td>
                   <td className="p-2 text-end tabular-nums">{fmtMoney(Number(r.paid_amount || 0), "EGP", lang)}</td>
                   <td className="p-2 text-end tabular-nums font-semibold text-amber-700">{fmtMoney(r._outstanding, "EGP", lang)}</td>
