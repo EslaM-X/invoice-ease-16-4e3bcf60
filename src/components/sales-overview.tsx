@@ -194,25 +194,41 @@ export function SalesOverview() {
 
   const { from, to, customMeta } = rangeState;
 
+  const fetchAllInvoices = async (filter: (q: any) => any): Promise<Invoice[]> => {
+    const pageSize = 1000;
+    let from = 0;
+    const all: Invoice[] = [];
+    // Loop until a short page (covers up to millions in theory).
+    while (true) {
+      let q = supabase
+        .from("invoices")
+        .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
+        .order("created_at", { ascending: true })
+        .range(from, from + pageSize - 1);
+      q = filter(q);
+      const { data, error } = await q;
+      if (error) break;
+      const rows = (data as Invoice[]) ?? [];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+      if (from > 200000) break; // hard safety
+    }
+    return all;
+  };
+
   const loadInvoices = async () => {
-    const { data } = await supabase
-      .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
-      .order("created_at", { ascending: true })
-      .limit(1000);
-    setAllInvoices((data as Invoice[]) ?? []);
+    const data = await fetchAllInvoices((q) => q);
+    setAllInvoices(data);
   };
 
   const loadWindowInvoices = async () => {
-    const { data } = await supabase
-      .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
-      .not("status", "in", "(voided,draft,cancelled)")
-      .gte("created_at", from.toISOString())
-      .lt("created_at", to.toISOString())
-      .order("created_at", { ascending: true })
-      .limit(1000);
-    setWindowInvoices((data as Invoice[]) ?? []);
+    const data = await fetchAllInvoices((q) =>
+      q.not("status", "in", "(voided,draft,cancelled)")
+        .gte("created_at", from.toISOString())
+        .lt("created_at", to.toISOString()),
+    );
+    setWindowInvoices(data);
   };
 
   const scheduleWindowRefresh = () => {
