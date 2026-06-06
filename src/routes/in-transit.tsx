@@ -1,7 +1,7 @@
 import { swatchStyle } from "@/lib/color-swatch";
 import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -12,10 +12,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp, AlertTriangle, AlertCircle, Bell, ChevronDown, ChevronUp } from "lucide-react";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
+import { RestockOrderDialog } from "@/components/restock-order-dialog";
 import { COLLECTIONS } from "@/lib/data";
 import { collectionPillClass, collectionDotClass } from "@/lib/collection-styles";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/in-transit")({
   component: () => (
