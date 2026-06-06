@@ -114,9 +114,9 @@ function FulfillmentPage() {
       .select("id, invoice_number, customer_name, customer_phone, total, created_at, delivery_status, status")
       .eq("user_id", user.id)
       .eq("status", "completed")
-      .neq("delivery_status", "delivered")
+      .or("delivery_status.is.null,delivery_status.neq.delivered")
       .order("created_at", { ascending: true })
-      .limit(5000);
+      .limit(50000);
     const invList = (invs ?? []) as Invoice[];
     setInvoices(invList);
 
