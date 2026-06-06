@@ -37,6 +37,9 @@ type Product = {
   image_url: string | null;
   stock_quantity: number;
   collection: string | null;
+  low_stock_threshold: number;
+  cost_price: number | null;
+  price: number | null;
 };
 
 type POItem = {
