@@ -29,7 +29,6 @@ function Dashboard() {
   const { hidden, toggle, mask } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
-  const [top, setTop] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const load = async () => {
@@ -38,7 +37,6 @@ function Dashboard() {
       supabase.from("customers").select("*", { count: "exact", head: true }),
       supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
       supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").not("invoices.status", "in", "(voided,draft)"),
-    ]);
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
     let closed = 0, partial = 0, open = 0;
@@ -63,20 +61,6 @@ function Dashboard() {
     setRecent((invs ?? []).slice(0, 5));
     const prodMap = new Map<string, any>();
     (prods ?? []).forEach((p: any) => prodMap.set(p.id, p));
-    const map = new Map<string, { key: string; name: string; serial?: string | null; color?: string | null; qty: number; total: number }>();
-    (items ?? []).forEach((it: any) => {
-      const prod = it.product_id ? prodMap.get(it.product_id) : null;
-      const serial = it.serial_number ?? prod?.serial_number ?? null;
-      const color = it.color ?? prod?.color ?? null;
-      const key = `${it.product_id ?? it.product_name}|${serial ?? ""}|${color ?? ""}`;
-      const prev = map.get(key) ?? { key, name: it.product_name, serial, color, qty: 0, total: 0 };
-      prev.qty += Number(it.quantity ?? 0);
-      prev.total += Number(it.line_total ?? 0);
-      map.set(key, prev);
-    });
-    setTop([...map.values()].sort((a, b) => b.total - a.total).slice(0, 5));
-  };
-
   useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
   useRealtimeTable("invoices", () => { if (user) load(); });
   useRealtimeTable("invoice_items", () => { if (user) load(); });
@@ -95,7 +79,6 @@ function Dashboard() {
   return (
     <div className="space-y-10">
       <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-6">
-        <div>
           <div className="eyebrow mb-3">{t("welcome")}</div>
           <h1 className="display-xl text-foreground">{t("dashboard")}</h1>
         </div>
