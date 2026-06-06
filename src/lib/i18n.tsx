@@ -320,6 +320,7 @@ const en: Dict = {
   customers: "Customers",
   products: "Products",
   in_transit: "Inventory Tracker",
+  fulfillment: "Smart Fulfillment",
   inventory: "Inventory Analysis",
   stock_intake: "Inventory",
   stock_intake_desc: "Record incoming units from suppliers, update quantities and costs",
