@@ -323,6 +323,33 @@ function InTransitPage() {
 
   const openRestock = (pid: string) => { setRestockPid(pid); setRestockOpen(true); };
 
+  const alertColumns: ExportColumn<typeof alerts[number]>[] = [
+    { header: isAr ? "الخطورة" : "Severity", value: (a) => a.severity, width: 12 },
+    { header: isAr ? "اسم المنتج" : "Product Name", value: (a) => a.product.name, width: 40 },
+    { header: "S/N", value: (a) => a.product.serial_number ?? "", width: 18 },
+    { header: isAr ? "اللون" : "Color", value: (a) => a.product.color ?? "", width: 14 },
+    { header: isAr ? "المجموعة" : "Collection", value: (a) => a.product.collection ?? "", width: 16 },
+    { header: isAr ? "محجوز" : "Reserved", value: (a) => a.reserved, width: 10 },
+    { header: isAr ? "بالمخزن" : "In Stock", value: (a) => a.inStock, width: 10 },
+    { header: isAr ? "قادم" : "Incoming", value: (a) => a.inTransit, width: 10 },
+    { header: isAr ? "النقص" : "Short By", value: (a) => a.shortBy, width: 10 },
+    { header: isAr ? "سعر التكلفة" : "Cost Price", value: (a) => Number(a.product.cost_price ?? 0), width: 14 },
+    { header: isAr ? "سعر البيع" : "Sale Price", value: (a) => Number(a.product.price ?? 0), width: 14 },
+    { header: isAr ? "قيمة النقص" : "Shortfall Value", value: (a) => Math.round(a.shortBy * Number(a.product.cost_price ?? a.product.price ?? 0) * 100) / 100, width: 16 },
+    { header: "Product ID", value: (a) => a.product.id, width: 38 },
+  ];
+  const exportAlertsExcel = () => exportRowsToExcel(alerts, alertColumns, {
+    fileName: "critical_inventory_alerts",
+    sheetName: isAr ? "تنبيهات" : "Alerts",
+    title: isAr ? "تنبيهات المخزون الحرجة" : "Critical Inventory Alerts",
+  });
+  const exportAlertsPDF = () => exportRowsToPDF(alerts, alertColumns, {
+    fileName: "critical_inventory_alerts",
+    title: isAr ? "تنبيهات المخزون الحرجة" : "Critical Inventory Alerts",
+    orientation: "l",
+  });
+
+
 
 
   return (
