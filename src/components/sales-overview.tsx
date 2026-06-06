@@ -290,7 +290,6 @@ export function SalesOverview() {
   useEffect(() => {
     if (!user) return;
     loadInvoices();
-    loadIncoming();
   }, [user]);
 
   useEffect(() => {

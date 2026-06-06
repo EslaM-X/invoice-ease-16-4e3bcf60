@@ -44,7 +44,7 @@ export function TopProductsInteractive({ rangeDays = 30, limit = 8 }: { rangeDay
       from.setDate(from.getDate() - rangeDays);
       q = q.gte("invoices.created_at", from.toISOString());
     }
-    const { data: items } = await q;
+    const { data: items } = await q.limit(2000);
     const SERVICE_NAMES = new Set(["رسوم شحن", "shipping", "Shipping", "Shipping fee", "رسوم الشحن"]);
     const isServiceItem = (it: any) => {
       const n = String(it.product_name || "").trim().toLowerCase();

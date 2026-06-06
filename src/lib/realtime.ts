@@ -4,15 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 type Payload = { eventType: "INSERT" | "UPDATE" | "DELETE"; new: any; old: any };
 
 /**
- * Subscribe to realtime changes on a table. Reliable across network drops:
- *
- * - Tracks CHANNEL_ERROR / TIMED_OUT / CLOSED and rebuilds the channel with
- *   exponential backoff (capped). The `supabase-js` realtime client also
- *   reconnects internally, but channels can end up in a permanently failed
- *   state on long offlines — recreating the channel is the safe path.
- * - On every successful (re)subscribe, fires `onChange` so callers refetch
- *   and recover any events that were missed while disconnected.
- * - Reacts to `app:resync` and visibility regaining focus.
+ * Subscribe to realtime changes on a table. Reliable across network drops.
+ * Includes a small debounce to prevent "event storms" (e.g. multiple items inserted at once)
+ * from triggering dozens of expensive refetches in the same frame.
  */
 export function useRealtimeTable(
   table: string,
@@ -21,6 +15,7 @@ export function useRealtimeTable(
 ) {
   const cbRef = useRef(onChange);
   cbRef.current = onChange;
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let attempt = 0;
@@ -28,8 +23,12 @@ export function useRealtimeTable(
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
-    const fire = (eventType: Payload["eventType"] = "UPDATE") =>
-      cbRef.current({ eventType, new: null, old: null });
+    const fire = (payload: Payload = { eventType: "UPDATE", new: null, old: null }) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        if (!cancelled) cbRef.current(payload);
+      }, 150); // 150ms debounce
+    };
 
     const cleanupChannel = () => {
       if (channel) {
@@ -41,7 +40,6 @@ export function useRealtimeTable(
     const scheduleReconnect = () => {
       if (cancelled) return;
       attempt = Math.min(attempt + 1, 6);
-      // 1s, 2s, 4s, 8s, 16s, 30s (cap)
       const delay = Math.min(1000 * 2 ** (attempt - 1), 30000);
       if (backoffTimer) clearTimeout(backoffTimer);
       backoffTimer = setTimeout(connect, delay);
@@ -57,7 +55,7 @@ export function useRealtimeTable(
         "postgres_changes",
         { event: "*", schema: "public", table },
         (payload: any) => {
-          cbRef.current({
+          fire({
             eventType: payload.eventType,
             new: payload.new,
             old: payload.old,
@@ -68,7 +66,6 @@ export function useRealtimeTable(
       ch.subscribe((status: string) => {
         if (cancelled) return;
         if (status === "SUBSCRIBED") {
-          // Reset backoff and refetch — recovers events missed during downtime
           attempt = 0;
           if (backoffTimer) { clearTimeout(backoffTimer); backoffTimer = null; }
           fire();
@@ -84,7 +81,6 @@ export function useRealtimeTable(
     const onVis = () => {
       if (document.hidden) return;
       fire();
-      // If channel went stale while hidden, force a reconnect cycle
       if (!channel || (channel as any).state !== "joined") {
         attempt = 0;
         connect();
@@ -99,6 +95,7 @@ export function useRealtimeTable(
     return () => {
       cancelled = true;
       if (backoffTimer) clearTimeout(backoffTimer);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       window.removeEventListener("app:resync", onResync);
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVis);
