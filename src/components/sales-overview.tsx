@@ -63,6 +63,19 @@ type IncomingData = {
   nextEta: string | null;
 };
 
+function effectivePaidAmount(i: Pick<Invoice, "total" | "paid_amount">) {
+  const total = Math.max(0, Number(i.total || 0));
+  const raw = Number(i.paid_amount ?? 0);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return Math.min(raw, total);
+}
+
+function paymentStatusLabel(status: "paid" | "partial" | "outstanding", isAr: boolean) {
+  if (status === "paid") return isAr ? "مدفوع" : "Paid";
+  if (status === "partial") return isAr ? "جزئي" : "Partial";
+  return isAr ? "متبقي" : "Outstanding";
+}
+
 function startOfDay(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -105,12 +118,11 @@ function parseServerTimestampLocal(value: string | null | undefined): Date | nul
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-function classifyPay(i: Pick<Invoice, "id" | "total" | "paid_amount">, receipts?: ReceiptSummary): "paid" | "partial" | "outstanding" {
+function classifyPay(i: Pick<Invoice, "id" | "total" | "paid_amount">): "paid" | "partial" | "outstanding" {
   const total = Number(i.total || 0);
-  const paid = Number(i.paid_amount || 0);
-  const deliveredCount = Number(receipts?.delivered_count || 0);
+  const paid = effectivePaidAmount(i);
   if (total > 0 && paid >= total - 0.001) return "paid";
-  if (paid > 0 || deliveredCount > 0) return "partial";
+  if (paid > 0) return "partial";
   return "outstanding";
 }
 
@@ -407,11 +419,12 @@ export function SalesOverview() {
       const stamp = parsed.getTime();
       return stamp >= from.getTime() && stamp < to.getTime();
     });
-    const receiptDrivenPartial = inRangeBeforePay.filter((i) => {
+    const deliveredYetOutstanding = inRangeBeforePay.filter((i) => {
       const summary = receiptMap[i.id];
-      return Number(i.paid_amount || 0) <= 0 && Number(summary?.delivered_count || 0) > 0;
+      const delivered = i.delivery_status === "delivered" || Number(summary?.delivered_count || 0) > 0;
+      return delivered && effectivePaidAmount(i) + 0.001 < Number(i.total || 0);
     }).length;
-    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length, receiptDrivenPartial };
+    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length, deliveredYetOutstanding };
   }, [activeInvoices, from, to, receiptMap]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
