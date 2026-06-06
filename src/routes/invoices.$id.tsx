@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { InvoiceTimeline } from "@/components/invoice-timeline";
 import { useRealtimeTable } from "@/lib/realtime";
+import { PaymentsManager } from "@/components/payments-manager";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
