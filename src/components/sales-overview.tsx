@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Link } from "@tanstack/react-router";
@@ -31,6 +31,14 @@ type Invoice = {
   total: number;
   paid_amount: number | null;
   status: string;
+  delivery_status?: string | null;
+};
+
+type ReceiptSummary = {
+  invoice_id: string;
+  receipts_count: number;
+  delivered_count: number;
+  shipping_fees_total: number;
 };
 
 type IncomingProduct = {
@@ -93,11 +101,12 @@ function parseServerTimestampLocal(value: string | null | undefined): Date | nul
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-function classifyPay(i: Pick<Invoice, "total" | "paid_amount">): "paid" | "partial" | "outstanding" {
+function classifyPay(i: Pick<Invoice, "id" | "total" | "paid_amount">, receipts?: ReceiptSummary): "paid" | "partial" | "outstanding" {
   const total = Number(i.total || 0);
   const paid = Number(i.paid_amount || 0);
+  const deliveredCount = Number(receipts?.delivered_count || 0);
   if (total > 0 && paid >= total - 0.001) return "paid";
-  if (paid > 0) return "partial";
+  if (paid > 0 || deliveredCount > 0) return "partial";
   return "outstanding";
 }
 
@@ -119,6 +128,7 @@ export function SalesOverview() {
   const [customTo, setCustomTo] = useState("");
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [windowInvoices, setWindowInvoices] = useState<Invoice[]>([]);
+  const [receiptMap, setReceiptMap] = useState<Record<string, ReceiptSummary>>({});
   const [incoming, setIncoming] = useState<IncomingData>({
     inWindowPos: 0,
     inWindowUnits: 0,
@@ -129,6 +139,7 @@ export function SalesOverview() {
     nextEta: null,
   });
   const [showZeroWhy, setShowZeroWhy] = useState(false);
+  const windowLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeInvoices = useMemo(
     () => allInvoices.filter((i) => !["voided", "draft", "cancelled"].includes(i.status)),
