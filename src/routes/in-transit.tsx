@@ -1,7 +1,7 @@
 import { swatchStyle } from "@/lib/color-swatch";
 import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -12,10 +12,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp, AlertTriangle, AlertCircle, Bell, ChevronDown, ChevronUp } from "lucide-react";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
+import { RestockOrderDialog } from "@/components/restock-order-dialog";
 import { COLLECTIONS } from "@/lib/data";
 import { collectionPillClass, collectionDotClass } from "@/lib/collection-styles";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/in-transit")({
   component: () => (
@@ -35,6 +37,9 @@ type Product = {
   image_url: string | null;
   stock_quantity: number;
   collection: string | null;
+  low_stock_threshold: number;
+  cost_price: number | null;
+  price: number | null;
 };
 
 type POItem = {
@@ -76,7 +81,7 @@ function InTransitPage() {
 
   const load = async () => {
     const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
-      supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection").limit(2000),
+      supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.rpc("get_active_invoice_reservations" as any),
       supabase.rpc("get_sold_qty_by_product" as any),
@@ -243,6 +248,82 @@ function InTransitPage() {
     return { inStock, inTransit, transitProducts, reserved, sold };
   }, [rows, reservedByProductMap, soldByProduct]);
 
+  // ====== Smart alerts ======
+  // critical: reserved in invoices, but 0 in stock AND 0 incoming  → must order NOW
+  // shortfall: reserved > in_stock + in_transit                    → partial coverage
+  // covered: reserved > in_stock (covered only by incoming)        → info
+  type Alert = {
+    product: Product;
+    reserved: number;
+    inStock: number;
+    inTransit: number;
+    shortBy: number; // reserved - (inStock + inTransit), clamped >=0
+    severity: "critical" | "shortfall" | "covered";
+  };
+  const alerts = useMemo<Alert[]>(() => {
+    const out: Alert[] = [];
+    products.forEach((p) => {
+      const reserved = reservedByProductMap[p.id] ?? 0;
+      if (reserved <= 0) return;
+      const inStock = p.stock_quantity ?? 0;
+      const inTransit = rows.find((r) => r.product_id === p.id)?.in_transit ?? 0;
+      const coverage = inStock + inTransit;
+      if (reserved <= inStock) return; // fully covered by stock
+      const shortBy = Math.max(0, reserved - coverage);
+      let severity: Alert["severity"];
+      if (inStock === 0 && inTransit === 0) severity = "critical";
+      else if (reserved > coverage) severity = "shortfall";
+      else severity = "covered";
+      out.push({ product: p, reserved, inStock, inTransit, shortBy, severity });
+    });
+    const rank = { critical: 0, shortfall: 1, covered: 2 } as const;
+    out.sort((a, b) => rank[a.severity] - rank[b.severity] || b.shortBy - a.shortBy || b.reserved - a.reserved);
+    return out;
+  }, [products, rows, reservedByProductMap]);
+
+  const criticalCount = alerts.filter((a) => a.severity === "critical").length;
+  const shortfallCount = alerts.filter((a) => a.severity === "shortfall").length;
+  const coveredCount = alerts.filter((a) => a.severity === "covered").length;
+
+  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [restockOpen, setRestockOpen] = useState(false);
+  const [restockPid, setRestockPid] = useState<string | null>(null);
+  const seenCritsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = new Set(alerts.filter((a) => a.severity === "critical").map((a) => a.product.id));
+    if (seenCritsRef.current === null) {
+      seenCritsRef.current = ids;
+      return;
+    }
+    const fresh: Alert[] = [];
+    alerts.forEach((a) => {
+      if (a.severity === "critical" && !seenCritsRef.current!.has(a.product.id)) fresh.push(a);
+    });
+    if (fresh.length > 0) {
+      fresh.slice(0, 3).forEach((a) => {
+        toast(isAr ? "⚠️ منتج محجوز وغير متوفر" : "⚠️ Reserved product unavailable", {
+          duration: 12000,
+          description: (
+            <div className="space-y-0.5 text-xs">
+              <div className="font-semibold text-foreground">{a.product.name}</div>
+              {a.product.serial_number && <div className="font-mono text-muted-foreground">S/N: {a.product.serial_number}</div>}
+              <div className="text-destructive font-semibold">
+                {isAr
+                  ? `محجوز ${a.reserved} · في المخزن 0 · قادم 0 — اطلبه فورًا`
+                  : `Reserved ${a.reserved} · in stock 0 · incoming 0 — order now`}
+              </div>
+            </div>
+          ),
+        });
+      });
+    }
+    seenCritsRef.current = ids;
+  }, [alerts, isAr]);
+
+  const openRestock = (pid: string) => { setRestockPid(pid); setRestockOpen(true); };
+
+
+
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-violet-500/10 via-primary/5 to-transparent p-5">
@@ -269,6 +350,111 @@ function InTransitPage() {
         <SummaryCard icon={ShoppingBag} label={isAr ? "محجوز في فواتير" : "Reserved in invoices"} value={totals.reserved} color="text-amber-600" bg="bg-amber-500/10" />
         <SummaryCard icon={TrendingUp} label={isAr ? "إجمالي المباع" : "Total sold"} value={totals.sold} color="text-blue-600" bg="bg-blue-500/10" />
       </div>
+
+      {alerts.length > 0 && (
+        <Card className={`overflow-hidden border-2 ${criticalCount > 0 ? "border-destructive/40 bg-destructive/5" : shortfallCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/30 bg-blue-500/5"}`}>
+          <button
+            type="button"
+            onClick={() => setAlertsOpen((v) => !v)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-muted/30"
+          >
+            <div className={`relative grid h-10 w-10 place-items-center rounded-xl ${criticalCount > 0 ? "bg-destructive/15 text-destructive" : shortfallCount > 0 ? "bg-amber-500/15 text-amber-700" : "bg-blue-500/15 text-blue-700"}`}>
+              <Bell className="h-5 w-5" />
+              {criticalCount > 0 && (
+                <span className="absolute -end-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+                  {criticalCount}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
+                {isAr ? "تنبيهات ذكية للحجوزات" : "Smart reservation alerts"}
+                {criticalCount > 0 && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> {criticalCount} {isAr ? "حرج" : "critical"}
+                  </Badge>
+                )}
+                {shortfallCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                    <AlertTriangle className="h-3 w-3" /> {shortfallCount} {isAr ? "نقص" : "shortfall"}
+                  </span>
+                )}
+                {coveredCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                    {coveredCount} {isAr ? "بانتظار وصول" : "awaiting arrival"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {isAr
+                  ? "منتجات محجوزة في فواتير لكن لا تغطيها كمية المخزن الحالية"
+                  : "Products reserved in invoices that on-hand stock alone cannot cover"}
+              </div>
+            </div>
+            {alertsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {alertsOpen && (
+            <div className="divide-y border-t">
+              {alerts.map((a) => {
+                const tone =
+                  a.severity === "critical"
+                    ? { wrap: "bg-destructive/5", chip: "bg-destructive text-destructive-foreground", icon: AlertCircle, label: isAr ? "اطلبه فورًا" : "Order now", text: "text-destructive" }
+                    : a.severity === "shortfall"
+                      ? { wrap: "", chip: "bg-amber-500 text-white", icon: AlertTriangle, label: isAr ? "نقص في التغطية" : "Shortfall", text: "text-amber-700" }
+                      : { wrap: "", chip: "bg-blue-500 text-white", icon: Truck, label: isAr ? "بانتظار وصول الشحنة" : "Awaiting arrival", text: "text-blue-700" };
+                const Icon = tone.icon;
+                return (
+                  <div key={a.product.id} className={`flex flex-wrap items-center gap-3 p-3 ${tone.wrap}`}>
+                    <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
+                      {a.product.image_url ? <img src={a.product.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : <Package className="h-full w-full p-2 text-muted-foreground" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold">{a.product.name}</div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                        {a.product.serial_number && <span className="font-mono">S/N: {a.product.serial_number}</span>}
+                        {a.product.color && (
+                          <span className="inline-flex items-center gap-1">
+                            <ColorSwatch value={a.product.color} size="sm" />{a.product.color}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-bold text-amber-700">
+                          {isAr ? "محجوز" : "Reserved"}: {a.reserved}
+                        </span>
+                        <span className={`rounded px-1.5 py-0.5 font-bold ${a.inStock > 0 ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                          {isAr ? "بالمخزن" : "Stock"}: {a.inStock}
+                        </span>
+                        <span className={`rounded px-1.5 py-0.5 font-bold ${a.inTransit > 0 ? "bg-violet-500/15 text-violet-700" : "bg-muted text-muted-foreground"}`}>
+                          {isAr ? "قادم" : "Incoming"}: {a.inTransit}
+                        </span>
+                        {a.shortBy > 0 && (
+                          <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive">
+                            {isAr ? "ناقص" : "Short by"}: {a.shortBy}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.chip}`}>
+                      <Icon className="h-3 w-3" /> {tone.label}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant={a.severity === "critical" ? "destructive" : "outline"}
+                      onClick={() => openRestock(a.product.id)}
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5 me-1" />
+                      {isAr ? "اطلب الآن" : "Order now"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
 
       <div className="flex gap-2 border-b">
         <button
@@ -634,6 +820,23 @@ function InTransitPage() {
           onOpenChange={(v) => { if (!v) setTrackId(null); }}
         />
       )}
+
+      <RestockOrderDialog
+        open={restockOpen}
+        onOpenChange={setRestockOpen}
+        products={products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          serial_number: p.serial_number,
+          color: p.color,
+          stock_quantity: p.stock_quantity,
+          low_stock_threshold: p.low_stock_threshold ?? 0,
+          cost_price: p.cost_price ?? 0,
+          price: p.price ?? 0,
+          image_url: p.image_url,
+        }))}
+        initialProductId={restockPid}
+      />
     </div>
   );
 }
