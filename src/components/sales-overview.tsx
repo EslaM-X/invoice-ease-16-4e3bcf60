@@ -7,6 +7,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   Calendar as CalendarIcon,
+  FileSpreadsheet,
+  FileText,
   HelpCircle,
   Receipt,
   Target,
@@ -18,8 +20,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
-import { fmtDate, fmtMoney } from "@/lib/utils-money";
+import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { exportRowsToExcel, exportRowsToPDF, type ExportColumn } from "@/lib/critical-export";
 
 type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
