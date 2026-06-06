@@ -820,6 +820,23 @@ function InTransitPage() {
           onOpenChange={(v) => { if (!v) setTrackId(null); }}
         />
       )}
+
+      <RestockOrderDialog
+        open={restockOpen}
+        onOpenChange={setRestockOpen}
+        products={products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          serial_number: p.serial_number,
+          color: p.color,
+          stock_quantity: p.stock_quantity,
+          low_stock_threshold: p.low_stock_threshold ?? 0,
+          cost_price: p.cost_price ?? 0,
+          price: p.price ?? 0,
+          image_url: p.image_url,
+        }))}
+        initialProductId={restockPid}
+      />
     </div>
   );
 }
