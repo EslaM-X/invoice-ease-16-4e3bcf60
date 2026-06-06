@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus, CheckCircle2, Wallet } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus, CheckCircle2 } from "lucide-react";
 import { deliveryStatusLabel, deliveryStatusColor } from "@/lib/delivery-receipts";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { InvoiceTimeline } from "@/components/invoice-timeline";
 import { useRealtimeTable } from "@/lib/realtime";
+import { PaymentsManager } from "@/components/payments-manager";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
@@ -66,16 +67,9 @@ function InvoiceView() {
     load();
   };
 
-  const payRemaining = async () => {
-    if (!inv) return;
-    const { error } = await supabase
-      .from("invoices")
-      .update({ paid_amount: Number(inv.total) } as any)
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(lang === "ar" ? "تم سداد المتبقي" : "Remaining marked paid");
-    load();
-  };
+  // Payments are managed via PaymentsManager dialog (adds/removes rows in `payments` table);
+  // a DB trigger keeps invoices.paid_amount synced.
+
 
   if (!inv) return <div className="text-muted-foreground">{t("loading")}</div>;
 
@@ -148,8 +142,7 @@ function InvoiceView() {
               </Button>
               {(() => {
                 const totalNum = Number(inv.total);
-                const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
-                const remaining = +(totalNum - paidNum).toFixed(2);
+                const paidNum = Number(inv.paid_amount ?? 0);
                 const isDelivered = inv.delivery_status === "delivered";
                 return (
                   <>
@@ -161,16 +154,12 @@ function InvoiceView() {
                       <CheckCircle2 className="h-4 w-4" />
                       {isDelivered ? (isAr ? "مُسلَّمة" : "Delivered") : (isAr ? "تعليم تسليم" : "Mark delivered")}
                     </Button>
-                    {remaining > 0 && (
-                      <Button
-                        variant="outline"
-                        className="gap-2 rounded-full border-blue-500/40 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10"
-                        onClick={payRemaining}
-                      >
-                        <Wallet className="h-4 w-4" />
-                        {isAr ? `سداد المتبقي (${Number(remaining).toFixed(2)} EGP)` : `Pay remaining (${Number(remaining).toFixed(2)} EGP)`}
-                      </Button>
-                    )}
+                    <PaymentsManager
+                      invoiceId={id}
+                      invoiceTotal={totalNum}
+                      paidAmount={paidNum}
+                      onChange={load}
+                    />
                   </>
                 );
               })()}
@@ -215,7 +204,7 @@ function InvoiceView() {
         )}
         {!isVoided && (() => {
           const totalNum = Number(inv.total);
-          const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+          const paidNum = Number(inv.paid_amount ?? 0);
           if (paidNum >= totalNum && totalNum > 0) {
             return (
               <div className="pointer-events-none absolute inset-0 flex items-end justify-start z-10 p-6 sm:p-10">
@@ -319,7 +308,7 @@ function InvoiceView() {
                 </tr>
                 {(() => {
                   const totalNum = Number(inv.total);
-                  const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+                  const paidNum = Number(inv.paid_amount ?? 0);
                   const remainingNum = +(totalNum - paidNum).toFixed(2);
                   const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;
                   const remainingPct = totalNum > 0 ? 100 - paidPct : 0;
