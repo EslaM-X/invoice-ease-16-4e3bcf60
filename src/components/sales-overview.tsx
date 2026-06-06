@@ -188,7 +188,7 @@ export function SalesOverview() {
       .from("invoices")
       .select("id,invoice_number,created_at,total,paid_amount,status")
       .order("created_at", { ascending: true })
-      .limit(5000);
+      .limit(1000);
     setAllInvoices((data as Invoice[]) ?? []);
   };
 
@@ -200,7 +200,7 @@ export function SalesOverview() {
       .gte("created_at", from.toISOString())
       .lt("created_at", to.toISOString())
       .order("created_at", { ascending: true })
-      .limit(5000);
+      .limit(1000);
     setWindowInvoices((data as Invoice[]) ?? []);
   };
 
