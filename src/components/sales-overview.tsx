@@ -718,7 +718,7 @@ export function SalesOverview() {
   );
 }
 
-type AuditRow = Invoice & { _classified: "paid" | "partial" | "outstanding"; _outstanding: number };
+type AuditRow = Invoice & { _classified: "paid" | "partial" | "outstanding"; _classifiedLabel: string; _outstanding: number };
 
 function SalesAuditPanel({
   rows,
@@ -744,21 +744,24 @@ function SalesAuditPanel({
   const [open, setOpen] = useState(false);
   const audit: AuditRow[] = useMemo(() => {
     return rows.map((i) => {
-      const classified = classifyPay(i, receiptMap[i.id]);
+      const classified = classifyPay(i);
+      const paid = effectivePaidAmount(i);
       return {
         ...i,
         _classified: classified,
-        _outstanding: Math.max(0, Number(i.total || 0) - Number(i.paid_amount || 0)),
+        _classifiedLabel: paymentStatusLabel(classified, isAr),
+        paid_amount: paid,
+        _outstanding: Math.max(0, Number(i.total || 0) - paid),
       };
     });
-  }, [rows, receiptMap]);
+  }, [rows, isAr]);
 
   const columns: ExportColumn<AuditRow>[] = [
     { header: isAr ? "رقم الفاتورة" : "Invoice #", value: (r) => r.invoice_number, width: 18 },
     { header: isAr ? "التاريخ والوقت" : "Date & Time", value: (r) => fmtDateTime(r.created_at, lang), width: 32 },
     { header: isAr ? "الحالة" : "Status", value: (r) => r.status, width: 14 },
     { header: isAr ? "حالة التسليم" : "Delivery", value: (r) => r.delivery_status ?? "", width: 16 },
-    { header: isAr ? "تصنيف الدفع" : "Pay Class", value: (r) => r._classified, width: 12 },
+    { header: isAr ? "تصنيف الدفع" : "Pay Class", value: (r) => r._classifiedLabel, width: 12 },
     { header: isAr ? "الإجمالي" : "Total", value: (r) => Number(r.total || 0), pdf: (r) => fmtMoney(Number(r.total || 0), "EGP", lang), width: 14 },
     { header: isAr ? "المدفوع" : "Paid", value: (r) => Number(r.paid_amount || 0), pdf: (r) => fmtMoney(Number(r.paid_amount || 0), "EGP", lang), width: 14 },
     { header: isAr ? "المتبقي" : "Outstanding", value: (r) => r._outstanding, pdf: (r) => fmtMoney(r._outstanding, "EGP", lang), width: 14 },
@@ -804,7 +807,7 @@ function SalesAuditPanel({
                 <tr key={r.id} className="border-t hover:bg-muted/30">
                   <td className="p-2 font-mono">{r.invoice_number}</td>
                   <td className="p-2 text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
-                  <td className="p-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${r._classified === "paid" ? "bg-emerald-500/15 text-emerald-700" : r._classified === "partial" ? "bg-amber-500/15 text-amber-700" : "bg-rose-500/15 text-rose-700"}`}>{r._classified}</span></td>
+                  <td className="p-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${r._classified === "paid" ? "bg-emerald-500/15 text-emerald-700" : r._classified === "partial" ? "bg-amber-500/15 text-amber-700" : "bg-rose-500/15 text-rose-700"}`}>{r._classifiedLabel}</span></td>
                   <td className="p-2 text-end tabular-nums">{fmtMoney(Number(r.total || 0), "EGP", lang)}</td>
                   <td className="p-2 text-end tabular-nums">{fmtMoney(Number(r.paid_amount || 0), "EGP", lang)}</td>
                   <td className="p-2 text-end tabular-nums font-semibold text-amber-700">{fmtMoney(r._outstanding, "EGP", lang)}</td>
