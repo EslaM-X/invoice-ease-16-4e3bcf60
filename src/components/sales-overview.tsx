@@ -215,6 +215,14 @@ export function SalesOverview() {
     setWindowInvoices((data as Invoice[]) ?? []);
   };
 
+  const scheduleWindowRefresh = () => {
+    if (windowLoadTimerRef.current) clearTimeout(windowLoadTimerRef.current);
+    windowLoadTimerRef.current = setTimeout(() => {
+      void loadInvoices();
+      void loadWindowInvoices();
+    }, 250);
+  };
+
   const loadReceiptSummary = async () => {
     const { data } = await supabase
       .from("delivery_receipts" as any)
@@ -334,7 +342,11 @@ export function SalesOverview() {
     loadIncoming();
   }, [user, from.getTime(), to.getTime()]);
 
-  useRealtimeTable("invoices", () => { if (user) loadInvoices(); });
+  useEffect(() => () => {
+    if (windowLoadTimerRef.current) clearTimeout(windowLoadTimerRef.current);
+  }, []);
+
+  useRealtimeTable("invoices", () => { if (user) scheduleWindowRefresh(); }, [user?.id, from.getTime(), to.getTime()]);
   useRealtimeTable("delivery_receipts" as any, () => { if (user) loadReceiptSummary(); });
   useRealtimeTable("purchase_orders", () => { if (user) loadIncoming(); });
   useRealtimeTable("purchase_order_items", () => { if (user) loadIncoming(); });
