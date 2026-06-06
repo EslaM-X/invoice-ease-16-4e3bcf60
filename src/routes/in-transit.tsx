@@ -248,6 +248,82 @@ function InTransitPage() {
     return { inStock, inTransit, transitProducts, reserved, sold };
   }, [rows, reservedByProductMap, soldByProduct]);
 
+  // ====== Smart alerts ======
+  // critical: reserved in invoices, but 0 in stock AND 0 incoming  → must order NOW
+  // shortfall: reserved > in_stock + in_transit                    → partial coverage
+  // covered: reserved > in_stock (covered only by incoming)        → info
+  type Alert = {
+    product: Product;
+    reserved: number;
+    inStock: number;
+    inTransit: number;
+    shortBy: number; // reserved - (inStock + inTransit), clamped >=0
+    severity: "critical" | "shortfall" | "covered";
+  };
+  const alerts = useMemo<Alert[]>(() => {
+    const out: Alert[] = [];
+    products.forEach((p) => {
+      const reserved = reservedByProductMap[p.id] ?? 0;
+      if (reserved <= 0) return;
+      const inStock = p.stock_quantity ?? 0;
+      const inTransit = rows.find((r) => r.product_id === p.id)?.in_transit ?? 0;
+      const coverage = inStock + inTransit;
+      if (reserved <= inStock) return; // fully covered by stock
+      const shortBy = Math.max(0, reserved - coverage);
+      let severity: Alert["severity"];
+      if (inStock === 0 && inTransit === 0) severity = "critical";
+      else if (reserved > coverage) severity = "shortfall";
+      else severity = "covered";
+      out.push({ product: p, reserved, inStock, inTransit, shortBy, severity });
+    });
+    const rank = { critical: 0, shortfall: 1, covered: 2 } as const;
+    out.sort((a, b) => rank[a.severity] - rank[b.severity] || b.shortBy - a.shortBy || b.reserved - a.reserved);
+    return out;
+  }, [products, rows, reservedByProductMap]);
+
+  const criticalCount = alerts.filter((a) => a.severity === "critical").length;
+  const shortfallCount = alerts.filter((a) => a.severity === "shortfall").length;
+  const coveredCount = alerts.filter((a) => a.severity === "covered").length;
+
+  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [restockOpen, setRestockOpen] = useState(false);
+  const [restockPid, setRestockPid] = useState<string | null>(null);
+  const seenCritsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = new Set(alerts.filter((a) => a.severity === "critical").map((a) => a.product.id));
+    if (seenCritsRef.current === null) {
+      seenCritsRef.current = ids;
+      return;
+    }
+    const fresh: Alert[] = [];
+    alerts.forEach((a) => {
+      if (a.severity === "critical" && !seenCritsRef.current!.has(a.product.id)) fresh.push(a);
+    });
+    if (fresh.length > 0) {
+      fresh.slice(0, 3).forEach((a) => {
+        toast(isAr ? "⚠️ منتج محجوز وغير متوفر" : "⚠️ Reserved product unavailable", {
+          duration: 12000,
+          description: (
+            <div className="space-y-0.5 text-xs">
+              <div className="font-semibold text-foreground">{a.product.name}</div>
+              {a.product.serial_number && <div className="font-mono text-muted-foreground">S/N: {a.product.serial_number}</div>}
+              <div className="text-destructive font-semibold">
+                {isAr
+                  ? `محجوز ${a.reserved} · في المخزن 0 · قادم 0 — اطلبه فورًا`
+                  : `Reserved ${a.reserved} · in stock 0 · incoming 0 — order now`}
+              </div>
+            </div>
+          ),
+        });
+      });
+    }
+    seenCritsRef.current = ids;
+  }, [alerts, isAr]);
+
+  const openRestock = (pid: string) => { setRestockPid(pid); setRestockOpen(true); };
+
+
+
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-violet-500/10 via-primary/5 to-transparent p-5">
