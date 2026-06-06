@@ -51,7 +51,7 @@ type ProductRow = {
   serial_number: string | null;
   color: string | null;
 };
-type POItemRow = { po_id: string; product_id: string; quantity: number };
+type POItemRow = { po_id: string; product_id: string; quantity: number; received_qty: number | null };
 type PORow = {
   id: string;
   po_number: string;
