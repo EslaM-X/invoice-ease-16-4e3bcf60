@@ -1247,6 +1247,59 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          invoice_id: string
+          method: string
+          notes: string | null
+          paid_at: string
+          reference: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          invoice_id: string
+          method?: string
+          notes?: string | null
+          paid_at?: string
+          reference?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          invoice_id?: string
+          method?: string
+          notes?: string | null
+          paid_at?: string
+          reference?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_profit_scenarios: {
         Row: {
           created_at: string
@@ -2932,6 +2985,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_payment: {
+        Args: {
+          _amount: number
+          _invoice_id: string
+          _method?: string
+          _notes?: string
+          _paid_at?: string
+          _reference?: string
+        }
+        Returns: string
+      }
       adjust_stock: {
         Args: { _change: number; _product_id: string; _reason: string }
         Returns: string
@@ -3118,6 +3182,10 @@ export type Database = {
         }[]
       }
       recalc_invoice_delivery_status: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
+      recalc_invoice_paid_amount: {
         Args: { _invoice_id: string }
         Returns: undefined
       }
