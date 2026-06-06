@@ -19,45 +19,50 @@ export function PwaVersionGuard() {
       try { return window.self !== window.top; } catch { return true; }
     })();
     const isPreviewHost = skipRegister && !inIframe;
+    let refreshing = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      logPwaEvent("info", "sw_controller_changed_reload");
+      window.location.reload();
+    };
 
     const run = async () => {
       try {
         const registrations = await navigator.serviceWorker.getRegistrations();
+        logPwaEvent("info", "sw_registrations_found", { count: registrations.length, inIframe, isPreviewHost });
         
         // Cleanup foreign/old workers
         for (const reg of registrations) {
           const scriptUrl = reg.active?.scriptURL ?? reg.waiting?.scriptURL ?? reg.installing?.scriptURL ?? "";
           const isOurs = scriptUrl.endsWith(SW_PATH) || scriptUrl.endsWith("/service-worker.js");
           if (!isOurs || skipRegister) {
-            await reg.unregister();
-            logPwaEvent("info", "sw_unregister", { scriptUrl });
+            const ok = await reg.unregister();
+            logPwaEvent(ok ? "info" : "warn", "sw_unregister", { scriptUrl, ok });
           }
         }
 
         if (skipRegister) {
-          if ("caches" in window) {
-            const names = await caches.keys();
-            for (const name of names) await caches.delete(name);
-          }
+          logPwaEvent("info", "sw_skip_register", { reason: inIframe ? "iframe" : "preview-host" });
           return;
         }
 
-        // Handle reloads when a new service worker takes control
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing) return;
-          refreshing = true;
-          logPwaEvent("info", "sw_controller_changed_reload");
-          window.location.reload();
-        });
+        navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
         // Register the canonical SW
         const reg = await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
+        logPwaEvent("info", "sw_register_ok", { scope: reg.scope });
+        await reg.update().catch((error) => {
+          logPwaEvent("warn", "sw_update_check_failed", String(error));
+        });
         
         // Auto-skip-waiting when an update is found
         reg.addEventListener("updatefound", () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
+          logPwaEvent("info", "sw_update_found");
           newWorker.addEventListener("statechange", () => {
             if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
               logPwaEvent("info", "sw_update_available_skipping_waiting");
@@ -67,7 +72,9 @@ export function PwaVersionGuard() {
         });
 
         // Check for updates frequently
-        setInterval(() => { reg.update(); }, 1000 * 60 * 60); // Every hour
+        intervalId = setInterval(() => {
+          void reg.update().catch((error) => logPwaEvent("warn", "sw_periodic_update_failed", String(error)));
+        }, 1000 * 60 * 5);
         
       } catch (error) {
         logPwaEvent("error", "sw_bootstrap_failed", String(error));
@@ -75,6 +82,11 @@ export function PwaVersionGuard() {
     };
 
     void run();
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   return null;
