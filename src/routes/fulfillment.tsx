@@ -172,7 +172,7 @@ function FulfillmentPage() {
     if (poIds.length) {
       const { data: poIs } = await supabase
         .from("purchase_order_items")
-        .select("po_id, product_id, quantity")
+        .select("po_id, product_id, quantity, received_qty")
         .in("po_id", poIds);
       setPoItems((poIs ?? []) as POItemRow[]);
     } else {
