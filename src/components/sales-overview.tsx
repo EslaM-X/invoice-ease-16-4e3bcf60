@@ -387,8 +387,12 @@ export function SalesOverview() {
       const stamp = parsed.getTime();
       return stamp >= from.getTime() && stamp < to.getTime();
     });
-    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length };
-  }, [activeInvoices, from, to]);
+    const receiptDrivenPartial = inRangeBeforePay.filter((i) => {
+      const summary = receiptMap[i.id];
+      return Number(i.paid_amount || 0) <= 0 && Number(summary?.delivered_count || 0) > 0;
+    }).length;
+    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length, receiptDrivenPartial };
+  }, [activeInvoices, from, to, receiptMap]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
     const spanDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000));
