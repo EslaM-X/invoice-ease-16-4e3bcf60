@@ -114,9 +114,9 @@ function FulfillmentPage() {
       .select("id, invoice_number, customer_name, customer_phone, total, created_at, delivery_status, status")
       .eq("user_id", user.id)
       .eq("status", "completed")
-      .neq("delivery_status", "delivered")
+      .or("delivery_status.is.null,delivery_status.neq.delivered")
       .order("created_at", { ascending: true })
-      .limit(5000);
+      .limit(50000);
     const invList = (invs ?? []) as Invoice[];
     setInvoices(invList);
 
@@ -241,15 +241,16 @@ function FulfillmentPage() {
       const perProduct = new Map<string, { product_name: string; serial: string | null; color: string | null; needed: number }>();
       let total = 0;
       for (const it of its) {
-        if (!it.product_id) continue;
         const delivered = deliveredMap.get(it.id) ?? 0;
         const remaining = Math.max(0, (it.quantity || 0) - delivered);
         if (remaining <= 0) continue;
-        const cur = perProduct.get(it.product_id);
+        // Use product_id when present, else fall back to a synthetic key so manual lines still appear (always as shortfall).
+        const key = it.product_id ?? `manual:${it.id}`;
+        const cur = perProduct.get(key);
         if (cur) {
           cur.needed += remaining;
         } else {
-          perProduct.set(it.product_id, {
+          perProduct.set(key, {
             product_name: it.product_name,
             serial: it.serial_number,
             color: it.color,
