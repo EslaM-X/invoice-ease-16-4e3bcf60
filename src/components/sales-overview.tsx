@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Link } from "@tanstack/react-router";
@@ -31,6 +31,14 @@ type Invoice = {
   total: number;
   paid_amount: number | null;
   status: string;
+  delivery_status?: string | null;
+};
+
+type ReceiptSummary = {
+  invoice_id: string;
+  receipts_count: number;
+  delivered_count: number;
+  shipping_fees_total: number;
 };
 
 type IncomingProduct = {
@@ -93,11 +101,12 @@ function parseServerTimestampLocal(value: string | null | undefined): Date | nul
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-function classifyPay(i: Pick<Invoice, "total" | "paid_amount">): "paid" | "partial" | "outstanding" {
+function classifyPay(i: Pick<Invoice, "id" | "total" | "paid_amount">, receipts?: ReceiptSummary): "paid" | "partial" | "outstanding" {
   const total = Number(i.total || 0);
   const paid = Number(i.paid_amount || 0);
+  const deliveredCount = Number(receipts?.delivered_count || 0);
   if (total > 0 && paid >= total - 0.001) return "paid";
-  if (paid > 0) return "partial";
+  if (paid > 0 || deliveredCount > 0) return "partial";
   return "outstanding";
 }
 
@@ -119,6 +128,7 @@ export function SalesOverview() {
   const [customTo, setCustomTo] = useState("");
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [windowInvoices, setWindowInvoices] = useState<Invoice[]>([]);
+  const [receiptMap, setReceiptMap] = useState<Record<string, ReceiptSummary>>({});
   const [incoming, setIncoming] = useState<IncomingData>({
     inWindowPos: 0,
     inWindowUnits: 0,
@@ -129,6 +139,7 @@ export function SalesOverview() {
     nextEta: null,
   });
   const [showZeroWhy, setShowZeroWhy] = useState(false);
+  const windowLoadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeInvoices = useMemo(
     () => allInvoices.filter((i) => !["voided", "draft", "cancelled"].includes(i.status)),
@@ -186,22 +197,54 @@ export function SalesOverview() {
   const loadInvoices = async () => {
     const { data } = await supabase
       .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status")
+      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
       .order("created_at", { ascending: true })
-      .limit(5000);
+      .limit(1000);
     setAllInvoices((data as Invoice[]) ?? []);
   };
 
   const loadWindowInvoices = async () => {
     const { data } = await supabase
       .from("invoices")
-      .select("id,invoice_number,created_at,total,paid_amount,status")
+      .select("id,invoice_number,created_at,total,paid_amount,status,delivery_status")
       .not("status", "in", "(voided,draft,cancelled)")
       .gte("created_at", from.toISOString())
       .lt("created_at", to.toISOString())
       .order("created_at", { ascending: true })
-      .limit(5000);
+      .limit(1000);
     setWindowInvoices((data as Invoice[]) ?? []);
+  };
+
+  const scheduleWindowRefresh = () => {
+    if (windowLoadTimerRef.current) clearTimeout(windowLoadTimerRef.current);
+    windowLoadTimerRef.current = setTimeout(() => {
+      void loadInvoices();
+      void loadWindowInvoices();
+    }, 250);
+  };
+
+  const loadReceiptSummary = async () => {
+    const { data } = await supabase
+      .from("delivery_receipts" as any)
+      .select("invoice_id,status,shipping_fees")
+      .not("invoice_id", "is", null);
+
+    const map: Record<string, ReceiptSummary> = {};
+    ((data as any[]) ?? []).forEach((row) => {
+      const invoiceId = String(row.invoice_id || "");
+      if (!invoiceId) return;
+      const current = map[invoiceId] ?? {
+        invoice_id: invoiceId,
+        receipts_count: 0,
+        delivered_count: 0,
+        shipping_fees_total: 0,
+      };
+      current.receipts_count += 1;
+      if (row.status === "delivered") current.delivered_count += 1;
+      current.shipping_fees_total += Number(row.shipping_fees || 0);
+      map[invoiceId] = current;
+    });
+    setReceiptMap(map);
   };
 
   const loadIncoming = async () => {
@@ -290,7 +333,7 @@ export function SalesOverview() {
   useEffect(() => {
     if (!user) return;
     loadInvoices();
-    loadIncoming();
+    loadReceiptSummary();
   }, [user]);
 
   useEffect(() => {
@@ -299,15 +342,20 @@ export function SalesOverview() {
     loadIncoming();
   }, [user, from.getTime(), to.getTime()]);
 
-  useRealtimeTable("invoices", () => { if (user) loadInvoices(); });
+  useEffect(() => () => {
+    if (windowLoadTimerRef.current) clearTimeout(windowLoadTimerRef.current);
+  }, []);
+
+  useRealtimeTable("invoices", () => { if (user) scheduleWindowRefresh(); }, [user?.id, from.getTime(), to.getTime()]);
+  useRealtimeTable("delivery_receipts" as any, () => { if (user) loadReceiptSummary(); });
   useRealtimeTable("purchase_orders", () => { if (user) loadIncoming(); });
   useRealtimeTable("purchase_order_items", () => { if (user) loadIncoming(); });
 
   const filtered = useMemo(() => {
     return windowInvoices.filter((i) => {
-      return payFilter === "all" || classifyPay(i) === payFilter;
+      return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
     });
-  }, [windowInvoices, payFilter]);
+  }, [windowInvoices, payFilter, receiptMap]);
 
   const prevTotal = useMemo(() => {
     const span = to.getTime() - from.getTime();
@@ -319,10 +367,10 @@ export function SalesOverview() {
         if (!parsed) return false;
         const stamp = parsed.getTime();
         if (stamp < prevFrom.getTime() || stamp >= prevTo.getTime()) return false;
-        return payFilter === "all" || classifyPay(i) === payFilter;
+        return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
       })
       .reduce((sum, i) => sum + Number(i.total || 0), 0);
-  }, [activeInvoices, from, to, payFilter]);
+  }, [activeInvoices, from, to, payFilter, receiptMap]);
 
   const zeroStats = useMemo(() => {
     const before = activeInvoices.filter((i) => {
@@ -339,8 +387,12 @@ export function SalesOverview() {
       const stamp = parsed.getTime();
       return stamp >= from.getTime() && stamp < to.getTime();
     });
-    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length };
-  }, [activeInvoices, from, to]);
+    const receiptDrivenPartial = inRangeBeforePay.filter((i) => {
+      const summary = receiptMap[i.id];
+      return Number(i.paid_amount || 0) <= 0 && Number(summary?.delivered_count || 0) > 0;
+    }).length;
+    return { before, after, inRangeBeforePay, activeCount: activeInvoices.length, receiptDrivenPartial };
+  }, [activeInvoices, from, to, receiptMap]);
 
   const { series, totalSales, totalPaid, count, avg, delta } = useMemo(() => {
     const spanDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000));
@@ -507,6 +559,7 @@ export function SalesOverview() {
               <li>• {isAr ? "فواتير قبل المدى" : "Invoices before range"}: <span className="font-semibold text-foreground">{zeroStats.before}</span></li>
               <li>• {isAr ? "فواتير بعد المدى" : "Invoices after range"}: <span className="font-semibold text-foreground">{zeroStats.after}</span></li>
               <li>• {isAr ? "فواتير داخل المدى قبل فلتر الدفع" : "Invoices in range before payment filter"}: <span className="font-semibold text-foreground">{zeroStats.inRangeBeforePay.length}</span></li>
+              <li>• {isAr ? "فواتير صُنّفت جزئيًا بسبب محاضر الاستلام" : "Invoices marked partial via receipts"}: <span className="font-semibold text-foreground">{zeroStats.receiptDrivenPartial}</span></li>
               {count === 0 && <li>• <span className="font-semibold text-foreground">{isAr ? "السبب الحالي للصفر" : "Current zero reason"}</span>: {zeroStats.inRangeBeforePay.length === 0 ? (isAr ? "لا توجد فواتير فعّالة داخل المدى الزمني بعد استبعاد المسودات والملغية." : "No active invoices exist inside the selected date range.") : (isAr ? "هناك فواتير داخل المدى لكن فلتر حالة الدفع الحالي استبعدها كلها." : "There are invoices in range, but the current payment filter removed them all.")}</li>}
             </ul>
           </motion.div>

@@ -1,7 +1,5 @@
-import { swatchStyle } from "@/lib/color-swatch";
-import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -16,6 +14,7 @@ import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
+import { cachedListFetch } from "@/lib/list-cache";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -26,21 +25,34 @@ function DashboardPage() {
 function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
-  const { hidden, toggle, mask } = useHideNumbers();
+  const { hidden, toggle } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
-  const [top, setTop] = useState<any[]>([]);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
-  const load = async () => {
-    const [{ data: invs }, { count: cust }, { data: prods }, { data: items }] = await Promise.all([
-      supabase.from("invoices").select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status").not("status", "in", "(voided,draft)").order("created_at", { ascending: false }).limit(500),
+  const load = async (forceRefresh = false) => {
+    const [{ data: invs }, { count: cust }, productsResult] = await Promise.all([
+      supabase.from("invoices")
+        .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
+        .not("status", "in", "(voided,draft)")
+        .order("created_at", { ascending: false })
+        .limit(200),
       supabase.from("customers").select("*", { count: "exact", head: true }),
-      supabase.from("products").select("id, name, stock_quantity, low_stock_threshold, serial_number, color, price"),
-      supabase.from("invoice_items").select("product_id, product_name, serial_number, color, quantity, line_total, invoices!inner(status)").not("invoices.status", "in", "(voided,draft)"),
+      cachedListFetch(
+        "dashboard:product-stock",
+        async () => {
+          const { data } = await supabase.from("products").select("stock_quantity, low_stock_threshold");
+          return (data as any[]) ?? [];
+        },
+        { ttl: 60_000, forceRefresh },
+      ),
     ]);
+    const prods = productsResult.data;
+
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
+    
     let closed = 0, partial = 0, open = 0;
     (invs ?? []).forEach((i: any) => {
       const total = Number(i.total ?? 0);
@@ -50,6 +62,7 @@ function Dashboard() {
       else if (i.delivery_status === "partial") partial++;
       else open++;
     });
+
     setStats({
       sales,
       invoices: invs?.length ?? 0,
@@ -61,27 +74,24 @@ function Dashboard() {
       lowStock,
     });
     setRecent((invs ?? []).slice(0, 5));
-    const prodMap = new Map<string, any>();
-    (prods ?? []).forEach((p: any) => prodMap.set(p.id, p));
-    const map = new Map<string, { key: string; name: string; serial?: string | null; color?: string | null; qty: number; total: number }>();
-    (items ?? []).forEach((it: any) => {
-      const prod = it.product_id ? prodMap.get(it.product_id) : null;
-      const serial = it.serial_number ?? prod?.serial_number ?? null;
-      const color = it.color ?? prod?.color ?? null;
-      const key = `${it.product_id ?? it.product_name}|${serial ?? ""}|${color ?? ""}`;
-      const prev = map.get(key) ?? { key, name: it.product_name, serial, color, qty: 0, total: 0 };
-      prev.qty += Number(it.quantity ?? 0);
-      prev.total += Number(it.line_total ?? 0);
-      map.set(key, prev);
-    });
-    setTop([...map.values()].sort((a, b) => b.total - a.total).slice(0, 5));
   };
 
   useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
-  useRealtimeTable("invoices", () => { if (user) load(); });
-  useRealtimeTable("invoice_items", () => { if (user) load(); });
-  useRealtimeTable("products", () => { if (user) load(); });
-  useRealtimeTable("customers", () => { if (user) load(); });
+  useEffect(() => () => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+  }, []);
+
+  const scheduleRealtimeRefresh = () => {
+    if (!user) return;
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      void load(true);
+    }, 300);
+  };
+
+  useRealtimeTable("invoices", scheduleRealtimeRefresh, [user?.id]);
+  useRealtimeTable("products", scheduleRealtimeRefresh, [user?.id]);
+  useRealtimeTable("customers", scheduleRealtimeRefresh, [user?.id]);
 
   const cards = [
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
@@ -153,7 +163,6 @@ function Dashboard() {
       <SalesOverview />
 
       <div className="grid gap-3 lg:grid-cols-2">
-
         <div className="ios-card p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="eyebrow">{t("recent_invoices")}</h3>
