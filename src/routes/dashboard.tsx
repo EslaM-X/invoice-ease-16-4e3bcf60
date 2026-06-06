@@ -1,7 +1,7 @@
 import { swatchStyle } from "@/lib/color-swatch";
 import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -16,6 +16,7 @@ import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
+import { cachedListFetch } from "@/lib/list-cache";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -29,21 +30,27 @@ function Dashboard() {
   const { hidden, toggle, mask } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
-  const load = async () => {
-    // Only fetch what's needed for the top stats and recent list.
-    // We count customers head-only. We count low stock by only fetching necessary fields.
-    // Removed invoice_items and top products calculation as it's handled by TopProductsInteractive.
-    const [{ data: invs }, { count: cust }, { data: prods }] = await Promise.all([
+  const load = async (forceRefresh = false) => {
+    const [{ data: invs }, { count: cust }, productsResult] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
         .not("status", "in", "(voided,draft)")
         .order("created_at", { ascending: false })
-        .limit(200), // Reduced from 500
+        .limit(200),
       supabase.from("customers").select("*", { count: "exact", head: true }),
-      supabase.from("products").select("stock_quantity, low_stock_threshold"),
+      cachedListFetch(
+        "dashboard:product-stock",
+        async () => {
+          const { data } = await supabase.from("products").select("stock_quantity, low_stock_threshold");
+          return (data as any[]) ?? [];
+        },
+        { ttl: 60_000, forceRefresh },
+      ),
     ]);
+    const prods = productsResult.data;
 
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
@@ -72,12 +79,21 @@ function Dashboard() {
   };
 
   useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
-  
-  // Realtime updates: only refetch when relevant tables change.
-  // We removed invoice_items subscription because we don't use it here anymore.
-  useRealtimeTable("invoices", () => { if (user) load(); });
-  useRealtimeTable("products", () => { if (user) load(); });
-  useRealtimeTable("customers", () => { if (user) load(); });
+  useEffect(() => () => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+  }, []);
+
+  const scheduleRealtimeRefresh = () => {
+    if (!user) return;
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      void load(true);
+    }, 300);
+  };
+
+  useRealtimeTable("invoices", scheduleRealtimeRefresh, [user?.id]);
+  useRealtimeTable("products", scheduleRealtimeRefresh, [user?.id]);
+  useRealtimeTable("customers", scheduleRealtimeRefresh, [user?.id]);
 
   const cards = [
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
