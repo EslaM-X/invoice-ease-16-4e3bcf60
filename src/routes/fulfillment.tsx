@@ -211,10 +211,13 @@ function FulfillmentPage() {
     const incomingByProduct = new Map<string, { po_id: string; qty: number }[]>();
     for (const pi of poItems) {
       if (!pi.product_id) continue;
+      // Only count units NOT yet received (received units are already in products.stock_quantity)
+      const remainingQty = Math.max(0, (pi.quantity || 0) - (pi.received_qty || 0));
+      if (remainingQty <= 0) continue;
       const cur = incomingPool.get(pi.product_id) ?? 0;
-      incomingPool.set(pi.product_id, cur + (pi.quantity || 0));
+      incomingPool.set(pi.product_id, cur + remainingQty);
       const list = incomingByProduct.get(pi.product_id) ?? [];
-      list.push({ po_id: pi.po_id, qty: pi.quantity || 0 });
+      list.push({ po_id: pi.po_id, qty: remainingQty });
       incomingByProduct.set(pi.product_id, list);
     }
     // Sort each product's incoming by earliest ETA so we consume earliest first
