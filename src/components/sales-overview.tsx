@@ -385,9 +385,9 @@ export function SalesOverview() {
 
   const filtered = useMemo(() => {
     return windowInvoices.filter((i) => {
-      return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
+      return payFilter === "all" || classifyPay(i) === payFilter;
     });
-  }, [windowInvoices, payFilter, receiptMap]);
+  }, [windowInvoices, payFilter]);
 
   const prevTotal = useMemo(() => {
     const span = to.getTime() - from.getTime();
@@ -399,10 +399,10 @@ export function SalesOverview() {
         if (!parsed) return false;
         const stamp = parsed.getTime();
         if (stamp < prevFrom.getTime() || stamp >= prevTo.getTime()) return false;
-        return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
+        return payFilter === "all" || classifyPay(i) === payFilter;
       })
       .reduce((sum, i) => sum + Number(i.total || 0), 0);
-  }, [activeInvoices, from, to, payFilter, receiptMap]);
+  }, [activeInvoices, from, to, payFilter]);
 
   const zeroStats = useMemo(() => {
     const before = activeInvoices.filter((i) => {
@@ -460,7 +460,7 @@ export function SalesOverview() {
       const bucket = buckets.get(key);
       const invoiceTotal = Number(invoice.total || 0);
       total += invoiceTotal;
-      paid += Number(invoice.paid_amount || 0);
+      paid += effectivePaidAmount(invoice);
       invoicesCount += 1;
       if (bucket) {
         bucket.sales += invoiceTotal;
@@ -592,7 +592,7 @@ export function SalesOverview() {
               <li>• {isAr ? "فواتير قبل المدى" : "Invoices before range"}: <span className="font-semibold text-foreground">{zeroStats.before}</span></li>
               <li>• {isAr ? "فواتير بعد المدى" : "Invoices after range"}: <span className="font-semibold text-foreground">{zeroStats.after}</span></li>
               <li>• {isAr ? "فواتير داخل المدى قبل فلتر الدفع" : "Invoices in range before payment filter"}: <span className="font-semibold text-foreground">{zeroStats.inRangeBeforePay.length}</span></li>
-              <li>• {isAr ? "فواتير صُنّفت جزئيًا بسبب محاضر الاستلام" : "Invoices marked partial via receipts"}: <span className="font-semibold text-foreground">{zeroStats.receiptDrivenPartial}</span></li>
+              <li>• {isAr ? "فواتير مسلَّمة لكن ما زال عليها متبقي" : "Delivered invoices still carrying balance"}: <span className="font-semibold text-foreground">{zeroStats.deliveredYetOutstanding}</span></li>
               {count === 0 && <li>• <span className="font-semibold text-foreground">{isAr ? "السبب الحالي للصفر" : "Current zero reason"}</span>: {zeroStats.inRangeBeforePay.length === 0 ? (isAr ? "لا توجد فواتير فعّالة داخل المدى الزمني بعد استبعاد المسودات والملغية." : "No active invoices exist inside the selected date range.") : (isAr ? "هناك فواتير داخل المدى لكن فلتر حالة الدفع الحالي استبعدها كلها." : "There are invoices in range, but the current payment filter removed them all.")}</li>}
             </ul>
           </motion.div>
