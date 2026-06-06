@@ -1,6 +1,6 @@
 
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { startSyncEngine } from "@/lib/sync-engine";
 import { Toaster } from "sonner";
