@@ -422,6 +422,20 @@ function InTransitPage() {
             {alertsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
 
+          {alertsOpen && alerts.length > 0 && (
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-background/40 px-4 py-2">
+              <span className="me-auto text-[11px] text-muted-foreground">
+                {isAr ? `تصدير الكل (${alerts.length} منتج) — يشمل كل البيانات حتى لو آلاف المنتجات.` : `Export all (${alerts.length} items) — full details, scales to thousands of products.`}
+              </span>
+              <Button size="sm" variant="outline" onClick={exportAlertsExcel}>
+                <FileSpreadsheet className="h-3.5 w-3.5 me-1" /> Excel
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportAlertsPDF}>
+                <FileText className="h-3.5 w-3.5 me-1" /> PDF
+              </Button>
+            </div>
+          )}
+
           {alertsOpen && (
             <div className="divide-y border-t">
               {alerts.map((a) => {
