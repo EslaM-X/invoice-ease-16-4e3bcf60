@@ -325,6 +325,7 @@ export function SalesOverview() {
   useEffect(() => {
     if (!user) return;
     loadInvoices();
+    loadReceiptSummary();
   }, [user]);
 
   useEffect(() => {
@@ -334,14 +335,15 @@ export function SalesOverview() {
   }, [user, from.getTime(), to.getTime()]);
 
   useRealtimeTable("invoices", () => { if (user) loadInvoices(); });
+  useRealtimeTable("delivery_receipts" as any, () => { if (user) loadReceiptSummary(); });
   useRealtimeTable("purchase_orders", () => { if (user) loadIncoming(); });
   useRealtimeTable("purchase_order_items", () => { if (user) loadIncoming(); });
 
   const filtered = useMemo(() => {
     return windowInvoices.filter((i) => {
-      return payFilter === "all" || classifyPay(i) === payFilter;
+      return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
     });
-  }, [windowInvoices, payFilter]);
+  }, [windowInvoices, payFilter, receiptMap]);
 
   const prevTotal = useMemo(() => {
     const span = to.getTime() - from.getTime();
@@ -353,10 +355,10 @@ export function SalesOverview() {
         if (!parsed) return false;
         const stamp = parsed.getTime();
         if (stamp < prevFrom.getTime() || stamp >= prevTo.getTime()) return false;
-        return payFilter === "all" || classifyPay(i) === payFilter;
+        return payFilter === "all" || classifyPay(i, receiptMap[i.id]) === payFilter;
       })
       .reduce((sum, i) => sum + Number(i.total || 0), 0);
-  }, [activeInvoices, from, to, payFilter]);
+  }, [activeInvoices, from, to, payFilter, receiptMap]);
 
   const zeroStats = useMemo(() => {
     const before = activeInvoices.filter((i) => {
