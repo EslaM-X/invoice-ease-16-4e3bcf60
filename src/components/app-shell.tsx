@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, FileText, BarChart3, Settings,
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
   Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
-  CloudUpload, Activity, PackageOpen, MessageSquare, MessagesSquare,
+  CloudUpload, Activity, PackageOpen, MessageSquare, MessagesSquare, Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
@@ -51,6 +51,7 @@ const items: NavEntry[] = [
       { to: "/invoices", icon: FileText, key: "invoices" as const },
       { to: "/invoices/drafts", icon: FileText, key: "invoice_drafts" as const },
       { to: "/delivery-receipts", icon: ClipboardCheck, key: "delivery_receipts" as const },
+      { to: "/fulfillment", icon: Sparkles, key: "fulfillment" as const },
       { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
       { to: "/customers", icon: Users, key: "customers" as const },
     ],
