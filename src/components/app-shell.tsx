@@ -14,6 +14,7 @@ import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 import { LowStockAlerts } from "@/components/low-stock-alerts";
+import { ReservationAlertsBell } from "@/components/reservation-alerts-bell";
 import { useRole } from "@/lib/use-role";
 import { useIsExecutive } from "@/lib/use-executive";
 import { NotificationsBell } from "@/components/notifications-bell";
@@ -434,6 +435,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex-1" />
           <LangStatusPill />
           <NotificationsBell />
+          <ReservationAlertsBell />
           <LowStockAlerts />
           <Button variant="ghost" size="icon" className="rounded-full press-spring ios-tap" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
             <Languages className="h-4 w-4" />
