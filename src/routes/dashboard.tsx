@@ -1,5 +1,3 @@
-import { swatchStyle } from "@/lib/color-swatch";
-import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -27,7 +25,7 @@ function DashboardPage() {
 function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
-  const { hidden, toggle, mask } = useHideNumbers();
+  const { hidden, toggle } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
   const [recent, setRecent] = useState<any[]>([]);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
