@@ -204,7 +204,7 @@ function InvoiceView() {
         )}
         {!isVoided && (() => {
           const totalNum = Number(inv.total);
-          const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+          const paidNum = Number(inv.paid_amount ?? 0);
           if (paidNum >= totalNum && totalNum > 0) {
             return (
               <div className="pointer-events-none absolute inset-0 flex items-end justify-start z-10 p-6 sm:p-10">
@@ -308,7 +308,7 @@ function InvoiceView() {
                 </tr>
                 {(() => {
                   const totalNum = Number(inv.total);
-                  const paidNum = inv.paid_amount != null ? Number(inv.paid_amount) : +(totalNum * 0.5).toFixed(2);
+                  const paidNum = Number(inv.paid_amount ?? 0);
                   const remainingNum = +(totalNum - paidNum).toFixed(2);
                   const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;
                   const remainingPct = totalNum > 0 ? 100 - paidPct : 0;
