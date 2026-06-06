@@ -351,6 +351,111 @@ function InTransitPage() {
         <SummaryCard icon={TrendingUp} label={isAr ? "إجمالي المباع" : "Total sold"} value={totals.sold} color="text-blue-600" bg="bg-blue-500/10" />
       </div>
 
+      {alerts.length > 0 && (
+        <Card className={`overflow-hidden border-2 ${criticalCount > 0 ? "border-destructive/40 bg-destructive/5" : shortfallCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/30 bg-blue-500/5"}`}>
+          <button
+            type="button"
+            onClick={() => setAlertsOpen((v) => !v)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-muted/30"
+          >
+            <div className={`relative grid h-10 w-10 place-items-center rounded-xl ${criticalCount > 0 ? "bg-destructive/15 text-destructive" : shortfallCount > 0 ? "bg-amber-500/15 text-amber-700" : "bg-blue-500/15 text-blue-700"}`}>
+              <Bell className="h-5 w-5" />
+              {criticalCount > 0 && (
+                <span className="absolute -end-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+                  {criticalCount}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
+                {isAr ? "تنبيهات ذكية للحجوزات" : "Smart reservation alerts"}
+                {criticalCount > 0 && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> {criticalCount} {isAr ? "حرج" : "critical"}
+                  </Badge>
+                )}
+                {shortfallCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                    <AlertTriangle className="h-3 w-3" /> {shortfallCount} {isAr ? "نقص" : "shortfall"}
+                  </span>
+                )}
+                {coveredCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                    {coveredCount} {isAr ? "بانتظار وصول" : "awaiting arrival"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {isAr
+                  ? "منتجات محجوزة في فواتير لكن لا تغطيها كمية المخزن الحالية"
+                  : "Products reserved in invoices that on-hand stock alone cannot cover"}
+              </div>
+            </div>
+            {alertsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {alertsOpen && (
+            <div className="divide-y border-t">
+              {alerts.map((a) => {
+                const tone =
+                  a.severity === "critical"
+                    ? { wrap: "bg-destructive/5", chip: "bg-destructive text-destructive-foreground", icon: AlertCircle, label: isAr ? "اطلبه فورًا" : "Order now", text: "text-destructive" }
+                    : a.severity === "shortfall"
+                      ? { wrap: "", chip: "bg-amber-500 text-white", icon: AlertTriangle, label: isAr ? "نقص في التغطية" : "Shortfall", text: "text-amber-700" }
+                      : { wrap: "", chip: "bg-blue-500 text-white", icon: Truck, label: isAr ? "بانتظار وصول الشحنة" : "Awaiting arrival", text: "text-blue-700" };
+                const Icon = tone.icon;
+                return (
+                  <div key={a.product.id} className={`flex flex-wrap items-center gap-3 p-3 ${tone.wrap}`}>
+                    <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
+                      {a.product.image_url ? <img src={a.product.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : <Package className="h-full w-full p-2 text-muted-foreground" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold">{a.product.name}</div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                        {a.product.serial_number && <span className="font-mono">S/N: {a.product.serial_number}</span>}
+                        {a.product.color && (
+                          <span className="inline-flex items-center gap-1">
+                            <ColorSwatch value={a.product.color} size="sm" />{a.product.color}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-bold text-amber-700">
+                          {isAr ? "محجوز" : "Reserved"}: {a.reserved}
+                        </span>
+                        <span className={`rounded px-1.5 py-0.5 font-bold ${a.inStock > 0 ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                          {isAr ? "بالمخزن" : "Stock"}: {a.inStock}
+                        </span>
+                        <span className={`rounded px-1.5 py-0.5 font-bold ${a.inTransit > 0 ? "bg-violet-500/15 text-violet-700" : "bg-muted text-muted-foreground"}`}>
+                          {isAr ? "قادم" : "Incoming"}: {a.inTransit}
+                        </span>
+                        {a.shortBy > 0 && (
+                          <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive">
+                            {isAr ? "ناقص" : "Short by"}: {a.shortBy}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.chip}`}>
+                      <Icon className="h-3 w-3" /> {tone.label}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant={a.severity === "critical" ? "destructive" : "outline"}
+                      onClick={() => openRestock(a.product.id)}
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5 me-1" />
+                      {isAr ? "اطلب الآن" : "Order now"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
+
       <div className="flex gap-2 border-b">
         <button
           onClick={() => setTab("transit")}
