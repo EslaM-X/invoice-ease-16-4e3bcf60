@@ -51,6 +51,7 @@ const items: NavEntry[] = [
       { to: "/invoices", icon: FileText, key: "invoices" as const },
       { to: "/invoices/drafts", icon: FileText, key: "invoice_drafts" as const },
       { to: "/delivery-receipts", icon: ClipboardCheck, key: "delivery_receipts" as const },
+      { to: "/fulfillment", icon: Sparkles, key: "fulfillment" as const },
       { to: "/invoices-system-notes", icon: StickyNote, key: "invoices_with_system_notes" as const },
       { to: "/customers", icon: Users, key: "customers" as const },
     ],
