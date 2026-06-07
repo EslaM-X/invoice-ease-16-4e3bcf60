@@ -14,6 +14,8 @@ import {
   fetchInvoiceItemsWithDelivered,
   type InvoiceItemWithDelivered,
 } from "@/lib/delivery-receipts";
+import { autoLogClosureForInvoice } from "@/lib/fulfillment-audit";
+import { useAuth } from "@/lib/auth";
 import {
   isMultiPartProduct,
   partLabel,
