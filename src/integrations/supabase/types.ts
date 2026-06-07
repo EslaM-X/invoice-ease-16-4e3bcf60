@@ -847,6 +847,66 @@ export type Database = {
         }
         Relationships: []
       }
+      fulfillment_audit_log: {
+        Row: {
+          action: string
+          confidence: number
+          created_at: string
+          id: string
+          invoice_id: string
+          invoice_number: string
+          manual_count: number
+          mode: string
+          needs: Json
+          note: string | null
+          reasons: Json
+          tier: string
+          total_from_incoming: number
+          total_from_stock: number
+          total_needed: number
+          total_shortfall: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          confidence?: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          invoice_number: string
+          manual_count?: number
+          mode: string
+          needs?: Json
+          note?: string | null
+          reasons?: Json
+          tier: string
+          total_from_incoming?: number
+          total_from_stock?: number
+          total_needed?: number
+          total_shortfall?: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          confidence?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          invoice_number?: string
+          manual_count?: number
+          mode?: string
+          needs?: Json
+          note?: string | null
+          reasons?: Json
+          tier?: string
+          total_from_incoming?: number
+          total_from_stock?: number
+          total_needed?: number
+          total_shortfall?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory_logs: {
         Row: {
           actor_email: string | null

@@ -16,7 +16,7 @@ import {
 import { fmtMoney, fmtDateTime } from "@/lib/utils-money";
 import {
   CheckCircle2, AlertTriangle, Clock, Truck, Sparkles, Search,
-  Package, ChevronDown, ChevronUp, ArrowRight, FlaskConical, Info,
+  Package, ChevronDown, ChevronUp, ArrowRight, FlaskConical, Info, ClipboardList, Save,
 } from "lucide-react";
 import { ColorSwatch } from "@/components/color-swatch";
 import { toast } from "sonner";
@@ -25,6 +25,8 @@ import {
   type Suggestion, type Tier, type DeliveryMode,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
+import { logFulfillmentAction } from "@/lib/fulfillment-audit";
+
 
 export const Route = createFileRoute("/fulfillment")({
   component: () => (
@@ -193,12 +195,19 @@ function FulfillmentPage() {
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <Link to="/fulfillment-audit">
+            <Button type="button" variant="ghost" size="sm" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              {isAr ? "سجل التدقيق" : "Audit log"}
+            </Button>
+          </Link>
           <Link to="/fulfillment-tests">
             <Button type="button" variant="ghost" size="sm" className="gap-2">
               <FlaskConical className="h-4 w-4" />
               {isAr ? "اختبارات" : "Tests"}
             </Button>
           </Link>
+
           <Select value={mode} onValueChange={(v) => setMode(v as DeliveryMode)}>
             <SelectTrigger className="w-full sm:w-[230px]" title={isAr ? "نوع التسليم المعتبر" : "Delivery counting mode"}>
               <SelectValue />
@@ -266,10 +275,13 @@ function FulfillmentPage() {
                   key={s.invoice.id}
                   s={s}
                   isAr={isAr}
+                  mode={mode}
+                  userId={user?.id ?? null}
                   open={openCard === s.invoice.id}
                   onToggle={() => setOpenCard(openCard === s.invoice.id ? null : s.invoice.id)}
                 />
               ))}
+
             </div>
           </section>
         )
@@ -318,11 +330,23 @@ function TierHeader({ tier, count, isAr }: { tier: Tier; count: number; isAr: bo
   );
 }
 
-function SuggestionCard({ s, isAr, open, onToggle }: {
-  s: Suggestion; isAr: boolean; open: boolean; onToggle: () => void;
+function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
+  s: Suggestion; isAr: boolean; mode: DeliveryMode; userId: string | null; open: boolean; onToggle: () => void;
 }) {
+  const [logging, setLogging] = useState(false);
+  async function handleLog(action: "closed" | "partial_close" | "snapshot") {
+    if (!userId) { toast.error(isAr ? "يلزم تسجيل الدخول" : "Sign in required"); return; }
+    setLogging(true);
+    try {
+      await logFulfillmentAction(userId, s, mode, action);
+      toast.success(isAr ? "تم تسجيل الإقفال في سجل التدقيق" : "Closure recorded in audit log");
+    } catch (e: any) {
+      toast.error(e?.message || "Error");
+    } finally { setLogging(false); }
+  }
   const pct = s.confidence;
   const canCreateDR = s.totalFromStock > 0 || s.totalNeeded === 0;
+
   const confColor =
     pct >= 100 ? "text-emerald-700 dark:text-emerald-400"
     : pct >= 60 ? "text-amber-700 dark:text-amber-400"
@@ -409,7 +433,16 @@ function SuggestionCard({ s, isAr, open, onToggle }: {
                 ? (isAr ? `أقرب موعد وصول للشحنات: ${fmtDateTime(s.earliestEta, "ar")}` : `Earliest incoming ETA: ${fmtDateTime(s.earliestEta, "en")}`)
                 : (isAr ? "كل المطلوب متاح في المخزون" : "All required units are in stock")}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button" variant="ghost" size="sm" disabled={logging}
+                onClick={() => handleLog(s.tier === "now_full" ? "closed" : "snapshot")}
+                className="gap-1"
+                title={isAr ? "سجّل سبب الإقفال والأرقام في سجل التدقيق" : "Record closure reason & numbers in audit log"}
+              >
+                <Save className="h-3 w-3" />
+                {isAr ? "سجّل في التدقيق" : "Log to audit"}
+              </Button>
               <Link to="/invoices/$id" params={{ id: s.invoice.id }}>
                 <Button variant="outline" size="sm">{isAr ? "فتح الفاتورة" : "Open invoice"}</Button>
               </Link>
@@ -422,6 +455,7 @@ function SuggestionCard({ s, isAr, open, onToggle }: {
                 </Link>
               )}
             </div>
+
           </div>
         </div>
       )}
