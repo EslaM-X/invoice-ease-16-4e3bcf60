@@ -72,20 +72,53 @@ function FulfillmentPage() {
     if (invIds.length === 0) {
       setItems([]); setDeliveredRows([]);
     } else {
-      const { data: its } = await supabase
-        .from("invoice_items")
-        .select("id, invoice_id, product_id, product_name, serial_number, color, quantity, unit_price")
-        .in("invoice_id", invIds);
-      const itemList = (its ?? []) as FInvItem[];
+      // Paginate: Supabase Data API caps rows per request. With 117+ invoices and
+      // many delivery receipts the result set easily exceeds 1000 rows, which
+      // previously caused most invoices to silently disappear from the engine.
+      const fetchAllByIn = async <T,>(
+        table: string, columns: string, key: string, ids: string[],
+      ): Promise<T[]> => {
+        const out: T[] = [];
+        const chunkIds = 200; // keep IN-list small
+        for (let i = 0; i < ids.length; i += chunkIds) {
+          const slice = ids.slice(i, i + chunkIds);
+          let from = 0;
+          const PAGE = 1000;
+          // page through results for this slice
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { data, error } = await supabase
+              .from(table as any)
+              .select(columns)
+              .in(key, slice)
+              .range(from, from + PAGE - 1);
+            if (error) throw error;
+            const rows = (data ?? []) as T[];
+            out.push(...rows);
+            if (rows.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+        return out;
+      };
+
+      const itemList = await fetchAllByIn<FInvItem>(
+        "invoice_items",
+        "id, invoice_id, product_id, product_name, serial_number, color, quantity, unit_price",
+        "invoice_id",
+        invIds,
+      );
       setItems(itemList);
 
       const itemIds = itemList.map((i) => i.id);
       if (itemIds.length) {
-        const { data: drs } = await supabase
-          .from("delivery_receipt_items")
-          .select("invoice_item_id, quantity, note")
-          .in("invoice_item_id", itemIds);
-        setDeliveredRows((drs ?? []) as FDeliveredRow[]);
+        const drs = await fetchAllByIn<FDeliveredRow>(
+          "delivery_receipt_items",
+          "invoice_item_id, quantity, note",
+          "invoice_item_id",
+          itemIds,
+        );
+        setDeliveredRows(drs);
       } else {
         setDeliveredRows([]);
       }
@@ -111,14 +144,32 @@ function FulfillmentPage() {
     setPos(poMap);
     const poIds = Array.from(poMap.keys());
     if (poIds.length) {
-      const { data: poIs } = await supabase
-        .from("purchase_order_items")
-        .select("po_id, product_id, quantity, received_qty")
-        .in("po_id", poIds);
-      setPoItems((poIs ?? []) as FPOItemRow[]);
+      // Page PO items too — large procurement projects can blow past 1000.
+      const allPoItems: FPOItemRow[] = [];
+      const chunkIds = 200;
+      for (let i = 0; i < poIds.length; i += chunkIds) {
+        const slice = poIds.slice(i, i + chunkIds);
+        let from = 0;
+        const PAGE = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("purchase_order_items")
+            .select("po_id, product_id, quantity, received_qty")
+            .in("po_id", slice)
+            .range(from, from + PAGE - 1);
+          if (error) break;
+          const rows = (data ?? []) as FPOItemRow[];
+          allPoItems.push(...rows);
+          if (rows.length < PAGE) break;
+          from += PAGE;
+        }
+      }
+      setPoItems(allPoItems);
     } else {
       setPoItems([]);
     }
+
 
     setLoading(false);
   }
