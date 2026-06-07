@@ -79,6 +79,7 @@ export function DeliveryReceiptForm({
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [rows, setRows] = useState<Row[]>([]);
