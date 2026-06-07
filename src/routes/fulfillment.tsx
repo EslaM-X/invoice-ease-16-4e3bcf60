@@ -103,6 +103,7 @@ function FulfillmentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [onlyCloseable, setOnlyCloseable] = useState(false);
 
   async function load() {
     if (!user) return;
