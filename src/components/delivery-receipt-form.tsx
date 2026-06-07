@@ -14,6 +14,8 @@ import {
   fetchInvoiceItemsWithDelivered,
   type InvoiceItemWithDelivered,
 } from "@/lib/delivery-receipts";
+import { autoLogClosureForInvoice } from "@/lib/fulfillment-audit";
+import { useAuth } from "@/lib/auth";
 import {
   isMultiPartProduct,
   partLabel,
@@ -77,6 +79,7 @@ export function DeliveryReceiptForm({
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -223,6 +226,12 @@ export function DeliveryReceiptForm({
         await updateDeliveryReceipt(receiptId, payload);
       }
       toast.success(isAr ? "تم الحفظ" : "Saved");
+      // Fire-and-forget: capture an audit snapshot of the closure for this invoice.
+      if (user?.id) {
+        autoLogClosureForInvoice(user.id, invoiceId, "any", "auto_closed",
+          isAr ? `إذن تسليم — ${status}` : `Delivery receipt — ${status}`)
+          .catch(() => { /* silent */ });
+      }
       if (id) {
         if (andPrint) {
           navigate({ to: "/delivery-receipts/$id", params: { id }, search: { print: true } as any });

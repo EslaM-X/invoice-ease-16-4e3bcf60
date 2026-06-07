@@ -25,7 +25,7 @@ import {
   type Suggestion, type Tier, type DeliveryMode,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
-import { logFulfillmentAction } from "@/lib/fulfillment-audit";
+import { logFulfillmentAction, bulkLogFulfillment } from "@/lib/fulfillment-audit";
 
 
 export const Route = createFileRoute("/fulfillment")({
@@ -232,6 +232,33 @@ function FulfillmentPage() {
             {onlyCloseable && (
               <Badge variant="secondary" className="ms-1">{byTier.now_full.length}</Badge>
             )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!user?.id || byTier.now_full.length === 0}
+            onClick={async () => {
+              if (!user?.id) return;
+              const list = byTier.now_full;
+              if (list.length === 0) { toast.info(isAr ? "لا توجد فواتير قابلة للإقفال الآن" : "No closeable invoices"); return; }
+              const t = toast.loading(isAr ? `جارٍ تسجيل ${list.length} فاتورة…` : `Logging ${list.length} invoices…`);
+              const r = await bulkLogFulfillment(user.id, list, mode, "snapshot",
+                isAr ? "تدقيق جماعي" : "Bulk audit");
+              toast.dismiss(t);
+              toast.success(
+                isAr
+                  ? `✅ سُجّلت ${r.count}/${list.length} — مخزون:${r.totalFromStock} شحنات:${r.totalFromIncoming} يدوي:${r.manualCount} ناقص:${r.totalShortfall}${r.failed ? ` · فشل:${r.failed}` : ""}`
+                  : `✅ Logged ${r.count}/${list.length} — stock:${r.totalFromStock} incoming:${r.totalFromIncoming} manual:${r.manualCount} short:${r.totalShortfall}${r.failed ? ` · failed:${r.failed}` : ""}`,
+                { duration: 8000 },
+              );
+            }}
+            className="gap-2"
+            title={isAr ? "سجّل تدقيق جماعي لكل الفواتير القابلة للإقفال الآن" : "Bulk audit-log all currently closeable invoices"}
+          >
+            <ClipboardList className="h-4 w-4" />
+            {isAr ? "تدقيق جماعي" : "Bulk audit"}
+            {byTier.now_full.length > 0 && <Badge variant="secondary" className="ms-1">{byTier.now_full.length}</Badge>}
           </Button>
           <div className="relative w-full sm:w-72">
             <Search className={`absolute top-1/2 -translate-y-1/2 ${isAr ? "right-3" : "left-3"} h-4 w-4 text-muted-foreground`} />
