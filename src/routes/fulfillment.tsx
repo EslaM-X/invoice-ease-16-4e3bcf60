@@ -356,6 +356,48 @@ function FulfillmentPage() {
           </section>
         )
       )}
+
+      <BulkAuditDialog
+        open={bulkOpen}
+        onOpenChange={(v) => { if (!bulkRunning) setBulkOpen(v); }}
+        suggestions={byTier.now_full}
+        isAr={isAr}
+        mode={mode}
+        running={bulkRunning}
+        progress={bulkProgress}
+        onConfirm={async () => {
+          if (!user?.id) return;
+          const list = byTier.now_full;
+          if (list.length === 0) return;
+          setBulkRunning(true);
+          setBulkProgress({ done: 0, total: list.length });
+          let done = 0;
+          const r = await bulkLogFulfillment(
+            user.id, list, mode, "snapshot",
+            isAr ? "تدقيق جماعي" : "Bulk audit",
+            (item) => {
+              done++;
+              setBulkProgress({ done, total: list.length });
+              if (!item.ok) {
+                toast.error(
+                  isAr
+                    ? `❌ فشل ${item.invoice_number} (${item.confidence}%) — ${item.error || ""}`
+                    : `❌ Failed ${item.invoice_number} (${item.confidence}%) — ${item.error || ""}`,
+                  { duration: 7000 },
+                );
+              }
+            },
+          );
+          setBulkRunning(false);
+          toast.success(
+            isAr
+              ? `✅ سُجّلت ${r.count}/${list.length} — مخزون:${r.totalFromStock} شحنات:${r.totalFromIncoming} يدوي:${r.manualCount} ناقص:${r.totalShortfall}${r.failed ? ` · فشل:${r.failed}` : ""}`
+              : `✅ Logged ${r.count}/${list.length} — stock:${r.totalFromStock} incoming:${r.totalFromIncoming} manual:${r.manualCount} short:${r.totalShortfall}${r.failed ? ` · failed:${r.failed}` : ""}`,
+            { duration: 9000 },
+          );
+          if (r.failed === 0) setBulkOpen(false);
+        }}
+      />
     </div>
   );
 }
