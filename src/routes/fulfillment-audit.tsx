@@ -126,31 +126,94 @@ function FulfillmentAuditPage() {
     });
   }
 
-  const filtered = useMemo(() => rows.filter((r) => {
-    // Tier filter
-    if (tierFilter === "closeable") {
-      if (r.tier !== "now_full") return false;
-    } else if (tierFilter === "not_closeable") {
-      if (r.tier === "now_full") return false;
-    } else if (tierFilter !== "all" && r.tier !== tierFilter) {
+  const filtered = useMemo(() => {
+    const base = rows.filter((r) => {
+      // Tier filter
+      if (tierFilter === "closeable") {
+        if (r.tier !== "now_full") return false;
+      } else if (tierFilter === "not_closeable") {
+        if (r.tier === "now_full") return false;
+      } else if (tierFilter !== "all" && r.tier !== tierFilter) {
+        return false;
+      }
+      // Confidence band filter (sort selection can also act as a quick filter)
+      if (sort === "only_100" && r.confidence < 100) return false;
+      if (sort === "high" && (r.confidence < 75 || r.confidence >= 100)) return false;
+      if (sort === "medium" && (r.confidence < 50 || r.confidence >= 75)) return false;
+      if (sort === "low" && r.confidence >= 50) return false;
+      // Search
+      const s = q.trim().toLowerCase();
+      if (!s) return true;
+      if (r.invoice_number.toLowerCase().includes(s)) return true;
+      if (r.action.toLowerCase().includes(s)) return true;
+      if (r.tier.toLowerCase().includes(s)) return true;
+      if (r.mode.toLowerCase().includes(s)) return true;
+      if ((r.note || "").toLowerCase().includes(s)) return true;
+      if (Array.isArray(r.reasons) && r.reasons.some((x) =>
+        (x.code || "").toLowerCase().includes(s) || (x.detail || "").toLowerCase().includes(s))) return true;
+      if (Array.isArray(r.needs) && r.needs.some((n: any) =>
+        (n.product_name || "").toLowerCase().includes(s))) return true;
       return false;
+    });
+    // Apply ordering
+    if (sort === "conf_desc") {
+      return [...base].sort((a, b) => b.confidence - a.confidence || b.created_at.localeCompare(a.created_at));
     }
-    // Search: matches invoice / action / tier / note AND reason codes/details AND needs product names
-    const s = q.trim().toLowerCase();
-    if (!s) return true;
-    if (r.invoice_number.toLowerCase().includes(s)) return true;
-    if (r.action.toLowerCase().includes(s)) return true;
-    if (r.tier.toLowerCase().includes(s)) return true;
-    if (r.mode.toLowerCase().includes(s)) return true;
-    if ((r.note || "").toLowerCase().includes(s)) return true;
-    if (Array.isArray(r.reasons) && r.reasons.some((x) =>
-      (x.code || "").toLowerCase().includes(s) || (x.detail || "").toLowerCase().includes(s))) return true;
-    if (Array.isArray(r.needs) && r.needs.some((n: any) =>
-      (n.product_name || "").toLowerCase().includes(s))) return true;
-    return false;
-  }), [rows, q, tierFilter]);
+    if (sort === "conf_asc") {
+      return [...base].sort((a, b) => a.confidence - b.confidence || b.created_at.localeCompare(a.created_at));
+    }
+    // newest + band filters keep DB order (already newest first)
+    return base;
+  }, [rows, q, tierFilter, sort]);
 
-  useEffect(() => { setVisibleCount(50); }, [q, tierFilter]);
+  useEffect(() => { setVisibleCount(50); }, [q, tierFilter, sort]);
+
+  // Re-audit only failed (non-closeable) entries currently visible.
+  // De-dupe by invoice_id so each failed invoice is re-evaluated once.
+  async function reauditFailed() {
+    if (!user?.id || reauditing) return;
+    const failedInvoices = new Map<string, AuditRow>();
+    for (const r of filtered) {
+      if (r.tier !== "now_full" && !failedInvoices.has(r.invoice_id)) {
+        failedInvoices.set(r.invoice_id, r);
+      }
+    }
+    const list = Array.from(failedInvoices.values());
+    if (list.length === 0) {
+      toast.info(isAr ? "لا توجد فواتير فاشلة لإعادة التدقيق" : "No failed invoices to re-audit");
+      return;
+    }
+    setReauditing(true);
+    let ok = 0, fail = 0, recovered = 0;
+    const note = isAr ? "إعادة تدقيق الفواتير الفاشلة" : "Re-audit failed invoices";
+    // Limited concurrency to avoid hammering DB.
+    const CONCURRENCY = 4;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < list.length) {
+        const r = list[cursor++];
+        try {
+          const s = await autoLogClosureForInvoice(user!.id, r.invoice_id, (r.mode as any) || "any", "snapshot", note);
+          if (s) {
+            ok++;
+            if (s.tier === "now_full") recovered++;
+          } else {
+            fail++;
+          }
+        } catch {
+          fail++;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, list.length) }, worker));
+    setReauditing(false);
+    toast.success(
+      isAr
+        ? `✅ أُعيد تدقيق ${ok}/${list.length} — أصبحت قابلة للإقفال: ${recovered}${fail ? ` · فشل ${fail}` : ""}`
+        : `✅ Re-audited ${ok}/${list.length} — newly closeable: ${recovered}${fail ? ` · failed ${fail}` : ""}`,
+      { duration: 9000 },
+    );
+  }
 
 
   const counts = useMemo(() => {
