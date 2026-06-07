@@ -574,3 +574,114 @@ function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
     </Card>
   );
 }
+
+function BulkAuditDialog({
+  open, onOpenChange, suggestions, isAr, mode, running, progress, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  suggestions: Suggestion[];
+  isAr: boolean;
+  mode: DeliveryMode;
+  running: boolean;
+  progress: { done: number; total: number };
+  onConfirm: () => void | Promise<void>;
+}) {
+  const totals = useMemo(() => {
+    let needed = 0, stock = 0, incoming = 0, manual = 0, shortfall = 0, value = 0;
+    for (const s of suggestions) {
+      needed += s.totalNeeded; stock += s.totalFromStock;
+      incoming += s.totalFromIncoming; manual += s.manualCount;
+      shortfall += s.totalShortfall; value += s.invoiceValue;
+    }
+    return { needed, stock, incoming, manual, shortfall, value };
+  }, [suggestions]);
+  const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl" dir={isAr ? "rtl" : "ltr"}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            {isAr ? "معاينة التدقيق الجماعي" : "Bulk Audit Preview"}
+            <Badge variant="outline" className="ms-2">{suggestions.length}</Badge>
+          </DialogTitle>
+          <DialogDescription>
+            {isAr
+              ? `سيتم تسجيل ${suggestions.length} فاتورة في سجل التدقيق بنفس الوضع (${mode}). راجِع التفاصيل أدناه.`
+              : `${suggestions.length} invoices will be logged with mode=${mode}. Review details below.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-md bg-muted px-2 py-0.5">{isAr ? "إجمالي مطلوب" : "Needed"}: <b>{totals.needed}</b></span>
+          <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-emerald-700 dark:text-emerald-400">{isAr ? "من المخزون" : "Stock"}: <b>{totals.stock}</b></span>
+          {totals.incoming > 0 && <span className="rounded-md bg-violet-500/15 px-2 py-0.5 text-violet-700 dark:text-violet-400">{isAr ? "شحنات" : "Incoming"}: <b>{totals.incoming}</b></span>}
+          {totals.manual > 0 && <span className="rounded-md bg-sky-500/15 px-2 py-0.5 text-sky-700 dark:text-sky-400">{isAr ? "يدوي" : "Manual"}: <b>{totals.manual}</b></span>}
+          {totals.shortfall > 0 && <span className="rounded-md bg-rose-500/15 px-2 py-0.5 text-rose-700 dark:text-rose-400">{isAr ? "ناقص" : "Short"}: <b>{totals.shortfall}</b></span>}
+        </div>
+
+        <div className="max-h-[55vh] overflow-y-auto rounded-md border border-border">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted">
+              <tr className="text-start">
+                <th className="px-2 py-1 text-start">#</th>
+                <th className="px-2 py-1 text-start">{isAr ? "فاتورة" : "Invoice"}</th>
+                <th className="px-2 py-1 text-start">{isAr ? "العميل" : "Customer"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "مطلوب" : "Need"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "مخزون" : "Stock"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "يدوي" : "Manual"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "ناقص" : "Short"}</th>
+                <th className="px-2 py-1 text-end">%</th>
+                <th className="px-2 py-1 text-start">{isAr ? "أسباب" : "Reasons"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {suggestions.map((s, i) => (
+                <tr key={s.invoice.id} className="border-t border-border align-top hover:bg-muted/40">
+                  <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                  <td className="px-2 py-1 font-mono">{s.invoice.invoice_number}</td>
+                  <td className="px-2 py-1">{s.invoice.customer_name || (isAr ? "—" : "—")}</td>
+                  <td className="px-2 py-1 text-end">{s.totalNeeded}</td>
+                  <td className="px-2 py-1 text-end text-emerald-700 dark:text-emerald-400">{s.totalFromStock}</td>
+                  <td className="px-2 py-1 text-end text-sky-700 dark:text-sky-400">{s.manualCount}</td>
+                  <td className={`px-2 py-1 text-end ${s.totalShortfall > 0 ? "text-rose-700 dark:text-rose-400" : ""}`}>{s.totalShortfall}</td>
+                  <td className="px-2 py-1 text-end font-semibold">{s.confidence}%</td>
+                  <td className="px-2 py-1">
+                    <div className="flex flex-wrap gap-1">
+                      {s.reasons.map((r, j) => (
+                        <Badge key={j} variant="outline" className="text-[10px] font-normal">
+                          {reasonLabel(r.code, isAr)}{r.detail ? ` · ${r.detail}` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {running && (
+          <div className="space-y-1">
+            <Progress value={pct} className="h-2" />
+            <div className="text-xs text-muted-foreground">
+              {isAr ? `جارٍ التسجيل ${progress.done}/${progress.total}` : `Logging ${progress.done}/${progress.total}`} ({pct}%)
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={running}>
+            {isAr ? "إلغاء" : "Cancel"}
+          </Button>
+          <Button onClick={() => onConfirm()} disabled={running || suggestions.length === 0} className="gap-2">
+            <Save className="h-4 w-4" />
+            {isAr ? `تسجيل ${suggestions.length} فاتورة` : `Log ${suggestions.length} invoices`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
