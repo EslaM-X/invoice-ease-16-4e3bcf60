@@ -55,6 +55,9 @@ function FulfillmentPage() {
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [onlyCloseable, setOnlyCloseable] = useState(false);
   const [mode, setMode] = useState<DeliveryMode>("any");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   async function load() {
     if (!user) return;
