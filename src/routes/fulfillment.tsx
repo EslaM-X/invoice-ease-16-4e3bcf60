@@ -268,10 +268,13 @@ function FulfillmentPage() {
                   key={s.invoice.id}
                   s={s}
                   isAr={isAr}
+                  mode={mode}
+                  userId={user?.id ?? null}
                   open={openCard === s.invoice.id}
                   onToggle={() => setOpenCard(openCard === s.invoice.id ? null : s.invoice.id)}
                 />
               ))}
+
             </div>
           </section>
         )
