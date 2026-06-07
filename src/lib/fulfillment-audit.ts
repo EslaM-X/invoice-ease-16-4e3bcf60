@@ -107,14 +107,7 @@ export async function autoLogClosureForInvoice(
   return s;
 }
 
-/** Bulk log many already-computed suggestions; returns a summary. */
-export async function bulkLogFulfillment(
-  userId: string,
-  suggestions: Suggestion[],
-  mode: DeliveryMode,
-  action: FulfillmentAuditAction = "snapshot",
-  note?: string | null,
-): Promise<{
+export type BulkLogResult = {
   count: number;
   failed: number;
   totalNeeded: number;
@@ -122,19 +115,62 @@ export async function bulkLogFulfillment(
   totalFromIncoming: number;
   totalShortfall: number;
   manualCount: number;
-}> {
-  let count = 0, failed = 0;
-  let totalNeeded = 0, totalFromStock = 0, totalFromIncoming = 0, totalShortfall = 0, manualCount = 0;
-  await Promise.all(suggestions.map(async (s) => {
-    try {
-      await logFulfillmentAction(userId, s, mode, action, note ?? null);
-      count++;
-      totalNeeded += s.totalNeeded;
-      totalFromStock += s.totalFromStock;
-      totalFromIncoming += s.totalFromIncoming;
-      totalShortfall += s.totalShortfall;
-      manualCount += s.manualCount;
-    } catch { failed++; }
-  }));
-  return { count, failed, totalNeeded, totalFromStock, totalFromIncoming, totalShortfall, manualCount };
+  perInvoice: Array<{
+    invoice_id: string;
+    invoice_number: string;
+    tier: string;
+    confidence: number;
+    ok: boolean;
+    error?: string;
+  }>;
+};
+
+/** Bulk log many already-computed suggestions; returns a summary + per-invoice results. */
+export async function bulkLogFulfillment(
+  userId: string,
+  suggestions: Suggestion[],
+  mode: DeliveryMode,
+  action: FulfillmentAuditAction = "snapshot",
+  note?: string | null,
+  onItem?: (r: BulkLogResult["perInvoice"][number]) => void,
+): Promise<BulkLogResult> {
+  const res: BulkLogResult = {
+    count: 0, failed: 0,
+    totalNeeded: 0, totalFromStock: 0, totalFromIncoming: 0, totalShortfall: 0, manualCount: 0,
+    perInvoice: [],
+  };
+  // Limit concurrency to avoid hammering the DB on very large batches.
+  const CONCURRENCY = 6;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < suggestions.length) {
+      const s = suggestions[cursor++];
+      const base = {
+        invoice_id: s.invoice.id,
+        invoice_number: s.invoice.invoice_number,
+        tier: s.tier,
+        confidence: s.confidence,
+      };
+      try {
+        await logFulfillmentAction(userId, s, mode, action, note ?? null);
+        const ok = { ...base, ok: true as const };
+        res.perInvoice.push(ok);
+        res.count++;
+        res.totalNeeded += s.totalNeeded;
+        res.totalFromStock += s.totalFromStock;
+        res.totalFromIncoming += s.totalFromIncoming;
+        res.totalShortfall += s.totalShortfall;
+        res.manualCount += s.manualCount;
+        onItem?.(ok);
+      } catch (e: any) {
+        const fail = { ...base, ok: false as const, error: e?.message ?? String(e) };
+        res.perInvoice.push(fail);
+        res.failed++;
+        onItem?.(fail);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, suggestions.length) }, worker));
+  return res;
 }
+

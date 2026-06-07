@@ -13,6 +13,9 @@ import { Progress } from "@/components/ui/progress";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { fmtMoney, fmtDateTime } from "@/lib/utils-money";
 import {
   CheckCircle2, AlertTriangle, Clock, Truck, Sparkles, Search,
@@ -52,6 +55,9 @@ function FulfillmentPage() {
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [onlyCloseable, setOnlyCloseable] = useState(false);
   const [mode, setMode] = useState<DeliveryMode>("any");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   async function load() {
     if (!user) return;
@@ -72,20 +78,53 @@ function FulfillmentPage() {
     if (invIds.length === 0) {
       setItems([]); setDeliveredRows([]);
     } else {
-      const { data: its } = await supabase
-        .from("invoice_items")
-        .select("id, invoice_id, product_id, product_name, serial_number, color, quantity, unit_price")
-        .in("invoice_id", invIds);
-      const itemList = (its ?? []) as FInvItem[];
+      // Paginate: Supabase Data API caps rows per request. With 117+ invoices and
+      // many delivery receipts the result set easily exceeds 1000 rows, which
+      // previously caused most invoices to silently disappear from the engine.
+      const fetchAllByIn = async <T,>(
+        table: string, columns: string, key: string, ids: string[],
+      ): Promise<T[]> => {
+        const out: T[] = [];
+        const chunkIds = 200; // keep IN-list small
+        for (let i = 0; i < ids.length; i += chunkIds) {
+          const slice = ids.slice(i, i + chunkIds);
+          let from = 0;
+          const PAGE = 1000;
+          // page through results for this slice
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { data, error } = await supabase
+              .from(table as any)
+              .select(columns)
+              .in(key, slice)
+              .range(from, from + PAGE - 1);
+            if (error) throw error;
+            const rows = (data ?? []) as T[];
+            out.push(...rows);
+            if (rows.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+        return out;
+      };
+
+      const itemList = await fetchAllByIn<FInvItem>(
+        "invoice_items",
+        "id, invoice_id, product_id, product_name, serial_number, color, quantity, unit_price",
+        "invoice_id",
+        invIds,
+      );
       setItems(itemList);
 
       const itemIds = itemList.map((i) => i.id);
       if (itemIds.length) {
-        const { data: drs } = await supabase
-          .from("delivery_receipt_items")
-          .select("invoice_item_id, quantity, note")
-          .in("invoice_item_id", itemIds);
-        setDeliveredRows((drs ?? []) as FDeliveredRow[]);
+        const drs = await fetchAllByIn<FDeliveredRow>(
+          "delivery_receipt_items",
+          "invoice_item_id, quantity, note",
+          "invoice_item_id",
+          itemIds,
+        );
+        setDeliveredRows(drs);
       } else {
         setDeliveredRows([]);
       }
@@ -111,14 +150,32 @@ function FulfillmentPage() {
     setPos(poMap);
     const poIds = Array.from(poMap.keys());
     if (poIds.length) {
-      const { data: poIs } = await supabase
-        .from("purchase_order_items")
-        .select("po_id, product_id, quantity, received_qty")
-        .in("po_id", poIds);
-      setPoItems((poIs ?? []) as FPOItemRow[]);
+      // Page PO items too — large procurement projects can blow past 1000.
+      const allPoItems: FPOItemRow[] = [];
+      const chunkIds = 200;
+      for (let i = 0; i < poIds.length; i += chunkIds) {
+        const slice = poIds.slice(i, i + chunkIds);
+        let from = 0;
+        const PAGE = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("purchase_order_items")
+            .select("po_id, product_id, quantity, received_qty")
+            .in("po_id", slice)
+            .range(from, from + PAGE - 1);
+          if (error) break;
+          const rows = (data ?? []) as FPOItemRow[];
+          allPoItems.push(...rows);
+          if (rows.length < PAGE) break;
+          from += PAGE;
+        }
+      }
+      setPoItems(allPoItems);
     } else {
       setPoItems([]);
     }
+
 
     setLoading(false);
   }
@@ -238,23 +295,9 @@ function FulfillmentPage() {
             variant="outline"
             size="sm"
             disabled={!user?.id || byTier.now_full.length === 0}
-            onClick={async () => {
-              if (!user?.id) return;
-              const list = byTier.now_full;
-              if (list.length === 0) { toast.info(isAr ? "لا توجد فواتير قابلة للإقفال الآن" : "No closeable invoices"); return; }
-              const t = toast.loading(isAr ? `جارٍ تسجيل ${list.length} فاتورة…` : `Logging ${list.length} invoices…`);
-              const r = await bulkLogFulfillment(user.id, list, mode, "snapshot",
-                isAr ? "تدقيق جماعي" : "Bulk audit");
-              toast.dismiss(t);
-              toast.success(
-                isAr
-                  ? `✅ سُجّلت ${r.count}/${list.length} — مخزون:${r.totalFromStock} شحنات:${r.totalFromIncoming} يدوي:${r.manualCount} ناقص:${r.totalShortfall}${r.failed ? ` · فشل:${r.failed}` : ""}`
-                  : `✅ Logged ${r.count}/${list.length} — stock:${r.totalFromStock} incoming:${r.totalFromIncoming} manual:${r.manualCount} short:${r.totalShortfall}${r.failed ? ` · failed:${r.failed}` : ""}`,
-                { duration: 8000 },
-              );
-            }}
+            onClick={() => setBulkOpen(true)}
             className="gap-2"
-            title={isAr ? "سجّل تدقيق جماعي لكل الفواتير القابلة للإقفال الآن" : "Bulk audit-log all currently closeable invoices"}
+            title={isAr ? "افتح معاينة التدقيق الجماعي" : "Open bulk audit preview"}
           >
             <ClipboardList className="h-4 w-4" />
             {isAr ? "تدقيق جماعي" : "Bulk audit"}
@@ -313,6 +356,48 @@ function FulfillmentPage() {
           </section>
         )
       )}
+
+      <BulkAuditDialog
+        open={bulkOpen}
+        onOpenChange={(v) => { if (!bulkRunning) setBulkOpen(v); }}
+        suggestions={byTier.now_full}
+        isAr={isAr}
+        mode={mode}
+        running={bulkRunning}
+        progress={bulkProgress}
+        onConfirm={async () => {
+          if (!user?.id) return;
+          const list = byTier.now_full;
+          if (list.length === 0) return;
+          setBulkRunning(true);
+          setBulkProgress({ done: 0, total: list.length });
+          let done = 0;
+          const r = await bulkLogFulfillment(
+            user.id, list, mode, "snapshot",
+            isAr ? "تدقيق جماعي" : "Bulk audit",
+            (item) => {
+              done++;
+              setBulkProgress({ done, total: list.length });
+              if (!item.ok) {
+                toast.error(
+                  isAr
+                    ? `❌ فشل ${item.invoice_number} (${item.confidence}%) — ${item.error || ""}`
+                    : `❌ Failed ${item.invoice_number} (${item.confidence}%) — ${item.error || ""}`,
+                  { duration: 7000 },
+                );
+              }
+            },
+          );
+          setBulkRunning(false);
+          toast.success(
+            isAr
+              ? `✅ سُجّلت ${r.count}/${list.length} — مخزون:${r.totalFromStock} شحنات:${r.totalFromIncoming} يدوي:${r.manualCount} ناقص:${r.totalShortfall}${r.failed ? ` · فشل:${r.failed}` : ""}`
+              : `✅ Logged ${r.count}/${list.length} — stock:${r.totalFromStock} incoming:${r.totalFromIncoming} manual:${r.manualCount} short:${r.totalShortfall}${r.failed ? ` · failed:${r.failed}` : ""}`,
+            { duration: 9000 },
+          );
+          if (r.failed === 0) setBulkOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -489,3 +574,114 @@ function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
     </Card>
   );
 }
+
+function BulkAuditDialog({
+  open, onOpenChange, suggestions, isAr, mode, running, progress, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  suggestions: Suggestion[];
+  isAr: boolean;
+  mode: DeliveryMode;
+  running: boolean;
+  progress: { done: number; total: number };
+  onConfirm: () => void | Promise<void>;
+}) {
+  const totals = useMemo(() => {
+    let needed = 0, stock = 0, incoming = 0, manual = 0, shortfall = 0, value = 0;
+    for (const s of suggestions) {
+      needed += s.totalNeeded; stock += s.totalFromStock;
+      incoming += s.totalFromIncoming; manual += s.manualCount;
+      shortfall += s.totalShortfall; value += s.invoiceValue;
+    }
+    return { needed, stock, incoming, manual, shortfall, value };
+  }, [suggestions]);
+  const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl" dir={isAr ? "rtl" : "ltr"}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            {isAr ? "معاينة التدقيق الجماعي" : "Bulk Audit Preview"}
+            <Badge variant="outline" className="ms-2">{suggestions.length}</Badge>
+          </DialogTitle>
+          <DialogDescription>
+            {isAr
+              ? `سيتم تسجيل ${suggestions.length} فاتورة في سجل التدقيق بنفس الوضع (${mode}). راجِع التفاصيل أدناه.`
+              : `${suggestions.length} invoices will be logged with mode=${mode}. Review details below.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-md bg-muted px-2 py-0.5">{isAr ? "إجمالي مطلوب" : "Needed"}: <b>{totals.needed}</b></span>
+          <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-emerald-700 dark:text-emerald-400">{isAr ? "من المخزون" : "Stock"}: <b>{totals.stock}</b></span>
+          {totals.incoming > 0 && <span className="rounded-md bg-violet-500/15 px-2 py-0.5 text-violet-700 dark:text-violet-400">{isAr ? "شحنات" : "Incoming"}: <b>{totals.incoming}</b></span>}
+          {totals.manual > 0 && <span className="rounded-md bg-sky-500/15 px-2 py-0.5 text-sky-700 dark:text-sky-400">{isAr ? "يدوي" : "Manual"}: <b>{totals.manual}</b></span>}
+          {totals.shortfall > 0 && <span className="rounded-md bg-rose-500/15 px-2 py-0.5 text-rose-700 dark:text-rose-400">{isAr ? "ناقص" : "Short"}: <b>{totals.shortfall}</b></span>}
+        </div>
+
+        <div className="max-h-[55vh] overflow-y-auto rounded-md border border-border">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted">
+              <tr className="text-start">
+                <th className="px-2 py-1 text-start">#</th>
+                <th className="px-2 py-1 text-start">{isAr ? "فاتورة" : "Invoice"}</th>
+                <th className="px-2 py-1 text-start">{isAr ? "العميل" : "Customer"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "مطلوب" : "Need"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "مخزون" : "Stock"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "يدوي" : "Manual"}</th>
+                <th className="px-2 py-1 text-end">{isAr ? "ناقص" : "Short"}</th>
+                <th className="px-2 py-1 text-end">%</th>
+                <th className="px-2 py-1 text-start">{isAr ? "أسباب" : "Reasons"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {suggestions.map((s, i) => (
+                <tr key={s.invoice.id} className="border-t border-border align-top hover:bg-muted/40">
+                  <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                  <td className="px-2 py-1 font-mono">{s.invoice.invoice_number}</td>
+                  <td className="px-2 py-1">{s.invoice.customer_name || (isAr ? "—" : "—")}</td>
+                  <td className="px-2 py-1 text-end">{s.totalNeeded}</td>
+                  <td className="px-2 py-1 text-end text-emerald-700 dark:text-emerald-400">{s.totalFromStock}</td>
+                  <td className="px-2 py-1 text-end text-sky-700 dark:text-sky-400">{s.manualCount}</td>
+                  <td className={`px-2 py-1 text-end ${s.totalShortfall > 0 ? "text-rose-700 dark:text-rose-400" : ""}`}>{s.totalShortfall}</td>
+                  <td className="px-2 py-1 text-end font-semibold">{s.confidence}%</td>
+                  <td className="px-2 py-1">
+                    <div className="flex flex-wrap gap-1">
+                      {s.reasons.map((r, j) => (
+                        <Badge key={j} variant="outline" className="text-[10px] font-normal">
+                          {reasonLabel(r.code, isAr)}{r.detail ? ` · ${r.detail}` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {running && (
+          <div className="space-y-1">
+            <Progress value={pct} className="h-2" />
+            <div className="text-xs text-muted-foreground">
+              {isAr ? `جارٍ التسجيل ${progress.done}/${progress.total}` : `Logging ${progress.done}/${progress.total}`} ({pct}%)
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={running}>
+            {isAr ? "إلغاء" : "Cancel"}
+          </Button>
+          <Button onClick={() => onConfirm()} disabled={running || suggestions.length === 0} className="gap-2">
+            <Save className="h-4 w-4" />
+            {isAr ? `تسجيل ${suggestions.length} فاتورة` : `Log ${suggestions.length} invoices`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

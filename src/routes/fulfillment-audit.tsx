@@ -52,11 +52,16 @@ function FulfillmentAuditPage() {
   const isAr = lang === "ar";
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [q, setQ] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(50); // lightweight virtualization
 
-  async function load() {
+  const PAGE_SIZE = 100;
+
+  async function loadInitial() {
     if (!user) return;
     setLoading(true);
     const { data, error } = await supabase
@@ -64,14 +69,35 @@ function FulfillmentAuditPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(500);
+      .range(0, PAGE_SIZE - 1);
     if (error) toast.error(error.message);
-    setRows(((data ?? []) as unknown) as AuditRow[]);
+    const list = ((data ?? []) as unknown) as AuditRow[];
+    setRows(list);
+    setHasMore(list.length === PAGE_SIZE);
     setLoading(false);
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
-  useRealtimeTable("fulfillment_audit_log", load, [user?.id]);
+  async function loadMore() {
+    if (!user || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const from = rows.length;
+    const { data, error } = await supabase
+      .from("fulfillment_audit_log" as any)
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) toast.error(error.message);
+    const list = ((data ?? []) as unknown) as AuditRow[];
+    setRows((prev) => [...prev, ...list]);
+    setHasMore(list.length === PAGE_SIZE);
+    setLoadingMore(false);
+  }
+
+  useEffect(() => { loadInitial(); /* eslint-disable-next-line */ }, [user?.id]);
+  // Realtime: just refresh the first page so brand-new rows appear without paging reset.
+  useRealtimeTable("fulfillment_audit_log", loadInitial, [user?.id]);
+
 
   async function remove(id: string) {
     const { error } = await supabase.from("fulfillment_audit_log" as any).delete().eq("id", id);
@@ -110,6 +136,9 @@ function FulfillmentAuditPage() {
       (n.product_name || "").toLowerCase().includes(s))) return true;
     return false;
   }), [rows, q, tierFilter]);
+
+  useEffect(() => { setVisibleCount(50); }, [q, tierFilter]);
+
 
   const counts = useMemo(() => {
     let closeable = 0, notCloseable = 0;
@@ -177,7 +206,7 @@ function FulfillmentAuditPage() {
       )}
 
       <div className="space-y-2">
-        {filtered.map((r) => {
+        {filtered.slice(0, visibleCount).map((r) => {
           const isOpen = expanded.has(r.id);
           return (
             <Card key={r.id} className="p-3">
@@ -265,6 +294,34 @@ function FulfillmentAuditPage() {
           );
         })}
       </div>
+
+      {!loading && (filtered.length > visibleCount || hasMore) && (
+        <div className="flex flex-col items-center gap-2 py-4">
+          {filtered.length > visibleCount && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setVisibleCount((v) => v + 50)}
+            >
+              {isAr
+                ? `عرض المزيد (${Math.min(50, filtered.length - visibleCount)} من ${filtered.length - visibleCount})`
+                : `Show more (${Math.min(50, filtered.length - visibleCount)} of ${filtered.length - visibleCount})`}
+            </Button>
+          )}
+          {hasMore && filtered.length <= visibleCount && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={loadingMore}
+              onClick={() => loadMore()}
+            >
+              {loadingMore
+                ? (isAr ? "جارٍ التحميل…" : "Loading…")
+                : (isAr ? "تحميل سجلات أقدم" : "Load older entries")}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
