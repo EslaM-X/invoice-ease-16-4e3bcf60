@@ -273,6 +273,7 @@ function FulfillmentPage() {
     function canCoverFromStock(raw: RawNeed): boolean {
       const tmp = new Map<string, number>();
       for (const [pid, n] of raw.perProduct) {
+        if (n.isManual) continue; // manual lines have no stock requirement
         const avail = (stockPool.get(pid) ?? 0) - (tmp.get(pid) ?? 0);
         if (avail < n.needed) return false;
         tmp.set(pid, (tmp.get(pid) ?? 0) + n.needed);
@@ -285,6 +286,23 @@ function FulfillmentPage() {
       let totalStock = 0, totalIncoming = 0, totalShortfall = 0;
       let earliest: string | null = null;
       for (const [pid, n] of raw.perProduct) {
+        if (n.isManual) {
+          // Manual line: count as fully covered (no inventory tracking)
+          totalStock += n.needed;
+          needs.push({
+            product_id: pid,
+            product_name: n.product_name,
+            serial: n.serial,
+            color: n.color,
+            needed: n.needed,
+            fromStock: n.needed,
+            fromIncoming: 0,
+            shortfall: 0,
+            incomingPOs: [],
+            isManual: true,
+          });
+          continue;
+        }
         const stockAvail = stockPool.get(pid) ?? 0;
         const fromStock = Math.min(stockAvail, n.needed);
         stockPool.set(pid, stockAvail - fromStock);
