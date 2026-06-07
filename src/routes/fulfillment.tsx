@@ -103,6 +103,7 @@ function FulfillmentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [onlyCloseable, setOnlyCloseable] = useState(false);
 
   async function load() {
     if (!user) return;
@@ -407,9 +408,10 @@ function FulfillmentPage() {
     const g: Record<Tier, Suggestion[]> = {
       now_full: [], now_partial: [], incoming_full: [], incoming_partial: [], blocked: [],
     };
-    for (const s of filtered) g[s.tier].push(s);
+    const src = onlyCloseable ? filtered.filter((s) => s.tier === "now_full") : filtered;
+    for (const s of src) g[s.tier].push(s);
     return g;
-  }, [filtered]);
+  }, [filtered, onlyCloseable]);
 
   return (
     <div className="space-y-6" dir={isAr ? "rtl" : "ltr"}>
@@ -425,14 +427,32 @@ function FulfillmentPage() {
               : "Smart ranking — invoices fully closeable from current stock first, then those needing incoming POs."}
           </p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className={`absolute top-1/2 -translate-y-1/2 ${isAr ? "right-3" : "left-3"} h-4 w-4 text-muted-foreground`} />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={isAr ? "ابحث برقم الفاتورة أو العميل أو المنتج…" : "Search invoice / customer / product…"}
-            className={isAr ? "pr-9" : "pl-9"}
-          />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <Button
+            type="button"
+            variant={onlyCloseable ? "default" : "outline"}
+            size="sm"
+            onClick={() => setOnlyCloseable((v) => !v)}
+            className="gap-2"
+            title={isAr ? "اعرض فقط الفواتير القابلة للإقفال 100% الآن" : "Show only invoices closeable 100% now"}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isAr ? "قابلة للإقفال 100% الآن" : "Closeable 100% now"}
+            {onlyCloseable && (
+              <Badge variant="secondary" className="ms-1">
+                {byTier.now_full.length}
+              </Badge>
+            )}
+          </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className={`absolute top-1/2 -translate-y-1/2 ${isAr ? "right-3" : "left-3"} h-4 w-4 text-muted-foreground`} />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={isAr ? "ابحث برقم الفاتورة أو العميل أو المنتج…" : "Search invoice / customer / product…"}
+              className={isAr ? "pr-9" : "pl-9"}
+            />
+          </div>
         </div>
       </div>
 
