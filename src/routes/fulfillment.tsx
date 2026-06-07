@@ -63,34 +63,50 @@ function FulfillmentPage() {
     if (!user) return;
     setLoading(true);
 
-    const { data: invs } = await supabase
-      .from("invoices")
-      .select("id, invoice_number, customer_name, customer_phone, total, created_at, delivery_status, status")
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .or("delivery_status.is.null,delivery_status.neq.delivered")
-      .order("created_at", { ascending: true })
-      .limit(50000);
-    const invList = (invs ?? []) as FInvoice[];
+    // Page through ALL company-accessible invoices (RLS scopes by company),
+    // not just the current user. Exclude only voided/draft.
+    const fetchAllPaged = async <T,>(
+      build: (from: number, to: number) => any,
+    ): Promise<T[]> => {
+      const out: T[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await build(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as T[];
+        out.push(...rows);
+        if (rows.length < PAGE) break;
+        from += PAGE;
+      }
+      return out;
+    };
+
+    const invList = await fetchAllPaged<FInvoice>((from, to) =>
+      supabase
+        .from("invoices")
+        .select("id, invoice_number, customer_name, customer_phone, total, created_at, delivery_status, status")
+        .not("status", "in", "(voided,draft)")
+        .or("delivery_status.is.null,delivery_status.neq.delivered")
+        .order("created_at", { ascending: true })
+        .range(from, to),
+    );
     setInvoices(invList);
 
     const invIds = invList.map((i) => i.id);
     if (invIds.length === 0) {
       setItems([]); setDeliveredRows([]);
     } else {
-      // Paginate: Supabase Data API caps rows per request. With 117+ invoices and
-      // many delivery receipts the result set easily exceeds 1000 rows, which
-      // previously caused most invoices to silently disappear from the engine.
       const fetchAllByIn = async <T,>(
         table: string, columns: string, key: string, ids: string[],
       ): Promise<T[]> => {
         const out: T[] = [];
-        const chunkIds = 200; // keep IN-list small
+        const chunkIds = 200;
         for (let i = 0; i < ids.length; i += chunkIds) {
           const slice = ids.slice(i, i + chunkIds);
           let from = 0;
           const PAGE = 1000;
-          // page through results for this slice
           // eslint-disable-next-line no-constant-condition
           while (true) {
             const { data, error } = await supabase
@@ -130,27 +146,30 @@ function FulfillmentPage() {
       }
     }
 
-    const { data: prods } = await supabase
-      .from("products")
-      .select("id, name, stock_quantity, serial_number, color")
-      .eq("user_id", user.id)
-      .limit(20000);
+    // Products: company-wide via RLS.
+    const prods = await fetchAllPaged<FProductRow>((from, to) =>
+      supabase
+        .from("products")
+        .select("id, name, stock_quantity, serial_number, color")
+        .range(from, to),
+    );
     const pMap = new Map<string, FProductRow>();
-    for (const p of (prods ?? []) as FProductRow[]) pMap.set(p.id, p);
+    for (const p of prods) pMap.set(p.id, p);
     setProducts(pMap);
 
-    const { data: poList } = await supabase
-      .from("purchase_orders")
-      .select("id, po_number, status, expected_arrival_at")
-      .eq("user_id", user.id)
-      .in("status", Array.from(INCOMING_PO_STATUSES))
-      .limit(2000);
+    // Purchase orders: company-wide via RLS, only incoming statuses.
+    const poList = await fetchAllPaged<FPORow>((from, to) =>
+      supabase
+        .from("purchase_orders")
+        .select("id, po_number, status, expected_arrival_at")
+        .in("status", Array.from(INCOMING_PO_STATUSES))
+        .range(from, to),
+    );
     const poMap = new Map<string, FPORow>();
-    for (const p of (poList ?? []) as FPORow[]) poMap.set(p.id, p);
+    for (const p of poList) poMap.set(p.id, p);
     setPos(poMap);
     const poIds = Array.from(poMap.keys());
     if (poIds.length) {
-      // Page PO items too — large procurement projects can blow past 1000.
       const allPoItems: FPOItemRow[] = [];
       const chunkIds = 200;
       for (let i = 0; i < poIds.length; i += chunkIds) {
@@ -175,7 +194,6 @@ function FulfillmentPage() {
     } else {
       setPoItems([]);
     }
-
 
     setLoading(false);
   }
