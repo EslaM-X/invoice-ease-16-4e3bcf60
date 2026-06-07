@@ -426,7 +426,16 @@ function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
                 ? (isAr ? `أقرب موعد وصول للشحنات: ${fmtDateTime(s.earliestEta, "ar")}` : `Earliest incoming ETA: ${fmtDateTime(s.earliestEta, "en")}`)
                 : (isAr ? "كل المطلوب متاح في المخزون" : "All required units are in stock")}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button" variant="ghost" size="sm" disabled={logging}
+                onClick={() => handleLog(s.tier === "now_full" ? "closed" : "snapshot")}
+                className="gap-1"
+                title={isAr ? "سجّل سبب الإقفال والأرقام في سجل التدقيق" : "Record closure reason & numbers in audit log"}
+              >
+                <Save className="h-3 w-3" />
+                {isAr ? "سجّل في التدقيق" : "Log to audit"}
+              </Button>
               <Link to="/invoices/$id" params={{ id: s.invoice.id }}>
                 <Button variant="outline" size="sm">{isAr ? "فتح الفاتورة" : "Open invoice"}</Button>
               </Link>
@@ -439,6 +448,7 @@ function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
                 </Link>
               )}
             </div>
+
           </div>
         </div>
       )}
