@@ -52,11 +52,16 @@ function FulfillmentAuditPage() {
   const isAr = lang === "ar";
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [q, setQ] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(50); // lightweight virtualization
 
-  async function load() {
+  const PAGE_SIZE = 100;
+
+  async function loadInitial() {
     if (!user) return;
     setLoading(true);
     const { data, error } = await supabase
@@ -64,14 +69,35 @@ function FulfillmentAuditPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(500);
+      .range(0, PAGE_SIZE - 1);
     if (error) toast.error(error.message);
-    setRows(((data ?? []) as unknown) as AuditRow[]);
+    const list = ((data ?? []) as unknown) as AuditRow[];
+    setRows(list);
+    setHasMore(list.length === PAGE_SIZE);
     setLoading(false);
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
-  useRealtimeTable("fulfillment_audit_log", load, [user?.id]);
+  async function loadMore() {
+    if (!user || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const from = rows.length;
+    const { data, error } = await supabase
+      .from("fulfillment_audit_log" as any)
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) toast.error(error.message);
+    const list = ((data ?? []) as unknown) as AuditRow[];
+    setRows((prev) => [...prev, ...list]);
+    setHasMore(list.length === PAGE_SIZE);
+    setLoadingMore(false);
+  }
+
+  useEffect(() => { loadInitial(); /* eslint-disable-next-line */ }, [user?.id]);
+  // Realtime: just refresh the first page so brand-new rows appear without paging reset.
+  useRealtimeTable("fulfillment_audit_log", loadInitial, [user?.id]);
+
 
   async function remove(id: string) {
     const { error } = await supabase.from("fulfillment_audit_log" as any).delete().eq("id", id);
