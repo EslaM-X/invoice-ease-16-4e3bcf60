@@ -291,6 +291,34 @@ function FulfillmentAuditPage() {
           );
         })}
       </div>
+
+      {!loading && (filtered.length > visibleCount || hasMore) && (
+        <div className="flex flex-col items-center gap-2 py-4">
+          {filtered.length > visibleCount && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setVisibleCount((v) => v + 50)}
+            >
+              {isAr
+                ? `عرض المزيد (${Math.min(50, filtered.length - visibleCount)} من ${filtered.length - visibleCount})`
+                : `Show more (${Math.min(50, filtered.length - visibleCount)} of ${filtered.length - visibleCount})`}
+            </Button>
+          )}
+          {hasMore && filtered.length <= visibleCount && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={loadingMore}
+              onClick={() => loadMore()}
+            >
+              {loadingMore
+                ? (isAr ? "جارٍ التحميل…" : "Loading…")
+                : (isAr ? "تحميل سجلات أقدم" : "Load older entries")}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
