@@ -234,19 +234,20 @@ function FulfillmentPage() {
     // 4. Build raw need per invoice (remaining qty per product)
     type RawNeed = {
       invoice: Invoice;
-      perProduct: Map<string, { product_name: string; serial: string | null; color: string | null; needed: number }>;
+      perProduct: Map<string, { product_name: string; serial: string | null; color: string | null; needed: number; isManual: boolean }>;
       totalNeeded: number;
     };
     const raws: RawNeed[] = [];
     for (const inv of invoices) {
       const its = itemsByInv.get(inv.id) ?? [];
-      const perProduct = new Map<string, { product_name: string; serial: string | null; color: string | null; needed: number }>();
+      const perProduct = new Map<string, { product_name: string; serial: string | null; color: string | null; needed: number; isManual: boolean }>();
       let total = 0;
       for (const it of its) {
         const delivered = deliveredMap.get(it.id) ?? 0;
         const remaining = Math.max(0, (it.quantity || 0) - delivered);
         if (remaining <= 0) continue;
-        // Use product_id when present, else fall back to a synthetic key so manual lines still appear (always as shortfall).
+        // Manual lines (no product_id) have no inventory binding — treat as auto-satisfied so they never block closure.
+        const isManual = !it.product_id;
         const key = it.product_id ?? `manual:${it.id}`;
         const cur = perProduct.get(key);
         if (cur) {
@@ -257,6 +258,7 @@ function FulfillmentPage() {
             serial: it.serial_number,
             color: it.color,
             needed: remaining,
+            isManual,
           });
         }
         total += remaining;
