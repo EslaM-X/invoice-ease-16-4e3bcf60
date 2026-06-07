@@ -33,6 +33,7 @@ import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as InTransitRouteImport } from './routes/in-transit'
 import { Route as FulfillmentTestsRouteImport } from './routes/fulfillment-tests'
+import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit'
 import { Route as FulfillmentRouteImport } from './routes/fulfillment'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
@@ -183,6 +184,11 @@ const InTransitRoute = InTransitRouteImport.update({
 const FulfillmentTestsRoute = FulfillmentTestsRouteImport.update({
   id: '/fulfillment-tests',
   path: '/fulfillment-tests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FulfillmentAuditRoute = FulfillmentAuditRouteImport.update({
+  id: '/fulfillment-audit',
+  path: '/fulfillment-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FulfillmentRoute = FulfillmentRouteImport.update({
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/diagnostics': typeof DiagnosticsRoute
   '/download': typeof DownloadRoute
   '/fulfillment': typeof FulfillmentRoute
+  '/fulfillment-audit': typeof FulfillmentAuditRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
@@ -415,6 +422,7 @@ export interface FileRoutesByTo {
   '/diagnostics': typeof DiagnosticsRoute
   '/download': typeof DownloadRoute
   '/fulfillment': typeof FulfillmentRoute
+  '/fulfillment-audit': typeof FulfillmentAuditRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/diagnostics': typeof DiagnosticsRoute
   '/download': typeof DownloadRoute
   '/fulfillment': typeof FulfillmentRoute
+  '/fulfillment-audit': typeof FulfillmentAuditRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
@@ -532,6 +541,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/download'
     | '/fulfillment'
+    | '/fulfillment-audit'
     | '/fulfillment-tests'
     | '/in-transit'
     | '/inventory'
@@ -589,6 +599,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/download'
     | '/fulfillment'
+    | '/fulfillment-audit'
     | '/fulfillment-tests'
     | '/in-transit'
     | '/inventory'
@@ -646,6 +657,7 @@ export interface FileRouteTypes {
     | '/diagnostics'
     | '/download'
     | '/fulfillment'
+    | '/fulfillment-audit'
     | '/fulfillment-tests'
     | '/in-transit'
     | '/inventory'
@@ -704,6 +716,7 @@ export interface RootRouteChildren {
   DiagnosticsRoute: typeof DiagnosticsRoute
   DownloadRoute: typeof DownloadRoute
   FulfillmentRoute: typeof FulfillmentRoute
+  FulfillmentAuditRoute: typeof FulfillmentAuditRoute
   FulfillmentTestsRoute: typeof FulfillmentTestsRoute
   InTransitRoute: typeof InTransitRoute
   InventoryRoute: typeof InventoryRoute
@@ -918,6 +931,13 @@ declare module '@tanstack/react-router' {
       path: '/fulfillment-tests'
       fullPath: '/fulfillment-tests'
       preLoaderRoute: typeof FulfillmentTestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fulfillment-audit': {
+      id: '/fulfillment-audit'
+      path: '/fulfillment-audit'
+      fullPath: '/fulfillment-audit'
+      preLoaderRoute: typeof FulfillmentAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fulfillment': {
@@ -1152,6 +1172,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiagnosticsRoute: DiagnosticsRoute,
   DownloadRoute: DownloadRoute,
   FulfillmentRoute: FulfillmentRoute,
+  FulfillmentAuditRoute: FulfillmentAuditRoute,
   FulfillmentTestsRoute: FulfillmentTestsRoute,
   InTransitRoute: InTransitRoute,
   InventoryRoute: InventoryRoute,
