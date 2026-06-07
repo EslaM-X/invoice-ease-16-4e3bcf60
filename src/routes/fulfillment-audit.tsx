@@ -137,6 +137,9 @@ function FulfillmentAuditPage() {
     return false;
   }), [rows, q, tierFilter]);
 
+  useEffect(() => { setVisibleCount(50); }, [q, tierFilter]);
+
+
   const counts = useMemo(() => {
     let closeable = 0, notCloseable = 0;
     for (const r of rows) {
