@@ -371,6 +371,7 @@ function FulfillmentPage() {
       const tmpInc = new Map<string, number>();
       let ok = true;
       for (const [pid, n] of raw.perProduct) {
+        if (n.isManual) continue;
         const s = (stockPool.get(pid) ?? 0) - (tmpStock.get(pid) ?? 0);
         const fromS = Math.min(s, n.needed);
         const need2 = n.needed - fromS;
