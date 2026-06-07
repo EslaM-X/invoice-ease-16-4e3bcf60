@@ -25,7 +25,7 @@ import {
   type Suggestion, type Tier, type DeliveryMode,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
-import { logFulfillmentAction } from "@/lib/fulfillment-audit";
+import { logFulfillmentAction, bulkLogFulfillment } from "@/lib/fulfillment-audit";
 
 
 export const Route = createFileRoute("/fulfillment")({
