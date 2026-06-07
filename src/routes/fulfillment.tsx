@@ -69,6 +69,7 @@ type Need = {
   fromIncoming: number;
   shortfall: number;
   incomingPOs: { po_number: string; qty: number; eta: string | null }[];
+  isManual?: boolean;
 };
 
 type Tier = "now_full" | "now_partial" | "incoming_full" | "incoming_partial" | "blocked";
