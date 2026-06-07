@@ -69,6 +69,7 @@ type Need = {
   fromIncoming: number;
   shortfall: number;
   incomingPOs: { po_number: string; qty: number; eta: string | null }[];
+  isManual?: boolean;
 };
 
 type Tier = "now_full" | "now_partial" | "incoming_full" | "incoming_partial" | "blocked";
@@ -233,19 +234,20 @@ function FulfillmentPage() {
     // 4. Build raw need per invoice (remaining qty per product)
     type RawNeed = {
       invoice: Invoice;
-      perProduct: Map<string, { product_name: string; serial: string | null; color: string | null; needed: number }>;
+      perProduct: Map<string, { product_name: string; serial: string | null; color: string | null; needed: number; isManual: boolean }>;
       totalNeeded: number;
     };
     const raws: RawNeed[] = [];
     for (const inv of invoices) {
       const its = itemsByInv.get(inv.id) ?? [];
-      const perProduct = new Map<string, { product_name: string; serial: string | null; color: string | null; needed: number }>();
+      const perProduct = new Map<string, { product_name: string; serial: string | null; color: string | null; needed: number; isManual: boolean }>();
       let total = 0;
       for (const it of its) {
         const delivered = deliveredMap.get(it.id) ?? 0;
         const remaining = Math.max(0, (it.quantity || 0) - delivered);
         if (remaining <= 0) continue;
-        // Use product_id when present, else fall back to a synthetic key so manual lines still appear (always as shortfall).
+        // Manual lines (no product_id) have no inventory binding — treat as auto-satisfied so they never block closure.
+        const isManual = !it.product_id;
         const key = it.product_id ?? `manual:${it.id}`;
         const cur = perProduct.get(key);
         if (cur) {
@@ -256,6 +258,7 @@ function FulfillmentPage() {
             serial: it.serial_number,
             color: it.color,
             needed: remaining,
+            isManual,
           });
         }
         total += remaining;
@@ -270,6 +273,7 @@ function FulfillmentPage() {
     function canCoverFromStock(raw: RawNeed): boolean {
       const tmp = new Map<string, number>();
       for (const [pid, n] of raw.perProduct) {
+        if (n.isManual) continue; // manual lines have no stock requirement
         const avail = (stockPool.get(pid) ?? 0) - (tmp.get(pid) ?? 0);
         if (avail < n.needed) return false;
         tmp.set(pid, (tmp.get(pid) ?? 0) + n.needed);
@@ -282,6 +286,23 @@ function FulfillmentPage() {
       let totalStock = 0, totalIncoming = 0, totalShortfall = 0;
       let earliest: string | null = null;
       for (const [pid, n] of raw.perProduct) {
+        if (n.isManual) {
+          // Manual line: count as fully covered (no inventory tracking)
+          totalStock += n.needed;
+          needs.push({
+            product_id: pid,
+            product_name: n.product_name,
+            serial: n.serial,
+            color: n.color,
+            needed: n.needed,
+            fromStock: n.needed,
+            fromIncoming: 0,
+            shortfall: 0,
+            incomingPOs: [],
+            isManual: true,
+          });
+          continue;
+        }
         const stockAvail = stockPool.get(pid) ?? 0;
         const fromStock = Math.min(stockAvail, n.needed);
         stockPool.set(pid, stockAvail - fromStock);
@@ -350,6 +371,7 @@ function FulfillmentPage() {
       const tmpInc = new Map<string, number>();
       let ok = true;
       for (const [pid, n] of raw.perProduct) {
+        if (n.isManual) continue;
         const s = (stockPool.get(pid) ?? 0) - (tmpStock.get(pid) ?? 0);
         const fromS = Math.min(s, n.needed);
         const need2 = n.needed - fromS;
