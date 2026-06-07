@@ -195,12 +195,19 @@ function FulfillmentPage() {
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <Link to="/fulfillment-audit">
+            <Button type="button" variant="ghost" size="sm" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              {isAr ? "سجل التدقيق" : "Audit log"}
+            </Button>
+          </Link>
           <Link to="/fulfillment-tests">
             <Button type="button" variant="ghost" size="sm" className="gap-2">
               <FlaskConical className="h-4 w-4" />
               {isAr ? "اختبارات" : "Tests"}
             </Button>
           </Link>
+
           <Select value={mode} onValueChange={(v) => setMode(v as DeliveryMode)}>
             <SelectTrigger className="w-full sm:w-[230px]" title={isAr ? "نوع التسليم المعتبر" : "Delivery counting mode"}>
               <SelectValue />
