@@ -203,7 +203,7 @@ function FulfillmentAuditPage() {
       )}
 
       <div className="space-y-2">
-        {filtered.map((r) => {
+        {filtered.slice(0, visibleCount).map((r) => {
           const isOpen = expanded.has(r.id);
           return (
             <Card key={r.id} className="p-3">
