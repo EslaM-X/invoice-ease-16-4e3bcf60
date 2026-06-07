@@ -270,6 +270,7 @@ function FulfillmentAuditPage() {
             <SelectItem value="incoming_partial">incoming_partial</SelectItem>
             <SelectItem value="blocked">blocked</SelectItem>
           </SelectContent>
+        </Select>
         <Select value={sort} onValueChange={(v) => setSort(v as ConfSort)}>
           <SelectTrigger className="w-[200px]" title={isAr ? "ترتيب/تصفية حسب الثقة" : "Sort / filter by confidence"}>
             <SelectValue />
