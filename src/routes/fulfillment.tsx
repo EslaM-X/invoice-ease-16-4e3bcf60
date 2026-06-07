@@ -292,23 +292,9 @@ function FulfillmentPage() {
             variant="outline"
             size="sm"
             disabled={!user?.id || byTier.now_full.length === 0}
-            onClick={async () => {
-              if (!user?.id) return;
-              const list = byTier.now_full;
-              if (list.length === 0) { toast.info(isAr ? "لا توجد فواتير قابلة للإقفال الآن" : "No closeable invoices"); return; }
-              const t = toast.loading(isAr ? `جارٍ تسجيل ${list.length} فاتورة…` : `Logging ${list.length} invoices…`);
-              const r = await bulkLogFulfillment(user.id, list, mode, "snapshot",
-                isAr ? "تدقيق جماعي" : "Bulk audit");
-              toast.dismiss(t);
-              toast.success(
-                isAr
-                  ? `✅ سُجّلت ${r.count}/${list.length} — مخزون:${r.totalFromStock} شحنات:${r.totalFromIncoming} يدوي:${r.manualCount} ناقص:${r.totalShortfall}${r.failed ? ` · فشل:${r.failed}` : ""}`
-                  : `✅ Logged ${r.count}/${list.length} — stock:${r.totalFromStock} incoming:${r.totalFromIncoming} manual:${r.manualCount} short:${r.totalShortfall}${r.failed ? ` · failed:${r.failed}` : ""}`,
-                { duration: 8000 },
-              );
-            }}
+            onClick={() => setBulkOpen(true)}
             className="gap-2"
-            title={isAr ? "سجّل تدقيق جماعي لكل الفواتير القابلة للإقفال الآن" : "Bulk audit-log all currently closeable invoices"}
+            title={isAr ? "افتح معاينة التدقيق الجماعي" : "Open bulk audit preview"}
           >
             <ClipboardList className="h-4 w-4" />
             {isAr ? "تدقيق جماعي" : "Bulk audit"}
