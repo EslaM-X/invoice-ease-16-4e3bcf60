@@ -13,9 +13,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { fmtDateTime } from "@/lib/utils-money";
-import { ArrowLeft, ClipboardList, Trash2, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ClipboardList, Trash2, Search, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { reasonLabel, type ReasonCode } from "@/lib/fulfillment-engine";
+import { autoLogClosureForInvoice } from "@/lib/fulfillment-audit";
 
 export const Route = createFileRoute("/fulfillment-audit")({
   component: () => (
@@ -45,6 +46,9 @@ type AuditRow = {
 };
 
 type TierFilter = "all" | "closeable" | "not_closeable" | "now_full" | "now_partial" | "incoming_full" | "incoming_partial" | "blocked";
+type ConfSort = "newest" | "conf_desc" | "conf_asc" | "only_100" | "high" | "medium" | "low";
+
+const SORT_STORAGE_KEY = "fulfillment-audit:sort";
 
 function FulfillmentAuditPage() {
   const { user } = useAuth();
@@ -56,8 +60,17 @@ function FulfillmentAuditPage() {
   const [hasMore, setHasMore] = useState(true);
   const [q, setQ] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [sort, setSort] = useState<ConfSort>(() => {
+    if (typeof window === "undefined") return "newest";
+    return ((localStorage.getItem(SORT_STORAGE_KEY) as ConfSort | null) ?? "newest");
+  });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState(50); // lightweight virtualization
+  const [visibleCount, setVisibleCount] = useState(50);
+  const [reauditing, setReauditing] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem(SORT_STORAGE_KEY, sort); } catch { /* ignore */ }
+  }, [sort]);
 
   const PAGE_SIZE = 100;
 
@@ -113,31 +126,94 @@ function FulfillmentAuditPage() {
     });
   }
 
-  const filtered = useMemo(() => rows.filter((r) => {
-    // Tier filter
-    if (tierFilter === "closeable") {
-      if (r.tier !== "now_full") return false;
-    } else if (tierFilter === "not_closeable") {
-      if (r.tier === "now_full") return false;
-    } else if (tierFilter !== "all" && r.tier !== tierFilter) {
+  const filtered = useMemo(() => {
+    const base = rows.filter((r) => {
+      // Tier filter
+      if (tierFilter === "closeable") {
+        if (r.tier !== "now_full") return false;
+      } else if (tierFilter === "not_closeable") {
+        if (r.tier === "now_full") return false;
+      } else if (tierFilter !== "all" && r.tier !== tierFilter) {
+        return false;
+      }
+      // Confidence band filter (sort selection can also act as a quick filter)
+      if (sort === "only_100" && r.confidence < 100) return false;
+      if (sort === "high" && (r.confidence < 75 || r.confidence >= 100)) return false;
+      if (sort === "medium" && (r.confidence < 50 || r.confidence >= 75)) return false;
+      if (sort === "low" && r.confidence >= 50) return false;
+      // Search
+      const s = q.trim().toLowerCase();
+      if (!s) return true;
+      if (r.invoice_number.toLowerCase().includes(s)) return true;
+      if (r.action.toLowerCase().includes(s)) return true;
+      if (r.tier.toLowerCase().includes(s)) return true;
+      if (r.mode.toLowerCase().includes(s)) return true;
+      if ((r.note || "").toLowerCase().includes(s)) return true;
+      if (Array.isArray(r.reasons) && r.reasons.some((x) =>
+        (x.code || "").toLowerCase().includes(s) || (x.detail || "").toLowerCase().includes(s))) return true;
+      if (Array.isArray(r.needs) && r.needs.some((n: any) =>
+        (n.product_name || "").toLowerCase().includes(s))) return true;
       return false;
+    });
+    // Apply ordering
+    if (sort === "conf_desc") {
+      return [...base].sort((a, b) => b.confidence - a.confidence || b.created_at.localeCompare(a.created_at));
     }
-    // Search: matches invoice / action / tier / note AND reason codes/details AND needs product names
-    const s = q.trim().toLowerCase();
-    if (!s) return true;
-    if (r.invoice_number.toLowerCase().includes(s)) return true;
-    if (r.action.toLowerCase().includes(s)) return true;
-    if (r.tier.toLowerCase().includes(s)) return true;
-    if (r.mode.toLowerCase().includes(s)) return true;
-    if ((r.note || "").toLowerCase().includes(s)) return true;
-    if (Array.isArray(r.reasons) && r.reasons.some((x) =>
-      (x.code || "").toLowerCase().includes(s) || (x.detail || "").toLowerCase().includes(s))) return true;
-    if (Array.isArray(r.needs) && r.needs.some((n: any) =>
-      (n.product_name || "").toLowerCase().includes(s))) return true;
-    return false;
-  }), [rows, q, tierFilter]);
+    if (sort === "conf_asc") {
+      return [...base].sort((a, b) => a.confidence - b.confidence || b.created_at.localeCompare(a.created_at));
+    }
+    // newest + band filters keep DB order (already newest first)
+    return base;
+  }, [rows, q, tierFilter, sort]);
 
-  useEffect(() => { setVisibleCount(50); }, [q, tierFilter]);
+  useEffect(() => { setVisibleCount(50); }, [q, tierFilter, sort]);
+
+  // Re-audit only failed (non-closeable) entries currently visible.
+  // De-dupe by invoice_id so each failed invoice is re-evaluated once.
+  async function reauditFailed() {
+    if (!user?.id || reauditing) return;
+    const failedInvoices = new Map<string, AuditRow>();
+    for (const r of filtered) {
+      if (r.tier !== "now_full" && !failedInvoices.has(r.invoice_id)) {
+        failedInvoices.set(r.invoice_id, r);
+      }
+    }
+    const list = Array.from(failedInvoices.values());
+    if (list.length === 0) {
+      toast.info(isAr ? "لا توجد فواتير فاشلة لإعادة التدقيق" : "No failed invoices to re-audit");
+      return;
+    }
+    setReauditing(true);
+    let ok = 0, fail = 0, recovered = 0;
+    const note = isAr ? "إعادة تدقيق الفواتير الفاشلة" : "Re-audit failed invoices";
+    // Limited concurrency to avoid hammering DB.
+    const CONCURRENCY = 4;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < list.length) {
+        const r = list[cursor++];
+        try {
+          const s = await autoLogClosureForInvoice(user!.id, r.invoice_id, (r.mode as any) || "any", "snapshot", note);
+          if (s) {
+            ok++;
+            if (s.tier === "now_full") recovered++;
+          } else {
+            fail++;
+          }
+        } catch {
+          fail++;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, list.length) }, worker));
+    setReauditing(false);
+    toast.success(
+      isAr
+        ? `✅ أُعيد تدقيق ${ok}/${list.length} — أصبحت قابلة للإقفال: ${recovered}${fail ? ` · فشل ${fail}` : ""}`
+        : `✅ Re-audited ${ok}/${list.length} — newly closeable: ${recovered}${fail ? ` · failed ${fail}` : ""}`,
+      { duration: 9000 },
+    );
+  }
 
 
   const counts = useMemo(() => {
@@ -195,6 +271,32 @@ function FulfillmentAuditPage() {
             <SelectItem value="blocked">blocked</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={sort} onValueChange={(v) => setSort(v as ConfSort)}>
+          <SelectTrigger className="w-[200px]" title={isAr ? "ترتيب/تصفية حسب الثقة" : "Sort / filter by confidence"}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{isAr ? "الأحدث أولاً" : "Newest first"}</SelectItem>
+            <SelectItem value="conf_desc">{isAr ? "الثقة: من الأعلى" : "Confidence: high → low"}</SelectItem>
+            <SelectItem value="conf_asc">{isAr ? "الثقة: من الأدنى" : "Confidence: low → high"}</SelectItem>
+            <SelectItem value="only_100">{isAr ? "ثقة 100% فقط" : "Only 100%"}</SelectItem>
+            <SelectItem value="high">{isAr ? "ثقة عالية (75–99%)" : "High (75–99%)"}</SelectItem>
+            <SelectItem value="medium">{isAr ? "ثقة متوسطة (50–74%)" : "Medium (50–74%)"}</SelectItem>
+            <SelectItem value="low">{isAr ? "ثقة منخفضة (<50%)" : "Low (<50%)"}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={reauditing || !user?.id}
+          onClick={reauditFailed}
+          title={isAr ? "إعادة تدقيق الفواتير الفاشلة فقط ضمن النتائج الحالية" : "Re-audit only failed invoices in the current results"}
+        >
+          <RefreshCcw className={`h-4 w-4 ${reauditing ? "animate-spin" : ""}`} />
+          {isAr ? "إعادة تدقيق الفاشلة" : "Re-audit failed"}
+        </Button>
         <Badge variant="outline" className="text-xs">{filtered.length} / {rows.length}</Badge>
       </div>
 
