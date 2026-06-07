@@ -13,9 +13,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { fmtDateTime } from "@/lib/utils-money";
-import { ArrowLeft, ClipboardList, Trash2, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ClipboardList, Trash2, Search, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { reasonLabel, type ReasonCode } from "@/lib/fulfillment-engine";
+import { autoLogClosureForInvoice } from "@/lib/fulfillment-audit";
 
 export const Route = createFileRoute("/fulfillment-audit")({
   component: () => (
