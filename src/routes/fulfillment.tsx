@@ -323,11 +323,23 @@ function TierHeader({ tier, count, isAr }: { tier: Tier; count: number; isAr: bo
   );
 }
 
-function SuggestionCard({ s, isAr, open, onToggle }: {
-  s: Suggestion; isAr: boolean; open: boolean; onToggle: () => void;
+function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
+  s: Suggestion; isAr: boolean; mode: DeliveryMode; userId: string | null; open: boolean; onToggle: () => void;
 }) {
+  const [logging, setLogging] = useState(false);
+  async function handleLog(action: "closed" | "partial_close" | "snapshot") {
+    if (!userId) { toast.error(isAr ? "يلزم تسجيل الدخول" : "Sign in required"); return; }
+    setLogging(true);
+    try {
+      await logFulfillmentAction(userId, s, mode, action);
+      toast.success(isAr ? "تم تسجيل الإقفال في سجل التدقيق" : "Closure recorded in audit log");
+    } catch (e: any) {
+      toast.error(e?.message || "Error");
+    } finally { setLogging(false); }
+  }
   const pct = s.confidence;
   const canCreateDR = s.totalFromStock > 0 || s.totalNeeded === 0;
+
   const confColor =
     pct >= 100 ? "text-emerald-700 dark:text-emerald-400"
     : pct >= 60 ? "text-amber-700 dark:text-amber-400"
