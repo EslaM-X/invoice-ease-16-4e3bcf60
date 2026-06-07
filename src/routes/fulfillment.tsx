@@ -408,9 +408,10 @@ function FulfillmentPage() {
     const g: Record<Tier, Suggestion[]> = {
       now_full: [], now_partial: [], incoming_full: [], incoming_partial: [], blocked: [],
     };
-    for (const s of filtered) g[s.tier].push(s);
+    const src = onlyCloseable ? filtered.filter((s) => s.tier === "now_full") : filtered;
+    for (const s of src) g[s.tier].push(s);
     return g;
-  }, [filtered]);
+  }, [filtered, onlyCloseable]);
 
   return (
     <div className="space-y-6" dir={isAr ? "rtl" : "ltr"}>
