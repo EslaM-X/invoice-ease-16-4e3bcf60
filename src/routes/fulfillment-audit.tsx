@@ -46,6 +46,9 @@ type AuditRow = {
 };
 
 type TierFilter = "all" | "closeable" | "not_closeable" | "now_full" | "now_partial" | "incoming_full" | "incoming_partial" | "blocked";
+type ConfSort = "newest" | "conf_desc" | "conf_asc" | "only_100" | "high" | "medium" | "low";
+
+const SORT_STORAGE_KEY = "fulfillment-audit:sort";
 
 function FulfillmentAuditPage() {
   const { user } = useAuth();
@@ -57,8 +60,17 @@ function FulfillmentAuditPage() {
   const [hasMore, setHasMore] = useState(true);
   const [q, setQ] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [sort, setSort] = useState<ConfSort>(() => {
+    if (typeof window === "undefined") return "newest";
+    return ((localStorage.getItem(SORT_STORAGE_KEY) as ConfSort | null) ?? "newest");
+  });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState(50); // lightweight virtualization
+  const [visibleCount, setVisibleCount] = useState(50);
+  const [reauditing, setReauditing] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem(SORT_STORAGE_KEY, sort); } catch { /* ignore */ }
+  }, [sort]);
 
   const PAGE_SIZE = 100;
 
