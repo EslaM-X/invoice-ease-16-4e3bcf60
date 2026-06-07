@@ -270,7 +270,32 @@ function FulfillmentAuditPage() {
             <SelectItem value="incoming_partial">incoming_partial</SelectItem>
             <SelectItem value="blocked">blocked</SelectItem>
           </SelectContent>
+        <Select value={sort} onValueChange={(v) => setSort(v as ConfSort)}>
+          <SelectTrigger className="w-[200px]" title={isAr ? "ترتيب/تصفية حسب الثقة" : "Sort / filter by confidence"}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{isAr ? "الأحدث أولاً" : "Newest first"}</SelectItem>
+            <SelectItem value="conf_desc">{isAr ? "الثقة: من الأعلى" : "Confidence: high → low"}</SelectItem>
+            <SelectItem value="conf_asc">{isAr ? "الثقة: من الأدنى" : "Confidence: low → high"}</SelectItem>
+            <SelectItem value="only_100">{isAr ? "ثقة 100% فقط" : "Only 100%"}</SelectItem>
+            <SelectItem value="high">{isAr ? "ثقة عالية (75–99%)" : "High (75–99%)"}</SelectItem>
+            <SelectItem value="medium">{isAr ? "ثقة متوسطة (50–74%)" : "Medium (50–74%)"}</SelectItem>
+            <SelectItem value="low">{isAr ? "ثقة منخفضة (<50%)" : "Low (<50%)"}</SelectItem>
+          </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={reauditing || !user?.id}
+          onClick={reauditFailed}
+          title={isAr ? "إعادة تدقيق الفواتير الفاشلة فقط ضمن النتائج الحالية" : "Re-audit only failed invoices in the current results"}
+        >
+          <RefreshCcw className={`h-4 w-4 ${reauditing ? "animate-spin" : ""}`} />
+          {isAr ? "إعادة تدقيق الفاشلة" : "Re-audit failed"}
+        </Button>
         <Badge variant="outline" className="text-xs">{filtered.length} / {rows.length}</Badge>
       </div>
 
