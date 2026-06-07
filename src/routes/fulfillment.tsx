@@ -13,6 +13,9 @@ import { Progress } from "@/components/ui/progress";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { fmtMoney, fmtDateTime } from "@/lib/utils-money";
 import {
   CheckCircle2, AlertTriangle, Clock, Truck, Sparkles, Search,
