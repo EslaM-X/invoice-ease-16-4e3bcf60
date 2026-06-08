@@ -832,17 +832,55 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     }
   };
 
+  // Format "saved Xs/m ago" relative to now (re-renders via `tick`)
+  const savedAgo = (() => {
+    if (!lastSavedAt) return "";
+    void tick;
+    const s = Math.max(1, Math.floor((Date.now() - lastSavedAt) / 1000));
+    if (lang === "ar") {
+      if (s < 60) return `قبل ${s} ث`;
+      const m = Math.floor(s / 60);
+      return m < 60 ? `قبل ${m} د` : `قبل ${Math.floor(m / 60)} س`;
+    }
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    return m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ago`;
+  })();
+
   return (
     <div className="space-y-5 w-full max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
-          {isDraft && (
-            <span className="ms-2 align-middle rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-700 dark:text-amber-400">
-              {lang === "ar" ? "مسودة" : "Draft"}
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
+            {isDraft && (
+              <span className="ms-2 align-middle rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-700 dark:text-amber-400">
+                {lang === "ar" ? "مسودة" : "Draft"}
+              </span>
+            )}
+          </h1>
+          {effectiveDraftKey && autosaveState !== "idle" && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors ${
+                autosaveState === "saving"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              }`}
+              aria-live="polite"
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  autosaveState === "saving"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-emerald-500"
+                }`}
+              />
+              {autosaveState === "saving"
+                ? (lang === "ar" ? "جارٍ الحفظ التلقائي…" : "Autosaving…")
+                : (lang === "ar" ? `حُفظت تلقائياً ${savedAgo}` : `Saved ${savedAgo}`)}
             </span>
           )}
-        </h1>
+        </div>
         <Button onClick={save} disabled={saving} className="gap-2 shadow-glow w-full sm:w-auto">
           {isDraft
             ? (lang === "ar" ? "حفظ كمسودة" : "Save draft")
