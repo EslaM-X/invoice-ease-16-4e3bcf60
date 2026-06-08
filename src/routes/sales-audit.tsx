@@ -69,7 +69,8 @@ function SalesAudit() {
   const load = async () => {
     if (isLoading.current) return;
     isLoading.current = true;
-    setLoading(true);
+    if (invoices.length === 0 && logs.length === 0) setLoading(true);
+
     const { startISO, endISO } = dayWindow(date);
 
     // Fetch ALL invoices in window (incl. voided), items, and inventory logs.
