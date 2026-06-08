@@ -60,12 +60,37 @@ function FulfillmentPage() {
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
+  // Offline-friendly snapshot key (per user) — so reloading the page while
+  // offline still shows the last known state instantly.
+  const cacheKey = `fulfillment_snapshot_v1::${user?.id ?? "anon"}`;
+
+  // Hydrate from cache once on mount if state is empty (instant first paint,
+  // even when the network is slow or down).
+  useEffect(() => {
+    if (typeof localStorage === "undefined" || !user?.id) return;
+    if (invoices.length > 0) return;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return;
+      const snap = JSON.parse(raw);
+      if (snap?.invoices) setInvoices(snap.invoices);
+      if (snap?.items) setItems(snap.items);
+      if (snap?.deliveredRows) setDeliveredRows(snap.deliveredRows);
+      if (Array.isArray(snap?.products)) setProducts(new Map(snap.products));
+      if (snap?.poItems) setPoItems(snap.poItems);
+      if (Array.isArray(snap?.pos)) setPos(new Map(snap.pos));
+      setLoading(false);
+    } catch { /* ignore corrupted cache */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   async function load() {
     if (!user) return;
-    // Only show the full-page loading skeleton on the very first load.
-    // Subsequent refreshes (realtime, focus) refresh in-place so the UI
-    // doesn't flash "جاري التحميل" every time anything changes.
+    // Only show the full-page loading skeleton on the very first load AND
+    // only when we have no cached snapshot to fall back on.
     if (invoices.length === 0) setLoading(true);
+
+
 
 
     // Page through ALL company-accessible invoices (RLS scopes by company),
