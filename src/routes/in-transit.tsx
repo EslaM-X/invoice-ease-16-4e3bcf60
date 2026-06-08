@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { fmtDateTime } from "@/lib/utils-money";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
