@@ -155,7 +155,8 @@ function ProfitsPage() {
   };
 
   const loadItems = async () => {
-    setLoading(true);
+    if (items.length === 0) setLoading(true);
+
     const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
     let q = supabase
       .from("invoice_items")
