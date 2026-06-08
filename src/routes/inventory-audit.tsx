@@ -58,7 +58,8 @@ function InventoryAudit() {
   const [opType, setOpType] = useState<"all" | "sale" | "void" | "edit" | "manual">("all");
 
   const load = async () => {
-    setLoading(true);
+    if (logs.length === 0 && products.length === 0) setLoading(true);
+
     let q = supabase.from("inventory_logs").select("*").order("created_at", { ascending: false });
     if (from) q = q.gte("created_at", from);
     if (to) q = q.lte("created_at", to + "T23:59:59");
