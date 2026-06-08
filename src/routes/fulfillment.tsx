@@ -25,6 +25,7 @@ import { ColorSwatch } from "@/components/color-swatch";
 import { toast } from "sonner";
 import {
   computeSuggestions, reasonLabel, INCOMING_PO_STATUSES,
+  DEFAULT_DELIVERY_MODE,
   type Suggestion, type Tier, type DeliveryMode,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
@@ -54,7 +55,7 @@ function FulfillmentPage() {
   const [search, setSearch] = useState("");
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [onlyCloseable, setOnlyCloseable] = useState(false);
-  const [mode, setMode] = useState<DeliveryMode>("any");
+  const [mode, setMode] = useState<DeliveryMode>(DEFAULT_DELIVERY_MODE);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
@@ -288,8 +289,8 @@ function FulfillmentPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">{isAr ? "أي تسليم يُحتسب (افتراضي)" : "Any delivery counts (default)"}</SelectItem>
-              <SelectItem value="strict_full">{isAr ? "المُسلَّم كامل فقط" : "Fully delivered only"}</SelectItem>
+              <SelectItem value="strict_full">{isAr ? "المُسلَّم كامل فقط (افتراضي)" : "Fully delivered only (default)"}</SelectItem>
+              <SelectItem value="any">{isAr ? "أي تسليم يُحتسب" : "Any delivery counts"}</SelectItem>
               <SelectItem value="mixer_ok">{isAr ? "المكسّر فقط يكفي" : "Mixer-only counts"}</SelectItem>
               <SelectItem value="trim_ok">{isAr ? "الظاهر فقط يكفي" : "Trim-only counts"}</SelectItem>
             </SelectContent>
@@ -541,6 +542,20 @@ function SuggestionCard({ s, isAr, mode, userId, open, onToggle }: {
                   {n.fromIncoming > 0 && <Badge variant="outline" className="border-violet-500/40 text-violet-700 dark:text-violet-400">{isAr ? "من الشحنات" : "From incoming"}: {n.fromIncoming}</Badge>}
                   {n.shortfall > 0 && <Badge variant="outline" className="border-rose-500/40 text-rose-700 dark:text-rose-400">{isAr ? "ناقص" : "Short"}: {n.shortfall}</Badge>}
                 </div>
+                {!n.isManual && (n.pendingMixer || n.pendingTrim) ? (
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    {Boolean(n.pendingMixer) && (
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                        {isAr ? "المكسّر المتبقي" : "Pending mixer"}: {n.pendingMixer}
+                      </Badge>
+                    )}
+                    {Boolean(n.pendingTrim) && (
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                        {isAr ? "الجزء الظاهر المتبقي" : "Pending trim"}: {n.pendingTrim}
+                      </Badge>
+                    )}
+                  </div>
+                ) : null}
                 {n.incomingPOs.length > 0 && (
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {n.incomingPOs.map((p, i) => (
