@@ -88,7 +88,8 @@ function CallCenterPage() {
   }, [isCallCenter, roleLoading, navigate, isAr]);
 
   const load = async () => {
-    setLoading(true);
+    if (calls.length === 0 && customers.length === 0) setLoading(true);
+
     const [{ data }, { data: cs }] = await Promise.all([
       supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
       supabase.from("customers").select("id, name, phone").order("name"),
