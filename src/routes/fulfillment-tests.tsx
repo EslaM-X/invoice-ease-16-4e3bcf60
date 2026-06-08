@@ -161,7 +161,7 @@ function makeCases(): TestCase[] {
       },
     },
     {
-      name: "No double-allocation: 1 stock, 2 invoices wanting 1 each → only one now_full",
+      name: "Each invoice is evaluated independently in suggestions: 1 stock, 2 invoices wanting 1 each → both appear now_full",
       mode: "any",
       input: {
         invoices: [baseInv("i8a", "INV-8A"), baseInv("i8b", "INV-8B", 500)],
@@ -174,7 +174,7 @@ function makeCases(): TestCase[] {
         const a = out.find((x) => x.invoice.id === "i8a")!;
         const b = out.find((x) => x.invoice.id === "i8b")!;
         const fulls = [a, b].filter((x) => x.tier === "now_full").length;
-        return { pass: fulls === 1, detail: `now_full count=${fulls} (a=${a?.tier} b=${b?.tier})` };
+        return { pass: fulls === 2, detail: `now_full count=${fulls} (a=${a?.tier} b=${b?.tier})` };
       },
     },
     {
