@@ -63,7 +63,8 @@ function SystemNotesPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const load = async () => {
-    setLoading(true);
+    if (rows.length === 0) setLoading(true);
+
     const { data } = await supabase
       .from("invoices")
       .select("id,invoice_number,receipt_number,customer_name,total,status,created_at,system_notes")
