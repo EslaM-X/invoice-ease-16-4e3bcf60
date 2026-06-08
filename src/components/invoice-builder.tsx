@@ -180,15 +180,54 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     } catch {}
   }, [mode, draftKey, initial]);
 
+  // Autosave indicator state
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
+  const dirtyRef = useRef(false);
+
+  // Effective draft key — also for edit mode (local recovery copy)
+  const effectiveDraftKey = draftKey ?? (mode === "edit" && invoiceId ? `invoice-edit-recovery:${invoiceId}` : null);
+
   useEffect(() => {
-    if (mode !== "new" || !draftKey) return;
+    if (!effectiveDraftKey) return;
+    if (!(items.length || customerId || notes)) return;
+    dirtyRef.current = true;
+    setAutosaveState("saving");
     const id = setTimeout(() => {
-      if (items.length || customerId || notes) {
-        localStorage.setItem(draftKey, JSON.stringify({ customerId, items, discount, notes, savedAt: new Date().toISOString() }));
+      try {
+        localStorage.setItem(
+          effectiveDraftKey,
+          JSON.stringify({ customerId, items, discount, notes, savedAt: new Date().toISOString() }),
+        );
+        setLastSavedAt(Date.now());
+        setAutosaveState("saved");
+        dirtyRef.current = false;
+      } catch {
+        setAutosaveState("idle");
       }
-    }, 500);
+    }, 600);
     return () => clearTimeout(id);
-  }, [mode, draftKey, customerId, items, discount, notes]);
+  }, [effectiveDraftKey, customerId, items, discount, notes]);
+
+  // Tick the "saved Xs ago" label every 15s
+  useEffect(() => {
+    if (autosaveState !== "saved") return;
+    const id = setInterval(() => setTick((t) => t + 1), 15_000);
+    return () => clearInterval(id);
+  }, [autosaveState]);
+
+  // Warn before closing the tab while there are unsaved changes
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
 
   // Auto-open scanner
   useEffect(() => {
