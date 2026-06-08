@@ -57,13 +57,14 @@ export type Tier =
 
 /**
  * Delivery interpretation: how do we count partial deliveries on multi-part products?
- *  - any (default): every delivered unit reduces remaining 1:1 (mixer alone counts as 1, trim alone counts as 1).
- *  - strict_full: only paired mixer+trim (or `full`) counts. Unpaired mixer/trim does NOT reduce remaining.
+ *  - strict_full (default): only paired mixer+trim (or `full`) counts. Unpaired mixer/trim does NOT reduce remaining.
+ *  - any: every delivered unit reduces remaining 1:1 (mixer alone counts as 1, trim alone counts as 1).
  *  - mixer_ok: every mixer delivery (alone) is enough to consider that unit closed.
  *  - trim_ok: every trim (visible) delivery is enough.
  * Single-part products are unaffected.
  */
 export type DeliveryMode = "any" | "strict_full" | "mixer_ok" | "trim_ok";
+export const DEFAULT_DELIVERY_MODE: DeliveryMode = "strict_full";
 
 export type Need = {
   product_id: string;
@@ -76,6 +77,8 @@ export type Need = {
   shortfall: number;
   incomingPOs: { po_number: string; qty: number; eta: string | null }[];
   isManual?: boolean;
+  pendingMixer?: number;
+  pendingTrim?: number;
 };
 
 export type ReasonCode =
@@ -167,6 +170,12 @@ export type EngineInput = {
 export function computeSuggestions(input: EngineInput): Suggestion[] {
   const { invoices, items, deliveredRows, products, poItems, pos, mode } = input;
   const effectiveDelivered = buildEffectiveDelivered(items, deliveredRows, mode);
+  const deliveredRowsByItem = new Map<string, FDeliveredRow[]>();
+  for (const row of deliveredRows) {
+    const list = deliveredRowsByItem.get(row.invoice_item_id) ?? [];
+    list.push(row);
+    deliveredRowsByItem.set(row.invoice_item_id, list);
+  }
 
   const itemsByInv = new Map<string, FInvItem[]>();
   for (const it of items) {
@@ -192,9 +201,33 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     });
   }
 
+  function getPendingPartCounts(item: FInvItem): { pendingMixer: number; pendingTrim: number } {
+    if (!isMultiPartProduct(item.product_name)) return { pendingMixer: 0, pendingTrim: 0 };
+    const rows = deliveredRowsByItem.get(item.id) ?? [];
+    let full = 0, mixer = 0, trim = 0;
+    for (const row of rows) {
+      const qty = row.quantity || 0;
+      const { part } = parsePartFromNote(row.note);
+      if (!row.note || part === "full") full += qty;
+      else if (part === "mixer") mixer += qty;
+      else if (part === "trim") trim += qty;
+    }
+    const pendingMixer = Math.max(0, (item.quantity || 0) - (mixer + full));
+    const pendingTrim = Math.max(0, (item.quantity || 0) - (trim + full));
+    return { pendingMixer, pendingTrim };
+  }
+
   type RawNeed = {
     invoice: FInvoice;
-    perProduct: Map<string, { product_name: string; serial: string | null; color: string | null; needed: number; isManual: boolean }>;
+    perProduct: Map<string, {
+      product_name: string;
+      serial: string | null;
+      color: string | null;
+      needed: number;
+      isManual: boolean;
+      pendingMixer: number;
+      pendingTrim: number;
+    }>;
     totalNeeded: number;
     manualCount: number;
     fullyDelivered: boolean;
@@ -202,7 +235,15 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
   const raws: RawNeed[] = [];
   for (const inv of invoices) {
     const its = itemsByInv.get(inv.id) ?? [];
-    const perProduct = new Map<string, { product_name: string; serial: string | null; color: string | null; needed: number; isManual: boolean }>();
+    const perProduct = new Map<string, {
+      product_name: string;
+      serial: string | null;
+      color: string | null;
+      needed: number;
+      isManual: boolean;
+      pendingMixer: number;
+      pendingTrim: number;
+    }>();
     let total = 0;
     let manualCount = 0;
     let anyItem = its.length > 0;
@@ -215,9 +256,23 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
       const isManual = !it.product_id;
       if (isManual) manualCount += remaining;
       const key = it.product_id ?? `manual:${it.id}`;
+      const pendingParts = getPendingPartCounts(it);
       const cur = perProduct.get(key);
-      if (cur) cur.needed += remaining;
-      else perProduct.set(key, { product_name: it.product_name, serial: it.serial_number, color: it.color, needed: remaining, isManual });
+      if (cur) {
+        cur.needed += remaining;
+        cur.pendingMixer += pendingParts.pendingMixer;
+        cur.pendingTrim += pendingParts.pendingTrim;
+      } else {
+        perProduct.set(key, {
+          product_name: it.product_name,
+          serial: it.serial_number,
+          color: it.color,
+          needed: remaining,
+          isManual,
+          pendingMixer: pendingParts.pendingMixer,
+          pendingTrim: pendingParts.pendingTrim,
+        });
+      }
       total += remaining;
     }
     if (total > 0) {
@@ -240,6 +295,7 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
         needs.push({
           product_id: pid, product_name: n.product_name, serial: n.serial, color: n.color,
           needed: n.needed, fromStock: n.needed, fromIncoming: 0, shortfall: 0, incomingPOs: [], isManual: true,
+          pendingMixer: 0, pendingTrim: 0,
         });
         continue;
       }
@@ -264,7 +320,19 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
       }
       const shortfall = n.needed - fromStock - fromIncoming;
       totalStock += fromStock; totalIncoming += fromIncoming; totalShortfall += shortfall;
-      needs.push({ product_id: pid, product_name: n.product_name, serial: n.serial, color: n.color, needed: n.needed, fromStock, fromIncoming, shortfall, incomingPOs });
+      needs.push({
+        product_id: pid,
+        product_name: n.product_name,
+        serial: n.serial,
+        color: n.color,
+        needed: n.needed,
+        fromStock,
+        fromIncoming,
+        shortfall,
+        incomingPOs,
+        pendingMixer: n.pendingMixer,
+        pendingTrim: n.pendingTrim,
+      });
     }
     const totalNeeded = raw.totalNeeded || 0;
     const totalCovered = totalStock + totalIncoming;
