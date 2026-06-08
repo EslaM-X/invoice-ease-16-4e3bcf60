@@ -237,6 +237,35 @@ function FulfillmentPage() {
     prevNowFullRef.current = nowFull;
   }, [suggestions, isAr]);
 
+  // Auto-snapshot: silently log the current set of 100%-closeable suggestions
+  // whenever the signature changes, so the audit log is always fresh without
+  // anyone clicking "Bulk audit". Debounced; runs once per signature per user.
+  const autoSnapSigRef = useRef<string>("");
+  const autoSnapRunningRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!user?.id || loading) return;
+    const closeable = suggestions.filter((s) => s.tier === "now_full");
+    if (closeable.length === 0) return;
+    const sig = `${mode}|` + closeable
+      .map((s) => `${s.invoice.id}:${s.confidence}:${s.totalNeeded}:${s.totalFromStock}:${s.totalFromIncoming}`)
+      .sort()
+      .join(",");
+    if (sig === autoSnapSigRef.current || autoSnapRunningRef.current) return;
+    const t = setTimeout(async () => {
+      if (autoSnapRunningRef.current) return;
+      autoSnapRunningRef.current = true;
+      try {
+        await bulkLogFulfillment(user.id, closeable, mode, "snapshot", "auto");
+        autoSnapSigRef.current = sig;
+      } catch {
+        /* silent background auto-snapshot */
+      } finally {
+        autoSnapRunningRef.current = false;
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [suggestions, mode, user?.id, loading]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return suggestions;
