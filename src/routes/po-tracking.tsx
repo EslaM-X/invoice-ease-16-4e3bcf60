@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRole } from "@/lib/use-role";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
