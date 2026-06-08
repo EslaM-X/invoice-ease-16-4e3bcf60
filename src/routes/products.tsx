@@ -272,6 +272,8 @@ function Products() {
     }
     toast.success(t("stock_adjusted"));
     const targetId = adjustFor.id;
+    const optimisticStock = adjustFor.stock_quantity + amt;
+    commitList((prev) => prev.map((p) => (p.id === targetId ? { ...p, stock_quantity: optimisticStock } : p)));
     setAdjustFor(null);
     setAdjustAmt("0");
     setAdjustReason("");
@@ -370,7 +372,7 @@ function Products() {
             <DialogTrigger asChild>
               <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("add_product")}</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
               <DialogHeader><DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
@@ -551,7 +553,7 @@ function Products() {
 
       {/* QR preview dialog */}
       <Dialog open={!!qrPreview} onOpenChange={(v) => !v && setQrPreview(null)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{qrPreview?.name}</DialogTitle></DialogHeader>
           {qrPreview && (
             <div className="flex flex-col items-center gap-4">
@@ -566,7 +568,7 @@ function Products() {
 
       {/* Adjust stock dialog */}
       <Dialog open={!!adjustFor} onOpenChange={(v) => !v && setAdjustFor(null)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{t("adjust_stock")} — {adjustFor?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="rounded-lg border bg-muted/30 p-3 text-xs">
@@ -614,7 +616,7 @@ function Products() {
 
       {/* Bulk add stock dialog */}
       <Dialog open={bulkOpen} onOpenChange={(v) => !v && !bulkBusy && setBulkOpen(false)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PackagePlus className="h-5 w-5" />
