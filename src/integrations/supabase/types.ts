@@ -3149,6 +3149,10 @@ export type Database = {
         Returns: boolean
       }
       delete_invoice: { Args: { _invoice_id: string }; Returns: string }
+      delivery_item_effective_qty: {
+        Args: { _invoice_item_id: string; _mode?: string }
+        Returns: number
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
