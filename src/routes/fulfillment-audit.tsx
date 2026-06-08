@@ -76,7 +76,8 @@ function FulfillmentAuditPage() {
 
   async function loadInitial() {
     if (!user) return;
-    setLoading(true);
+    if (rows.length === 0) setLoading(true);
+
     const { data, error } = await supabase
       .from("fulfillment_audit_log" as any)
       .select("*")
