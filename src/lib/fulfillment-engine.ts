@@ -175,16 +175,11 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     itemsByInv.set(it.invoice_id, a);
   }
 
-  const stockPool = new Map<string, number>();
-  for (const [pid, p] of products) stockPool.set(pid, Math.max(0, p.stock_quantity || 0));
-
-  const incomingPool = new Map<string, number>();
   const incomingByProduct = new Map<string, { po_id: string; qty: number }[]>();
   for (const pi of poItems) {
     if (!pi.product_id) continue;
     const remainingQty = Math.max(0, (pi.quantity || 0) - (pi.received_qty || 0));
     if (remainingQty <= 0) continue;
-    incomingPool.set(pi.product_id, (incomingPool.get(pi.product_id) ?? 0) + remainingQty);
     const list = incomingByProduct.get(pi.product_id) ?? [];
     list.push({ po_id: pi.po_id, qty: remainingQty });
     incomingByProduct.set(pi.product_id, list);
@@ -233,21 +228,9 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     }
   }
 
-  const committed = new Set<string>();
   const out: Suggestion[] = [];
 
-  function canCoverFromStock(raw: RawNeed): boolean {
-    const tmp = new Map<string, number>();
-    for (const [pid, n] of raw.perProduct) {
-      if (n.isManual) continue;
-      const avail = (stockPool.get(pid) ?? 0) - (tmp.get(pid) ?? 0);
-      if (avail < n.needed) return false;
-      tmp.set(pid, (tmp.get(pid) ?? 0) + n.needed);
-    }
-    return true;
-  }
-
-  function commit(raw: RawNeed, tier: Tier, useIncoming: boolean): Suggestion {
+  function summarize(raw: RawNeed): Suggestion {
     const needs: Need[] = [];
     let totalStock = 0, totalIncoming = 0, totalShortfall = 0;
     let earliest: string | null = null;
@@ -260,14 +243,13 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
         });
         continue;
       }
-      const stockAvail = stockPool.get(pid) ?? 0;
+      const stockAvail = Math.max(0, products.get(pid)?.stock_quantity || 0);
       const fromStock = Math.min(stockAvail, n.needed);
-      stockPool.set(pid, stockAvail - fromStock);
       let remaining = n.needed - fromStock;
       let fromIncoming = 0;
       const incomingPOs: Need["incomingPOs"] = [];
-      if (useIncoming && remaining > 0) {
-        const list = incomingByProduct.get(pid) ?? [];
+      if (remaining > 0) {
+        const list = (incomingByProduct.get(pid) ?? []).map((slot) => ({ ...slot }));
         for (const slot of list) {
           if (remaining <= 0) break;
           if (slot.qty <= 0) continue;
@@ -279,7 +261,6 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
             if (po.expected_arrival_at && (!earliest || po.expected_arrival_at < earliest)) earliest = po.expected_arrival_at;
           }
         }
-        incomingPool.set(pid, (incomingPool.get(pid) ?? 0) - fromIncoming);
       }
       const shortfall = n.needed - fromStock - fromIncoming;
       totalStock += fromStock; totalIncoming += fromIncoming; totalShortfall += shortfall;
@@ -288,6 +269,11 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     const totalNeeded = raw.totalNeeded || 0;
     const totalCovered = totalStock + totalIncoming;
     const confidence = totalNeeded === 0 ? 100 : Math.round((totalCovered / totalNeeded) * 100);
+    let tier: Tier = "blocked";
+    if (raw.fullyDelivered || totalNeeded === 0 || totalShortfall === 0 && totalIncoming === 0) tier = "now_full";
+    else if (totalShortfall === 0) tier = "incoming_full";
+    else if (totalFromStockOnly(totalStock, totalIncoming)) tier = "now_partial";
+    else if (totalCovered > 0) tier = "incoming_partial";
     const reasons: Reason[] = [];
     if (raw.fullyDelivered) reasons.push({ code: "all_delivered_under_mode", detail: `mode=${mode}` });
     if (raw.manualCount > 0) reasons.push({ code: "manual_items_satisfied", detail: `${raw.manualCount}` });
@@ -303,39 +289,11 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     };
   }
 
-  for (const raw of raws) {
-    if (raw.fullyDelivered) { out.push(commit(raw, "now_full", false)); committed.add(raw.invoice.id); }
+  function totalFromStockOnly(totalStock: number, totalIncoming: number) {
+    return totalStock > 0 && totalIncoming === 0;
   }
-  for (const raw of raws) {
-    if (committed.has(raw.invoice.id)) continue;
-    if (canCoverFromStock(raw)) { out.push(commit(raw, "now_full", false)); committed.add(raw.invoice.id); }
-  }
-  for (const raw of raws) {
-    if (committed.has(raw.invoice.id)) continue;
-    const tmpStock = new Map<string, number>();
-    const tmpInc = new Map<string, number>();
-    let ok = true;
-    for (const [pid, n] of raw.perProduct) {
-      if (n.isManual) continue;
-      const s = (stockPool.get(pid) ?? 0) - (tmpStock.get(pid) ?? 0);
-      const fromS = Math.min(s, n.needed);
-      const need2 = n.needed - fromS;
-      const i = (incomingPool.get(pid) ?? 0) - (tmpInc.get(pid) ?? 0);
-      if (i < need2) { ok = false; break; }
-      tmpStock.set(pid, (tmpStock.get(pid) ?? 0) + fromS);
-      tmpInc.set(pid, (tmpInc.get(pid) ?? 0) + need2);
-    }
-    if (ok) { out.push(commit(raw, "incoming_full", true)); committed.add(raw.invoice.id); }
-  }
-  for (const raw of raws) {
-    if (committed.has(raw.invoice.id)) continue;
-    const s = commit(raw, "blocked", true);
-    if (s.totalFromStock > 0 && s.totalShortfall === 0) s.tier = "incoming_full";
-    else if (s.totalFromStock > 0 && s.totalFromIncoming === 0) s.tier = "now_partial";
-    else if (s.totalFromStock > 0 || s.totalFromIncoming > 0) s.tier = "incoming_partial";
-    else s.tier = "blocked";
-    out.push(s);
-  }
+
+  for (const raw of raws) out.push(summarize(raw));
 
   const tierOrder: Record<Tier, number> = { now_full: 0, now_partial: 1, incoming_full: 2, incoming_partial: 3, blocked: 4 };
   out.sort((a, b) => {
