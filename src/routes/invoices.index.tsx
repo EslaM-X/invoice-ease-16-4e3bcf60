@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { exportInvoicesToCSV, exportInvoicesToExcel, exportInvoicesBatchPDF, type InvoiceRow } from "@/lib/invoice-export";
 import { exportInvoicesOrdersStyle } from "@/lib/orders-export";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
@@ -119,8 +119,7 @@ function InvoicesList() {
     }
   };
   useEffect(() => { load(); }, [user, from, to]);
-  useRealtimeTable("invoices", () => { load(); });
-  useRealtimeTable("delivery_receipts" as any, () => { load(); });
+  useBatchedRealtimeTables(["invoices", "delivery_receipts"], () => { load(); }, [user?.id]);
 
   const isClosed = (i: any) => {
     if (i.status === "voided") return false;

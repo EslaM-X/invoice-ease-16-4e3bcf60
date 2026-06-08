@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import type { Product } from "@/lib/data";
 import { AlertTriangle, Boxes, ShoppingCart, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { CardsSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { RestockOrderDialog } from "@/components/restock-order-dialog";
@@ -35,10 +35,11 @@ function Inventory() {
     setLoading(false);
   };
   useEffect(() => { if (user) load(); }, [user]);
-  useRealtimeTable("products", () => { if (user) load(); });
-  useRealtimeTable("inventory_logs", () => { if (user) load(); });
-  useRealtimeTable("invoices", () => { if (user) load(); });
-  useRealtimeTable("invoice_items", () => { if (user) load(); });
+  useBatchedRealtimeTables(
+    ["products", "inventory_logs", "invoices", "invoice_items"],
+    () => { if (user) load(); },
+    [user?.id],
+  );
 
   const lowStock = products.filter((p) => p.stock_quantity <= p.low_stock_threshold);
   const totalUnits = products.reduce((s, p) => s + p.stock_quantity, 0);

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { Download, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 
 export const Route = createFileRoute("/reports")({ component: () => <AppShell><Reports /></AppShell> });
 
@@ -36,10 +36,18 @@ function Reports() {
     setList(data ?? []);
   };
   useEffect(() => { if (user) loadInvoices(); }, [user, from, to, customerId]);
-  useRealtimeTable("invoices", () => { if (user) loadInvoices(); });
-  useRealtimeTable("customers", () => {
-    if (user) supabase.from("customers").select("id,name").then(({ data }) => setCustomers(data ?? []));
-  });
+  useBatchedRealtimeTables(
+    ["invoices", "customers"],
+    (table) => {
+      if (!user) return;
+      if (table === "customers") {
+        supabase.from("customers").select("id,name").then(({ data }) => setCustomers(data ?? []));
+      } else {
+        loadInvoices();
+      }
+    },
+    [user?.id, from, to, customerId],
+  );
 
   const totalSales = list.reduce((s, i) => s + Number(i.total ?? 0), 0);
 
