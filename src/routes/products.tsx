@@ -125,8 +125,22 @@ function Products() {
 
   useEffect(() => { load({ forceRefresh: true }); loadInTransit(); }, [user?.id]);
 
-  // Realtime sync — refresh when any team member changes products or POs
-  useRealtimeTable("products", () => { void load({ forceRefresh: true }); }, [user?.id]);
+  // Realtime sync — apply company-wide changes instantly without full refetch
+  useRealtimeTable("products", (payload: any) => {
+    const ev = payload?.eventType;
+    const row = payload?.new as Product | null;
+    const old = payload?.old as Product | null;
+    if (ev === "INSERT" && row?.id) {
+      commitList((prev) => (prev.some((p) => p.id === row.id) ? prev : [row, ...prev]));
+    } else if (ev === "UPDATE" && row?.id) {
+      commitList((prev) => prev.map((p) => (p.id === row.id ? { ...p, ...row } : p)));
+    } else if (ev === "DELETE" && old?.id) {
+      commitList((prev) => prev.filter((p) => p.id !== old.id));
+    } else {
+      // Initial subscribe / reconnect / unknown — full refresh
+      void load({ forceRefresh: true });
+    }
+  }, [user?.id]);
   useRealtimeTable("purchase_orders", () => { void loadInTransit(); }, [user?.id]);
   useRealtimeTable("purchase_order_items", () => { void loadInTransit(); }, [user?.id]);
 
