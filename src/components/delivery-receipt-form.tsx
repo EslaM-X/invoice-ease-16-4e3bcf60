@@ -22,8 +22,10 @@ import {
   parsePartFromNote,
   buildNoteWithPart,
   remainingPartsLabel,
+  DEFAULT_CONFIG,
   type PartKey,
 } from "@/lib/product-parts";
+import { DEFAULT_DELIVERY_MODE, buildEffectiveDelivered, type FDeliveredRow, type FInvItem } from "@/lib/fulfillment-engine";
 import { SignaturePad } from "@/components/signature-pad";
 
 type Mode = "new" | "edit";
@@ -125,12 +127,32 @@ export function DeliveryReceiptForm({
       // Fetch prior delivery notes (from OTHER receipts) for multi-part tracking
       const itemIds = items.map((i) => i.id);
       const priorNotesMap = new Map<string, string[]>();
+      const deliveredStrictMap = new Map<string, number>();
       if (itemIds.length > 0) {
         const q = supabase
           .from("delivery_receipt_items" as any)
           .select("invoice_item_id, note, quantity, receipt_id")
           .in("invoice_item_id", itemIds);
         const { data: dris } = await q;
+        const strictDelivered = buildEffectiveDelivered(
+          items.map((i) => ({
+            id: i.id,
+            invoice_id: invoiceId,
+            product_id: (i as any).product_id ?? null,
+            product_name: i.product_name,
+            serial_number: i.serial_number,
+            color: i.color,
+            quantity: i.quantity,
+            unit_price: 0,
+          })) as FInvItem[],
+          ((dris ?? []).filter((r: any) => !(receiptId && r.receipt_id === receiptId)).map((r: any) => ({
+            invoice_item_id: r.invoice_item_id,
+            quantity: r.quantity,
+            note: r.note,
+          }))) as FDeliveredRow[],
+          DEFAULT_DELIVERY_MODE,
+        );
+        for (const [k, v] of strictDelivered) deliveredStrictMap.set(k, v);
         for (const r of (dris ?? []) as any[]) {
           if (receiptId && r.receipt_id === receiptId) continue;
           const arr = priorNotesMap.get(r.invoice_item_id) ?? [];
@@ -149,7 +171,8 @@ export function DeliveryReceiptForm({
       }
       const next: Row[] = items.map((it) => {
         const ex = existingMap.get(it.id);
-        const remainingForThisReceipt = it.remaining + (ex?.qty || 0);
+        const strictDelivered = deliveredStrictMap.get(it.id) ?? 0;
+        const remainingForThisReceipt = Math.max(0, it.quantity - strictDelivered) + (ex?.qty || 0);
         const multi = isMultiPartProduct(it.product_name);
         const parsed = parsePartFromNote(ex?.note ?? "");
         return {
@@ -158,7 +181,7 @@ export function DeliveryReceiptForm({
           serial_number: it.serial_number,
           color: it.color,
           invoice_qty: it.quantity,
-          delivered_other: it.delivered_qty,
+          delivered_other: multi ? strictDelivered : it.delivered_qty,
           qty: ex ? ex.qty : remainingForThisReceipt,
           note: ex ? parsed.cleanNote : "",
           selected: ex ? true : remainingForThisReceipt > 0,
@@ -228,7 +251,7 @@ export function DeliveryReceiptForm({
       toast.success(isAr ? "تم الحفظ" : "Saved");
       // Fire-and-forget: capture an audit snapshot of the closure for this invoice.
       if (user?.id) {
-        autoLogClosureForInvoice(user.id, invoiceId, "any", "auto_closed",
+        autoLogClosureForInvoice(user.id, invoiceId, DEFAULT_DELIVERY_MODE, "auto_closed",
           isAr ? `إذن تسليم — ${status}` : `Delivery receipt — ${status}`)
           .catch(() => { /* silent */ });
       }
