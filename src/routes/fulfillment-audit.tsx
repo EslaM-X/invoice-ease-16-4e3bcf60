@@ -15,7 +15,7 @@ import {
 import { fmtDateTime } from "@/lib/utils-money";
 import { ArrowLeft, ClipboardList, Trash2, Search, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
-import { reasonLabel, type ReasonCode } from "@/lib/fulfillment-engine";
+import { reasonLabel, type ReasonCode, DEFAULT_DELIVERY_MODE, type DeliveryMode } from "@/lib/fulfillment-engine";
 import { autoLogClosureForInvoice } from "@/lib/fulfillment-audit";
 
 export const Route = createFileRoute("/fulfillment-audit")({
