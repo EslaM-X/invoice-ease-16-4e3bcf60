@@ -80,6 +80,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
+  // Close drawer on route change
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const prev = document.body.style.overflow;
+    if (open) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">{t("loading")}</div>;
   }
