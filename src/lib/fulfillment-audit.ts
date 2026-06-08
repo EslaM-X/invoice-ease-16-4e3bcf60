@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
-  computeSuggestions, INCOMING_PO_STATUSES,
+  computeSuggestions, DEFAULT_DELIVERY_MODE, INCOMING_PO_STATUSES,
   type Suggestion, type DeliveryMode,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "./fulfillment-engine";
@@ -43,7 +43,7 @@ export async function logFulfillmentAction(
 export async function autoLogClosureForInvoice(
   userId: string,
   invoiceId: string,
-  mode: DeliveryMode = "any",
+  mode: DeliveryMode = DEFAULT_DELIVERY_MODE,
   action: FulfillmentAuditAction = "auto_closed",
   note?: string | null,
 ): Promise<Suggestion | null> {
@@ -85,7 +85,6 @@ export async function autoLogClosureForInvoice(
     const { data: poList } = await supabase
       .from("purchase_orders")
       .select("id, po_number, status, expected_arrival_at")
-      .eq("user_id", userId)
       .in("status", Array.from(INCOMING_PO_STATUSES));
     for (const p of ((poList ?? []) as unknown) as FPORow[]) pos.set(p.id, p);
     if (pos.size) {
