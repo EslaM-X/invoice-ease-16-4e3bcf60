@@ -62,7 +62,11 @@ function FulfillmentPage() {
 
   async function load() {
     if (!user) return;
-    setLoading(true);
+    // Only show the full-page loading skeleton on the very first load.
+    // Subsequent refreshes (realtime, focus) refresh in-place so the UI
+    // doesn't flash "جاري التحميل" every time anything changes.
+    if (invoices.length === 0) setLoading(true);
+
 
     // Page through ALL company-accessible invoices (RLS scopes by company),
     // not just the current user. Exclude only voided/draft.

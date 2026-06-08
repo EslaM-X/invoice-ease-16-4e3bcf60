@@ -36,7 +36,8 @@ function ReportsPage() {
   }, [rl, isManager, navigate, isAr]);
 
   const load = async () => {
-    setLoading(true);
+    if (calls.length === 0 && ratings.length === 0) setLoading(true);
+
     const [{ data: c }, { data: r }] = await Promise.all([
       supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(500),
       supabase.from("customer_ratings").select("*").order("created_at", { ascending: false }).limit(500),

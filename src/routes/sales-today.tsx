@@ -141,7 +141,9 @@ function SalesToday() {
   const load = async () => {
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
-    setLoading(true);
+    // Only flash the spinner on first load; realtime refetches refresh silently.
+    if (logs.length === 0 && items.length === 0) setLoading(true);
+
     const { start, end } = dateBoundsISO(date);
     const [logsRes, invRes] = await Promise.all([
       supabase
