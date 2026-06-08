@@ -193,7 +193,9 @@ function FulfillmentAuditPage() {
       while (cursor < list.length) {
         const r = list[cursor++];
         try {
-          const s = await autoLogClosureForInvoice(user!.id, r.invoice_id, (r.mode as any) || "any", "snapshot", note);
+          // Always re-audit using the strict default mode so multi-part items (mixer+trim) are evaluated correctly across ALL invoices.
+          const enforcedMode: DeliveryMode = DEFAULT_DELIVERY_MODE;
+          const s = await autoLogClosureForInvoice(user!.id, r.invoice_id, enforcedMode, "snapshot", note);
           if (s) {
             ok++;
             if (s.tier === "now_full") recovered++;
