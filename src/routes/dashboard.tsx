@@ -8,7 +8,7 @@ import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
@@ -89,9 +89,7 @@ function Dashboard() {
     }, 300);
   };
 
-  useRealtimeTable("invoices", scheduleRealtimeRefresh, [user?.id]);
-  useRealtimeTable("products", scheduleRealtimeRefresh, [user?.id]);
-  useRealtimeTable("customers", scheduleRealtimeRefresh, [user?.id]);
+  useBatchedRealtimeTables(["invoices", "products", "customers"], scheduleRealtimeRefresh, [user?.id]);
 
   const cards = [
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },

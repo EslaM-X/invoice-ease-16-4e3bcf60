@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Archive, Search, Eye, ArrowLeft, ArrowRight, FileSpreadsheet, ClipboardCheck, CheckCircle2 } from "lucide-react";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { TableSkeleton } from "@/components/skeletons";
 import { AuthorBadge } from "@/components/author-badge";
 import { exportInvoicesToExcel, type InvoiceRow } from "@/lib/invoice-export";
@@ -72,8 +72,7 @@ function ArchivePage() {
   };
 
   useEffect(() => { load(); }, [user, from, to]);
-  useRealtimeTable("invoices", () => load());
-  useRealtimeTable("delivery_receipts" as any, () => load());
+  useBatchedRealtimeTables(["invoices", "delivery_receipts"], () => load(), [user?.id]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();

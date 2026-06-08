@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,8 +109,7 @@ function StockIntake() {
   useEffect(() => {
     if (user) load();
   }, [user]);
-  useRealtimeTable("stock_intakes", () => user && load());
-  useRealtimeTable("products", () => user && load());
+  useBatchedRealtimeTables(["stock_intakes", "products"], () => { if (user) load(); }, [user?.id]);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
