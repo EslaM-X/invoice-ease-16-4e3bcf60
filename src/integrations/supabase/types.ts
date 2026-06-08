@@ -3119,30 +3119,18 @@ export type Database = {
             }
             Returns: string
           }
-      create_invoice:
-        | {
-            Args: {
-              _customer_id: string
-              _discount: number
-              _items: Json
-              _language: string
-              _notes: string
-              _paid_amount?: number
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _customer_id: string
-              _discount: number
-              _items: Json
-              _language: string
-              _notes: string
-              _paid_amount?: number
-              _system_notes?: string
-            }
-            Returns: string
-          }
+      create_invoice: {
+        Args: {
+          _customer_id: string
+          _discount: number
+          _items: Json
+          _language: string
+          _notes: string
+          _paid_amount?: number
+          _system_notes?: string
+        }
+        Returns: string
+      }
       current_user_email: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }

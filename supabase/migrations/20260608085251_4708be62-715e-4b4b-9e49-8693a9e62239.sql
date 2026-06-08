@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.create_invoice(uuid, numeric, text, text, jsonb, numeric);
