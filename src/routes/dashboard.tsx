@@ -101,10 +101,10 @@ function Dashboard() {
   ];
 
   return (
-    <div className="space-y-10">
-      <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-6">
+    <div className="space-y-8 sm:space-y-10">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-6 sm:pb-6">
         <div>
-          <div className="eyebrow mb-3">{t("welcome")}</div>
+          <div className="eyebrow mb-2 sm:mb-3">{t("welcome")}</div>
           <h1 className="display-xl text-foreground">{t("dashboard")}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -112,7 +112,7 @@ function Dashboard() {
             variant="outline"
             size="icon"
             onClick={toggle}
-            className="rounded-full"
+            className="rounded-full ios-tap"
             title={hidden ? "إظهار الأرقام" : "إخفاء الأرقام"}
           >
             {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -124,34 +124,34 @@ function Dashboard() {
               if (isPhone) navigate({ to: "/scan-and-sell" });
               else navigate({ to: "/invoices/new", search: { scan: true } });
             }}
-            className="gap-2 rounded-full px-5"
+            className="flex-1 gap-2 rounded-full px-4 ios-tap sm:flex-none sm:px-5"
           >
-            <ScanLine className="h-4 w-4" /> {t("scan_and_sell")}
+            <ScanLine className="h-4 w-4" /> <span className="truncate">{t("scan_and_sell")}</span>
           </Button>
-          <Button onClick={() => navigate({ to: "/invoices/new" })} className="gap-2 rounded-full px-5 press-spring">
-            <Plus className="h-4 w-4" /> {t("new_invoice")}
+          <Button onClick={() => navigate({ to: "/invoices/new" })} className="flex-1 gap-2 rounded-full px-4 press-spring ios-tap sm:flex-none sm:px-5">
+            <Plus className="h-4 w-4" /> <span className="truncate">{t("new_invoice")}</span>
           </Button>
         </div>
       </header>
 
       {stats.lowStock > 0 && (
         <div className="flex items-center gap-3 rounded-md border border-foreground/15 bg-muted/40 px-4 py-3 text-sm">
-          <AlertTriangle className="h-4 w-4" />
-          <span className="font-medium">{t("stock_low_alert")}: {stats.lowStock}</span>
-          <Link to="/inventory" className="ms-auto text-xs font-semibold underline-offset-4 hover:underline">{t("view")} →</Link>
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="font-medium truncate">{t("stock_low_alert")}: {stats.lowStock}</span>
+          <Link to="/inventory" className="ms-auto text-xs font-semibold underline-offset-4 hover:underline shrink-0">{t("view")} →</Link>
         </div>
       )}
 
-      <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
         {cards.map(({ label, value, Icon, accent }) => (
-          <div key={label} className="ios-card group relative p-4 sm:p-6 min-w-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="eyebrow">{label}</div>
-              <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-muted/60 ${accent ?? "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
+          <div key={label} className="ios-card group relative p-3 sm:p-6 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="eyebrow text-[0.6rem] sm:text-[0.68rem] truncate">{label}</div>
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/60 sm:h-9 sm:w-9 ${accent ?? "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
                 <Icon className="h-4 w-4" />
               </div>
             </div>
-            <div className={`ltr-nums mt-5 font-display text-2xl font-medium tracking-tight tabular-nums sm:text-3xl break-words ${accent ?? "text-foreground"}`}>{value}</div>
+            <div className={`ltr-nums mt-3 sm:mt-5 font-display text-xl font-medium tracking-tight tabular-nums sm:text-3xl break-words ${accent ?? "text-foreground"}`}>{value}</div>
           </div>
         ))}
       </div>
