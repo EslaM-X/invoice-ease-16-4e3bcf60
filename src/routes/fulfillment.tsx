@@ -204,12 +204,12 @@ function FulfillmentPage() {
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
-  useRealtimeTable("invoices", load, [user?.id]);
-  useRealtimeTable("invoice_items", load, [user?.id]);
-  useRealtimeTable("delivery_receipt_items", load, [user?.id]);
-  useRealtimeTable("products", load, [user?.id]);
-  useRealtimeTable("purchase_orders", load, [user?.id]);
-  useRealtimeTable("purchase_order_items", load, [user?.id]);
+  useBatchedRealtimeTables(
+    ["invoices", "invoice_items", "delivery_receipt_items", "products", "purchase_orders", "purchase_order_items"],
+    () => load(),
+    [user?.id],
+  );
+
 
   const suggestions = useMemo<Suggestion[]>(
     () => computeSuggestions({ invoices, items, deliveredRows, products, poItems, pos, mode }),
