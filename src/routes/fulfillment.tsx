@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,156 +60,204 @@ function FulfillmentPage() {
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
+  // Offline-friendly snapshot key (per user) — so reloading the page while
+  // offline still shows the last known state instantly.
+  const cacheKey = `fulfillment_snapshot_v1::${user?.id ?? "anon"}`;
+
+  // Hydrate from cache once on mount if state is empty (instant first paint,
+  // even when the network is slow or down).
+  useEffect(() => {
+    if (typeof localStorage === "undefined" || !user?.id) return;
+    if (invoices.length > 0) return;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return;
+      const snap = JSON.parse(raw);
+      if (snap?.invoices) setInvoices(snap.invoices);
+      if (snap?.items) setItems(snap.items);
+      if (snap?.deliveredRows) setDeliveredRows(snap.deliveredRows);
+      if (Array.isArray(snap?.products)) setProducts(new Map(snap.products));
+      if (snap?.poItems) setPoItems(snap.poItems);
+      if (Array.isArray(snap?.pos)) setPos(new Map(snap.pos));
+      setLoading(false);
+    } catch { /* ignore corrupted cache */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   async function load() {
     if (!user) return;
-    // Only show the full-page loading skeleton on the very first load.
-    // Subsequent refreshes (realtime, focus) refresh in-place so the UI
-    // doesn't flash "جاري التحميل" every time anything changes.
+    // Only show the full-page loading skeleton on the very first load AND
+    // only when we have no cached snapshot to fall back on.
     if (invoices.length === 0) setLoading(true);
 
-
-    // Page through ALL company-accessible invoices (RLS scopes by company),
-    // not just the current user. Exclude only voided/draft.
-    const fetchAllPaged = async <T,>(
-      build: (from: number, to: number) => any,
-    ): Promise<T[]> => {
-      const out: T[] = [];
-      const PAGE = 1000;
-      let from = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await build(from, from + PAGE - 1);
-        if (error) throw error;
-        const rows = (data ?? []) as T[];
-        out.push(...rows);
-        if (rows.length < PAGE) break;
-        from += PAGE;
-      }
-      return out;
-    };
-
-    const invList = await fetchAllPaged<FInvoice>((from, to) =>
-      supabase
-        .from("invoices")
-        .select("id, invoice_number, customer_name, customer_phone, total, created_at, delivery_status, status")
-        .not("status", "in", "(voided,draft)")
-        .or("delivery_status.is.null,delivery_status.neq.delivered")
-        .order("created_at", { ascending: true })
-        .range(from, to),
-    );
-    setInvoices(invList);
-
-    const invIds = invList.map((i) => i.id);
-    if (invIds.length === 0) {
-      setItems([]); setDeliveredRows([]);
-    } else {
-      const fetchAllByIn = async <T,>(
-        table: string, columns: string, key: string, ids: string[],
+    try {
+      // Page through ALL company-accessible invoices (RLS scopes by company),
+      // not just the current user. Exclude only voided/draft.
+      const fetchAllPaged = async <T,>(
+        build: (from: number, to: number) => any,
       ): Promise<T[]> => {
         const out: T[] = [];
+        const PAGE = 1000;
+        let from = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await build(from, from + PAGE - 1);
+          if (error) throw error;
+          const rows = (data ?? []) as T[];
+          out.push(...rows);
+          if (rows.length < PAGE) break;
+          from += PAGE;
+        }
+        return out;
+      };
+
+      const invList = await fetchAllPaged<FInvoice>((from, to) =>
+        supabase
+          .from("invoices")
+          .select("id, invoice_number, customer_name, customer_phone, total, created_at, delivery_status, status")
+          .not("status", "in", "(voided,draft)")
+          .or("delivery_status.is.null,delivery_status.neq.delivered")
+          .order("created_at", { ascending: true })
+          .range(from, to),
+      );
+      setInvoices(invList);
+
+      let itemList: FInvItem[] = [];
+      let drsList: FDeliveredRow[] = [];
+      const invIds = invList.map((i) => i.id);
+      if (invIds.length === 0) {
+        setItems([]); setDeliveredRows([]);
+      } else {
+        const fetchAllByIn = async <T,>(
+          table: string, columns: string, key: string, ids: string[],
+        ): Promise<T[]> => {
+          const out: T[] = [];
+          const chunkIds = 200;
+          for (let i = 0; i < ids.length; i += chunkIds) {
+            const slice = ids.slice(i, i + chunkIds);
+            let from = 0;
+            const PAGE = 1000;
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+              const { data, error } = await supabase
+                .from(table as any)
+                .select(columns)
+                .in(key, slice)
+                .range(from, from + PAGE - 1);
+              if (error) throw error;
+              const rows = (data ?? []) as T[];
+              out.push(...rows);
+              if (rows.length < PAGE) break;
+              from += PAGE;
+            }
+          }
+          return out;
+        };
+
+        itemList = await fetchAllByIn<FInvItem>(
+          "invoice_items",
+          "id, invoice_id, product_id, product_name, serial_number, color, quantity, unit_price",
+          "invoice_id",
+          invIds,
+        );
+        setItems(itemList);
+
+        const itemIds = itemList.map((i) => i.id);
+        if (itemIds.length) {
+          drsList = await fetchAllByIn<FDeliveredRow>(
+            "delivery_receipt_items",
+            "invoice_item_id, quantity, note",
+            "invoice_item_id",
+            itemIds,
+          );
+          setDeliveredRows(drsList);
+        } else {
+          setDeliveredRows([]);
+        }
+      }
+
+      // Products: company-wide via RLS.
+      const prods = await fetchAllPaged<FProductRow>((from, to) =>
+        supabase
+          .from("products")
+          .select("id, name, stock_quantity, serial_number, color")
+          .range(from, to),
+      );
+      const pMap = new Map<string, FProductRow>();
+      for (const p of prods) pMap.set(p.id, p);
+      setProducts(pMap);
+
+      // Purchase orders: company-wide via RLS, only incoming statuses.
+      const poList = await fetchAllPaged<FPORow>((from, to) =>
+        supabase
+          .from("purchase_orders")
+          .select("id, po_number, status, expected_arrival_at")
+          .in("status", Array.from(INCOMING_PO_STATUSES))
+          .range(from, to),
+      );
+      const poMap = new Map<string, FPORow>();
+      for (const p of poList) poMap.set(p.id, p);
+      setPos(poMap);
+      const poIds = Array.from(poMap.keys());
+      const allPoItems: FPOItemRow[] = [];
+      if (poIds.length) {
         const chunkIds = 200;
-        for (let i = 0; i < ids.length; i += chunkIds) {
-          const slice = ids.slice(i, i + chunkIds);
+        for (let i = 0; i < poIds.length; i += chunkIds) {
+          const slice = poIds.slice(i, i + chunkIds);
           let from = 0;
           const PAGE = 1000;
           // eslint-disable-next-line no-constant-condition
           while (true) {
             const { data, error } = await supabase
-              .from(table as any)
-              .select(columns)
-              .in(key, slice)
+              .from("purchase_order_items")
+              .select("po_id, product_id, quantity, received_qty")
+              .in("po_id", slice)
               .range(from, from + PAGE - 1);
-            if (error) throw error;
-            const rows = (data ?? []) as T[];
-            out.push(...rows);
+            if (error) break;
+            const rows = (data ?? []) as FPOItemRow[];
+            allPoItems.push(...rows);
             if (rows.length < PAGE) break;
             from += PAGE;
           }
         }
-        return out;
-      };
-
-      const itemList = await fetchAllByIn<FInvItem>(
-        "invoice_items",
-        "id, invoice_id, product_id, product_name, serial_number, color, quantity, unit_price",
-        "invoice_id",
-        invIds,
-      );
-      setItems(itemList);
-
-      const itemIds = itemList.map((i) => i.id);
-      if (itemIds.length) {
-        const drs = await fetchAllByIn<FDeliveredRow>(
-          "delivery_receipt_items",
-          "invoice_item_id, quantity, note",
-          "invoice_item_id",
-          itemIds,
-        );
-        setDeliveredRows(drs);
+        setPoItems(allPoItems);
       } else {
-        setDeliveredRows([]);
+        setPoItems([]);
       }
-    }
 
-    // Products: company-wide via RLS.
-    const prods = await fetchAllPaged<FProductRow>((from, to) =>
-      supabase
-        .from("products")
-        .select("id, name, stock_quantity, serial_number, color")
-        .range(from, to),
-    );
-    const pMap = new Map<string, FProductRow>();
-    for (const p of prods) pMap.set(p.id, p);
-    setProducts(pMap);
-
-    // Purchase orders: company-wide via RLS, only incoming statuses.
-    const poList = await fetchAllPaged<FPORow>((from, to) =>
-      supabase
-        .from("purchase_orders")
-        .select("id, po_number, status, expected_arrival_at")
-        .in("status", Array.from(INCOMING_PO_STATUSES))
-        .range(from, to),
-    );
-    const poMap = new Map<string, FPORow>();
-    for (const p of poList) poMap.set(p.id, p);
-    setPos(poMap);
-    const poIds = Array.from(poMap.keys());
-    if (poIds.length) {
-      const allPoItems: FPOItemRow[] = [];
-      const chunkIds = 200;
-      for (let i = 0; i < poIds.length; i += chunkIds) {
-        const slice = poIds.slice(i, i + chunkIds);
-        let from = 0;
-        const PAGE = 1000;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data, error } = await supabase
-            .from("purchase_order_items")
-            .select("po_id, product_id, quantity, received_qty")
-            .in("po_id", slice)
-            .range(from, from + PAGE - 1);
-          if (error) break;
-          const rows = (data ?? []) as FPOItemRow[];
-          allPoItems.push(...rows);
-          if (rows.length < PAGE) break;
-          from += PAGE;
+      // Persist a snapshot so the page boots instantly next time, even offline.
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            at: Date.now(),
+            invoices: invList,
+            items: itemList,
+            deliveredRows: drsList,
+            products: Array.from(pMap.entries()),
+            poItems: allPoItems,
+            pos: Array.from(poMap.entries()),
+          }));
         }
-      }
-      setPoItems(allPoItems);
-    } else {
-      setPoItems([]);
+      } catch { /* quota or privacy mode — ignore */ }
+    } catch (err) {
+      // Network/RLS failure — keep showing whatever is on screen (likely
+      // hydrated from the cache snapshot) instead of blanking the UI.
+      // eslint-disable-next-line no-console
+      console.warn("[fulfillment] load failed, keeping cached view:", err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
+
+
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
-  useRealtimeTable("invoices", load, [user?.id]);
-  useRealtimeTable("invoice_items", load, [user?.id]);
-  useRealtimeTable("delivery_receipt_items", load, [user?.id]);
-  useRealtimeTable("products", load, [user?.id]);
-  useRealtimeTable("purchase_orders", load, [user?.id]);
-  useRealtimeTable("purchase_order_items", load, [user?.id]);
+  useBatchedRealtimeTables(
+    ["invoices", "invoice_items", "delivery_receipt_items", "products", "purchase_orders", "purchase_order_items"],
+    () => load(),
+    [user?.id],
+  );
+
 
   const suggestions = useMemo<Suggestion[]>(
     () => computeSuggestions({ invoices, items, deliveredRows, products, poItems, pos, mode }),

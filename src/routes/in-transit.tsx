@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { fmtDateTime } from "@/lib/utils-money";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -112,13 +112,12 @@ function InTransitPage() {
   };
 
   useEffect(() => { if (user) load(); }, [user]);
-  useRealtimeTable("purchase_orders", () => { if (user) load(); });
-  useRealtimeTable("purchase_order_items", () => { if (user) load(); });
-  useRealtimeTable("products", () => { if (user) load(); });
-  useRealtimeTable("invoice_items" as any, () => { if (user) load(); });
-  useRealtimeTable("invoices" as any, () => { if (user) load(); });
-  useRealtimeTable("delivery_receipts" as any, () => { if (user) load(); });
-  useRealtimeTable("delivery_receipt_items" as any, () => { if (user) load(); });
+  useBatchedRealtimeTables(
+    ["purchase_orders", "purchase_order_items", "products", "invoice_items", "invoices", "delivery_receipts", "delivery_receipt_items"],
+    () => { if (user) load(); },
+    [user?.id],
+  );
+
 
   const reservedTotalUnits = useMemo(
     () => activeReservations.reduce((s, r: any) => s + Number(r.reserved_qty || 0), 0),
