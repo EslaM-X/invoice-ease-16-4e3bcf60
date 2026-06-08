@@ -19,7 +19,7 @@ import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
 import { encodeProductQR } from "@/lib/qr-codec";
-import { cachedListFetch } from "@/lib/list-cache";
+import { cachedListFetch, setListCache } from "@/lib/list-cache";
 import { useRealtimeTable } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProductImageUpload } from "@/components/product-image-upload";
@@ -61,17 +61,36 @@ function Products() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [inTransit, setInTransit] = useState<Record<string, { qty: number; eta: string | null }>>({});
 
-  const load = async () => {
-    if (!user) return;
-    const { data, fromCache } = await cachedListFetch<Product>("products", async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .range(0, 9999); // lift the 1000-row default cap so search never misses items
-      return (data ?? []) as Product[];
+  const commitList = (updater: (prev: Product[]) => Product[]) => {
+    setList((prev) => {
+      const next = updater(prev);
+      setListCache("products", next);
+      return next;
     });
+  };
+
+  const load = async (opts: { forceRefresh?: boolean } = {}) => {
+    if (!user) return;
+    if (list.length === 0) setLoading(true);
+    const { data, fromCache } = await cachedListFetch<Product>("products", async () => {
+      const all: Product[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("products")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        const rows = (data ?? []) as Product[];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
+    }, { forceRefresh: opts.forceRefresh });
     setList(data);
+    setListCache("products", data);
     setLoading(false);
     if (fromCache) {
       // Background revalidate already runs in cachedListFetch; refresh again on focus
@@ -104,12 +123,12 @@ function Products() {
     setInTransit(agg);
   };
 
-  useEffect(() => { load(); loadInTransit(); }, [user]);
+  useEffect(() => { load({ forceRefresh: true }); loadInTransit(); }, [user?.id]);
 
   // Realtime sync — refresh when any team member changes products or POs
-  useRealtimeTable("products", () => { load(); });
-  useRealtimeTable("purchase_orders", () => { loadInTransit(); });
-  useRealtimeTable("purchase_order_items", () => { loadInTransit(); });
+  useRealtimeTable("products", () => { void load({ forceRefresh: true }); }, [user?.id]);
+  useRealtimeTable("purchase_orders", () => { void loadInTransit(); }, [user?.id]);
+  useRealtimeTable("purchase_order_items", () => { void loadInTransit(); }, [user?.id]);
 
   const filtered = useMemo(() => {
     const raw = q.trim().toLowerCase();
@@ -188,13 +207,13 @@ function Products() {
       const { data: updated, error } = await supabase.from("products").update(payload).eq("id", editing.id).select("*").single();
       if (error) return toast.error(error.message);
       // In-place patch — no full reload, no scroll jump
-      if (updated) setList((prev) => prev.map((p) => (p.id === editing.id ? (updated as Product) : p)));
+      if (updated) commitList((prev) => prev.map((p) => (p.id === editing.id ? (updated as Product) : p)));
     } else {
       const { data, error } = await supabase.from("products").insert({ ...payload, user_id: user.id }).select("*").single();
       if (error) return toast.error(error.message);
       const { data: withQr } = await supabase.from("products").update({ qr_code: data.id }).eq("id", data.id).select("*").single();
       const inserted = (withQr ?? data) as Product;
-      setList((prev) => [inserted, ...prev]);
+      commitList((prev) => [inserted, ...prev]);
     }
     toast.success(t("product_saved"));
     setOpen(false);
@@ -204,7 +223,7 @@ function Products() {
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success(t("product_deleted"));
-    setList((prev) => prev.filter((p) => p.id !== id));
+    commitList((prev) => prev.filter((p) => p.id !== id));
   };
 
   const showQr = async (p: Product) => {
@@ -253,12 +272,14 @@ function Products() {
     }
     toast.success(t("stock_adjusted"));
     const targetId = adjustFor.id;
+    const optimisticStock = adjustFor.stock_quantity + amt;
+    commitList((prev) => prev.map((p) => (p.id === targetId ? { ...p, stock_quantity: optimisticStock } : p)));
     setAdjustFor(null);
     setAdjustAmt("0");
     setAdjustReason("");
     // In-place patch — fetch only the affected row
     const { data: fresh } = await supabase.from("products").select("*").eq("id", targetId).single();
-    if (fresh) setList((prev) => prev.map((p) => (p.id === targetId ? (fresh as Product) : p)));
+    if (fresh) commitList((prev) => prev.map((p) => (p.id === targetId ? (fresh as Product) : p)));
   };
 
   const runBulkAdjust = async () => {
@@ -288,7 +309,7 @@ function Products() {
     setBulkOpen(false);
     setBulkAmt("0");
     setBulkReason("");
-    load();
+    void load({ forceRefresh: true });
   };
 
   const exportCsv = () => {
@@ -328,7 +349,7 @@ function Products() {
         if (error) return toast.error(error.message);
         if (data) for (const d of data) await supabase.from("products").update({ qr_code: d.id }).eq("id", d.id);
         toast.success(`${data?.length ?? 0} ✓`);
-        load();
+        void load({ forceRefresh: true });
       },
     });
   };
@@ -351,7 +372,7 @@ function Products() {
             <DialogTrigger asChild>
               <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("add_product")}</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
               <DialogHeader><DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
@@ -532,7 +553,7 @@ function Products() {
 
       {/* QR preview dialog */}
       <Dialog open={!!qrPreview} onOpenChange={(v) => !v && setQrPreview(null)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{qrPreview?.name}</DialogTitle></DialogHeader>
           {qrPreview && (
             <div className="flex flex-col items-center gap-4">
@@ -547,7 +568,7 @@ function Products() {
 
       {/* Adjust stock dialog */}
       <Dialog open={!!adjustFor} onOpenChange={(v) => !v && setAdjustFor(null)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{t("adjust_stock")} — {adjustFor?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="rounded-lg border bg-muted/30 p-3 text-xs">
@@ -595,7 +616,7 @@ function Products() {
 
       {/* Bulk add stock dialog */}
       <Dialog open={bulkOpen} onOpenChange={(v) => !v && !bulkBusy && setBulkOpen(false)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PackagePlus className="h-5 w-5" />
