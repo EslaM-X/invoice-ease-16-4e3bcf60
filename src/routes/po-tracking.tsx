@@ -58,8 +58,12 @@ function POTrackingPage() {
   };
 
   useEffect(() => { if (user) load(); }, [user]);
-  useRealtimeTable("purchase_orders", () => { if (user) load(); });
-  useRealtimeTable("po_status_history", () => { if (user) load(); });
+  useBatchedRealtimeTables(
+    ["purchase_orders", "po_status_history"],
+    () => { if (user) load(); },
+    [user?.id],
+  );
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
