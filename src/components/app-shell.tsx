@@ -91,6 +91,48 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  // Edge-swipe to open drawer on mobile (from screen edge inward).
+  // Only triggers when starting near the screen edge and only on phones.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let startX = 0;
+    let startY = 0;
+    let startedAtEdge = false;
+    const EDGE_PX = 24;
+    const THRESHOLD = 60;
+
+    const onStart = (e: TouchEvent) => {
+      if (open || window.innerWidth >= 1024) return;
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      const rtl = document.documentElement.dir === "rtl";
+      startedAtEdge = rtl
+        ? startX >= window.innerWidth - EDGE_PX
+        : startX <= EDGE_PX;
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (!startedAtEdge) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      // Mostly-horizontal swipe, not a scroll
+      if (dy > 50) return;
+      const rtl = document.documentElement.dir === "rtl";
+      const opening = rtl ? dx < -THRESHOLD : dx > THRESHOLD;
+      if (opening) setOpen(true);
+      startedAtEdge = false;
+    };
+
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [open]);
+
+
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">{t("loading")}</div>;
   }

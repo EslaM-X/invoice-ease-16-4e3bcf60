@@ -180,15 +180,54 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     } catch {}
   }, [mode, draftKey, initial]);
 
+  // Autosave indicator state
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
+  const dirtyRef = useRef(false);
+
+  // Effective draft key — also for edit mode (local recovery copy)
+  const effectiveDraftKey = draftKey ?? (mode === "edit" && invoiceId ? `invoice-edit-recovery:${invoiceId}` : null);
+
   useEffect(() => {
-    if (mode !== "new" || !draftKey) return;
+    if (!effectiveDraftKey) return;
+    if (!(items.length || customerId || notes)) return;
+    dirtyRef.current = true;
+    setAutosaveState("saving");
     const id = setTimeout(() => {
-      if (items.length || customerId || notes) {
-        localStorage.setItem(draftKey, JSON.stringify({ customerId, items, discount, notes, savedAt: new Date().toISOString() }));
+      try {
+        localStorage.setItem(
+          effectiveDraftKey,
+          JSON.stringify({ customerId, items, discount, notes, savedAt: new Date().toISOString() }),
+        );
+        setLastSavedAt(Date.now());
+        setAutosaveState("saved");
+        dirtyRef.current = false;
+      } catch {
+        setAutosaveState("idle");
       }
-    }, 500);
+    }, 600);
     return () => clearTimeout(id);
-  }, [mode, draftKey, customerId, items, discount, notes]);
+  }, [effectiveDraftKey, customerId, items, discount, notes]);
+
+  // Tick the "saved Xs ago" label every 15s
+  useEffect(() => {
+    if (autosaveState !== "saved") return;
+    const id = setInterval(() => setTick((t) => t + 1), 15_000);
+    return () => clearInterval(id);
+  }, [autosaveState]);
+
+  // Warn before closing the tab while there are unsaved changes
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
 
   // Auto-open scanner
   useEffect(() => {
@@ -708,7 +747,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       if (isDraft) {
         const id = await saveDraftDirect();
         if (!id) return;
-        if (draftKey) localStorage.removeItem(draftKey);
+        if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
         toast.success(lang === "ar" ? "تم حفظ المسودة" : "Draft saved");
         navigate({ to: "/invoices/drafts" });
         return;
@@ -784,7 +823,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             .update({ delivery_status: "delivered" } as any)
             .eq("id", invoiceIdRet as string);
         }
-        if (draftKey) localStorage.removeItem(draftKey);
+        if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceIdRet as string } });
       }
@@ -793,17 +832,55 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     }
   };
 
+  // Format "saved Xs/m ago" relative to now (re-renders via `tick`)
+  const savedAgo = (() => {
+    if (!lastSavedAt) return "";
+    void tick;
+    const s = Math.max(1, Math.floor((Date.now() - lastSavedAt) / 1000));
+    if (lang === "ar") {
+      if (s < 60) return `قبل ${s} ث`;
+      const m = Math.floor(s / 60);
+      return m < 60 ? `قبل ${m} د` : `قبل ${Math.floor(m / 60)} س`;
+    }
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    return m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ago`;
+  })();
+
   return (
     <div className="space-y-5 w-full max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
-          {isDraft && (
-            <span className="ms-2 align-middle rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-700 dark:text-amber-400">
-              {lang === "ar" ? "مسودة" : "Draft"}
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {mode === "edit" ? t("edit_invoice") : t("new_invoice")}
+            {isDraft && (
+              <span className="ms-2 align-middle rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-700 dark:text-amber-400">
+                {lang === "ar" ? "مسودة" : "Draft"}
+              </span>
+            )}
+          </h1>
+          {effectiveDraftKey && autosaveState !== "idle" && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors ${
+                autosaveState === "saving"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              }`}
+              aria-live="polite"
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  autosaveState === "saving"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-emerald-500"
+                }`}
+              />
+              {autosaveState === "saving"
+                ? (lang === "ar" ? "جارٍ الحفظ التلقائي…" : "Autosaving…")
+                : (lang === "ar" ? `حُفظت تلقائياً ${savedAgo}` : `Saved ${savedAgo}`)}
             </span>
           )}
-        </h1>
+        </div>
         <Button onClick={save} disabled={saving} className="gap-2 shadow-glow w-full sm:w-auto">
           {isDraft
             ? (lang === "ar" ? "حفظ كمسودة" : "Save draft")
@@ -882,7 +959,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             variant="ghost"
             size="sm"
             onClick={() => {
-              if (draftKey) localStorage.removeItem(draftKey);
+              if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
               setItems([]); setCustomerId(""); setDiscount(0); setNotes("");
               setDraftRecovered(null);
             }}
