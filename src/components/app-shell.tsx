@@ -80,6 +80,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
+  // Close drawer on route change
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const prev = document.body.style.overflow;
+    if (open) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">{t("loading")}</div>;
   }
@@ -417,9 +428,24 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile drawer */}
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden no-print">
-          <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 start-0 z-10">{Sidebar}</div>
+        <div className="fixed inset-0 z-50 lg:hidden no-print" role="dialog" aria-modal="true">
+          <div
+            className="drawer-backdrop absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="drawer-panel absolute inset-y-0 start-0 z-10 h-full max-w-[85vw] shadow-2xl"
+            onTouchStart={(e) => { (e.currentTarget as any)._tx = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              const start = (e.currentTarget as any)._tx ?? 0;
+              const end = e.changedTouches[0].clientX;
+              const delta = end - start;
+              const closing = document.documentElement.dir === "rtl" ? delta > 60 : delta < -60;
+              if (closing) setOpen(false);
+            }}
+          >
+            {Sidebar}
+          </div>
         </div>
       )}
 
