@@ -22,7 +22,6 @@ import {
   parsePartFromNote,
   buildNoteWithPart,
   remainingPartsLabel,
-  DEFAULT_CONFIG,
   type PartKey,
 } from "@/lib/product-parts";
 import { DEFAULT_DELIVERY_MODE, buildEffectiveDelivered, type FDeliveredRow, type FInvItem } from "@/lib/fulfillment-engine";
