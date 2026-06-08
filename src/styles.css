@@ -400,13 +400,52 @@ html, body {
     border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
   }
 
-  /* Bottom tab bar (iPhone) */
+  /* Bottom tab bar (iPhone) — smart, glassy, with sliding indicator */
   .ios-tabbar {
-    background: color-mix(in oklab, var(--background) 78%, transparent);
+    background: color-mix(in oklab, var(--background) 72%, transparent);
     backdrop-filter: saturate(180%) blur(30px);
     -webkit-backdrop-filter: saturate(180%) blur(30px);
     border-top: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+    box-shadow: 0 -8px 24px -12px color-mix(in oklab, var(--foreground) 18%, transparent);
+    transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1), opacity 220ms ease;
+    will-change: transform;
+    contain: layout paint;
   }
+  .tabbar-smart[data-hidden="true"] {
+    transform: translateY(calc(100% + env(safe-area-inset-bottom, 0px)));
+    opacity: 0.001;
+    pointer-events: none;
+  }
+  .tabbar-indicator {
+    position: absolute;
+    top: 4px;
+    left: 0;
+    height: calc(100% - 8px - env(safe-area-inset-bottom, 0px));
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    transition: transform 360ms cubic-bezier(0.32, 0.72, 0, 1),
+                width 320ms cubic-bezier(0.32, 0.72, 0, 1),
+                opacity 220ms ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .tabbar-indicator[data-visible="false"] { opacity: 0; }
+  .tabbar-item { position: relative; z-index: 1; -webkit-tap-highlight-color: transparent; }
+  .tabbar-item[data-active="true"] .tabbar-icon { filter: drop-shadow(0 1px 0 color-mix(in oklab, var(--foreground) 18%, transparent)); }
+  @media (prefers-reduced-motion: reduce) {
+    .tabbar-indicator, .tabbar-smart { transition: none !important; }
+  }
+  @media (max-width: 340px) {
+    .ios-tabbar { padding-left: 0.25rem; padding-right: 0.25rem; }
+    .ios-tabbar .tabbar-item span { font-size: 9px; }
+    .ios-tabbar .tabbar-icon { width: 20px; height: 20px; }
+  }
+  @media (orientation: landscape) and (max-height: 480px) {
+    .ios-tabbar { padding-top: 0.25rem; }
+    .ios-tabbar .tabbar-item span { display: none; }
+    .pb-tabbar { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 3.25rem); }
+  }
+
 
   /* Touch target safety (Apple HIG: 44pt min) */
   .ios-tap { min-height: 44px; min-width: 44px; }
