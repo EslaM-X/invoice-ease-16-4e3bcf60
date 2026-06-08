@@ -747,7 +747,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       if (isDraft) {
         const id = await saveDraftDirect();
         if (!id) return;
-        if (draftKey) localStorage.removeItem(draftKey);
+        if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
         toast.success(lang === "ar" ? "تم حفظ المسودة" : "Draft saved");
         navigate({ to: "/invoices/drafts" });
         return;
@@ -823,7 +823,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             .update({ delivery_status: "delivered" } as any)
             .eq("id", invoiceIdRet as string);
         }
-        if (draftKey) localStorage.removeItem(draftKey);
+        if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceIdRet as string } });
       }
@@ -959,7 +959,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             variant="ghost"
             size="sm"
             onClick={() => {
-              if (draftKey) localStorage.removeItem(draftKey);
+              if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
               setItems([]); setCustomerId(""); setDiscount(0); setNotes("");
               setDraftRecovered(null);
             }}
