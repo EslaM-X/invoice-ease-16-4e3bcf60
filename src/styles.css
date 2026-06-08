@@ -177,6 +177,14 @@
   [dir="rtl"] .font-latin, [dir="rtl"] .font-latin * {
     font-family: var(--font-display) !important;
   }
+  /* Prevent iOS Safari auto-zoom on focus by guaranteeing 16px text inputs on phones */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @layer utilities {
