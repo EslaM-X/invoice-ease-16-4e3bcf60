@@ -79,6 +79,8 @@ export function statusBadge(s: string, isAr: boolean) {
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: string | null;
+  shipment_code: string | null;
   status: string;
   supplier_name: string | null;
   total_qty: number;
@@ -122,6 +124,7 @@ type HistoryRow = {
 type ReceiptRow = {
   id: string;
   receipt_number: number;
+  receipt_code: string | null;
   total_qty: number;
   notes: string | null;
   actor_email: string | null;
@@ -166,7 +169,7 @@ export function POTrackerDialog({
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
       (supabase as any)
         .from("po_receipts")
-        .select("id,receipt_number,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .select("id,receipt_number,receipt_code,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
         .eq("po_id", poId)
         .order("receipt_number", { ascending: false }),
     ]);
@@ -490,7 +493,7 @@ export function POTrackerDialog({
                         <div key={r.id} className="rounded-md border bg-muted/20 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2 text-sm font-semibold">
-                              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">#{r.receipt_number}</span>
+                              <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[11px] font-extrabold text-white tracking-wide">{r.receipt_code || `#${r.receipt_number}`}</span>
                               {isAr ? "دفعة" : "Batch"}
                               <span className="tabular-nums text-emerald-700">+{r.total_qty}</span>
                             </div>

@@ -1468,6 +1468,7 @@ export type Database = {
           id: string
           notes: string | null
           po_id: string
+          receipt_code: string | null
           receipt_number: number
           total_qty: number
           user_id: string
@@ -1479,6 +1480,7 @@ export type Database = {
           id?: string
           notes?: string | null
           po_id: string
+          receipt_code?: string | null
           receipt_number: number
           total_qty?: number
           user_id: string
@@ -1490,6 +1492,7 @@ export type Database = {
           id?: string
           notes?: string | null
           po_id?: string
+          receipt_code?: string | null
           receipt_number?: number
           total_qty?: number
           user_id?: string
@@ -1682,8 +1685,10 @@ export type Database = {
           created_by_email: string | null
           id: string
           image_url: string | null
+          is_spare_part: boolean
           low_stock_threshold: number
           name: string
+          parent_product_id: string | null
           price: number
           qr_code: string | null
           serial_number: string | null
@@ -1703,8 +1708,10 @@ export type Database = {
           created_by_email?: string | null
           id?: string
           image_url?: string | null
+          is_spare_part?: boolean
           low_stock_threshold?: number
           name: string
+          parent_product_id?: string | null
           price?: number
           qr_code?: string | null
           serial_number?: string | null
@@ -1724,8 +1731,10 @@ export type Database = {
           created_by_email?: string | null
           id?: string
           image_url?: string | null
+          is_spare_part?: boolean
           low_stock_threshold?: number
           name?: string
+          parent_product_id?: string | null
           price?: number
           qr_code?: string | null
           serial_number?: string | null
@@ -1735,7 +1744,15 @@ export type Database = {
           updated_by_email?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1879,6 +1896,8 @@ export type Database = {
           received_at: string | null
           received_by: string | null
           received_by_email: string | null
+          shipment_code: string | null
+          shipment_type: string
           shipped_at: string | null
           shipping_mode: string | null
           shipping_value: number | null
@@ -1925,6 +1944,8 @@ export type Database = {
           received_at?: string | null
           received_by?: string | null
           received_by_email?: string | null
+          shipment_code?: string | null
+          shipment_type?: string
           shipped_at?: string | null
           shipping_mode?: string | null
           shipping_value?: number | null
@@ -1971,6 +1992,8 @@ export type Database = {
           received_at?: string | null
           received_by?: string | null
           received_by_email?: string | null
+          shipment_code?: string | null
+          shipment_type?: string
           shipped_at?: string | null
           shipping_mode?: string | null
           shipping_value?: number | null
@@ -2212,6 +2235,27 @@ export type Database = {
           social_instagram?: string | null
           social_twitter?: string | null
           social_website?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shipment_counters: {
+        Row: {
+          last_seq: number
+          shipment_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_seq?: number
+          shipment_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_seq?: number
+          shipment_type?: string
           updated_at?: string
           user_id?: string
         }
