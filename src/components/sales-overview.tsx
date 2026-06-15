@@ -505,6 +505,8 @@ export function SalesOverview() {
     { key: "7", label: isAr ? "7 أيام" : "7 days" },
     { key: "30", label: isAr ? "30 يوم" : "30 days" },
     { key: "90", label: isAr ? "90 يوم" : "90 days" },
+    { key: "mtd", label: isAr ? "هذا الشهر" : "This month" },
+    { key: "prev_month", label: isAr ? "الشهر السابق" : "Last month" },
     { key: "all", label: isAr ? "الكل" : "All" },
     { key: "custom", label: isAr ? "مخصص" : "Custom" },
   ];
