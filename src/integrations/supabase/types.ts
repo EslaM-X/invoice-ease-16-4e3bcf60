@@ -209,6 +209,8 @@ export type Database = {
           customer_phone: string | null
           duration_seconds: number | null
           id: string
+          invoice_id: string | null
+          invoice_number: string | null
           notes: string | null
           outcome: string | null
           summary: string | null
@@ -225,6 +227,8 @@ export type Database = {
           customer_phone?: string | null
           duration_seconds?: number | null
           id?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
           notes?: string | null
           outcome?: string | null
           summary?: string | null
@@ -241,6 +245,8 @@ export type Database = {
           customer_phone?: string | null
           duration_seconds?: number | null
           id?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
           notes?: string | null
           outcome?: string | null
           summary?: string | null
@@ -252,6 +258,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]

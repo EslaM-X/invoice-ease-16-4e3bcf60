@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useRole } from "@/lib/use-role";
@@ -6,12 +6,15 @@ import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeTable } from "@/lib/realtime";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { BarChart3, Loader2, Star, TrendingUp, Phone } from "lucide-react";
+import { BarChart3, Loader2, Star, TrendingUp, Phone, Search, FileText, ExternalLink, PhoneIncoming, PhoneOutgoing } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
+
 
 export const Route = createFileRoute("/call-center-reports")({
   component: ReportsPage,
@@ -27,8 +30,10 @@ function ReportsPage() {
   const [calls, setCalls] = useState<any[]>([]);
   const [ratings, setRatings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
+
     if (!rl && !isManager) {
       toast.error(isAr ? "غير مصرح" : "Unauthorized");
       navigate({ to: "/dashboard" });
@@ -243,8 +248,68 @@ function ReportsPage() {
                 </table>
               </div>
             </Card>
+
+            <Card className="p-5">
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <h2 className="text-sm font-semibold flex-1">{isAr ? "بحث في المكالمات" : "Search calls"}</h2>
+                <div className="relative w-full sm:w-80">
+                  <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={isAr ? "موبايل، رقم فاتورة، اسم، أو موظف…" : "Phone, invoice #, name, or agent…"}
+                    className="ps-9"
+                  />
+                </div>
+              </div>
+              {(() => {
+                const s = search.trim().toLowerCase();
+                const digits = s.replace(/[^\d]/g, "");
+                const norm = (x: string) => x.replace(/[^\d]/g, "");
+                const filtered = !s ? calls.slice(0, 50) : calls.filter((c: any) =>
+                  (c.customer_name ?? "").toLowerCase().includes(s) ||
+                  (c.customer_phone ?? "").toLowerCase().includes(s) ||
+                  (digits.length >= 3 && norm(c.customer_phone ?? "").includes(digits)) ||
+                  (c.invoice_number ?? "").toLowerCase().includes(s) ||
+                  (c.agent_email ?? "").toLowerCase().includes(s)
+                ).slice(0, 100);
+                if (filtered.length === 0) {
+                  return <div className="py-8 text-center text-sm text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</div>;
+                }
+                return (
+                  <div className="divide-y divide-border/60">
+                    {filtered.map((c: any) => (
+                      <div key={c.id} className="flex flex-wrap items-center gap-2 py-2">
+                        <div className={`rounded-md p-1.5 ${c.call_type === "incoming" ? "bg-emerald-500/10 text-emerald-600" : "bg-blue-500/10 text-blue-600"}`}>
+                          {c.call_type === "incoming" ? <PhoneIncoming className="h-3.5 w-3.5" /> : <PhoneOutgoing className="h-3.5 w-3.5" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{c.customer_name || c.customer_phone || "—"}</div>
+                          <div className="text-[11px] text-muted-foreground truncate" dir="ltr">
+                            {c.customer_phone ?? ""} · {c.agent_email ?? ""} · {new Date(c.called_at).toLocaleString(isAr ? "ar-EG" : "en-US")}
+                          </div>
+                        </div>
+                        {c.invoice_id && c.invoice_number && (
+                          <Link
+                            to="/invoices/$id"
+                            params={{ id: c.invoice_id }}
+                            className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-primary hover:bg-primary/20"
+                          >
+                            <FileText className="h-3 w-3" />
+                            {c.invoice_number}
+                            <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                          </Link>
+                        )}
+                        {c.outcome && <Badge variant="outline" className="text-[10px]">{c.outcome}</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </Card>
           </>
         )}
+
       </div>
     </AppShell>
   );

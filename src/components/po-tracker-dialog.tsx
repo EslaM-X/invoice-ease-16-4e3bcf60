@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon } from "lucide-react";
+import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
 
@@ -163,6 +163,70 @@ export function POTrackerDialog({
   const [busy, setBusy] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [historicalOpen, setHistoricalOpen] = useState(false);
+
+  // Timeline filters
+  const [tlType, setTlType] = useState<"all" | "status" | "shipment" | "historical">("all");
+  const [tlActor, setTlActor] = useState("");
+  const [tlFrom, setTlFrom] = useState("");
+  const [tlTo, setTlTo] = useState("");
+
+  // Per-user / per-PO read state for timeline events (localStorage)
+  const readKey = useMemo(
+    () => (user?.id && poId ? `po-tl-read:${user.id}:${poId}` : ""),
+    [user?.id, poId],
+  );
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!readKey) return;
+    try {
+      const raw = localStorage.getItem(readKey);
+      setReadIds(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+    } catch { setReadIds(new Set()); }
+  }, [readKey]);
+  const persistRead = (next: Set<string>) => {
+    setReadIds(new Set(next));
+    if (readKey) {
+      try { localStorage.setItem(readKey, JSON.stringify([...next])); } catch {}
+    }
+  };
+  const toggleRead = (id: string) => {
+    const next = new Set(readIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    persistRead(next);
+  };
+  const markAllRead = () => persistRead(new Set(history.map((h) => h.id)));
+  const markAllUnread = () => persistRead(new Set());
+
+  const classifyEvent = (h: HistoryRow): "shipment" | "historical" | "status" => {
+    const n = h.note ?? "";
+    if (n.startsWith("[SHIPMENT_EDIT]")) return "shipment";
+    if (n.startsWith("[HISTORICAL_RECEIPT]")) return "historical";
+    return "status";
+  };
+
+  const filteredHistory = useMemo(() => {
+    const actor = tlActor.trim().toLowerCase();
+    const from = tlFrom ? new Date(tlFrom).getTime() : null;
+    const to = tlTo ? new Date(tlTo).getTime() + 24 * 3600 * 1000 - 1 : null;
+    return history.filter((h) => {
+      if (tlType !== "all" && classifyEvent(h) !== tlType) return false;
+      if (actor && !(h.actor_email ?? "").toLowerCase().includes(actor)) return false;
+      const t = new Date(h.created_at).getTime();
+      if (from !== null && t < from) return false;
+      if (to !== null && t > to) return false;
+      return true;
+    });
+  }, [history, tlType, tlActor, tlFrom, tlTo]);
+
+  const unreadCounts = useMemo(() => {
+    const c = { all: 0, status: 0, shipment: 0, historical: 0 };
+    history.forEach((h) => {
+      if (readIds.has(h.id)) return;
+      c.all++;
+      c[classifyEvent(h)]++;
+    });
+    return c;
+  }, [history, readIds]);
 
   const load = async () => {
     const [{ data: p }, { data: it }, { data: h }, { data: rc }] = await Promise.all([
@@ -456,21 +520,99 @@ export function POTrackerDialog({
               {/* Timeline + Change Log */}
               <div className="rounded-lg border bg-card p-4">
                 <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="text-sm font-semibold">{isAr ? "السجل الزمني وسجل التغييرات" : "Timeline & Change Log"}</div>
-                  <span className="text-[11px] text-muted-foreground">{history.length} {isAr ? "حدث" : "events"}</span>
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    {isAr ? "السجل الزمني وسجل التغييرات" : "Timeline & Change Log"}
+                    {unreadCounts.all > 0 && (
+                      <Badge className="gap-1 bg-rose-500 text-white hover:bg-rose-600">
+                        <BellDot className="h-3 w-3" />
+                        {unreadCounts.all} {isAr ? "جديد" : "new"}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-muted-foreground">
+                      {filteredHistory.length}/{history.length} {isAr ? "حدث" : "events"}
+                    </span>
+                    <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={markAllRead} disabled={unreadCounts.all === 0}>
+                      <CheckCheck className="h-3 w-3" />
+                      {isAr ? "تعليم الكل مقروء" : "Mark all read"}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={markAllUnread} disabled={readIds.size === 0}>
+                      <EyeOff className="h-3 w-3" />
+                      {isAr ? "ارجاع غير مقروء" : "Mark all unread"}
+                    </Button>
+                  </div>
                 </div>
-                {history.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">{isAr ? "لا توجد تحركات بعد." : "No movements yet."}</div>
+
+                {/* Filters */}
+                <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-md border bg-muted/30 p-2">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                  {(["all", "status", "shipment", "historical"] as const).map((t) => {
+                    const active = tlType === t;
+                    const label = t === "all" ? (isAr ? "الكل" : "All")
+                      : t === "status" ? (isAr ? "حالات" : "Status")
+                      : t === "shipment" ? (isAr ? "تعديل شحنة" : "Shipment")
+                      : (isAr ? "تاريخية" : "Historical");
+                    const cnt = unreadCounts[t];
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTlType(t)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                          active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"
+                        }`}
+                      >
+                        {label}
+                        {cnt > 0 && (
+                          <span className={`rounded-full px-1.5 text-[10px] font-bold ${active ? "bg-primary-foreground/20" : "bg-rose-500/15 text-rose-600"}`}>
+                            {cnt}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute start-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={tlActor}
+                      onChange={(e) => setTlActor(e.target.value)}
+                      placeholder={isAr ? "بحث بالمنفّذ…" : "Search actor…"}
+                      className="h-7 w-44 ps-7 text-[11px]"
+                    />
+                  </div>
+                  <Input type="date" value={tlFrom} onChange={(e) => setTlFrom(e.target.value)} className="h-7 w-36 text-[11px]" />
+                  <span className="text-[11px] text-muted-foreground">→</span>
+                  <Input type="date" value={tlTo} onChange={(e) => setTlTo(e.target.value)} className="h-7 w-36 text-[11px]" />
+                  {(tlType !== "all" || tlActor || tlFrom || tlTo) && (
+                    <button
+                      type="button"
+                      onClick={() => { setTlType("all"); setTlActor(""); setTlFrom(""); setTlTo(""); }}
+                      className="ms-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+                    >
+                      {isAr ? "مسح المرشّحات" : "Clear filters"}
+                    </button>
+                  )}
+                </div>
+
+                {filteredHistory.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">
+                    {history.length === 0
+                      ? (isAr ? "لا توجد تحركات بعد." : "No movements yet.")
+                      : (isAr ? "لا توجد نتائج مطابقة للمرشّحات." : "No events match the filters.")}
+                  </div>
                 ) : (
                   <ol className="relative space-y-3 ps-5 before:absolute before:inset-y-1 before:start-[7px] before:w-px before:bg-border">
-                    {[...history].reverse().map((h) => {
-                      const isShipEdit = (h.note ?? "").startsWith("[SHIPMENT_EDIT]");
-                      const isHistRec = (h.note ?? "").startsWith("[HISTORICAL_RECEIPT]");
+                    {[...filteredHistory].reverse().map((h) => {
+                      const kind = classifyEvent(h);
+                      const isShipEdit = kind === "shipment";
+                      const isHistRec = kind === "historical";
+                      const isRead = readIds.has(h.id);
                       const dotCls = isShipEdit ? "bg-blue-500" : isHistRec ? "bg-violet-500" : "bg-primary";
                       const cleanNote = (h.note ?? "").replace(/^\[(SHIPMENT_EDIT|HISTORICAL_RECEIPT)\]\s*/, "");
                       return (
-                        <li key={h.id} className="relative">
-                          <span className={`absolute -start-[18px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full ring-4 ring-background ${dotCls}`} />
+                        <li key={h.id} className={`relative rounded-md transition ${!isRead ? "bg-rose-500/5 ring-1 ring-rose-500/20 p-2 -ms-2" : ""}`}>
+                          <span className={`absolute -start-[18px] top-2 grid h-3.5 w-3.5 place-items-center rounded-full ring-4 ring-background ${dotCls} ${!isRead ? "animate-pulse" : ""}`} />
                           <div className="flex flex-wrap items-center gap-2 text-sm">
                             {isShipEdit ? (
                               <Badge variant="outline" className="gap-1 bg-blue-500/15 text-blue-700 border-blue-500/30">
@@ -486,6 +628,20 @@ export function POTrackerDialog({
                               statusBadge(h.to_status, isAr)
                             )}
                             <span className="text-xs text-muted-foreground">{fmtDateTime(h.created_at, lang)}</span>
+                            {!isRead && (
+                              <Badge className="h-4 gap-0.5 bg-rose-500 px-1.5 text-[9px] text-white hover:bg-rose-600">
+                                {isAr ? "جديد" : "NEW"}
+                              </Badge>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => toggleRead(h.id)}
+                              className="ms-auto inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                              title={isRead ? (isAr ? "ارجاع غير مقروء" : "Mark unread") : (isAr ? "تعليم مقروء" : "Mark read")}
+                            >
+                              {isRead ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                              {isRead ? (isAr ? "غير مقروء" : "Unread") : (isAr ? "مقروء" : "Read")}
+                            </button>
                           </div>
                           {h.actor_email && <div className="text-[11px] text-muted-foreground">{h.actor_email}</div>}
                           {cleanNote && (
@@ -499,6 +655,7 @@ export function POTrackerDialog({
                   </ol>
                 )}
               </div>
+
 
               {/* Receipts (batches) */}
               {(receipts.length > 0 || isPartial || (isAdmin || isPurchasing)) && (

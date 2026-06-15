@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
@@ -24,7 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing, Pencil, Check, ChevronsUpDown, Trash2 } from "lucide-react";
+import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing, Pencil, Check, ChevronsUpDown, Trash2, FileText, ExternalLink, Search } from "lucide-react";
 
 export const Route = createFileRoute("/call-center")({
   component: CallCenterPage,
@@ -43,9 +43,12 @@ type CallLog = {
   agent_id: string;
   agent_email: string | null;
   called_at: string;
+  invoice_id: string | null;
+  invoice_number: string | null;
 };
 
 type CustomerOpt = { id: string; name: string; phone: string | null };
+type InvoiceOpt = { id: string; invoice_number: string; customer_name: string | null; customer_phone: string | null; total: number; status: string };
 
 const OUTCOMES_AR = [
   { v: "resolved", label: "تم الحل" },
@@ -64,6 +67,7 @@ const OUTCOMES_EN = [
   { v: "other", label: "Other" },
 ];
 
+
 function CallCenterPage() {
   const { user } = useAuth();
   const { isCallCenter, isManager, loading: roleLoading } = useRole();
@@ -73,6 +77,7 @@ function CallCenterPage() {
   const navigate = useNavigate();
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [customers, setCustomers] = useState<CustomerOpt[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CallLog | null>(null);
@@ -90,12 +95,17 @@ function CallCenterPage() {
   const load = async () => {
     if (calls.length === 0 && customers.length === 0) setLoading(true);
 
-    const [{ data }, { data: cs }] = await Promise.all([
+    const [{ data }, { data: cs }, { data: inv }] = await Promise.all([
       supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
       supabase.from("customers").select("id, name, phone").order("name"),
+      supabase.from("invoices")
+        .select("id, invoice_number, customer_name, customer_phone, total, status")
+        .order("created_at", { ascending: false })
+        .limit(300),
     ]);
     setCalls((data as any) ?? []);
     setCustomers((cs as any) ?? []);
+    setInvoices((inv as any) ?? []);
     setLoading(false);
   };
 
@@ -104,6 +114,7 @@ function CallCenterPage() {
   }, [isCallCenter]);
   useRealtimeTable("call_logs", () => isCallCenter && load());
   useRealtimeTable("customers", () => isCallCenter && load());
+  useRealtimeTable("invoices", () => isCallCenter && load());
 
   const deleteCall = async (id: string) => {
     const { error } = await supabase.from("call_logs").delete().eq("id", id);
@@ -126,17 +137,24 @@ function CallCenterPage() {
     (c) => new Date(c.called_at).toDateString() === new Date().toDateString()
   ).length;
 
+  // Normalize phone digits for tolerant matching (strips spaces, dashes, +).
+  const normPhone = (s: string) => s.replace(/[^\d]/g, "");
+
   const filteredCalls = calls.filter((c) => {
     if (typeFilter !== "all" && c.call_type !== typeFilter) return false;
     const s = search.trim().toLowerCase();
     if (!s) return true;
+    const phoneDigits = normPhone(s);
     return (
       (c.customer_name ?? "").toLowerCase().includes(s) ||
       (c.customer_phone ?? "").toLowerCase().includes(s) ||
+      (phoneDigits.length >= 3 && normPhone(c.customer_phone ?? "").includes(phoneDigits)) ||
       (c.summary ?? "").toLowerCase().includes(s) ||
-      (c.agent_email ?? "").toLowerCase().includes(s)
+      (c.agent_email ?? "").toLowerCase().includes(s) ||
+      (c.invoice_number ?? "").toLowerCase().includes(s)
     );
   });
+
 
   return (
     <AppShell>
@@ -164,6 +182,7 @@ function CallCenterPage() {
                 userId={user!.id}
                 userEmail={user!.email ?? null}
                 customers={customers}
+                invoices={invoices}
                 isAr={isAr}
                 outcomes={OUTCOMES}
                 onDone={() => {
@@ -178,12 +197,15 @@ function CallCenterPage() {
         <Card className="p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-lg font-semibold flex-1">{isAr ? "سجل المكالمات" : "Call log"}</h2>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={isAr ? "ابحث بالاسم، رقم، ملخص…" : "Search by name, phone, summary…"}
-              className="w-full sm:w-64"
-            />
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={isAr ? "اسم، رقم موبايل، رقم فاتورة…" : "Name, phone, invoice #…"}
+                className="ps-9"
+              />
+            </div>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
               <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -193,6 +215,7 @@ function CallCenterPage() {
               </SelectContent>
             </Select>
           </div>
+
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -233,11 +256,24 @@ function CallCenterPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {c.invoice_id && c.invoice_number && (
+                      <Link
+                        to="/invoices/$id"
+                        params={{ id: c.invoice_id }}
+                        className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-primary hover:bg-primary/20 transition"
+                        title={isAr ? "فتح الفاتورة" : "Open invoice"}
+                      >
+                        <FileText className="h-3 w-3" />
+                        {c.invoice_number}
+                        <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                      </Link>
+                    )}
                     {c.outcome && (
                       <Badge variant="outline" className="text-xs">
                         {OUTCOMES.find((o) => o.v === c.outcome)?.label ?? c.outcome}
                       </Badge>
                     )}
+
                     {c.duration_seconds > 0 && (
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {Math.floor(c.duration_seconds / 60)}:
@@ -308,6 +344,7 @@ function CallCenterPage() {
             userId={user!.id}
             userEmail={user!.email ?? null}
             customers={customers}
+            invoices={invoices}
             existing={editing}
             isAr={isAr}
             outcomes={OUTCOMES}
@@ -332,6 +369,7 @@ function CallDialog({
   userId,
   userEmail,
   customers,
+  invoices,
   existing,
   isAr,
   outcomes,
@@ -340,12 +378,15 @@ function CallDialog({
   userId: string;
   userEmail: string | null;
   customers: CustomerOpt[];
+  invoices: InvoiceOpt[];
   existing?: CallLog;
   isAr: boolean;
   outcomes: { v: string; label: string }[];
   onDone: () => void;
 }) {
   const [customerId, setCustomerId] = useState<string | null>(existing?.customer_id ?? null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(existing?.invoice_id ?? null);
+  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(existing?.invoice_number ?? null);
   const [name, setName] = useState(existing?.customer_name ?? "");
   const [phone, setPhone] = useState(existing?.customer_phone ?? "");
   const [type, setType] = useState<"incoming" | "outgoing">(existing?.call_type ?? "incoming");
@@ -360,12 +401,22 @@ function CallDialog({
   );
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [invPickerOpen, setInvPickerOpen] = useState(false);
 
   const pickCustomer = (c: CustomerOpt) => {
     setCustomerId(c.id);
     setName(c.name);
     if (c.phone) setPhone(c.phone);
     setPickerOpen(false);
+  };
+
+  const pickInvoice = (inv: InvoiceOpt) => {
+    setInvoiceId(inv.id);
+    setInvoiceNumber(inv.invoice_number);
+    // Auto-fill customer info from invoice if blank
+    if (!name.trim() && inv.customer_name) setName(inv.customer_name);
+    if (!phone.trim() && inv.customer_phone) setPhone(inv.customer_phone);
+    setInvPickerOpen(false);
   };
 
   const save = async () => {
@@ -384,6 +435,8 @@ function CallDialog({
       summary: summary.trim() || null,
       notes: notes.trim() || null,
       called_at: new Date(calledAt).toISOString(),
+      invoice_id: invoiceId,
+      invoice_number: invoiceNumber,
     };
     const { error } = existing
       ? await supabase.from("call_logs").update(payload).eq("id", existing.id)
@@ -395,6 +448,7 @@ function CallDialog({
     }
     toast.success(existing ? (isAr ? "تم تحديث المكالمة" : "Call updated") : (isAr ? "تم تسجيل المكالمة" : "Call logged"));
     onDone();
+
   };
 
   return (
@@ -445,6 +499,61 @@ function CallDialog({
             </button>
           )}
         </div>
+
+        <div>
+          <Label className="flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5 text-primary" />
+            {isAr ? "ربط بفاتورة (اختياري)" : "Link to invoice (optional)"}
+          </Label>
+          <Popover open={invPickerOpen} onOpenChange={setInvPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                {invoiceNumber ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-mono">{invoiceNumber}</Badge>
+                  </span>
+                ) : (isAr ? "ابحث برقم الفاتورة أو اسم العميل…" : "Search by invoice # or customer…")}
+                <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+              <Command>
+                <CommandInput placeholder={isAr ? "رقم فاتورة، اسم، أو موبايل…" : "Invoice #, name, or phone…"} />
+                <CommandList>
+                  <CommandEmpty>{isAr ? "لا توجد فواتير مطابقة" : "No matching invoices"}</CommandEmpty>
+                  <CommandGroup>
+                    {invoices.slice(0, 200).map((inv) => (
+                      <CommandItem
+                        key={inv.id}
+                        value={`${inv.invoice_number} ${inv.customer_name ?? ""} ${inv.customer_phone ?? ""}`}
+                        onSelect={() => pickInvoice(inv)}
+                      >
+                        <Check className={`me-2 h-4 w-4 ${invoiceId === inv.id ? "opacity-100" : "opacity-0"}`} />
+                        <div className="flex flex-1 flex-col">
+                          <span className="font-mono text-xs">{inv.invoice_number}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {inv.customer_name ?? "—"}{inv.customer_phone ? ` · ${inv.customer_phone}` : ""}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">{inv.status}</Badge>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {invoiceId && (
+            <button
+              type="button"
+              className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { setInvoiceId(null); setInvoiceNumber(null); }}
+            >
+              {isAr ? "إلغاء ربط الفاتورة" : "Unlink invoice"}
+            </button>
+          )}
+        </div>
+
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
