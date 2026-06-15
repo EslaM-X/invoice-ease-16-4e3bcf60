@@ -132,6 +132,25 @@ export function IncomingShipmentsStrip() {
           <ArrowRight className={`h-3.5 w-3.5 transition group-hover:translate-x-0.5 ${isAr ? "rotate-180 group-hover:-translate-x-0.5" : ""}`} />
         </Link>
       </div>
+      {rows && rows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-5 py-2">
+          {SHIPMENT_TYPES.map((st) => {
+            const sm = shipmentMeta(st);
+            const SIcon = sm.icon;
+            const grouped = rows.filter((r) => (r.shipment_type ?? "grounded") === st);
+            const cnt = grouped.length;
+            const rem = grouped.reduce((s, r) => s + r.remaining_qty, 0);
+            return (
+              <span key={st} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold ${sm.surfaceClass} ${sm.accentTextClass}`}>
+                <SIcon className="h-3.5 w-3.5" />
+                {sm.shortLabel(isAr)}
+                <span className="rounded-full bg-background/70 px-1.5 font-bold tabular-nums">{cnt}</span>
+                {rem > 0 && <span className="opacity-80">· {rem} {t("units")}</span>}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {rows === null ? (
         <div className="flex gap-3 p-5">
