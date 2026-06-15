@@ -182,6 +182,7 @@ function CallCenterPage() {
                 userId={user!.id}
                 userEmail={user!.email ?? null}
                 customers={customers}
+                invoices={invoices}
                 isAr={isAr}
                 outcomes={OUTCOMES}
                 onDone={() => {
@@ -196,12 +197,15 @@ function CallCenterPage() {
         <Card className="p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-lg font-semibold flex-1">{isAr ? "سجل المكالمات" : "Call log"}</h2>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={isAr ? "ابحث بالاسم، رقم، ملخص…" : "Search by name, phone, summary…"}
-              className="w-full sm:w-64"
-            />
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={isAr ? "اسم، رقم موبايل، رقم فاتورة…" : "Name, phone, invoice #…"}
+                className="ps-9"
+              />
+            </div>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
               <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -211,6 +215,7 @@ function CallCenterPage() {
               </SelectContent>
             </Select>
           </div>
+
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
