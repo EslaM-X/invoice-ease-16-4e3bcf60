@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History } from "lucide-react";
 import { toast } from "sonner";
+import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
 
 export const PO_FLOW = [
   "pending_cfo",
@@ -161,6 +162,7 @@ export function POTrackerDialog({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
+  const [historicalOpen, setHistoricalOpen] = useState(false);
 
   const load = async () => {
     const [{ data: p }, { data: it }, { data: h }, { data: rc }] = await Promise.all([
@@ -472,17 +474,30 @@ export function POTrackerDialog({
               </div>
 
               {/* Receipts (batches) */}
-              {(receipts.length > 0 || isPartial) && (
+              {(receipts.length > 0 || isPartial || (isAdmin || isPurchasing)) && (
                 <div className="rounded-lg border bg-card p-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 text-sm font-semibold">
                       <Package className="h-4 w-4 text-emerald-600" />
                       {isAr ? "دفعات الاستلام" : "Receipt Batches"}
                     </div>
-                    <div className="text-[11px] tabular-nums text-muted-foreground">
-                      {isAr
-                        ? `إجمالي مستلم: ${totalReceived} / ${totalOrdered} · متبقي ${totalRemaining}`
-                        : `Received: ${totalReceived} / ${totalOrdered} · ${totalRemaining} left`}
+                    <div className="flex items-center gap-2">
+                      {(isAdmin || isPurchasing) && totalRemaining > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 border-violet-500/40 text-violet-700 hover:bg-violet-500/10"
+                          onClick={() => setHistoricalOpen(true)}
+                        >
+                          <History className="h-3.5 w-3.5" />
+                          {isAr ? "إضافة دفعة تاريخية" : "Add historical batch"}
+                        </Button>
+                      )}
+                      <div className="text-[11px] tabular-nums text-muted-foreground">
+                        {isAr
+                          ? `إجمالي مستلم: ${totalReceived} / ${totalOrdered} · متبقي ${totalRemaining}`
+                          : `Received: ${totalReceived} / ${totalOrdered} · ${totalRemaining} left`}
+                      </div>
                     </div>
                   </div>
                   {receipts.length === 0 ? (
@@ -538,6 +553,17 @@ export function POTrackerDialog({
           open={receiveOpen}
           onOpenChange={setReceiveOpen}
           onDone={() => { setReceiveOpen(false); load(); }}
+        />
+      )}
+
+      {historicalOpen && po && (
+        <HistoricalReceiptDialog
+          poId={po.id}
+          poNumber={po.shipment_code || po.po_number}
+          items={items}
+          open={historicalOpen}
+          onOpenChange={setHistoricalOpen}
+          onSaved={() => { setHistoricalOpen(false); load(); }}
         />
       )}
     </>

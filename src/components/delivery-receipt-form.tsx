@@ -26,6 +26,7 @@ import {
 } from "@/lib/product-parts";
 import { DEFAULT_DELIVERY_MODE, buildEffectiveDelivered, type FDeliveredRow, type FInvItem } from "@/lib/fulfillment-engine";
 import { SignaturePad } from "@/components/signature-pad";
+import { SparePartBadge } from "@/components/spare-part-badge";
 
 type Mode = "new" | "edit";
 
@@ -53,6 +54,7 @@ type ExistingReceipt = {
 
 type Row = {
   invoice_item_id: string;
+  product_id: string | null;
   product_name: string;
   serial_number: string | null;
   color: string | null;
@@ -64,6 +66,8 @@ type Row = {
   isMultiPart: boolean;
   part: PartKey;
   priorNotes: string[]; // notes from OTHER receipts (for multi-part tracking)
+  is_spare_part: boolean;
+  parent_product_name: string | null;
 };
 
 export function DeliveryReceiptForm({
@@ -168,14 +172,39 @@ export function DeliveryReceiptForm({
             existingMap.set(it.invoice_item_id, { qty: it.quantity, note: it.note ?? "" });
         }
       }
+      const productIds = Array.from(new Set(items.map((i) => i.product_id).filter(Boolean) as string[]));
+      const sparePartInfo = new Map<string, { is_spare_part: boolean; parent_product_id: string | null }>();
+      const productNamesById = new Map<string, string>();
+      if (productIds.length > 0) {
+        const { data: prods } = await supabase
+          .from("products")
+          .select("id, name, is_spare_part, parent_product_id")
+          .in("id", productIds);
+        for (const p of (prods ?? []) as any[]) {
+          sparePartInfo.set(p.id, { is_spare_part: !!p.is_spare_part, parent_product_id: p.parent_product_id ?? null });
+          productNamesById.set(p.id, p.name);
+        }
+        const parentIds = Array.from(new Set(
+          ((prods ?? []) as any[])
+            .map((p) => p.parent_product_id)
+            .filter((id): id is string => !!id && !productNamesById.has(id)),
+        ));
+        if (parentIds.length > 0) {
+          const { data: parents } = await supabase.from("products").select("id, name").in("id", parentIds);
+          for (const p of (parents ?? []) as any[]) productNamesById.set(p.id, p.name);
+        }
+      }
+
       const next: Row[] = items.map((it) => {
         const ex = existingMap.get(it.id);
         const strictDelivered = deliveredStrictMap.get(it.id) ?? 0;
         const remainingForThisReceipt = Math.max(0, it.quantity - strictDelivered) + (ex?.qty || 0);
         const multi = isMultiPartProduct(it.product_name);
         const parsed = parsePartFromNote(ex?.note ?? "");
+        const sp = it.product_id ? sparePartInfo.get(it.product_id) : undefined;
         return {
           invoice_item_id: it.id,
+          product_id: it.product_id ?? null,
           product_name: it.product_name,
           serial_number: it.serial_number,
           color: it.color,
@@ -187,6 +216,8 @@ export function DeliveryReceiptForm({
           isMultiPart: multi,
           part: ex ? parsed.part : "full",
           priorNotes: priorNotesMap.get(it.id) ?? [],
+          is_spare_part: !!sp?.is_spare_part,
+          parent_product_name: sp?.parent_product_id ? (productNamesById.get(sp.parent_product_id) ?? null) : null,
         };
       });
       setRows(next);
@@ -361,7 +392,17 @@ export function DeliveryReceiptForm({
                       <Checkbox checked={r.selected} onCheckedChange={(v) => setRow(idx, { selected: !!v })} />
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-medium">{r.product_name}</div>
+                      <div className="font-medium flex items-center gap-1.5 flex-wrap">
+                        <span>{r.product_name}</span>
+                        {r.is_spare_part && (
+                          <SparePartBadge
+                            product={{ is_spare_part: true, parent_product_id: null }}
+                            parentName={r.parent_product_name}
+                            isAr={isAr}
+                            size="xs"
+                          />
+                        )}
+                      </div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
                         {r.serial_number && <span className="me-2">SN: {r.serial_number}</span>}
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}

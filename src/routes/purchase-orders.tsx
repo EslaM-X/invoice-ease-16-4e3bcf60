@@ -16,10 +16,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Activity } from "lucide-react";
+import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Activity, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components/po-tracker-dialog";
+import { EditShipmentDialog } from "@/components/edit-shipment-dialog";
 import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-types";
 
 import { ExecutiveGate } from "@/components/executive-gate";
@@ -59,6 +60,7 @@ type PO = {
   usd_rate: number | null;
   notes: string | null;
   created_at: string;
+  shipment_date: string | null;
   created_by_email: string | null;
   cfo_priced_at: string | null;
   cfo_priced_by_email?: string | null;
@@ -89,6 +91,7 @@ function PurchaseOrdersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [trackId, setTrackId] = useState<string | null>(null);
+  const [editShipPo, setEditShipPo] = useState<PO | null>(null);
 
   // Access guard
   useEffect(() => {
@@ -184,6 +187,18 @@ function PurchaseOrdersPage() {
                 </div>
               )}
               <div>{statusBadge(p.status)}</div>
+              {(isAdmin || isPurchasing || isCFO) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); setEditShipPo(p); }}
+                  className="gap-1"
+                  title={isAr ? "تعديل نوع/تاريخ الشحنة" : "Edit shipment type/date"}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {isAr ? "تعديل الشحنة" : "Edit shipment"}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -198,6 +213,18 @@ function PurchaseOrdersPage() {
           })}
         </div>
       </Card>
+
+      {editShipPo && (
+        <EditShipmentDialog
+          poId={editShipPo.id}
+          currentType={editShipPo.shipment_type}
+          currentDate={editShipPo.shipment_date}
+          currentCode={editShipPo.shipment_code}
+          open={!!editShipPo}
+          onOpenChange={(v) => { if (!v) setEditShipPo(null); }}
+          onSaved={() => loadPOs()}
+        />
+      )}
 
       {createOpen && (
         <CreatePODialog

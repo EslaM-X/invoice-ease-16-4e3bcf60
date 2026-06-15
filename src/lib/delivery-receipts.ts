@@ -63,6 +63,7 @@ export async function updateDeliveryReceipt(receiptId: string, p: DRPayload) {
 
 export type InvoiceItemWithDelivered = {
   id: string;
+  product_id: string | null;
   product_name: string;
   serial_number: string | null;
   color: string | null;
@@ -77,7 +78,7 @@ export async function fetchInvoiceItemsWithDelivered(
 ): Promise<InvoiceItemWithDelivered[]> {
   const { data: items } = await supabase
     .from("invoice_items")
-    .select("id, product_name, serial_number, color, quantity")
+    .select("id, product_id, product_name, serial_number, color, quantity")
     .eq("invoice_id", invoiceId);
 
   const itemIds = (items ?? []).map((i: any) => i.id);
@@ -98,6 +99,7 @@ export async function fetchInvoiceItemsWithDelivered(
     const delivered = totals.get(i.id) || 0;
     return {
       id: i.id,
+      product_id: i.product_id ?? null,
       product_name: i.product_name,
       serial_number: i.serial_number,
       color: i.color,

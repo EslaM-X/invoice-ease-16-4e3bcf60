@@ -11,6 +11,8 @@ export type Product = {
   image_url?: string | null;
   collection?: string | null;
   cost_price?: number;
+  is_spare_part?: boolean | null;
+  parent_product_id?: string | null;
   created_at: string; updated_at: string;
   created_by_email?: string | null; updated_by_email?: string | null;
 };
