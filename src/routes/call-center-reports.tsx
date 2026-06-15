@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useRole } from "@/lib/use-role";
@@ -6,12 +6,15 @@ import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeTable } from "@/lib/realtime";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { BarChart3, Loader2, Star, TrendingUp, Phone } from "lucide-react";
+import { BarChart3, Loader2, Star, TrendingUp, Phone, Search, FileText, ExternalLink, PhoneIncoming, PhoneOutgoing } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
+
 
 export const Route = createFileRoute("/call-center-reports")({
   component: ReportsPage,
