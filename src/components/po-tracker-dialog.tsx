@@ -164,6 +164,70 @@ export function POTrackerDialog({
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [historicalOpen, setHistoricalOpen] = useState(false);
 
+  // Timeline filters
+  const [tlType, setTlType] = useState<"all" | "status" | "shipment" | "historical">("all");
+  const [tlActor, setTlActor] = useState("");
+  const [tlFrom, setTlFrom] = useState("");
+  const [tlTo, setTlTo] = useState("");
+
+  // Per-user / per-PO read state for timeline events (localStorage)
+  const readKey = useMemo(
+    () => (user?.id && poId ? `po-tl-read:${user.id}:${poId}` : ""),
+    [user?.id, poId],
+  );
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!readKey) return;
+    try {
+      const raw = localStorage.getItem(readKey);
+      setReadIds(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+    } catch { setReadIds(new Set()); }
+  }, [readKey]);
+  const persistRead = (next: Set<string>) => {
+    setReadIds(new Set(next));
+    if (readKey) {
+      try { localStorage.setItem(readKey, JSON.stringify([...next])); } catch {}
+    }
+  };
+  const toggleRead = (id: string) => {
+    const next = new Set(readIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    persistRead(next);
+  };
+  const markAllRead = () => persistRead(new Set(history.map((h) => h.id)));
+  const markAllUnread = () => persistRead(new Set());
+
+  const classifyEvent = (h: HistoryRow): "shipment" | "historical" | "status" => {
+    const n = h.note ?? "";
+    if (n.startsWith("[SHIPMENT_EDIT]")) return "shipment";
+    if (n.startsWith("[HISTORICAL_RECEIPT]")) return "historical";
+    return "status";
+  };
+
+  const filteredHistory = useMemo(() => {
+    const actor = tlActor.trim().toLowerCase();
+    const from = tlFrom ? new Date(tlFrom).getTime() : null;
+    const to = tlTo ? new Date(tlTo).getTime() + 24 * 3600 * 1000 - 1 : null;
+    return history.filter((h) => {
+      if (tlType !== "all" && classifyEvent(h) !== tlType) return false;
+      if (actor && !(h.actor_email ?? "").toLowerCase().includes(actor)) return false;
+      const t = new Date(h.created_at).getTime();
+      if (from !== null && t < from) return false;
+      if (to !== null && t > to) return false;
+      return true;
+    });
+  }, [history, tlType, tlActor, tlFrom, tlTo]);
+
+  const unreadCounts = useMemo(() => {
+    const c = { all: 0, status: 0, shipment: 0, historical: 0 };
+    history.forEach((h) => {
+      if (readIds.has(h.id)) return;
+      c.all++;
+      c[classifyEvent(h)]++;
+    });
+    return c;
+  }, [history, readIds]);
+
   const load = async () => {
     const [{ data: p }, { data: it }, { data: h }, { data: rc }] = await Promise.all([
       supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
