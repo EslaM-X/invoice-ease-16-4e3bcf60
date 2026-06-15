@@ -484,6 +484,71 @@ function CreatePODialog({
           </div>
         </div>
 
+        {/* Kind / Collection / Color filter pills */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ["all", isAr ? "الكل" : "All"],
+              ["products", isAr ? "منتجات" : "Products"],
+              ["spare", isAr ? "قطع غيار" : "Spare parts"],
+            ] as const).map(([k, lbl]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKindFilter(k)}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${kindFilter === k ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+          {collections.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCollectionFilter("")}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {isAr ? "كل الكولكشن" : "All collections"}
+              </button>
+              {collections.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCollectionFilter(c)}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          {colors.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setColorFilter("")}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {isAr ? "كل الألوان" : "All colors"}
+              </button>
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColorFilter(c)}
+                  title={c}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition border ${colorFilter === c ? "ring-2 ring-primary bg-primary/10" : "bg-muted hover:bg-muted/70"}`}
+                >
+                  <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+
         <BulkAdjustBar
           isAr={isAr}
           filteredIds={filtered.map((p) => p.id)}
