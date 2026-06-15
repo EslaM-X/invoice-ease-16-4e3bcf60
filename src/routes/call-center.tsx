@@ -331,6 +331,7 @@ function CallCenterPage() {
             userId={user!.id}
             userEmail={user!.email ?? null}
             customers={customers}
+            invoices={invoices}
             existing={editing}
             isAr={isAr}
             outcomes={OUTCOMES}
@@ -355,6 +356,7 @@ function CallDialog({
   userId,
   userEmail,
   customers,
+  invoices,
   existing,
   isAr,
   outcomes,
@@ -363,12 +365,15 @@ function CallDialog({
   userId: string;
   userEmail: string | null;
   customers: CustomerOpt[];
+  invoices: InvoiceOpt[];
   existing?: CallLog;
   isAr: boolean;
   outcomes: { v: string; label: string }[];
   onDone: () => void;
 }) {
   const [customerId, setCustomerId] = useState<string | null>(existing?.customer_id ?? null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(existing?.invoice_id ?? null);
+  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(existing?.invoice_number ?? null);
   const [name, setName] = useState(existing?.customer_name ?? "");
   const [phone, setPhone] = useState(existing?.customer_phone ?? "");
   const [type, setType] = useState<"incoming" | "outgoing">(existing?.call_type ?? "incoming");
@@ -383,12 +388,22 @@ function CallDialog({
   );
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [invPickerOpen, setInvPickerOpen] = useState(false);
 
   const pickCustomer = (c: CustomerOpt) => {
     setCustomerId(c.id);
     setName(c.name);
     if (c.phone) setPhone(c.phone);
     setPickerOpen(false);
+  };
+
+  const pickInvoice = (inv: InvoiceOpt) => {
+    setInvoiceId(inv.id);
+    setInvoiceNumber(inv.invoice_number);
+    // Auto-fill customer info from invoice if blank
+    if (!name.trim() && inv.customer_name) setName(inv.customer_name);
+    if (!phone.trim() && inv.customer_phone) setPhone(inv.customer_phone);
+    setInvPickerOpen(false);
   };
 
   const save = async () => {
@@ -407,6 +422,8 @@ function CallDialog({
       summary: summary.trim() || null,
       notes: notes.trim() || null,
       called_at: new Date(calledAt).toISOString(),
+      invoice_id: invoiceId,
+      invoice_number: invoiceNumber,
     };
     const { error } = existing
       ? await supabase.from("call_logs").update(payload).eq("id", existing.id)
@@ -418,6 +435,7 @@ function CallDialog({
     }
     toast.success(existing ? (isAr ? "تم تحديث المكالمة" : "Call updated") : (isAr ? "تم تسجيل المكالمة" : "Call logged"));
     onDone();
+
   };
 
   return (
