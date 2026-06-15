@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
 import { fmtDate } from "@/lib/utils-money";
 import { Package, Truck, Warehouse, ArrowRight, Calendar, AlertCircle } from "lucide-react";
+import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 
 const IN_TRANSIT_STATUSES = ["ordered", "shipped", "in_warehouse"] as const;
 type ShipStatus = (typeof IN_TRANSIT_STATUSES)[number];
