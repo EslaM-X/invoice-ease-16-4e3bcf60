@@ -45,7 +45,10 @@ type Product = {
   low_stock_threshold: number;
   cost_price_usd: number;
   price: number;
+  collection?: string | null;
+  is_spare_part?: boolean | null;
 };
+
 
 type PO = {
   id: string;
