@@ -20,6 +20,7 @@ import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, M
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components/po-tracker-dialog";
+import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-types";
 
 import { ExecutiveGate } from "@/components/executive-gate";
 
