@@ -92,20 +92,37 @@ function CallCenterPage() {
     }
   }, [isCallCenter, roleLoading, navigate, isAr]);
 
+  const fetchAllInvoiceOpts = async (): Promise<InvoiceOpt[]> => {
+    const pageSize = 1000;
+    let off = 0;
+    const all: InvoiceOpt[] = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, customer_name, customer_phone, total, status")
+        .order("created_at", { ascending: false })
+        .range(off, off + pageSize - 1);
+      if (error) break;
+      const rows = (data as any[] as InvoiceOpt[]) ?? [];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      off += pageSize;
+      if (off > 50000) break;
+    }
+    return all;
+  };
+
   const load = async () => {
     if (calls.length === 0 && customers.length === 0) setLoading(true);
 
-    const [{ data }, { data: cs }, { data: inv }] = await Promise.all([
+    const [{ data }, { data: cs }, inv] = await Promise.all([
       supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
       supabase.from("customers").select("id, name, phone").order("name"),
-      supabase.from("invoices")
-        .select("id, invoice_number, customer_name, customer_phone, total, status")
-        .order("created_at", { ascending: false })
-        .limit(300),
+      fetchAllInvoiceOpts(),
     ]);
     setCalls((data as any) ?? []);
     setCustomers((cs as any) ?? []);
-    setInvoices((inv as any) ?? []);
+    setInvoices(inv);
     setLoading(false);
   };
 
@@ -413,10 +430,16 @@ function CallDialog({
   const pickInvoice = (inv: InvoiceOpt) => {
     setInvoiceId(inv.id);
     setInvoiceNumber(inv.invoice_number);
-    // Auto-fill customer info from invoice if blank
-    if (!name.trim() && inv.customer_name) setName(inv.customer_name);
-    if (!phone.trim() && inv.customer_phone) setPhone(inv.customer_phone);
+    // Always pull customer info from the invoice — saves the agent retyping it.
+    if (inv.customer_name) setName(inv.customer_name);
+    if (inv.customer_phone) setPhone(inv.customer_phone);
+    // Link to the invoice's customer record too when the invoice references one.
+    const matchByPhone = inv.customer_phone
+      ? customers.find((c) => (c.phone ?? "").replace(/[^\d]/g, "") === (inv.customer_phone ?? "").replace(/[^\d]/g, ""))
+      : null;
+    if (matchByPhone) setCustomerId(matchByPhone.id);
     setInvPickerOpen(false);
+    toast.success(isAr ? `تم ربط الفاتورة ${inv.invoice_number}` : `Linked invoice ${inv.invoice_number}`);
   };
 
   const save = async () => {

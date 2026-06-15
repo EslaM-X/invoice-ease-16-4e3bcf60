@@ -90,7 +90,7 @@ function SalesRange() {
       const { data: invs, error: e1 } = await supabase
         .from("invoices")
         .select("id, invoice_number, status, created_at, customer_name, total")
-        .not("status", "in", "(voided,draft)")
+        .not("status", "in", "(voided,draft,cancelled)")
         .gte("created_at", start)
         .lt("created_at", end)
         .order("created_at", { ascending: true });

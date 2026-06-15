@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { exportRowsToExcel, exportRowsToPDF, type ExportColumn } from "@/lib/critical-export";
 
-type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
+type RangeKey = "1" | "7" | "30" | "90" | "mtd" | "prev_month" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 type Invoice = {
@@ -198,6 +198,19 @@ export function SalesOverview() {
 
     if (range === "all") {
       return { from: allFrom, to: todayEnd, customMeta: null };
+    }
+
+    if (range === "mtd") {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return { from: monthStart, to: todayEnd, customMeta: null };
+    }
+
+    if (range === "prev_month") {
+      const now = new Date();
+      const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+      const prevEnd = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return { from: prevStart, to: prevEnd, customMeta: null };
     }
 
     const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : 90;
@@ -492,6 +505,8 @@ export function SalesOverview() {
     { key: "7", label: isAr ? "7 أيام" : "7 days" },
     { key: "30", label: isAr ? "30 يوم" : "30 days" },
     { key: "90", label: isAr ? "90 يوم" : "90 days" },
+    { key: "mtd", label: isAr ? "هذا الشهر" : "This month" },
+    { key: "prev_month", label: isAr ? "الشهر السابق" : "Last month" },
     { key: "all", label: isAr ? "الكل" : "All" },
     { key: "custom", label: isAr ? "مخصص" : "Custom" },
   ];
