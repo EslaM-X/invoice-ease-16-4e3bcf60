@@ -260,13 +260,15 @@ export function PoShipmentsTracker() {
           </div>
 
           {/* Recent activity timeline */}
-          <div className="rounded-md border border-border bg-background p-3">
-            <div className="mb-2 flex items-center justify-between">
+          <div className="rounded-md border border-border bg-background p-2 max-h-[280px] flex flex-col">
+            <div className="mb-2 flex items-center justify-between sticky top-0 bg-background z-10 py-1 px-1">
               <div className="eyebrow text-[10px]">{isAr ? "آخر التحديثات" : "Recent activity"}</div>
               <Link to="/po-tracking" className="text-[10px] font-semibold text-muted-foreground hover:text-foreground">
                 {isAr ? "عرض الكل" : "View all"}
               </Link>
             </div>
+            <div className="overflow-y-auto flex-1 pr-1">
+
             {history.length === 0 ? (
               <div className="py-6 text-center text-xs text-muted-foreground">
                 {isAr ? "لا توجد تحديثات حديثة" : "No recent updates"}
