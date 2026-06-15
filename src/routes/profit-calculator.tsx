@@ -406,8 +406,20 @@ function ScenarioPanel({
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-mono text-base font-bold">{po.po_number}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              {(() => {
+                const sm = shipmentMeta(po.shipment_type);
+                const SIcon = sm.icon;
+                return (
+                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold ${sm.chipClass}`}>
+                    <SIcon className="h-3.5 w-3.5" />
+                    {po.shipment_code || po.po_number}
+                  </span>
+                );
+              })()}
+              <span className="font-mono text-xs text-muted-foreground">{po.po_number}</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
               {po.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(po.created_at, lang)}
             </div>
           </div>
