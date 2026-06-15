@@ -148,13 +148,23 @@ function PurchaseOrdersPage() {
               {isAr ? "لا توجد أوامر شراء بعد." : "No purchase orders yet."}
             </div>
           )}
-          {pos.map((p) => (
-            <div key={p.id} className="flex w-full flex-wrap items-center gap-3 p-4 transition hover:bg-accent/40">
+          {pos.map((p) => {
+            const sm = shipmentMeta(p.shipment_type);
+            const ShipIcon = sm.icon;
+            return (
+            <div key={p.id} className={`flex w-full flex-wrap items-center gap-3 p-4 transition hover:bg-accent/40 border-s-4 ${sm.surfaceClass.split(" ")[0]} border-s-current ${sm.accentTextClass}`}>
               <button
                 onClick={() => setDetailId(p.id)}
                 className="flex flex-1 min-w-[200px] flex-col gap-1 text-start"
               >
-                <div className="font-mono text-sm font-bold">{p.po_number}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold border ${sm.chipClass}`}>
+                    <ShipIcon className="h-3.5 w-3.5" />
+                    {p.shipment_code || p.po_number}
+                  </span>
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{sm.shortLabel(isAr)}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{p.po_number}</span>
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(p.created_at, lang)}
                 </div>
