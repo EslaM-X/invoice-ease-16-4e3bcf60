@@ -315,8 +315,10 @@ export function PoShipmentsTracker() {
                 })}
               </ol>
             )}
+            </div>
           </div>
         </div>
+
       )}
     </section>
   );
