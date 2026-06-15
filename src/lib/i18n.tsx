@@ -232,6 +232,7 @@ const ar: Dict = {
   backup_full_desc: "تنزيل كل بياناتك (العملاء، المنتجات، الفواتير، البنود، سجلات المخزون، الأحداث) دفعة واحدة.",
   download_backup: "تنزيل النسخة الاحتياطية",
   inventory_audit: "تدقيق المخزون",
+  inventory_reconcile: "تسوية المخزون",
   qr_price_list: "قائمة الأسعار QR",
   sales_today: "مبيعات اليوم",
   sales_range: "تقرير الفترة",
