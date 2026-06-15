@@ -87,7 +87,7 @@ function SavedScenariosPage() {
 
     const poIds = list.map((s) => s.po_id);
     const [{ data: pos }, { data: items }] = await Promise.all([
-      supabase.from("purchase_orders").select("id,po_number,supplier_name,total_egp,total_usd,total_qty").in("id", poIds),
+      supabase.from("purchase_orders").select("id,po_number,shipment_type,shipment_code,supplier_name,total_egp,total_usd,total_qty").in("id", poIds),
       supabase.from("purchase_order_items").select("id,po_id,product_id,quantity,line_total_usd").in("po_id", poIds),
     ]);
     const productIds = Array.from(new Set((items ?? []).map((i: any) => i.product_id).filter(Boolean)));
