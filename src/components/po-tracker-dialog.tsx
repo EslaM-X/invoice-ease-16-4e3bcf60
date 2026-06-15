@@ -185,6 +185,8 @@ export function POTrackerDialog({
   useRealtimeTable("po_status_history", () => { if (open) load(); }, [open, poId]);
   useRealtimeTable("purchase_orders", () => { if (open) load(); }, [open, poId]);
   useRealtimeTable("purchase_order_items", () => { if (open) load(); }, [open, poId]);
+  useRealtimeTable("po_receipts" as any, () => { if (open) load(); }, [open, poId]);
+  useRealtimeTable("po_receipt_items" as any, () => { if (open) load(); }, [open, poId]);
 
   const totalOrdered = items.reduce((s, i) => s + i.quantity, 0);
   const totalReceived = items.reduce((s, i) => s + (i.received_qty || 0), 0);
