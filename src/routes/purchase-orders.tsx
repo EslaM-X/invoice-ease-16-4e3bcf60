@@ -187,6 +187,18 @@ function PurchaseOrdersPage() {
                 </div>
               )}
               <div>{statusBadge(p.status)}</div>
+              {(isAdmin || isPurchasing || isCFO) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); setEditShipPo(p); }}
+                  className="gap-1"
+                  title={isAr ? "تعديل نوع/تاريخ الشحنة" : "Edit shipment type/date"}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {isAr ? "تعديل الشحنة" : "Edit shipment"}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -201,6 +213,18 @@ function PurchaseOrdersPage() {
           })}
         </div>
       </Card>
+
+      {editShipPo && (
+        <EditShipmentDialog
+          poId={editShipPo.id}
+          currentType={editShipPo.shipment_type}
+          currentDate={editShipPo.shipment_date}
+          currentCode={editShipPo.shipment_code}
+          open={!!editShipPo}
+          onOpenChange={(v) => { if (!v) setEditShipPo(null); }}
+          onSaved={() => loadPOs()}
+        />
+      )}
 
       {createOpen && (
         <CreatePODialog
