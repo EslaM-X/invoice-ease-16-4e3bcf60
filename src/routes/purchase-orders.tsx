@@ -282,6 +282,9 @@ function CreatePODialog({
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [showOnlyLow, setShowOnlyLow] = useState(false);
+  const [collectionFilter, setCollectionFilter] = useState<string>("");
+  const [colorFilter, setColorFilter] = useState<string>("");
+  const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [supplier, setSupplier] = useState("");
   const [notes, setNotes] = useState("");
@@ -292,9 +295,9 @@ function CreatePODialog({
     if (!open) return;
     supabase
       .from("products")
-      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price")
+      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part")
       .order("name", { ascending: true })
-      .limit(1000)
+      .limit(2000)
       .then(({ data }) => {
         const list = (data as any as Product[]) ?? [];
         setProducts(list);
@@ -306,18 +309,39 @@ function CreatePODialog({
       });
   }, [open]);
 
+  const collections = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of products) if (p.collection) s.add(p.collection);
+    return Array.from(s).sort();
+  }, [products]);
+
+  const colors = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of products) if (p.color) s.add(p.color);
+    return Array.from(s).sort();
+  }, [products]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (showOnlyLow && p.stock_quantity > p.low_stock_threshold) return false;
+      if (kindFilter === "spare" && !p.is_spare_part) return false;
+      if (kindFilter === "products" && p.is_spare_part) return false;
+      if (collectionFilter) {
+        if (collectionFilter === "__none__") { if (p.collection) return false; }
+        else if (p.collection !== collectionFilter) return false;
+      }
+      if (colorFilter && (p.color ?? "") !== colorFilter) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
         (p.serial_number ?? "").toLowerCase().includes(q) ||
-        (p.color ?? "").toLowerCase().includes(q)
+        (p.color ?? "").toLowerCase().includes(q) ||
+        (p.collection ?? "").toLowerCase().includes(q)
       );
     });
-  }, [products, search, showOnlyLow]);
+  }, [products, search, showOnlyLow, collectionFilter, colorFilter, kindFilter]);
+
 
   const selected = products.filter((p) => rows[p.id]?.selected && (rows[p.id]?.qty ?? 0) > 0);
   const totalQty = selected.reduce((s, p) => s + rows[p.id].qty, 0);
