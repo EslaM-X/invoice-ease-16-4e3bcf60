@@ -53,6 +53,7 @@ type ExistingReceipt = {
 
 type Row = {
   invoice_item_id: string;
+  product_id: string | null;
   product_name: string;
   serial_number: string | null;
   color: string | null;
@@ -64,6 +65,8 @@ type Row = {
   isMultiPart: boolean;
   part: PartKey;
   priorNotes: string[]; // notes from OTHER receipts (for multi-part tracking)
+  is_spare_part: boolean;
+  parent_product_name: string | null;
 };
 
 export function DeliveryReceiptForm({
