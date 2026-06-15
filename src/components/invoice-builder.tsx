@@ -1040,7 +1040,15 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 {items.map((it, idx) => (
                     <div key={idx} className="rounded-xl border p-3">
                      <div className="flex items-start justify-between gap-2">
-                       <div className="min-w-0 flex-1 text-sm font-medium break-words">{it.product_name}</div>
+                       <div className="min-w-0 flex-1 text-sm font-medium break-words">
+                         {it.product_name}
+                         {it.product_id ? (() => {
+                           const p = products.find((x) => x.id === it.product_id);
+                           if (!p?.is_spare_part) return null;
+                           const parent = p.parent_product_id ? products.find((x) => x.id === p.parent_product_id)?.name : null;
+                           return <span className="ms-2 align-middle"><SparePartBadge product={p} parentName={parent} isAr={lang === "ar"} /></span>;
+                         })() : null}
+                       </div>
                       <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
