@@ -255,6 +255,7 @@ function CreatePODialog({
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [supplier, setSupplier] = useState("");
   const [notes, setNotes] = useState("");
+  const [shipmentType, setShipmentType] = useState<ShipmentType>("grounded");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
