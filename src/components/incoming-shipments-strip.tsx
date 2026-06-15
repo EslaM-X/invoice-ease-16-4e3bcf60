@@ -13,6 +13,8 @@ type ShipStatus = (typeof IN_TRANSIT_STATUSES)[number];
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: ShipmentType | null;
+  shipment_code: string | null;
   supplier_name: string | null;
   status: ShipStatus;
   expected_arrival_at: string | null;
