@@ -26,6 +26,7 @@ import {
 } from "@/lib/product-parts";
 import { DEFAULT_DELIVERY_MODE, buildEffectiveDelivered, type FDeliveredRow, type FInvItem } from "@/lib/fulfillment-engine";
 import { SignaturePad } from "@/components/signature-pad";
+import { SparePartBadge } from "@/components/spare-part-badge";
 
 type Mode = "new" | "edit";
 
