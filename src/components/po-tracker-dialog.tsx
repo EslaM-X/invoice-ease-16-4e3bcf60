@@ -79,6 +79,8 @@ export function statusBadge(s: string, isAr: boolean) {
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: string | null;
+  shipment_code: string | null;
   status: string;
   supplier_name: string | null;
   total_qty: number;
