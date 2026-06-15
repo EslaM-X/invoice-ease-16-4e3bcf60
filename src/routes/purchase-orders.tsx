@@ -342,12 +342,16 @@ function CreatePODialog({
         recipient_role: "cfo",
         type: "purchase_order",
         title: isAr ? "أمر شراء جديد بحاجة إلى تسعير" : "New PO needs pricing",
-        body: `${poNumber} · $${totalUsd.toFixed(2)} · ${totalQty} ${isAr ? "قطعة" : "units"}${supplier ? ` · ${supplier}` : ""}`,
+        body: `${(po as any).shipment_code || poNumber} · $${totalUsd.toFixed(2)} · ${totalQty} ${isAr ? "قطعة" : "units"}${supplier ? ` · ${supplier}` : ""}`,
         link: "/purchase-orders",
-        meta: { po_id: po.id, po_number: poNumber },
+        meta: { po_id: po.id, po_number: poNumber, shipment_code: (po as any).shipment_code, shipment_type: shipmentType },
       } as any);
 
-      toast.success(isAr ? "تم إنشاء أمر الشراء وإرسال إشعار للمدير المالي" : "PO created — CFO notified");
+      toast.success(
+        isAr
+          ? `تم إنشاء أمر الشراء ${(po as any).shipment_code || poNumber} وإرسال إشعار للمدير المالي`
+          : `PO ${(po as any).shipment_code || poNumber} created — CFO notified`,
+      );
       onOpenChange(false);
       onCreated(po.id);
     } catch (err: any) {
