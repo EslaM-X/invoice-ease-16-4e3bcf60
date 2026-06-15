@@ -94,6 +94,28 @@ export function HistoricalReceiptDialog({
       toast.error(isAr ? "اختر تاريخ الاستلام التاريخي" : "Pick the historical receipt date");
       return;
     }
+    const picked = new Date(localDt);
+    if (isNaN(picked.getTime())) {
+      toast.error(isAr ? "تاريخ غير صالح" : "Invalid date");
+      return;
+    }
+    const now = new Date();
+    if (picked.getTime() > now.getTime() + 60_000) {
+      toast.error(
+        isAr ? "لا يمكن إضافة دفعة بتاريخ مستقبلي" : "Future-dated batches are not allowed",
+        { description: isAr ? "اختر تاريخاً سابقاً أو حالياً" : "Pick a past or current date" },
+      );
+      return;
+    }
+    // Guard: any per-item qty exceeds remaining (UI clamps, but double-check)
+    const overflow = openItems.find((i) => (qty[i.id] ?? 0) > (remainingMap[i.id] ?? 0));
+    if (overflow) {
+      toast.error(
+        isAr ? `الكمية تتجاوز المتبقي للبند: ${overflow.product_name}` : `Qty exceeds remaining: ${overflow.product_name}`,
+      );
+      return;
+    }
+
     setBusy(true);
     try {
       const payload = openItems
@@ -101,21 +123,34 @@ export function HistoricalReceiptDialog({
         .filter((x) => x.received_qty > 0);
       const { error } = await (supabase as any).rpc("record_historical_po_receipt", {
         _po_id: poId,
-        _receipt_date: new Date(localDt).toISOString(),
+        _receipt_date: picked.toISOString(),
         _items: payload,
         _notes: notes.trim(),
         _apply_to_inventory: applyInv,
       });
-      if (error) throw error;
+      if (error) {
+        // Friendlier server-side errors
+        const msg = String(error.message || "");
+        if (msg.includes("FUTURE_DATE_NOT_ALLOWED")) throw new Error(isAr ? "تاريخ مستقبلي غير مسموح" : "Future date not allowed");
+        if (msg.includes("QTY_EXCEEDS_REMAINING")) throw new Error(isAr ? "الكمية تتجاوز المتبقي" : "Qty exceeds remaining");
+        if (msg.includes("EMPTY_ITEMS")) throw new Error(isAr ? "لا توجد بنود" : "No items");
+        if (msg.includes("forbidden") || msg.includes("42501")) throw new Error(isAr ? "غير مصرّح" : "Not authorized");
+        throw error;
+      }
       toast.success(
         isAr
-          ? `تم تسجيل دفعة تاريخية بتاريخ ${new Date(localDt).toLocaleString("ar-EG")}`
-          : `Historical batch recorded for ${new Date(localDt).toLocaleString()}`,
+          ? `تم تسجيل دفعة تاريخية · إجمالي ${totalRecv} · ${picked.toLocaleString("ar-EG")}`
+          : `Historical batch recorded · qty ${totalRecv} · ${picked.toLocaleString()}`,
+        {
+          description: applyInv
+            ? (isAr ? "تم تحديث المخزون فعلياً" : "Live inventory updated")
+            : (isAr ? "بدون تأثير على المخزون" : "Inventory unchanged"),
+        },
       );
       onSaved?.();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed");
+      toast.error(e?.message ?? (isAr ? "فشلت العملية" : "Failed"));
     } finally {
       setBusy(false);
     }
@@ -144,7 +179,17 @@ export function HistoricalReceiptDialog({
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs mb-1.5 block">{isAr ? "تاريخ ووقت الدفعة (محلي)" : "Batch date & time (local)"}</Label>
-            <Input type="datetime-local" value={localDt} onChange={(e) => setLocalDt(e.target.value)} />
+            <Input
+              type="datetime-local"
+              value={localDt}
+              max={(() => { const d = new Date(); const pad = (n: number) => String(n).padStart(2,"0"); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; })()}
+              onChange={(e) => setLocalDt(e.target.value)}
+            />
+            {localDt && new Date(localDt).getTime() > Date.now() + 60_000 && (
+              <div className="mt-1 text-[10px] text-rose-600 font-semibold">
+                {isAr ? "⚠ تاريخ مستقبلي — اختر تاريخاً سابقاً" : "⚠ Future date — pick a past date"}
+              </div>
+            )}
           </div>
           <div className="flex items-end">
             <label className="flex items-start gap-2 rounded-md border p-2.5 text-xs cursor-pointer hover:bg-muted/30 w-full">
