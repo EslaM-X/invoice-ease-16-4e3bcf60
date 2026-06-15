@@ -210,10 +210,13 @@ export function PoShipmentsTracker() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 p-4 lg:grid-cols-[1fr_1fr]">
+        <div className="grid gap-3 p-3 lg:grid-cols-[1fr_1fr]">
           {/* Per shipment type breakdown */}
-          <div className="space-y-2">
-            <div className="eyebrow text-[10px]">{isAr ? "حسب نوع الشحنة" : "By shipment type"}</div>
+          <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+            <div className="eyebrow text-[10px] sticky top-0 bg-card py-1 z-10">
+              {isAr ? "حسب نوع الشحنة" : "By shipment type"}
+            </div>
+
             {SHIPMENT_TYPES.map((st) => {
               const sm = shipmentMeta(st);
               const SIcon = sm.icon;
