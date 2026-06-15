@@ -151,8 +151,8 @@ function Products() {
     const sSerial = raw.replace(/[\s_\-./]+/g, ""); // serial-friendly normalize
     const hasQuery = s.length > 0;
     return list.filter((p) => {
-      // When the user is searching, ignore the collection tab so a serial
-      // that lives in another collection is never accidentally hidden.
+      if (kindFilter === "spare" && !(p as any).is_spare_part) return false;
+      if (kindFilter === "products" && (p as any).is_spare_part) return false;
       if (!hasQuery) {
         if (collectionFilter) {
           if (collectionFilter === "__none__") {
@@ -174,7 +174,7 @@ function Products() {
         coll.includes(s)
       );
     });
-  }, [list, q, collectionFilter]);
+  }, [list, q, collectionFilter, kindFilter]);
 
   const collectionCounts = useMemo(() => {
     const counts: Record<string, number> = { __all__: list.length, __none__: 0 };
