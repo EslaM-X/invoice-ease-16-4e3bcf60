@@ -441,9 +441,19 @@ function Products() {
                         ))}
                       </select>
                     </div>
-                  )}
-                </div>
-              </div>
+          )}
+          <span className="mx-1 h-5 w-px bg-border" />
+          {(["all","products","spare"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setKindFilter(k)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${kindFilter === k ? "bg-violet-600 text-white shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {k === "all" ? (lang === "ar" ? "الكل" : "All") : k === "products" ? (lang === "ar" ? "منتجات" : "Products") : (lang === "ar" ? "🔧 قطع غيار" : "🔧 Spare parts")}
+            </button>
+          ))}
+        </div>
+      </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
                 <Button onClick={save}>{t("save")}</Button>
