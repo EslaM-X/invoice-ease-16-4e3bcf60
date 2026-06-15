@@ -555,6 +555,17 @@ export function POTrackerDialog({
           onDone={() => { setReceiveOpen(false); load(); }}
         />
       )}
+
+      {historicalOpen && po && (
+        <HistoricalReceiptDialog
+          poId={po.id}
+          poNumber={po.shipment_code || po.po_number}
+          items={items}
+          open={historicalOpen}
+          onOpenChange={setHistoricalOpen}
+          onSaved={() => { setHistoricalOpen(false); load(); }}
+        />
+      )}
     </>
   );
 }
