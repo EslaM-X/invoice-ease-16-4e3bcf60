@@ -543,6 +543,7 @@ const en: Dict = {
   backup_full_desc: "Download all your data (customers, products, invoices, items, inventory logs, events) at once.",
   download_backup: "Download backup",
   inventory_audit: "Inventory Audit",
+  inventory_reconcile: "Stock Reconcile",
   qr_price_list: "QR Price List",
   sales_today: "Today's Sales",
   sales_range: "Sales by Range",
