@@ -307,6 +307,7 @@ function CreatePODialog({
         .insert({
           user_id: userId,
           po_number: poNumber,
+          shipment_type: shipmentType,
           supplier_name: supplier || null,
           notes: notes || null,
           status: "pending_cfo",
@@ -315,7 +316,7 @@ function CreatePODialog({
           created_by: userId,
           created_by_email: userEmail,
         } as any)
-        .select("id")
+        .select("id,shipment_code")
         .single();
       if (e1) throw e1;
 
