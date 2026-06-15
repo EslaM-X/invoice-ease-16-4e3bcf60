@@ -493,7 +493,7 @@ export function POTrackerDialog({
                         <div key={r.id} className="rounded-md border bg-muted/20 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2 text-sm font-semibold">
-                              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">#{r.receipt_number}</span>
+                              <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[11px] font-extrabold text-white tracking-wide">{r.receipt_code || `#${r.receipt_number}`}</span>
                               {isAr ? "دفعة" : "Batch"}
                               <span className="tabular-nums text-emerald-700">+{r.total_qty}</span>
                             </div>
