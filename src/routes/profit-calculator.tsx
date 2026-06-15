@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, TrendingUp, TrendingDown, Save, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { shipmentMeta } from "@/lib/shipment-types";
 
 import { ExecutiveGate } from "@/components/executive-gate";
 
@@ -32,6 +33,8 @@ export const Route = createFileRoute("/profit-calculator")({
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: string | null;
+  shipment_code: string | null;
   supplier_name: string | null;
   status: string;
   total_usd: number;
@@ -164,13 +167,23 @@ function ProfitCalculatorPage() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-bold">{p.po_number}</span>
+                  {(() => {
+                    const sm = shipmentMeta(p.shipment_type);
+                    const SIcon = sm.icon;
+                    return (
+                      <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-extrabold ${sm.chipClass}`}>
+                        <SIcon className="h-3 w-3" />
+                        {p.shipment_code || p.po_number}
+                      </span>
+                    );
+                  })()}
                   {p.cfo_priced_at && (
                     <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 text-[9px]">
                       {isAr ? "مسعّر" : "Priced"}
                     </Badge>
                   )}
                 </div>
+                <div className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground">{p.po_number}</div>
                 <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
                   {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")}
                 </div>
@@ -393,8 +406,20 @@ function ScenarioPanel({
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-mono text-base font-bold">{po.po_number}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              {(() => {
+                const sm = shipmentMeta(po.shipment_type);
+                const SIcon = sm.icon;
+                return (
+                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold ${sm.chipClass}`}>
+                    <SIcon className="h-3.5 w-3.5" />
+                    {po.shipment_code || po.po_number}
+                  </span>
+                );
+              })()}
+              <span className="font-mono text-xs text-muted-foreground">{po.po_number}</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
               {po.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(po.created_at, lang)}
             </div>
           </div>

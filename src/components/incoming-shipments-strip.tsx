@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
 import { fmtDate } from "@/lib/utils-money";
 import { Package, Truck, Warehouse, ArrowRight, Calendar, AlertCircle } from "lucide-react";
+import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 
 const IN_TRANSIT_STATUSES = ["ordered", "shipped", "in_warehouse"] as const;
 type ShipStatus = (typeof IN_TRANSIT_STATUSES)[number];
@@ -12,6 +13,8 @@ type ShipStatus = (typeof IN_TRANSIT_STATUSES)[number];
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: ShipmentType | null;
+  shipment_code: string | null;
   supplier_name: string | null;
   status: ShipStatus;
   expected_arrival_at: string | null;
@@ -54,7 +57,7 @@ export function IncomingShipmentsStrip() {
   const load = async () => {
     const { data: pos } = await supabase
       .from("purchase_orders")
-      .select("id, po_number, supplier_name, status, expected_arrival_at, shipped_at, total_qty")
+      .select("id, po_number, shipment_type, shipment_code, supplier_name, status, expected_arrival_at, shipped_at, total_qty")
       .in("status", IN_TRANSIT_STATUSES as any)
       .order("expected_arrival_at", { ascending: true, nullsFirst: false })
       .limit(8);
@@ -129,6 +132,25 @@ export function IncomingShipmentsStrip() {
           <ArrowRight className={`h-3.5 w-3.5 transition group-hover:translate-x-0.5 ${isAr ? "rotate-180 group-hover:-translate-x-0.5" : ""}`} />
         </Link>
       </div>
+      {rows && rows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-5 py-2">
+          {SHIPMENT_TYPES.map((st) => {
+            const sm = shipmentMeta(st);
+            const SIcon = sm.icon;
+            const grouped = rows.filter((r) => (r.shipment_type ?? "grounded") === st);
+            const cnt = grouped.length;
+            const rem = grouped.reduce((s, r) => s + r.remaining_qty, 0);
+            return (
+              <span key={st} className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold ${sm.surfaceClass} ${sm.accentTextClass}`}>
+                <SIcon className="h-3.5 w-3.5" />
+                {sm.shortLabel(isAr)}
+                <span className="rounded-full bg-background/70 px-1.5 font-bold tabular-nums">{cnt}</span>
+                {rem > 0 && <span className="opacity-80">· {rem} {t("units")}</span>}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {rows === null ? (
         <div className="flex gap-3 p-5">
@@ -157,7 +179,19 @@ export function IncomingShipmentsStrip() {
                   <div className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r ${meta.ring}`} />
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-mono text-xs text-muted-foreground">{po.po_number}</div>
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const sm = shipmentMeta(po.shipment_type);
+                          const SIcon = sm.icon;
+                          return (
+                            <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide ${sm.chipClass}`}>
+                              <SIcon className="h-3 w-3" />
+                              {po.shipment_code || sm.prefix}
+                            </span>
+                          );
+                        })()}
+                        <span className="font-mono text-[10px] text-muted-foreground">{po.po_number}</span>
+                      </div>
                       <div className="mt-0.5 truncate text-sm font-semibold">
                         {po.supplier_name || (isAr ? "بدون مورد" : "No supplier")}
                       </div>

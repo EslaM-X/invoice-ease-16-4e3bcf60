@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Search, Route as RouteIcon } from "lucide-react";
 import { POTrackerDialog, statusBadge, statusLabel, PO_FLOW } from "@/components/po-tracker-dialog";
+import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 import { toast } from "sonner";
 
 import { ExecutiveGate } from "@/components/executive-gate";
@@ -39,6 +40,7 @@ function POTrackingPage() {
   const [pos, setPos] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const [shipFilter, setShipFilter] = useState<ShipmentType | "all">("all");
   const [trackId, setTrackId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,13 +71,21 @@ function POTrackingPage() {
     const q = search.trim().toLowerCase();
     return pos.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
+      if (shipFilter !== "all" && (p.shipment_type ?? "grounded") !== shipFilter) return false;
       if (!q) return true;
       return (
         (p.po_number ?? "").toLowerCase().includes(q) ||
+        (p.shipment_code ?? "").toLowerCase().includes(q) ||
         (p.supplier_name ?? "").toLowerCase().includes(q)
       );
     });
-  }, [pos, search, filter]);
+  }, [pos, search, filter, shipFilter]);
+
+  const shipCounts = useMemo(() => {
+    const c: Record<string, number> = { all: pos.length, grounded: 0, air: 0, door_to_door: 0 };
+    pos.forEach((p) => { const k = p.shipment_type ?? "grounded"; c[k] = (c[k] ?? 0) + 1; });
+    return c;
+  }, [pos]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: pos.length };
@@ -118,6 +128,26 @@ function POTrackingPage() {
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
+        <FilterChip active={shipFilter === "all"} onClick={() => setShipFilter("all")} label={isAr ? "كل الشحنات" : "All shipments"} count={shipCounts.all} />
+        {SHIPMENT_TYPES.map((st) => {
+          const meta = shipmentMeta(st);
+          const Icon = meta.icon;
+          const active = shipFilter === st;
+          return (
+            <button
+              key={st}
+              onClick={() => setShipFilter(st)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                active ? `${meta.chipClass}` : `${meta.surfaceClass} ${meta.accentTextClass} hover:opacity-80`
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {meta.shortLabel(isAr)} ({shipCounts[st] ?? 0})
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label={isAr ? "الكل" : "All"} count={counts.all} />
         {FILTER_STATUSES.map((s) => (
           <FilterChip
@@ -144,11 +174,19 @@ function POTrackingPage() {
           {filtered.map((p) => {
             const idx = PO_FLOW.indexOf(p.status);
             const progress = p.status === "received" ? 100 : p.status === "cancelled" ? 0 : idx >= 0 ? Math.round(((idx + 1) / PO_FLOW.length) * 100) : 0;
+            const meta = shipmentMeta(p.shipment_type);
+            const ShipIcon = meta.icon;
             return (
-              <div key={p.id} className="flex flex-wrap items-center gap-3 p-4">
+              <div key={p.id} className={`flex flex-wrap items-center gap-3 border-s-4 p-4 ${meta.surfaceClass}`}>
                 <div className="flex-1 min-w-[200px] space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-bold">{p.po_number}</span>
+                    {p.shipment_code && (
+                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold tracking-wide ${meta.chipClass}`}>
+                        <ShipIcon className="h-3.5 w-3.5" />
+                        {p.shipment_code}
+                      </span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground">{p.po_number}</span>
                     {statusBadge(p.status, isAr)}
                     {p.stock_applied_at && (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[10px]">
