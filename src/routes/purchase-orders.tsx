@@ -194,7 +194,8 @@ function PurchaseOrdersPage() {
                 {isAr ? "تتبع" : "Track"}
               </Button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
 
