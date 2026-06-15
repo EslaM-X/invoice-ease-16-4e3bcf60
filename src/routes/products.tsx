@@ -418,6 +418,31 @@ function Products() {
                     ))}
                   </select>
                 </div>
+                <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.is_spare_part}
+                      onChange={(e) => setForm({ ...form, is_spare_part: e.target.checked })}
+                    />
+                    <span className="text-sm font-semibold">🔧 {lang === "ar" ? "قطعة غيار / قطعة منفصلة" : "Spare part / standalone piece"}</span>
+                  </label>
+                  {form.is_spare_part && (
+                    <div className="mt-2">
+                      <Label className="text-xs">{lang === "ar" ? "ربط بمنتج رئيسي (اختياري)" : "Link to parent product (optional)"}</Label>
+                      <select
+                        value={form.parent_product_id}
+                        onChange={(e) => setForm({ ...form, parent_product_id: e.target.value })}
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm h-9"
+                      >
+                        <option value="">— {lang === "ar" ? "بدون ربط" : "Not linked"} —</option>
+                        {list.filter((x) => !(x as any).is_spare_part && x.id !== editing?.id).map((x) => (
+                          <option key={x.id} value={x.id}>{x.name}{x.serial_number ? ` (${x.serial_number})` : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
