@@ -23,9 +23,9 @@ export const Route = createFileRoute("/inventory-reconcile")({
 function Reconcile() {
   const { user } = useAuth();
   const { lang } = useI18n();
-  const role = useMyRole();
+  const role = useRole();
   const isAr = lang === "ar";
-  const isAdmin = role === "admin";
+  const isAdmin = role.isAdmin;
   const [list, setList] = useState<Product[]>([]);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [reasons, setReasons] = useState<Record<string, string>>({});
