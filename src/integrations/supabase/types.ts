@@ -1897,6 +1897,7 @@ export type Database = {
           received_by: string | null
           received_by_email: string | null
           shipment_code: string | null
+          shipment_date: string
           shipment_type: string
           shipped_at: string | null
           shipping_mode: string | null
@@ -1945,6 +1946,7 @@ export type Database = {
           received_by?: string | null
           received_by_email?: string | null
           shipment_code?: string | null
+          shipment_date?: string
           shipment_type?: string
           shipped_at?: string | null
           shipping_mode?: string | null
@@ -1993,6 +1995,7 @@ export type Database = {
           received_by?: string | null
           received_by_email?: string | null
           shipment_code?: string | null
+          shipment_date?: string
           shipment_type?: string
           shipped_at?: string | null
           shipping_mode?: string | null
@@ -3248,6 +3251,10 @@ export type Database = {
       }
       is_company_member: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
+      manual_reconcile_stock: {
+        Args: { _new_qty: number; _product_id: string; _reason: string }
+        Returns: number
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -3277,6 +3284,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reassign_shipment_codes_for_user: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       recalc_invoice_delivery_status: {
         Args: { _invoice_id: string }
         Returns: undefined
@@ -3284,6 +3295,16 @@ export type Database = {
       recalc_invoice_paid_amount: {
         Args: { _invoice_id: string }
         Returns: undefined
+      }
+      record_historical_po_receipt: {
+        Args: {
+          _apply_to_inventory?: boolean
+          _items: Json
+          _notes: string
+          _po_id: string
+          _receipt_date: string
+        }
+        Returns: string
       }
       record_stock_intake: {
         Args: {
@@ -3362,6 +3383,10 @@ export type Database = {
             }
             Returns: string
           }
+      update_po_shipment: {
+        Args: { _new_date: string; _new_type: string; _po_id: string }
+        Returns: Json
+      }
       void_invoice: { Args: { _invoice_id: string }; Returns: string }
     }
     Enums: {
