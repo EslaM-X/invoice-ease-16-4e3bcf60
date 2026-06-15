@@ -174,11 +174,19 @@ function POTrackingPage() {
           {filtered.map((p) => {
             const idx = PO_FLOW.indexOf(p.status);
             const progress = p.status === "received" ? 100 : p.status === "cancelled" ? 0 : idx >= 0 ? Math.round(((idx + 1) / PO_FLOW.length) * 100) : 0;
+            const meta = shipmentMeta(p.shipment_type);
+            const ShipIcon = meta.icon;
             return (
-              <div key={p.id} className="flex flex-wrap items-center gap-3 p-4">
+              <div key={p.id} className={`flex flex-wrap items-center gap-3 border-s-4 p-4 ${meta.surfaceClass}`}>
                 <div className="flex-1 min-w-[200px] space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-bold">{p.po_number}</span>
+                    {p.shipment_code && (
+                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold tracking-wide ${meta.chipClass}`}>
+                        <ShipIcon className="h-3.5 w-3.5" />
+                        {p.shipment_code}
+                      </span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground">{p.po_number}</span>
                     {statusBadge(p.status, isAr)}
                     {p.stock_applied_at && (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[10px]">
