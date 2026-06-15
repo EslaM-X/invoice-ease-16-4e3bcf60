@@ -167,13 +167,23 @@ function ProfitCalculatorPage() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-bold">{p.po_number}</span>
+                  {(() => {
+                    const sm = shipmentMeta(p.shipment_type);
+                    const SIcon = sm.icon;
+                    return (
+                      <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-extrabold ${sm.chipClass}`}>
+                        <SIcon className="h-3 w-3" />
+                        {p.shipment_code || p.po_number}
+                      </span>
+                    );
+                  })()}
                   {p.cfo_priced_at && (
                     <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 text-[9px]">
                       {isAr ? "مسعّر" : "Priced"}
                     </Badge>
                   )}
                 </div>
+                <div className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground">{p.po_number}</div>
                 <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
                   {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")}
                 </div>
