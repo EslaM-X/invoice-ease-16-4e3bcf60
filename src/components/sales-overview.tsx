@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { exportRowsToExcel, exportRowsToPDF, type ExportColumn } from "@/lib/critical-export";
 
-type RangeKey = "1" | "7" | "30" | "90" | "all" | "custom";
+type RangeKey = "1" | "7" | "30" | "90" | "mtd" | "prev_month" | "all" | "custom";
 type PayStatus = "all" | "paid" | "partial" | "outstanding";
 
 type Invoice = {
