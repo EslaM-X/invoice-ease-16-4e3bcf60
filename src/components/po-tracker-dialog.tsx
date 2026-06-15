@@ -162,6 +162,7 @@ export function POTrackerDialog({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
+  const [historicalOpen, setHistoricalOpen] = useState(false);
 
   const load = async () => {
     const [{ data: p }, { data: it }, { data: h }, { data: rc }] = await Promise.all([
