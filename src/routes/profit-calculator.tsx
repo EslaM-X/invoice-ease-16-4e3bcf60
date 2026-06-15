@@ -32,6 +32,8 @@ export const Route = createFileRoute("/profit-calculator")({
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: string | null;
+  shipment_code: string | null;
   supplier_name: string | null;
   status: string;
   total_usd: number;
