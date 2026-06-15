@@ -391,7 +391,17 @@ export function DeliveryReceiptForm({
                       <Checkbox checked={r.selected} onCheckedChange={(v) => setRow(idx, { selected: !!v })} />
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-medium">{r.product_name}</div>
+                      <div className="font-medium flex items-center gap-1.5 flex-wrap">
+                        <span>{r.product_name}</span>
+                        {r.is_spare_part && (
+                          <SparePartBadge
+                            product={{ is_spare_part: true, parent_product_id: null }}
+                            parentName={r.parent_product_name}
+                            isAr={isAr}
+                            size="xs"
+                          />
+                        )}
+                      </div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
                         {r.serial_number && <span className="me-2">SN: {r.serial_number}</span>}
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
