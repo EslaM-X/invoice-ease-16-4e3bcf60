@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
 import { toast } from "sonner";
-import { Bell, AlertTriangle, Package, Hash, Palette, TrendingDown } from "lucide-react";
+import { PackageX, AlertTriangle, Package, Hash, Palette, TrendingDown, CheckCheck, RotateCcw } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -118,6 +118,8 @@ export function LowStockAlerts() {
 
   const count = items.length;
   const outCount = items.filter((p) => p.stock_quantity <= 0).length;
+  const hasAny = count > 0;
+  const Icon = outCount > 0 ? PackageX : Package;
 
   return (
     <Popover>
@@ -125,14 +127,19 @@ export function LowStockAlerts() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative rounded-full tap-scale"
+          className={`relative rounded-full tap-scale transition-colors ${
+            outCount > 0 ? "text-rose-600 dark:text-rose-400" : hasAny ? "text-emerald-600 dark:text-emerald-400" : ""
+          }`}
           aria-label="stock alerts"
+          title={lang === "ar" ? "تنبيهات المخزون" : "Stock alerts"}
         >
-          <Bell className="h-4 w-4" />
+          <Icon className={`h-4 w-4 ${outCount > 0 ? "drop-shadow-[0_0_6px_rgba(244,63,94,0.6)]" : ""}`} />
           {count > 0 && (
             <span
-              className={`absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ${
-                outCount > 0 ? "bg-destructive" : "bg-warning"
+              className={`absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white shadow-[0_0_0_2px_hsl(var(--background))] ring-1 ring-white/30 ${
+                outCount > 0
+                  ? "bg-gradient-to-br from-rose-500 via-red-500 to-rose-700 animate-pulse"
+                  : "bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600"
               }`}
             >
               {count > 9 ? "9+" : count}
@@ -141,9 +148,9 @@ export function LowStockAlerts() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0" sideOffset={8}>
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <AlertTriangle className="h-4 w-4 text-warning-foreground" />
+        <div className="flex items-center justify-between border-b bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent px-4 py-3">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <Icon className={`h-4 w-4 ${outCount > 0 ? "text-rose-600" : "text-emerald-600"}`} />
             {lang === "ar" ? "تنبيهات المخزون" : "Stock Alerts"}
           </div>
           <span className="text-xs text-muted-foreground">{count}</span>

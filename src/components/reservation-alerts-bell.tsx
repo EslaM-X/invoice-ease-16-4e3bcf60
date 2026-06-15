@@ -210,22 +210,28 @@ export function ReservationAlertsBell() {
         <Button
           variant="ghost"
           size="icon"
-          className={`relative rounded-full tap-scale ${isCritical ? "ring-2 ring-destructive/60 ring-offset-1 ring-offset-background animate-pulse" : ""}`}
+          className={`relative rounded-full tap-scale transition-colors ${
+            isCritical ? "text-rose-600 dark:text-rose-400 ring-2 ring-rose-500/50 ring-offset-1 ring-offset-background" : isShortfall ? "text-amber-600 dark:text-amber-400" : totalCount > 0 ? "text-violet-600 dark:text-violet-400" : ""
+          }`}
           aria-label="reservation alerts"
           title={isAr ? "تنبيهات الحجوزات" : "Reservation alerts"}
         >
-          <Zap className={`h-4 w-4 ${isCritical ? "text-destructive" : isShortfall ? "text-amber-600" : totalCount > 0 ? "text-blue-600" : ""}`} />
+          <Zap className={`h-4 w-4 ${isCritical ? "drop-shadow-[0_0_8px_rgba(244,63,94,0.7)] animate-pulse" : totalCount > 0 ? "drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : ""}`} fill={totalCount > 0 ? "currentColor" : "none"} />
           {totalCount > 0 && (
             <span
-              className={`absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white shadow ${
-                isCritical ? "bg-destructive" : isShortfall ? "bg-amber-500" : "bg-blue-500"
+              className={`absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white shadow-[0_0_0_2px_hsl(var(--background))] ring-1 ring-white/30 ${
+                isCritical
+                  ? "bg-gradient-to-br from-rose-500 via-red-600 to-rose-700 animate-pulse"
+                  : isShortfall
+                  ? "bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600"
+                  : "bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600"
               }`}
             >
               {totalCount > 9 ? "9+" : totalCount}
             </span>
           )}
           {isCritical && (
-            <span className="absolute inset-0 -z-10 rounded-full bg-destructive/20 blur-md" aria-hidden />
+            <span className="absolute inset-0 -z-10 rounded-full bg-rose-500/25 blur-md" aria-hidden />
           )}
         </Button>
       </PopoverTrigger>
