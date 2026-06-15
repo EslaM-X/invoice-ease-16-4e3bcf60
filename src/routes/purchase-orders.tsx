@@ -45,7 +45,10 @@ type Product = {
   low_stock_threshold: number;
   cost_price_usd: number;
   price: number;
+  collection?: string | null;
+  is_spare_part?: boolean | null;
 };
+
 
 type PO = {
   id: string;
@@ -279,6 +282,9 @@ function CreatePODialog({
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [showOnlyLow, setShowOnlyLow] = useState(false);
+  const [collectionFilter, setCollectionFilter] = useState<string>("");
+  const [colorFilter, setColorFilter] = useState<string>("");
+  const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [supplier, setSupplier] = useState("");
   const [notes, setNotes] = useState("");
@@ -289,9 +295,9 @@ function CreatePODialog({
     if (!open) return;
     supabase
       .from("products")
-      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price")
+      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part")
       .order("name", { ascending: true })
-      .limit(1000)
+      .limit(2000)
       .then(({ data }) => {
         const list = (data as any as Product[]) ?? [];
         setProducts(list);
@@ -303,18 +309,39 @@ function CreatePODialog({
       });
   }, [open]);
 
+  const collections = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of products) if (p.collection) s.add(p.collection);
+    return Array.from(s).sort();
+  }, [products]);
+
+  const colors = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of products) if (p.color) s.add(p.color);
+    return Array.from(s).sort();
+  }, [products]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (showOnlyLow && p.stock_quantity > p.low_stock_threshold) return false;
+      if (kindFilter === "spare" && !p.is_spare_part) return false;
+      if (kindFilter === "products" && p.is_spare_part) return false;
+      if (collectionFilter) {
+        if (collectionFilter === "__none__") { if (p.collection) return false; }
+        else if (p.collection !== collectionFilter) return false;
+      }
+      if (colorFilter && (p.color ?? "") !== colorFilter) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
         (p.serial_number ?? "").toLowerCase().includes(q) ||
-        (p.color ?? "").toLowerCase().includes(q)
+        (p.color ?? "").toLowerCase().includes(q) ||
+        (p.collection ?? "").toLowerCase().includes(q)
       );
     });
-  }, [products, search, showOnlyLow]);
+  }, [products, search, showOnlyLow, collectionFilter, colorFilter, kindFilter]);
+
 
   const selected = products.filter((p) => rows[p.id]?.selected && (rows[p.id]?.qty ?? 0) > 0);
   const totalQty = selected.reduce((s, p) => s + rows[p.id].qty, 0);
@@ -456,6 +483,71 @@ function CreatePODialog({
             </label>
           </div>
         </div>
+
+        {/* Kind / Collection / Color filter pills */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ["all", isAr ? "الكل" : "All"],
+              ["products", isAr ? "منتجات" : "Products"],
+              ["spare", isAr ? "قطع غيار" : "Spare parts"],
+            ] as const).map(([k, lbl]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKindFilter(k)}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${kindFilter === k ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+          {collections.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCollectionFilter("")}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {isAr ? "كل الكولكشن" : "All collections"}
+              </button>
+              {collections.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCollectionFilter(c)}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === c ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          {colors.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setColorFilter("")}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+              >
+                {isAr ? "كل الألوان" : "All colors"}
+              </button>
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColorFilter(c)}
+                  title={c}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition border ${colorFilter === c ? "ring-2 ring-primary bg-primary/10" : "bg-muted hover:bg-muted/70"}`}
+                >
+                  <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
 
         <BulkAdjustBar
           isAr={isAr}
