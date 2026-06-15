@@ -128,6 +128,26 @@ function POTrackingPage() {
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
+        <FilterChip active={shipFilter === "all"} onClick={() => setShipFilter("all")} label={isAr ? "كل الشحنات" : "All shipments"} count={shipCounts.all} />
+        {SHIPMENT_TYPES.map((st) => {
+          const meta = shipmentMeta(st);
+          const Icon = meta.icon;
+          const active = shipFilter === st;
+          return (
+            <button
+              key={st}
+              onClick={() => setShipFilter(st)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                active ? `${meta.chipClass}` : `${meta.surfaceClass} ${meta.accentTextClass} hover:opacity-80`
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {meta.shortLabel(isAr)} ({shipCounts[st] ?? 0})
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label={isAr ? "الكل" : "All"} count={counts.all} />
         {FILTER_STATUSES.map((s) => (
           <FilterChip
