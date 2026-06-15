@@ -159,6 +159,8 @@ function Dashboard() {
 
       <IncomingShipmentsStrip />
 
+      <PoShipmentsTracker />
+
       <SalesOverview />
 
       <div className="grid gap-3 lg:grid-cols-2">
