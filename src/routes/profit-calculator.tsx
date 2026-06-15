@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, TrendingUp, TrendingDown, Save, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { shipmentMeta } from "@/lib/shipment-types";
 
 import { ExecutiveGate } from "@/components/executive-gate";
 
