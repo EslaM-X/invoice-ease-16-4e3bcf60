@@ -77,6 +77,7 @@ function CallCenterPage() {
   const navigate = useNavigate();
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [customers, setCustomers] = useState<CustomerOpt[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CallLog | null>(null);
@@ -94,12 +95,17 @@ function CallCenterPage() {
   const load = async () => {
     if (calls.length === 0 && customers.length === 0) setLoading(true);
 
-    const [{ data }, { data: cs }] = await Promise.all([
+    const [{ data }, { data: cs }, { data: inv }] = await Promise.all([
       supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
       supabase.from("customers").select("id, name, phone").order("name"),
+      supabase.from("invoices")
+        .select("id, invoice_number, customer_name, customer_phone, total, status")
+        .order("created_at", { ascending: false })
+        .limit(300),
     ]);
     setCalls((data as any) ?? []);
     setCustomers((cs as any) ?? []);
+    setInvoices((inv as any) ?? []);
     setLoading(false);
   };
 
@@ -108,6 +114,7 @@ function CallCenterPage() {
   }, [isCallCenter]);
   useRealtimeTable("call_logs", () => isCallCenter && load());
   useRealtimeTable("customers", () => isCallCenter && load());
+  useRealtimeTable("invoices", () => isCallCenter && load());
 
   const deleteCall = async (id: string) => {
     const { error } = await supabase.from("call_logs").delete().eq("id", id);
@@ -130,17 +137,24 @@ function CallCenterPage() {
     (c) => new Date(c.called_at).toDateString() === new Date().toDateString()
   ).length;
 
+  // Normalize phone digits for tolerant matching (strips spaces, dashes, +).
+  const normPhone = (s: string) => s.replace(/[^\d]/g, "");
+
   const filteredCalls = calls.filter((c) => {
     if (typeFilter !== "all" && c.call_type !== typeFilter) return false;
     const s = search.trim().toLowerCase();
     if (!s) return true;
+    const phoneDigits = normPhone(s);
     return (
       (c.customer_name ?? "").toLowerCase().includes(s) ||
       (c.customer_phone ?? "").toLowerCase().includes(s) ||
+      (phoneDigits.length >= 3 && normPhone(c.customer_phone ?? "").includes(phoneDigits)) ||
       (c.summary ?? "").toLowerCase().includes(s) ||
-      (c.agent_email ?? "").toLowerCase().includes(s)
+      (c.agent_email ?? "").toLowerCase().includes(s) ||
+      (c.invoice_number ?? "").toLowerCase().includes(s)
     );
   });
+
 
   return (
     <AppShell>
