@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
@@ -24,7 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing, Pencil, Check, ChevronsUpDown, Trash2 } from "lucide-react";
+import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing, Pencil, Check, ChevronsUpDown, Trash2, FileText, ExternalLink, Search } from "lucide-react";
 
 export const Route = createFileRoute("/call-center")({
   component: CallCenterPage,
@@ -43,9 +43,12 @@ type CallLog = {
   agent_id: string;
   agent_email: string | null;
   called_at: string;
+  invoice_id: string | null;
+  invoice_number: string | null;
 };
 
 type CustomerOpt = { id: string; name: string; phone: string | null };
+type InvoiceOpt = { id: string; invoice_number: string; customer_name: string | null; customer_phone: string | null; total: number; status: string };
 
 const OUTCOMES_AR = [
   { v: "resolved", label: "تم الحل" },
@@ -63,6 +66,7 @@ const OUTCOMES_EN = [
   { v: "sale", label: "Sale" },
   { v: "other", label: "Other" },
 ];
+
 
 function CallCenterPage() {
   const { user } = useAuth();
