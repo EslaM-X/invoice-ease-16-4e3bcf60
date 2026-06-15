@@ -92,20 +92,37 @@ function CallCenterPage() {
     }
   }, [isCallCenter, roleLoading, navigate, isAr]);
 
+  const fetchAllInvoiceOpts = async (): Promise<InvoiceOpt[]> => {
+    const pageSize = 1000;
+    let off = 0;
+    const all: InvoiceOpt[] = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, customer_name, customer_phone, total, status")
+        .order("created_at", { ascending: false })
+        .range(off, off + pageSize - 1);
+      if (error) break;
+      const rows = (data as any[] as InvoiceOpt[]) ?? [];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      off += pageSize;
+      if (off > 50000) break;
+    }
+    return all;
+  };
+
   const load = async () => {
     if (calls.length === 0 && customers.length === 0) setLoading(true);
 
-    const [{ data }, { data: cs }, { data: inv }] = await Promise.all([
+    const [{ data }, { data: cs }, inv] = await Promise.all([
       supabase.from("call_logs").select("*").order("called_at", { ascending: false }).limit(200),
       supabase.from("customers").select("id, name, phone").order("name"),
-      supabase.from("invoices")
-        .select("id, invoice_number, customer_name, customer_phone, total, status")
-        .order("created_at", { ascending: false })
-        .limit(300),
+      fetchAllInvoiceOpts(),
     ]);
     setCalls((data as any) ?? []);
     setCustomers((cs as any) ?? []);
-    setInvoices((inv as any) ?? []);
+    setInvoices(inv);
     setLoading(false);
   };
 
