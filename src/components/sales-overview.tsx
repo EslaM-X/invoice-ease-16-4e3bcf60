@@ -200,6 +200,19 @@ export function SalesOverview() {
       return { from: allFrom, to: todayEnd, customMeta: null };
     }
 
+    if (range === "mtd") {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return { from: monthStart, to: todayEnd, customMeta: null };
+    }
+
+    if (range === "prev_month") {
+      const now = new Date();
+      const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+      const prevEnd = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return { from: prevStart, to: prevEnd, customMeta: null };
+    }
+
     const days = range === "1" ? 1 : range === "7" ? 7 : range === "30" ? 30 : 90;
     return {
       from: addDays(todayStart, -(days - 1)),
