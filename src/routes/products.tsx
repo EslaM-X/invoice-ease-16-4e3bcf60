@@ -44,9 +44,10 @@ function Products() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collectionFilter, setCollectionFilter] = useState<string>("");
+  const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "", is_spare_part: false, parent_product_id: "" as string });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
