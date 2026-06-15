@@ -71,13 +71,21 @@ function POTrackingPage() {
     const q = search.trim().toLowerCase();
     return pos.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
+      if (shipFilter !== "all" && (p.shipment_type ?? "grounded") !== shipFilter) return false;
       if (!q) return true;
       return (
         (p.po_number ?? "").toLowerCase().includes(q) ||
+        (p.shipment_code ?? "").toLowerCase().includes(q) ||
         (p.supplier_name ?? "").toLowerCase().includes(q)
       );
     });
-  }, [pos, search, filter]);
+  }, [pos, search, filter, shipFilter]);
+
+  const shipCounts = useMemo(() => {
+    const c: Record<string, number> = { all: pos.length, grounded: 0, air: 0, door_to_door: 0 };
+    pos.forEach((p) => { const k = p.shipment_type ?? "grounded"; c[k] = (c[k] ?? 0) + 1; });
+    return c;
+  }, [pos]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: pos.length };
