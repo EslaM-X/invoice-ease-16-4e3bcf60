@@ -453,24 +453,49 @@ export function POTrackerDialog({
                 </div>
               )}
 
-              {/* Timeline */}
+              {/* Timeline + Change Log */}
               <div className="rounded-lg border bg-card p-4">
-                <div className="mb-3 text-sm font-semibold">{isAr ? "السجل الزمني" : "Timeline"}</div>
+                <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="text-sm font-semibold">{isAr ? "السجل الزمني وسجل التغييرات" : "Timeline & Change Log"}</div>
+                  <span className="text-[11px] text-muted-foreground">{history.length} {isAr ? "حدث" : "events"}</span>
+                </div>
                 {history.length === 0 ? (
                   <div className="text-xs text-muted-foreground">{isAr ? "لا توجد تحركات بعد." : "No movements yet."}</div>
                 ) : (
                   <ol className="relative space-y-3 ps-5 before:absolute before:inset-y-1 before:start-[7px] before:w-px before:bg-border">
-                    {[...history].reverse().map((h) => (
-                      <li key={h.id} className="relative">
-                        <span className="absolute -start-[18px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-primary ring-4 ring-background" />
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          {statusBadge(h.to_status, isAr)}
-                          <span className="text-xs text-muted-foreground">{fmtDateTime(h.created_at, lang)}</span>
-                        </div>
-                        {h.actor_email && <div className="text-[11px] text-muted-foreground">{h.actor_email}</div>}
-                        {h.note && <div className="mt-1 text-xs">{h.note}</div>}
-                      </li>
-                    ))}
+                    {[...history].reverse().map((h) => {
+                      const isShipEdit = (h.note ?? "").startsWith("[SHIPMENT_EDIT]");
+                      const isHistRec = (h.note ?? "").startsWith("[HISTORICAL_RECEIPT]");
+                      const dotCls = isShipEdit ? "bg-blue-500" : isHistRec ? "bg-violet-500" : "bg-primary";
+                      const cleanNote = (h.note ?? "").replace(/^\[(SHIPMENT_EDIT|HISTORICAL_RECEIPT)\]\s*/, "");
+                      return (
+                        <li key={h.id} className="relative">
+                          <span className={`absolute -start-[18px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full ring-4 ring-background ${dotCls}`} />
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            {isShipEdit ? (
+                              <Badge variant="outline" className="gap-1 bg-blue-500/15 text-blue-700 border-blue-500/30">
+                                <RefreshCwIcon className="h-3 w-3" />
+                                {isAr ? "تعديل تصنيف الشحنة" : "Shipment reclassified"}
+                              </Badge>
+                            ) : isHistRec ? (
+                              <Badge variant="outline" className="gap-1 bg-violet-500/15 text-violet-700 border-violet-500/30">
+                                <History className="h-3 w-3" />
+                                {isAr ? "دفعة استلام تاريخية" : "Historical receipt"}
+                              </Badge>
+                            ) : (
+                              statusBadge(h.to_status, isAr)
+                            )}
+                            <span className="text-xs text-muted-foreground">{fmtDateTime(h.created_at, lang)}</span>
+                          </div>
+                          {h.actor_email && <div className="text-[11px] text-muted-foreground">{h.actor_email}</div>}
+                          {cleanNote && (
+                            <div className={`mt-1 text-xs ${isShipEdit || isHistRec ? "rounded-md border bg-muted/30 px-2 py-1 font-mono" : ""}`}>
+                              {cleanNote}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ol>
                 )}
               </div>
