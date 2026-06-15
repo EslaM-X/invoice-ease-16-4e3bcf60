@@ -169,7 +169,7 @@ export function POTrackerDialog({
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
       (supabase as any)
         .from("po_receipts")
-        .select("id,receipt_number,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .select("id,receipt_number,receipt_code,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
         .eq("po_id", poId)
         .order("receipt_number", { ascending: false }),
     ]);
