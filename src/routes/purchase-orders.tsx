@@ -49,6 +49,8 @@ type Product = {
 type PO = {
   id: string;
   po_number: string;
+  shipment_type: ShipmentType;
+  shipment_code: string | null;
   supplier_name: string | null;
   status: string;
   total_usd: number;
