@@ -40,6 +40,7 @@ const items: NavEntry[] = [
       { to: "/stock-intake", icon: Warehouse, key: "stock_intake" as const },
       { to: "/inventory", icon: Boxes, key: "inventory" as const },
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
+      { to: "/inventory-reconcile", icon: ClipboardList, key: "inventory_reconcile" as const },
       { to: "/qr-price-list", icon: FileText, key: "qr_price_list" as const },
     ],
   },
