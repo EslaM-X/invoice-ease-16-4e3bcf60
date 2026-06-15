@@ -29,6 +29,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PoTrackingRouteImport } from './routes/po-tracking'
 import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
+import { Route as InventoryReconcileRouteImport } from './routes/inventory-reconcile'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as InTransitRouteImport } from './routes/in-transit'
@@ -164,6 +165,11 @@ const PendingOperationsRoute = PendingOperationsRouteImport.update({
 const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
   id: '/invoices-system-notes',
   path: '/invoices-system-notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryReconcileRoute = InventoryReconcileRouteImport.update({
+  id: '/inventory-reconcile',
+  path: '/inventory-reconcile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryAuditRoute = InventoryAuditRouteImport.update({
@@ -369,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
+  '/inventory-reconcile': typeof InventoryReconcileRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByTo {
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
+  '/inventory-reconcile': typeof InventoryReconcileRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
+  '/inventory-reconcile': typeof InventoryReconcileRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/in-transit'
     | '/inventory'
     | '/inventory-audit'
+    | '/inventory-reconcile'
     | '/invoices-system-notes'
     | '/pending-operations'
     | '/po-tracking'
@@ -604,6 +614,7 @@ export interface FileRouteTypes {
     | '/in-transit'
     | '/inventory'
     | '/inventory-audit'
+    | '/inventory-reconcile'
     | '/invoices-system-notes'
     | '/pending-operations'
     | '/po-tracking'
@@ -662,6 +673,7 @@ export interface FileRouteTypes {
     | '/in-transit'
     | '/inventory'
     | '/inventory-audit'
+    | '/inventory-reconcile'
     | '/invoices-system-notes'
     | '/pending-operations'
     | '/po-tracking'
@@ -721,6 +733,7 @@ export interface RootRouteChildren {
   InTransitRoute: typeof InTransitRoute
   InventoryRoute: typeof InventoryRoute
   InventoryAuditRoute: typeof InventoryAuditRoute
+  InventoryReconcileRoute: typeof InventoryReconcileRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   PendingOperationsRoute: typeof PendingOperationsRoute
   PoTrackingRoute: typeof PoTrackingRoute
@@ -903,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices-system-notes'
       fullPath: '/invoices-system-notes'
       preLoaderRoute: typeof InvoicesSystemNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-reconcile': {
+      id: '/inventory-reconcile'
+      path: '/inventory-reconcile'
+      fullPath: '/inventory-reconcile'
+      preLoaderRoute: typeof InventoryReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory-audit': {
@@ -1177,6 +1197,7 @@ const rootRouteChildren: RootRouteChildren = {
   InTransitRoute: InTransitRoute,
   InventoryRoute: InventoryRoute,
   InventoryAuditRoute: InventoryAuditRoute,
+  InventoryReconcileRoute: InventoryReconcileRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   PendingOperationsRoute: PendingOperationsRoute,
   PoTrackingRoute: PoTrackingRoute,
