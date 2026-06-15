@@ -217,6 +217,8 @@ function Products() {
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
       image_url: form.image_url || null,
       collection: form.collection ? form.collection.toUpperCase() : null,
+      is_spare_part: !!form.is_spare_part,
+      parent_product_id: form.parent_product_id || null,
     };
     if (editing) {
       const { data: updated, error } = await supabase.from("products").update(payload).eq("id", editing.id).select("*").single();
