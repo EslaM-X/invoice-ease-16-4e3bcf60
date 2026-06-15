@@ -60,6 +60,7 @@ type PO = {
   usd_rate: number | null;
   notes: string | null;
   created_at: string;
+  shipment_date: string | null;
   created_by_email: string | null;
   cfo_priced_at: string | null;
   cfo_priced_by_email?: string | null;
