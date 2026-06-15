@@ -44,9 +44,10 @@ function Products() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collectionFilter, setCollectionFilter] = useState<string>("");
+  const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "" });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "", is_spare_part: false, parent_product_id: "" as string });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
@@ -150,8 +151,8 @@ function Products() {
     const sSerial = raw.replace(/[\s_\-./]+/g, ""); // serial-friendly normalize
     const hasQuery = s.length > 0;
     return list.filter((p) => {
-      // When the user is searching, ignore the collection tab so a serial
-      // that lives in another collection is never accidentally hidden.
+      if (kindFilter === "spare" && !(p as any).is_spare_part) return false;
+      if (kindFilter === "products" && (p as any).is_spare_part) return false;
       if (!hasQuery) {
         if (collectionFilter) {
           if (collectionFilter === "__none__") {
@@ -173,7 +174,7 @@ function Products() {
         coll.includes(s)
       );
     });
-  }, [list, q, collectionFilter]);
+  }, [list, q, collectionFilter, kindFilter]);
 
   const collectionCounts = useMemo(() => {
     const counts: Record<string, number> = { __all__: list.length, __none__: 0 };
@@ -196,10 +197,10 @@ function Products() {
     setSelected(next);
   };
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "", is_spare_part: false, parent_product_id: "" }); setOpen(true); };
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), cost_price_usd: String((p as any).cost_price_usd ?? 0), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "" });
+    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), cost_price_usd: String((p as any).cost_price_usd ?? 0), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "", is_spare_part: !!(p as any).is_spare_part, parent_product_id: (p as any).parent_product_id ?? "" });
     setOpen(true);
   };
 
@@ -216,6 +217,8 @@ function Products() {
       low_stock_threshold: parseInt(form.low_stock_threshold || "5", 10),
       image_url: form.image_url || null,
       collection: form.collection ? form.collection.toUpperCase() : null,
+      is_spare_part: !!form.is_spare_part,
+      parent_product_id: form.parent_product_id || null,
     };
     if (editing) {
       const { data: updated, error } = await supabase.from("products").update(payload).eq("id", editing.id).select("*").single();
@@ -415,7 +418,42 @@ function Products() {
                     ))}
                   </select>
                 </div>
-              </div>
+                <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.is_spare_part}
+                      onChange={(e) => setForm({ ...form, is_spare_part: e.target.checked })}
+                    />
+                    <span className="text-sm font-semibold">🔧 {lang === "ar" ? "قطعة غيار / قطعة منفصلة" : "Spare part / standalone piece"}</span>
+                  </label>
+                  {form.is_spare_part && (
+                    <div className="mt-2">
+                      <Label className="text-xs">{lang === "ar" ? "ربط بمنتج رئيسي (اختياري)" : "Link to parent product (optional)"}</Label>
+                      <select
+                        value={form.parent_product_id}
+                        onChange={(e) => setForm({ ...form, parent_product_id: e.target.value })}
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm h-9"
+                      >
+                        <option value="">— {lang === "ar" ? "بدون ربط" : "Not linked"} —</option>
+                        {list.filter((x) => !(x as any).is_spare_part && x.id !== editing?.id).map((x) => (
+                          <option key={x.id} value={x.id}>{x.name}{x.serial_number ? ` (${x.serial_number})` : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+          )}
+          <span className="mx-1 h-5 w-px bg-border" />
+          {(["all","products","spare"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setKindFilter(k)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${kindFilter === k ? "bg-violet-600 text-white shadow" : "bg-muted hover:bg-muted/70"}`}
+            >
+              {k === "all" ? (lang === "ar" ? "الكل" : "All") : k === "products" ? (lang === "ar" ? "منتجات" : "Products") : (lang === "ar" ? "🔧 قطع غيار" : "🔧 Spare parts")}
+            </button>
+          ))}
+        </div>
+      </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
                 <Button onClick={save}>{t("save")}</Button>
