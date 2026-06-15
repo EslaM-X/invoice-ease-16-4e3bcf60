@@ -670,6 +670,16 @@ function InTransitPage() {
                       </div>
                     </div>
                   ); })()}
+                  {(() => { const dv = deliveredByProduct[r.product_id] ?? 0; return (
+                    <div className={`rounded-md px-3 py-1.5 text-end ${dv > 0 ? "bg-teal-500/10" : "bg-muted/40"}`}>
+                      <div className={`text-[10px] font-medium ${dv > 0 ? "text-teal-700" : "text-muted-foreground"}`}>
+                        {isAr ? "تم تسليمه" : "Delivered"}
+                      </div>
+                      <div className={`text-lg font-bold tabular-nums ${dv > 0 ? "text-teal-700" : "text-muted-foreground"}`}>
+                        {dv}
+                      </div>
+                    </div>
+                  ); })()}
                 </div>
               </div>
 
