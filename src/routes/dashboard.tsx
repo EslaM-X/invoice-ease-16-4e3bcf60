@@ -12,6 +12,7 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
+import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
 import { cachedListFetch } from "@/lib/list-cache";
