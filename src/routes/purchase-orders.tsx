@@ -371,6 +371,48 @@ function CreatePODialog({
           </DialogTitle>
         </DialogHeader>
 
+        <div>
+          <Label className="mb-1.5 block text-xs font-semibold">
+            {isAr ? "نوع الشحنة" : "Shipment type"}
+          </Label>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {SHIPMENT_TYPES.map((t) => {
+              const m = shipmentMeta(t);
+              const Icon = m.icon;
+              const active = shipmentType === t;
+              return (
+                <button
+                  type="button"
+                  key={t}
+                  onClick={() => setShipmentType(t)}
+                  className={`group relative overflow-hidden rounded-xl border-2 p-3 text-start transition active:scale-[0.98] ${
+                    active
+                      ? `${m.surfaceClass} ${m.ringSelectedClass} ring-2`
+                      : "border-border bg-card hover:bg-accent/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`grid h-9 w-9 place-items-center rounded-lg ${m.chipClass}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="flex-1">
+                      <div className={`text-sm font-bold ${active ? m.accentTextClass : ""}`}>
+                        {m.label(isAr)}
+                      </div>
+                      <div className="text-[10px] font-mono text-muted-foreground">
+                        {m.prefix}1, {m.prefix}2, …
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    {m.description(isAr)}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs">{isAr ? "المورد" : "Supplier"}</Label>
