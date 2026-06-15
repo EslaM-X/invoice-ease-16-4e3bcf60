@@ -40,6 +40,7 @@ function POTrackingPage() {
   const [pos, setPos] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const [shipFilter, setShipFilter] = useState<ShipmentType | "all">("all");
   const [trackId, setTrackId] = useState<string | null>(null);
 
   useEffect(() => {
