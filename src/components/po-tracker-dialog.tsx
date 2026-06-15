@@ -124,6 +124,7 @@ type HistoryRow = {
 type ReceiptRow = {
   id: string;
   receipt_number: number;
+  receipt_code: string | null;
   total_qty: number;
   notes: string | null;
   actor_email: string | null;
