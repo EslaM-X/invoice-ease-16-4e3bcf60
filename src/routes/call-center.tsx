@@ -256,11 +256,24 @@ function CallCenterPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {c.invoice_id && c.invoice_number && (
+                      <Link
+                        to="/invoices/$id"
+                        params={{ id: c.invoice_id }}
+                        className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-primary hover:bg-primary/20 transition"
+                        title={isAr ? "فتح الفاتورة" : "Open invoice"}
+                      >
+                        <FileText className="h-3 w-3" />
+                        {c.invoice_number}
+                        <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                      </Link>
+                    )}
                     {c.outcome && (
                       <Badge variant="outline" className="text-xs">
                         {OUTCOMES.find((o) => o.v === c.outcome)?.label ?? c.outcome}
                       </Badge>
                     )}
+
                     {c.duration_seconds > 0 && (
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {Math.floor(c.duration_seconds / 60)}:
