@@ -91,6 +91,7 @@ function PurchaseOrdersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [trackId, setTrackId] = useState<string | null>(null);
+  const [editShipPo, setEditShipPo] = useState<PO | null>(null);
 
   // Access guard
   useEffect(() => {
