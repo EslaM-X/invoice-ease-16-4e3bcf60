@@ -30,8 +30,10 @@ function ReportsPage() {
   const [calls, setCalls] = useState<any[]>([]);
   const [ratings, setRatings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
+
     if (!rl && !isManager) {
       toast.error(isAr ? "غير مصرح" : "Unauthorized");
       navigate({ to: "/dashboard" });
