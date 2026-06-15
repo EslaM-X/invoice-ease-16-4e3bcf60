@@ -160,7 +160,19 @@ export function IncomingShipmentsStrip() {
                   <div className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r ${meta.ring}`} />
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-mono text-xs text-muted-foreground">{po.po_number}</div>
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const sm = shipmentMeta(po.shipment_type);
+                          const SIcon = sm.icon;
+                          return (
+                            <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide ${sm.chipClass}`}>
+                              <SIcon className="h-3 w-3" />
+                              {po.shipment_code || sm.prefix}
+                            </span>
+                          );
+                        })()}
+                        <span className="font-mono text-[10px] text-muted-foreground">{po.po_number}</span>
+                      </div>
                       <div className="mt-0.5 truncate text-sm font-semibold">
                         {po.supplier_name || (isAr ? "بدون مورد" : "No supplier")}
                       </div>
