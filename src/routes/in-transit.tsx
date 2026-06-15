@@ -78,6 +78,7 @@ function InTransitPage() {
   const [activeReservations, setActiveReservations] = useState<any[]>([]);
   const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [reservedByProductMap, setReservedByProductMap] = useState<Record<string, number>>({});
+  const [deliveredByProduct, setDeliveredByProduct] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
@@ -99,6 +100,21 @@ function InTransitPage() {
     const reservedMap: Record<string, number> = {};
     ((reservedRpc as any) ?? []).forEach((row: any) => { reservedMap[row.product_id] = Number(row.reserved_qty || 0); });
     setReservedByProductMap(reservedMap);
+
+    // Compute "delivered" per product from delivery_receipt_items, excluding cancelled receipts.
+    // This is the authoritative number of units physically handed over via signed receipts.
+    const { data: driRows } = await supabase
+      .from("delivery_receipt_items" as any)
+      .select("quantity, delivery_receipts!inner(status), invoice_items!inner(product_id)")
+      .neq("delivery_receipts.status", "cancelled");
+    const delivMap: Record<string, number> = {};
+    ((driRows as any) ?? []).forEach((row: any) => {
+      const pid = row.invoice_items?.product_id;
+      if (!pid) return;
+      delivMap[pid] = (delivMap[pid] ?? 0) + Number(row.quantity || 0);
+    });
+    setDeliveredByProduct(delivMap);
+
     const ids = Object.keys(posMap);
     if (ids.length > 0) {
       const { data: its } = await supabase
@@ -651,6 +667,16 @@ function InTransitPage() {
                       </div>
                       <div className={`text-lg font-bold tabular-nums ${sv > 0 ? "text-blue-700" : "text-muted-foreground"}`}>
                         {sv}
+                      </div>
+                    </div>
+                  ); })()}
+                  {(() => { const dv = deliveredByProduct[r.product_id] ?? 0; return (
+                    <div className={`rounded-md px-3 py-1.5 text-end ${dv > 0 ? "bg-teal-500/10" : "bg-muted/40"}`}>
+                      <div className={`text-[10px] font-medium ${dv > 0 ? "text-teal-700" : "text-muted-foreground"}`}>
+                        {isAr ? "تم تسليمه" : "Delivered"}
+                      </div>
+                      <div className={`text-lg font-bold tabular-nums ${dv > 0 ? "text-teal-700" : "text-muted-foreground"}`}>
+                        {dv}
                       </div>
                     </div>
                   ); })()}
