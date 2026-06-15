@@ -179,7 +179,17 @@ export function HistoricalReceiptDialog({
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs mb-1.5 block">{isAr ? "تاريخ ووقت الدفعة (محلي)" : "Batch date & time (local)"}</Label>
-            <Input type="datetime-local" value={localDt} onChange={(e) => setLocalDt(e.target.value)} />
+            <Input
+              type="datetime-local"
+              value={localDt}
+              max={(() => { const d = new Date(); const pad = (n: number) => String(n).padStart(2,"0"); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; })()}
+              onChange={(e) => setLocalDt(e.target.value)}
+            />
+            {localDt && new Date(localDt).getTime() > Date.now() + 60_000 && (
+              <div className="mt-1 text-[10px] text-rose-600 font-semibold">
+                {isAr ? "⚠ تاريخ مستقبلي — اختر تاريخاً سابقاً" : "⚠ Future date — pick a past date"}
+              </div>
+            )}
           </div>
           <div className="flex items-end">
             <label className="flex items-start gap-2 rounded-md border p-2.5 text-xs cursor-pointer hover:bg-muted/30 w-full">
