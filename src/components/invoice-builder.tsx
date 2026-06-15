@@ -1428,6 +1428,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-medium truncate">{p.name}</span>
+                            {p.is_spare_part && (
+                              <SparePartBadge
+                                product={p}
+                                parentName={p.parent_product_id ? products.find((x) => x.id === p.parent_product_id)?.name : null}
+                                isAr={lang === "ar"}
+                                size="xs"
+                              />
+                            )}
                             {p.collection && (
                               <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
                             )}
