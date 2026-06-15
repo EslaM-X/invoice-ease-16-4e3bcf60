@@ -57,7 +57,7 @@ export function IncomingShipmentsStrip() {
   const load = async () => {
     const { data: pos } = await supabase
       .from("purchase_orders")
-      .select("id, po_number, supplier_name, status, expected_arrival_at, shipped_at, total_qty")
+      .select("id, po_number, shipment_type, shipment_code, supplier_name, status, expected_arrival_at, shipped_at, total_qty")
       .in("status", IN_TRANSIT_STATUSES as any)
       .order("expected_arrival_at", { ascending: true, nullsFirst: false })
       .limit(8);
