@@ -37,12 +37,12 @@ const META: Record<ShipmentType, ShipmentMeta> = {
     type: "grounded",
     prefix: "G",
     icon: Ship,
-    label: (ar) => (ar ? "شحن بحري (GROUNDED)" : "Grounded (Sea)"),
-    shortLabel: (ar) => (ar ? "بحري" : "Sea"),
+    label: (ar) => (ar ? "شحن بري (GROUNDED)" : "Grounded (Land)"),
+    shortLabel: (ar) => (ar ? "بري" : "Land"),
     description: (ar) =>
       ar
-        ? "الشحن الرئيسي عبر السفن. يبدأ بالحرف G ويأخذ ترقيمًا تلقائيًا (G1, G2, …)."
-        : "Main sea freight. Auto-numbered with G prefix (G1, G2, …).",
+        ? "الشحن البري الرئيسي. يبدأ بالحرف G ويأخذ ترقيمًا تلقائيًا (G1, G2, …)."
+        : "Main overland freight. Auto-numbered with G prefix (G1, G2, …).",
     chipClass: "bg-amber-600 text-white border-amber-600",
     surfaceClass: "bg-amber-500/10 border-amber-500/30",
     accentTextClass: "text-amber-700 dark:text-amber-400",
