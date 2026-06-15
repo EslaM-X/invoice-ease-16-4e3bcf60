@@ -487,6 +487,61 @@ function CallDialog({
           )}
         </div>
 
+        <div>
+          <Label className="flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5 text-primary" />
+            {isAr ? "ربط بفاتورة (اختياري)" : "Link to invoice (optional)"}
+          </Label>
+          <Popover open={invPickerOpen} onOpenChange={setInvPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                {invoiceNumber ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-mono">{invoiceNumber}</Badge>
+                  </span>
+                ) : (isAr ? "ابحث برقم الفاتورة أو اسم العميل…" : "Search by invoice # or customer…")}
+                <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+              <Command>
+                <CommandInput placeholder={isAr ? "رقم فاتورة، اسم، أو موبايل…" : "Invoice #, name, or phone…"} />
+                <CommandList>
+                  <CommandEmpty>{isAr ? "لا توجد فواتير مطابقة" : "No matching invoices"}</CommandEmpty>
+                  <CommandGroup>
+                    {invoices.slice(0, 200).map((inv) => (
+                      <CommandItem
+                        key={inv.id}
+                        value={`${inv.invoice_number} ${inv.customer_name ?? ""} ${inv.customer_phone ?? ""}`}
+                        onSelect={() => pickInvoice(inv)}
+                      >
+                        <Check className={`me-2 h-4 w-4 ${invoiceId === inv.id ? "opacity-100" : "opacity-0"}`} />
+                        <div className="flex flex-1 flex-col">
+                          <span className="font-mono text-xs">{inv.invoice_number}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {inv.customer_name ?? "—"}{inv.customer_phone ? ` · ${inv.customer_phone}` : ""}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">{inv.status}</Badge>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {invoiceId && (
+            <button
+              type="button"
+              className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { setInvoiceId(null); setInvoiceNumber(null); }}
+            >
+              {isAr ? "إلغاء ربط الفاتورة" : "Unlink invoice"}
+            </button>
+          )}
+        </div>
+
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>{isAr ? "اسم العميل" : "Customer name"}</Label>
