@@ -69,8 +69,8 @@ const META: Record<ShipmentType, ShipmentMeta> = {
     type: "door_to_door",
     prefix: "D",
     icon: Truck,
-    label: (ar) => (ar ? "من الباب للباب (DOOR TO DOOR)" : "Door to Door"),
-    shortLabel: (ar) => (ar ? "باب للباب" : "Door"),
+    label: (ar) => (ar ? "من الباب للباب (D2D)" : "Door to Door (D2D)"),
+    shortLabel: () => "D2D",
     description: (ar) =>
       ar
         ? "خدمة من المورد لباب المخزن. يبدأ بالحرف D (D1, D2, …)."
