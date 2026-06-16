@@ -69,6 +69,7 @@
     "lucide-react": "^1.8.0",
     "nitro": "3.0.260603-beta",
     "papaparse": "^5.5.3",
+    "pdfjs-dist": "^6.0.227",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
