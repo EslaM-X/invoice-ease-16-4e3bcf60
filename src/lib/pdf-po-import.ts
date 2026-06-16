@@ -63,25 +63,34 @@ export async function parseSupplierInvoicePdf(file: File): Promise<ParsedPdf> {
     skuMatches.push({ sku: m[1].toUpperCase(), idx: m.index });
   }
 
-  // For each SKU, search WINDOW = text from previous SKU end to this SKU start
-  // (qty usually appears BEFORE the SKU in Zoho layout) for a "N pcs".
+  // For each SKU, look for the CLOSEST "N pcs" occurrence in a window
+  // that spans from the previous SKU to AFTER this SKU (some PDFs put qty
+  // before the SKU, others after — depending on extraction order).
   const lines: ParsedPdfLine[] = [];
   for (let i = 0; i < skuMatches.length; i++) {
-    const start = i === 0 ? 0 : skuMatches[i - 1].idx;
-    const end = skuMatches[i].idx;
-    const window = rawText.slice(start, end);
+    const prevEnd = i === 0 ? 0 : skuMatches[i - 1].idx + 20;
+    const nextStart = i + 1 < skuMatches.length ? skuMatches[i + 1].idx : rawText.length;
+    const here = skuMatches[i].idx;
+    const window = rawText.slice(prevEnd, nextStart);
     const qtyRe = new RegExp(QTY_PCS_RE.source, "gi");
-    let qty: number | null = null;
+    let bestQty: number | null = null;
+    let bestDist = Infinity;
     let qm: RegExpExecArray | null;
     while ((qm = qtyRe.exec(window)) !== null) {
-      qty = parseFloat(qm[1]);
+      const absIdx = prevEnd + qm.index;
+      const dist = Math.abs(absIdx - here);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestQty = parseFloat(qm[1]);
+      }
     }
-    if (qty === null || !Number.isFinite(qty) || qty <= 0) continue;
-    // De-dupe by SKU: aggregate if the same SKU appears multiple times
-    const existing = lines.find((l) => l.sku === skuMatches[i].sku);
-    if (existing) existing.quantity += Math.round(qty);
-    else lines.push({ sku: skuMatches[i].sku, quantity: Math.round(qty) });
+    if (bestQty === null || !Number.isFinite(bestQty) || bestQty <= 0) continue;
+    const sku = skuMatches[i].sku;
+    const existing = lines.find((l) => l.sku === sku);
+    if (existing) existing.quantity += Math.round(bestQty);
+    else lines.push({ sku, quantity: Math.round(bestQty) });
   }
+
 
   return { lines, rawText };
 }
