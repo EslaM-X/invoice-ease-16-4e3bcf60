@@ -846,6 +846,7 @@ function ReceiveDialog({
     Object.fromEntries(openItems.map((i) => [i.id, i.quantity - (i.received_qty || 0)])),
   );
   const [notes, setNotes] = useState("");
+  const [discount, setDiscount] = useState<number>(0);
   const [stockNow, setStockNow] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
 
@@ -892,6 +893,19 @@ function ReceiveDialog({
       if (error) throw error;
       const fully = data?.fully_received;
       const batch = data?.receipt_number;
+      // Persist UI-only discount on the just-created receipt row (latest for this PO).
+      if (discount > 0) {
+        const { data: latest } = await supabase
+          .from("po_receipts")
+          .select("id")
+          .eq("po_id", po.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latest?.id) {
+          await supabase.from("po_receipts").update({ discount_amount: discount } as any).eq("id", latest.id);
+        }
+      }
       toast.success(isAr
         ? (fully ? `تم استلام الدفعة #${batch} وإغلاق الشحنة بالكامل` : `تم تسجيل الدفعة #${batch} · لا يزال هناك متبقي`)
         : (fully ? `Batch #${batch} received · PO closed` : `Batch #${batch} saved · partial`));
@@ -990,12 +1004,29 @@ function ReceiveDialog({
         </div>
 
         {openItems.length > 0 && (
-          <Textarea
-            placeholder={isAr ? "ملاحظة على هذه الدفعة (اختياري) — رقم البوليصة، اسم الشاحنة..." : "Note on this batch (optional) — waybill, truck..."}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-          />
+          <>
+            <div className="rounded-md border bg-amber-50/40 dark:bg-amber-500/5 border-amber-500/30 p-3">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="text-xs font-medium">{isAr ? "خصم على هذه الدفعة (للعرض فقط — لا يُطبع)" : "Discount on this batch (UI only — not printed)"}</label>
+                <span className="text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">{isAr ? "داخلي" : "Internal"}</span>
+              </div>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={discount}
+                onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                placeholder="0.00"
+                className="h-8"
+              />
+            </div>
+            <Textarea
+              placeholder={isAr ? "ملاحظة على هذه الدفعة (اختياري) — رقم البوليصة، اسم الشاحنة..." : "Note on this batch (optional) — waybill, truck..."}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+            />
+          </>
         )}
 
         <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
