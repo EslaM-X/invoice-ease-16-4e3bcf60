@@ -104,13 +104,30 @@ function PurchaseOrdersPage() {
     }
   }, [roleLoading, isAdmin, isPurchasing, isCFO, navigate, isAr]);
 
+  const [resequencing, setResequencing] = useState(false);
   const loadPOs = async () => {
     const { data } = await supabase
       .from("purchase_orders")
       .select("*")
+      .order("shipment_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(200);
     setPos((data as any) ?? []);
+  };
+
+  const resequenceByDate = async () => {
+    if (!confirm(isAr ? "سيتم إعادة ترقيم جميع أوامر الشراء حسب تاريخ الشحنة (الأقدم = 0001). هل تريد المتابعة؟" : "All PO numbers will be re-sequenced by shipment date (oldest = 0001). Continue?")) return;
+    setResequencing(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("renumber_purchase_orders");
+      if (error) throw error;
+      toast.success(isAr ? `تم إعادة ترقيم ${data?.updated ?? 0} أمر شراء` : `Re-sequenced ${data?.updated ?? 0} POs`);
+      loadPOs();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setResequencing(false);
+    }
   };
 
   useEffect(() => { loadPOs(); }, []);
