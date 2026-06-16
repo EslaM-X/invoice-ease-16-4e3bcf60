@@ -1212,6 +1212,67 @@ function PODetailDialog({
                   </Button>
                 )}
               </div>
+              <div className="space-y-2 border-b bg-background px-3 py-3">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute start-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="h-8 ps-8 text-xs"
+                      value={itemSearch}
+                      onChange={(e) => setItemSearch(e.target.value)}
+                      placeholder={isAr ? "فلتر داخل البنود: اسم / سيريال / لون / كولكشن" : "Filter items: name / serial / color / collection"}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      ["all", isAr ? "الكل" : "All"],
+                      ["products", isAr ? "منتجات" : "Products"],
+                      ["spare", isAr ? "قطع غيار" : "Spare parts"],
+                    ] as const).map(([k, label]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setItemKindFilter(k)}
+                        className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemKindFilter === k ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => setItemCollectionFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemCollectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}>
+                    {isAr ? "كل الكولكشن" : "All collections"} ({itemCollectionCounts.__all__})
+                  </button>
+                  {COLLECTIONS.map((c) => (
+                    <button key={c} type="button" onClick={() => setItemCollectionFilter(c)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, itemCollectionFilter === c)}`}>
+                      <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+                      {c} ({itemCollectionCounts[c] ?? 0})
+                    </button>
+                  ))}
+                  {itemCollectionCounts.__none__ > 0 && (
+                    <button type="button" onClick={() => setItemCollectionFilter("__none__")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemCollectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}>
+                      {isAr ? "بدون كولكشن" : "No collection"} ({itemCollectionCounts.__none__})
+                    </button>
+                  )}
+                </div>
+                {itemColors.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button type="button" onClick={() => setItemColorFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemColorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}>
+                      {isAr ? "كل الألوان" : "All colors"}
+                    </button>
+                    {itemColors.map((c) => (
+                      <button key={c} type="button" onClick={() => setItemColorFilter(c)} title={c} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${itemColorFilter === c ? "bg-primary/10 ring-2 ring-primary" : "bg-muted hover:bg-muted/70"}`}>
+                        <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="text-[10px] text-muted-foreground">
+                  {visibleItems.length} / {items.length} {isAr ? "بند ظاهر" : "visible items"}
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-xs">
                   <thead className="bg-muted/30">
@@ -1224,7 +1285,7 @@ function PODetailDialog({
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {items.map((it) => {
+                    {visibleItems.map((it) => {
                       const e = itemEdits[it.id] ?? { qty: it.quantity, unit: Number(it.unit_cost_usd) };
                       const dirty = e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
                       return (
@@ -1244,6 +1305,12 @@ function PODetailDialog({
                                     <span className="inline-flex items-center gap-1">
                                       <ColorSwatch value={it.color} size="sm" />
                                       {it.color}
+                                    </span>
+                                  )}
+                                  {it.collection && (
+                                    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-bold ${collectionBadgeClass(it.collection)}`}>
+                                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(it.collection)}`} aria-hidden />
+                                      {it.collection}
                                     </span>
                                   )}
                                 </div>
@@ -1280,8 +1347,8 @@ function PODetailDialog({
                         </tr>
                       );
                     })}
-                    {items.length === 0 && (
-                      <tr><td colSpan={canDeleteItems ? 5 : 4} className="p-6 text-center text-muted-foreground">{isAr ? "لا توجد بنود" : "No items"}</td></tr>
+                    {visibleItems.length === 0 && (
+                      <tr><td colSpan={canDeleteItems ? 5 : 4} className="p-6 text-center text-muted-foreground">{items.length === 0 ? (isAr ? "لا توجد بنود" : "No items") : (isAr ? "لا توجد بنود تطابق الفلاتر" : "No items match the filters")}</td></tr>
                     )}
                   </tbody>
                 </table>
