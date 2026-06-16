@@ -3410,6 +3410,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reassign_po_numbers_by_shipment_date: { Args: never; Returns: Json }
       reassign_shipment_codes_for_user: {
         Args: { _user_id: string }
         Returns: undefined
