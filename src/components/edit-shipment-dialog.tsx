@@ -4,7 +4,13 @@ import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-types";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -25,7 +31,14 @@ function cairoParts(date: Date) {
     hourCycle: "h23",
   }).formatToParts(date);
   const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? "00";
-  return { y: get("year"), m: get("month"), d: get("day"), h: get("hour"), min: get("minute"), s: get("second") };
+  return {
+    y: get("year"),
+    m: get("month"),
+    d: get("day"),
+    h: get("hour"),
+    min: get("minute"),
+    s: get("second"),
+  };
 }
 
 function isoToCairoInput(iso: string) {
@@ -35,7 +48,14 @@ function isoToCairoInput(iso: string) {
 
 function cairoOffsetMs(date: Date) {
   const p = cairoParts(date);
-  const cairoAsUtc = Date.UTC(Number(p.y), Number(p.m) - 1, Number(p.d), Number(p.h), Number(p.min), Number(p.s));
+  const cairoAsUtc = Date.UTC(
+    Number(p.y),
+    Number(p.m) - 1,
+    Number(p.d),
+    Number(p.h),
+    Number(p.min),
+    Number(p.s),
+  );
   return cairoAsUtc - date.getTime();
 }
 
@@ -69,7 +89,12 @@ export function EditShipmentDialog({
   currentCode: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onSaved?: (next: { po_number?: string | null; shipment_code: string | null; shipment_type: string; shipment_date: string | null }) => void;
+  onSaved?: (next: {
+    po_number?: string | null;
+    shipment_code: string | null;
+    shipment_type: string;
+    shipment_date: string | null;
+  }) => void;
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
@@ -94,7 +119,12 @@ export function EditShipmentDialog({
         _new_date: iso,
       });
       if (error) throw error;
-      const next = (data ?? {}) as { po_number?: string | null; shipment_code: string | null; shipment_type: string; shipment_date: string | null };
+      const next = (data ?? {}) as {
+        po_number?: string | null;
+        shipment_code: string | null;
+        shipment_type: string;
+        shipment_date: string | null;
+      };
       toast.success(
         isAr
           ? `تم تحديث الشحنة · الكود الجديد: ${next.shipment_code ?? "—"}`
@@ -117,7 +147,9 @@ export function EditShipmentDialog({
             <RefreshCw className="h-5 w-5 text-primary" />
             {isAr ? "تعديل الشحنة" : "Edit Shipment"}
             {currentCode && (
-              <Badge variant="outline" className="font-mono">{currentCode}</Badge>
+              <Badge variant="outline" className="font-mono">
+                {currentCode}
+              </Badge>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -146,7 +178,9 @@ export function EditShipmentDialog({
                     onClick={() => setType(t)}
                     className={`rounded-lg border p-3 text-start transition ${active ? `ring-2 ${meta.ringSelectedClass} ${meta.surfaceClass}` : "hover:bg-muted/40"}`}
                   >
-                    <div className={`flex items-center gap-1.5 text-sm font-bold ${meta.accentTextClass}`}>
+                    <div
+                      className={`flex items-center gap-1.5 text-sm font-bold ${meta.accentTextClass}`}
+                    >
                       <Icon className="h-4 w-4" />
                       {meta.prefix}
                     </div>
@@ -158,7 +192,9 @@ export function EditShipmentDialog({
           </div>
 
           <div>
-            <Label className="text-xs mb-1.5 block">{isAr ? "تاريخ ووقت الشحنة (توقيت محلي)" : "Shipment date & time (local)"}</Label>
+            <Label className="text-xs mb-1.5 block">
+              {isAr ? "تاريخ ووقت الشحنة (توقيت محلي)" : "Shipment date & time (local)"}
+            </Label>
             <Input
               type="datetime-local"
               value={localDt}

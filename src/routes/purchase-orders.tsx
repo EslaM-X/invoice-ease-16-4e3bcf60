@@ -12,18 +12,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Plus, ShoppingCart, Search, DollarSign, Calculator, FileText, Trash2, Minus, CheckSquare, Square, Activity, RefreshCw } from "lucide-react";
+import {
+  Plus,
+  ShoppingCart,
+  Search,
+  DollarSign,
+  Calculator,
+  FileText,
+  Trash2,
+  Minus,
+  CheckSquare,
+  Square,
+  Activity,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components/po-tracker-dialog";
 import { EditShipmentDialog } from "@/components/edit-shipment-dialog";
 import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-types";
 import { parseSupplierInvoicePdf } from "@/lib/pdf-po-import";
-import { collectionBadgeClass, collectionDotClass, collectionPillClass } from "@/lib/collection-styles";
+import {
+  collectionBadgeClass,
+  collectionDotClass,
+  collectionPillClass,
+} from "@/lib/collection-styles";
 import { COLLECTIONS } from "@/lib/data";
 import { FileUp, Loader2 } from "lucide-react";
 
@@ -52,7 +75,6 @@ type Product = {
   collection?: string | null;
   is_spare_part?: boolean | null;
 };
-
 
 type PO = {
   id: string;
@@ -122,12 +144,23 @@ function PurchaseOrdersPage() {
   };
 
   const resequenceByDate = async () => {
-    if (!confirm(isAr ? "سيتم إعادة ترقيم جميع أوامر الشراء حسب تاريخ الشحنة (الأقدم = 0001). هل تريد المتابعة؟" : "All PO numbers will be re-sequenced by shipment date (oldest = 0001). Continue?")) return;
+    if (
+      !confirm(
+        isAr
+          ? "سيتم إعادة ترقيم جميع أوامر الشراء حسب تاريخ الشحنة (الأقدم = 0001). هل تريد المتابعة؟"
+          : "All PO numbers will be re-sequenced by shipment date (oldest = 0001). Continue?",
+      )
+    )
+      return;
     setResequencing(true);
     try {
       const { data, error } = await (supabase as any).rpc("renumber_purchase_orders");
       if (error) throw error;
-      toast.success(isAr ? `تم إعادة ترقيم ${data?.updated ?? 0} أمر شراء` : `Re-sequenced ${data?.updated ?? 0} POs`);
+      toast.success(
+        isAr
+          ? `تم إعادة ترقيم ${data?.updated ?? 0} أمر شراء`
+          : `Re-sequenced ${data?.updated ?? 0} POs`,
+      );
       loadPOs();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed");
@@ -136,7 +169,9 @@ function PurchaseOrdersPage() {
     }
   };
 
-  useEffect(() => { loadPOs(); }, []);
+  useEffect(() => {
+    loadPOs();
+  }, []);
   useRealtimeTable("purchase_orders", loadPOs, []);
 
   const statusBadge = (s: string) => trackerStatusBadge(s, isAr);
@@ -162,7 +197,14 @@ function PurchaseOrdersPage() {
           {(isAdmin || isPurchasing) && (
             <div className="flex gap-2">
               {isAdmin && (
-                <Button onClick={resequenceByDate} variant="outline" size="lg" disabled={resequencing} className="gap-2" title={isAr ? "إعادة ترقيم حسب تاريخ الشحنة" : "Re-sequence by shipment date"}>
+                <Button
+                  onClick={resequenceByDate}
+                  variant="outline"
+                  size="lg"
+                  disabled={resequencing}
+                  className="gap-2"
+                  title={isAr ? "إعادة ترقيم حسب تاريخ الشحنة" : "Re-sequence by shipment date"}
+                >
                   <RefreshCw className={`h-4 w-4 ${resequencing ? "animate-spin" : ""}`} />
                   {isAr ? "إعادة ترقيم بالتاريخ" : "Re-sequence by date"}
                 </Button>
@@ -189,60 +231,87 @@ function PurchaseOrdersPage() {
             const sm = shipmentMeta(p.shipment_type);
             const ShipIcon = sm.icon;
             return (
-            <div key={p.id} className={`flex w-full flex-wrap items-center gap-3 p-4 transition hover:bg-accent/40 border-s-4 ${sm.surfaceClass.split(" ")[0]} border-s-current ${sm.accentTextClass}`}>
-              <button
-                onClick={() => setDetailId(p.id)}
-                className="flex flex-1 min-w-[200px] flex-col gap-1 text-start"
+              <div
+                key={p.id}
+                className={`flex w-full flex-wrap items-center gap-3 p-4 transition hover:bg-accent/40 border-s-4 ${sm.surfaceClass.split(" ")[0]} border-s-current ${sm.accentTextClass}`}
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold border ${sm.chipClass}`}>
-                    <ShipIcon className="h-3.5 w-3.5" />
-                    {p.shipment_code || p.po_number}
-                  </span>
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{sm.shortLabel(isAr)}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">{p.po_number}</span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {isAr ? "تاريخ الشحنة" : "Shipment date"}: {fmtDateTime(p.shipment_date ?? p.created_at, lang)}
-                </div>
-                {p.created_by_email && (
-                  <div className="text-[10px] text-muted-foreground">{p.created_by_email}</div>
-                )}
-              </button>
-              <div className="text-end">
-                <div className="text-xs text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</div>
-                <div className="font-bold tabular-nums">${(Number(p.total_usd) || 0).toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground">{p.total_qty} {isAr ? "قطعة" : "units"}</div>
-              </div>
-              {p.total_egp != null && (
+                <button
+                  onClick={() => setDetailId(p.id)}
+                  className="flex flex-1 min-w-[200px] flex-col gap-1 text-start"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-extrabold border ${sm.chipClass}`}
+                    >
+                      <ShipIcon className="h-3.5 w-3.5" />
+                      {p.shipment_code || p.po_number}
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {sm.shortLabel(isAr)}
+                    </span>
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {p.po_number}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} ·{" "}
+                    {isAr ? "تاريخ الشحنة" : "Shipment date"}:{" "}
+                    {fmtDateTime(p.shipment_date ?? p.created_at, lang)}
+                  </div>
+                  {p.created_by_email && (
+                    <div className="text-[10px] text-muted-foreground">{p.created_by_email}</div>
+                  )}
+                </button>
                 <div className="text-end">
-                  <div className="text-xs text-muted-foreground">{isAr ? "إجمالي EGP" : "Total EGP"}</div>
-                  <div className="font-bold tabular-nums text-primary">{fmtMoney(Number(p.total_egp), "EGP", lang)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {isAr ? "إجمالي USD" : "Total USD"}
+                  </div>
+                  <div className="font-bold tabular-nums">
+                    ${(Number(p.total_usd) || 0).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {p.total_qty} {isAr ? "قطعة" : "units"}
+                  </div>
                 </div>
-              )}
-              <div>{statusBadge(p.status)}</div>
-              {(isAdmin || isPurchasing || isCFO) && (
+                {p.total_egp != null && (
+                  <div className="text-end">
+                    <div className="text-xs text-muted-foreground">
+                      {isAr ? "إجمالي EGP" : "Total EGP"}
+                    </div>
+                    <div className="font-bold tabular-nums text-primary">
+                      {fmtMoney(Number(p.total_egp), "EGP", lang)}
+                    </div>
+                  </div>
+                )}
+                <div>{statusBadge(p.status)}</div>
+                {(isAdmin || isPurchasing || isCFO) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditShipPo(p);
+                    }}
+                    className="gap-1"
+                    title={isAr ? "تعديل نوع/تاريخ الشحنة" : "Edit shipment type/date"}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    {isAr ? "تعديل الشحنة" : "Edit shipment"}
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={(e) => { e.stopPropagation(); setEditShipPo(p); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTrackId(p.id);
+                  }}
                   className="gap-1"
-                  title={isAr ? "تعديل نوع/تاريخ الشحنة" : "Edit shipment type/date"}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {isAr ? "تعديل الشحنة" : "Edit shipment"}
+                  <Activity className="h-3.5 w-3.5" />
+                  {isAr ? "تتبع" : "Track"}
                 </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => { e.stopPropagation(); setTrackId(p.id); }}
-                className="gap-1"
-              >
-                <Activity className="h-3.5 w-3.5" />
-                {isAr ? "تتبع" : "Track"}
-              </Button>
-            </div>
+              </div>
             );
           })}
         </div>
@@ -255,7 +324,9 @@ function PurchaseOrdersPage() {
           currentDate={editShipPo.shipment_date}
           currentCode={editShipPo.shipment_code}
           open={!!editShipPo}
-          onOpenChange={(v) => { if (!v) setEditShipPo(null); }}
+          onOpenChange={(v) => {
+            if (!v) setEditShipPo(null);
+          }}
           onSaved={() => loadPOs()}
         />
       )}
@@ -266,7 +337,10 @@ function PurchaseOrdersPage() {
           onOpenChange={setCreateOpen}
           userId={user?.id || ""}
           userEmail={user?.email || ""}
-          onCreated={(id) => { loadPOs(); setDetailId(id); }}
+          onCreated={(id) => {
+            loadPOs();
+            setDetailId(id);
+          }}
         />
       )}
 
@@ -274,7 +348,9 @@ function PurchaseOrdersPage() {
         <PODetailDialog
           poId={detailId}
           open={!!detailId}
-          onOpenChange={(v) => { if (!v) setDetailId(null); }}
+          onOpenChange={(v) => {
+            if (!v) setDetailId(null);
+          }}
           isCFO={isCFO}
           isAdmin={isAdmin}
           isPurchasing={isPurchasing}
@@ -288,7 +364,9 @@ function PurchaseOrdersPage() {
         <POTrackerDialog
           poId={trackId}
           open={!!trackId}
-          onOpenChange={(v) => { if (!v) setTrackId(null); }}
+          onOpenChange={(v) => {
+            if (!v) setTrackId(null);
+          }}
         />
       )}
     </div>
@@ -300,7 +378,11 @@ function PurchaseOrdersPage() {
 type Row = { selected: boolean; qty: number; unitUsd: number };
 
 function CreatePODialog({
-  open, onOpenChange, userId, userEmail, onCreated,
+  open,
+  onOpenChange,
+  userId,
+  userEmail,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -322,7 +404,11 @@ function CreatePODialog({
   const [shipmentType, setShipmentType] = useState<ShipmentType>("grounded");
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [lastImportSummary, setLastImportSummary] = useState<{ matched: number; missed: string[]; totalLines: number } | null>(null);
+  const [lastImportSummary, setLastImportSummary] = useState<{
+    matched: number;
+    missed: string[];
+    totalLines: number;
+  } | null>(null);
 
   const handlePdfImport = async (file: File) => {
     if (!file) return;
@@ -331,7 +417,9 @@ function CreatePODialog({
     try {
       const { lines } = await parseSupplierInvoicePdf(file);
       if (lines.length === 0) {
-        toast.error(isAr ? "لم يتم العثور على أي منتج (SKU) في الـ PDF" : "No SKUs detected in the PDF");
+        toast.error(
+          isAr ? "لم يتم العثور على أي منتج (SKU) في الـ PDF" : "No SKUs detected in the PDF",
+        );
         return;
       }
       // Build index by serial_number (case-insensitive, trimmed)
@@ -345,8 +433,15 @@ function CreatePODialog({
         const next = { ...prev };
         for (const ln of lines) {
           const p = bySerial.get(ln.sku.trim().toUpperCase());
-          if (!p) { missed.push(ln.sku); continue; }
-          const cur = next[p.id] ?? { selected: false, qty: 0, unitUsd: Number(p.cost_price_usd) || 0 };
+          if (!p) {
+            missed.push(ln.sku);
+            continue;
+          }
+          const cur = next[p.id] ?? {
+            selected: false,
+            qty: 0,
+            unitUsd: Number(p.cost_price_usd) || 0,
+          };
           next[p.id] = { ...cur, selected: true, qty: (cur.selected ? cur.qty : 0) + ln.quantity };
           matched++;
         }
@@ -363,18 +458,21 @@ function CreatePODialog({
         toast.error(isAr ? "لم يتطابق أي SKU مع منتجاتك" : "No SKUs matched your catalog");
       }
     } catch (e: any) {
-      toast.error((isAr ? "فشل قراءة الـ PDF: " : "Failed to parse PDF: ") + (e?.message ?? "unknown"));
+      toast.error(
+        (isAr ? "فشل قراءة الـ PDF: " : "Failed to parse PDF: ") + (e?.message ?? "unknown"),
+      );
     } finally {
       setImporting(false);
     }
   };
 
-
   useEffect(() => {
     if (!open) return;
     supabase
       .from("products")
-      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part")
+      .select(
+        "id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part",
+      )
       .order("name", { ascending: true })
       .limit(2000)
       .then(({ data }) => {
@@ -382,7 +480,11 @@ function CreatePODialog({
         setProducts(list);
         const initial: Record<string, Row> = {};
         list.forEach((p) => {
-          initial[p.id] = { selected: false, qty: Math.max(0, p.low_stock_threshold * 2 - p.stock_quantity), unitUsd: Number(p.cost_price_usd) || 0 };
+          initial[p.id] = {
+            selected: false,
+            qty: Math.max(0, p.low_stock_threshold * 2 - p.stock_quantity),
+            unitUsd: Number(p.cost_price_usd) || 0,
+          };
         });
         setRows(initial);
       });
@@ -407,8 +509,9 @@ function CreatePODialog({
       if (kindFilter === "spare" && !p.is_spare_part) return false;
       if (kindFilter === "products" && p.is_spare_part) return false;
       if (collectionFilter) {
-        if (collectionFilter === "__none__") { if (p.collection) return false; }
-        else if (p.collection !== collectionFilter) return false;
+        if (collectionFilter === "__none__") {
+          if (p.collection) return false;
+        } else if (p.collection !== collectionFilter) return false;
       }
       if (colorFilter && (p.color ?? "") !== colorFilter) return false;
       if (!q) return true;
@@ -421,17 +524,19 @@ function CreatePODialog({
     });
   }, [products, search, showOnlyLow, collectionFilter, colorFilter, kindFilter]);
 
-
   const selected = products.filter((p) => rows[p.id]?.selected && (rows[p.id]?.qty ?? 0) > 0);
   const totalQty = selected.reduce((s, p) => s + rows[p.id].qty, 0);
   const totalUsd = selected.reduce((s, p) => s + rows[p.id].qty * rows[p.id].unitUsd, 0);
 
   const submit = async () => {
-    if (selected.length === 0) return toast.error(isAr ? "اختر منتج واحد على الأقل" : "Select at least one product");
+    if (selected.length === 0)
+      return toast.error(isAr ? "اختر منتج واحد على الأقل" : "Select at least one product");
     setSaving(true);
     try {
       // Generate PO number
-      const { count } = await supabase.from("purchase_orders").select("*", { count: "exact", head: true });
+      const { count } = await supabase
+        .from("purchase_orders")
+        .select("*", { count: "exact", head: true });
       const yr = new Date().getFullYear();
       const poNumber = `PO-${yr}-${String((count ?? 0) + 1).padStart(4, "0")}`;
 
@@ -477,7 +582,12 @@ function CreatePODialog({
         title: isAr ? "أمر شراء جديد بحاجة إلى تسعير" : "New PO needs pricing",
         body: `${(po as any).shipment_code || poNumber} · $${totalUsd.toFixed(2)} · ${totalQty} ${isAr ? "قطعة" : "units"}${supplier ? ` · ${supplier}` : ""}`,
         link: "/purchase-orders",
-        meta: { po_id: po.id, po_number: poNumber, shipment_code: (po as any).shipment_code, shipment_type: shipmentType },
+        meta: {
+          po_id: po.id,
+          po_number: poNumber,
+          shipment_code: (po as any).shipment_code,
+          shipment_type: shipmentType,
+        },
       } as any);
 
       toast.success(
@@ -553,16 +663,30 @@ function CreatePODialog({
               <FileUp className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-[180px]">
-              <div className="text-sm font-bold">{isAr ? "استيراد من فاتورة المورد (PDF)" : "Import from supplier invoice (PDF)"}</div>
+              <div className="text-sm font-bold">
+                {isAr ? "استيراد من فاتورة المورد (PDF)" : "Import from supplier invoice (PDF)"}
+              </div>
               <div className="text-[11px] text-muted-foreground">
                 {isAr
                   ? "سنقرأ كل SKU وكميته من الفاتورة ونحدد المنتجات تلقائياً."
                   : "We'll read every SKU + qty from the invoice and auto-select your products."}
               </div>
             </div>
-            <label className={`inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-accent ${importing ? "pointer-events-none opacity-60" : ""}`}>
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-              {importing ? (isAr ? "جارٍ القراءة…" : "Reading…") : (isAr ? "اختر ملف PDF" : "Choose PDF")}
+            <label
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-accent ${importing ? "pointer-events-none opacity-60" : ""}`}
+            >
+              {importing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4" />
+              )}
+              {importing
+                ? isAr
+                  ? "جارٍ القراءة…"
+                  : "Reading…"
+                : isAr
+                  ? "اختر ملف PDF"
+                  : "Choose PDF"}
               <input
                 type="file"
                 accept="application/pdf,.pdf"
@@ -577,22 +701,37 @@ function CreatePODialog({
           </div>
           {lastImportSummary && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-              <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700">
+              <Badge
+                variant="outline"
+                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
+              >
                 ✓ {lastImportSummary.matched} {isAr ? "مطابق" : "matched"}
               </Badge>
               {lastImportSummary.missed.length > 0 && (
-                <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700" title={lastImportSummary.missed.join(", ")}>
+                <Badge
+                  variant="outline"
+                  className="border-amber-500/40 bg-amber-500/10 text-amber-700"
+                  title={lastImportSummary.missed.join(", ")}
+                >
                   ⚠ {lastImportSummary.missed.length} {isAr ? "غير موجود" : "not in catalog"}
                 </Badge>
               )}
               <span className="text-muted-foreground">
-                {isAr ? `إجمالي البنود في الـ PDF: ${lastImportSummary.totalLines}` : `Total lines in PDF: ${lastImportSummary.totalLines}`}
+                {isAr
+                  ? `إجمالي البنود في الـ PDF: ${lastImportSummary.totalLines}`
+                  : `Total lines in PDF: ${lastImportSummary.totalLines}`}
               </span>
               {lastImportSummary.missed.length > 0 && (
                 <details className="basis-full mt-1">
-                  <summary className="cursor-pointer text-amber-700 underline decoration-dotted">{isAr ? "عرض الـ SKUs المفقودة" : "Show missing SKUs"}</summary>
+                  <summary className="cursor-pointer text-amber-700 underline decoration-dotted">
+                    {isAr ? "عرض الـ SKUs المفقودة" : "Show missing SKUs"}
+                  </summary>
                   <div className="mt-1 flex flex-wrap gap-1 font-mono text-[10px]">
-                    {lastImportSummary.missed.map((s) => <span key={s} className="rounded bg-amber-500/10 px-1.5 py-0.5">{s}</span>)}
+                    {lastImportSummary.missed.map((s) => (
+                      <span key={s} className="rounded bg-amber-500/10 px-1.5 py-0.5">
+                        {s}
+                      </span>
+                    ))}
                   </div>
                 </details>
               )}
@@ -603,12 +742,23 @@ function CreatePODialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs">{isAr ? "المورد" : "Supplier"}</Label>
-            <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder={isAr ? "اسم المورد" : "Supplier name"} />
+            <Input
+              value={supplier}
+              onChange={(e) => setSupplier(e.target.value)}
+              placeholder={isAr ? "اسم المورد" : "Supplier name"}
+            />
           </div>
           <div className="flex items-end gap-2">
             <div className="relative flex-1">
               <Search className="absolute start-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="ps-8" placeholder={isAr ? "ابحث بالاسم أو السيريال أو اللون…" : "Search name / serial / color…"} value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input
+                className="ps-8"
+                placeholder={
+                  isAr ? "ابحث بالاسم أو السيريال أو اللون…" : "Search name / serial / color…"
+                }
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs">
               <Checkbox checked={showOnlyLow} onCheckedChange={(v) => setShowOnlyLow(!!v)} />
@@ -617,15 +767,16 @@ function CreatePODialog({
           </div>
         </div>
 
-
         {/* Kind / Collection / Color filter pills */}
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
-            {([
-              ["all", isAr ? "الكل" : "All"],
-              ["products", isAr ? "منتجات" : "Products"],
-              ["spare", isAr ? "قطع غيار" : "Spare parts"],
-            ] as const).map(([k, lbl]) => (
+            {(
+              [
+                ["all", isAr ? "الكل" : "All"],
+                ["products", isAr ? "منتجات" : "Products"],
+                ["spare", isAr ? "قطع غيار" : "Spare parts"],
+              ] as const
+            ).map(([k, lbl]) => (
               <button
                 key={k}
                 type="button"
@@ -674,14 +825,16 @@ function CreatePODialog({
                   title={c}
                   className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition border ${colorFilter === c ? "ring-2 ring-primary bg-primary/10" : "bg-muted hover:bg-muted/70"}`}
                 >
-                  <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                  <span
+                    className="inline-block h-3 w-3 rounded-full border"
+                    style={swatchStyle(c)}
+                  />
                   {c}
                 </button>
               ))}
             </div>
           )}
         </div>
-
 
         <BulkAdjustBar
           isAr={isAr}
@@ -712,20 +865,28 @@ function CreatePODialog({
                     <td className="p-2 align-top">
                       <Checkbox
                         checked={r.selected}
-                        onCheckedChange={(v) => setRows((prev) => ({ ...prev, [p.id]: { ...prev[p.id], selected: !!v } }))}
+                        onCheckedChange={(v) =>
+                          setRows((prev) => ({ ...prev, [p.id]: { ...prev[p.id], selected: !!v } }))
+                        }
                       />
                     </td>
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         {p.image_url ? (
-                          <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded border object-cover" />
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            className="h-10 w-10 rounded border object-cover"
+                          />
                         ) : (
                           <div className="h-10 w-10 rounded border bg-muted" />
                         )}
                         <div>
                           <div className="font-medium">{p.name}</div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-                            {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
+                            {p.serial_number && (
+                              <span className="font-mono">{p.serial_number}</span>
+                            )}
                             {p.color && (
                               <span className="inline-flex items-center gap-1">
                                 <ColorSwatch value={p.color} size="sm" />
@@ -737,27 +898,54 @@ function CreatePODialog({
                       </div>
                     </td>
                     <td className="p-2 tabular-nums">
-                      <span className={low ? "font-bold text-destructive" : ""}>{p.stock_quantity}</span>
+                      <span className={low ? "font-bold text-destructive" : ""}>
+                        {p.stock_quantity}
+                      </span>
                       <span className="text-muted-foreground">/{p.low_stock_threshold}</span>
                     </td>
                     <td className="p-2">
                       <Input
-                        type="number" min={0} className="h-7 w-20"
+                        type="number"
+                        min={0}
+                        className="h-7 w-20"
                         value={r.qty || ""}
-                        onChange={(e) => setRows((prev) => ({ ...prev, [p.id]: { ...prev[p.id], qty: Math.max(0, Number(e.target.value) || 0), selected: true } }))}
+                        onChange={(e) =>
+                          setRows((prev) => ({
+                            ...prev,
+                            [p.id]: {
+                              ...prev[p.id],
+                              qty: Math.max(0, Number(e.target.value) || 0),
+                              selected: true,
+                            },
+                          }))
+                        }
                       />
                     </td>
                     <td className="p-2">
                       <div className="relative">
                         <DollarSign className="absolute start-1 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          type="number" min={0} step="any" className="h-7 w-24 ps-5"
+                          type="number"
+                          min={0}
+                          step="any"
+                          className="h-7 w-24 ps-5"
                           value={Number.isFinite(r.unitUsd) ? String(r.unitUsd) : ""}
-                          onChange={(e) => setRows((prev) => ({ ...prev, [p.id]: { ...prev[p.id], unitUsd: Math.max(0, Number(e.target.value) || 0), selected: true } }))}
+                          onChange={(e) =>
+                            setRows((prev) => ({
+                              ...prev,
+                              [p.id]: {
+                                ...prev[p.id],
+                                unitUsd: Math.max(0, Number(e.target.value) || 0),
+                                selected: true,
+                              },
+                            }))
+                          }
                         />
                       </div>
                     </td>
-                    <td className="p-2 text-end font-semibold tabular-nums">${(r.qty * r.unitUsd).toFixed(2)}</td>
+                    <td className="p-2 text-end font-semibold tabular-nums">
+                      ${(r.qty * r.unitUsd).toFixed(2)}
+                    </td>
                   </tr>
                 );
               })}
@@ -780,15 +968,25 @@ function CreatePODialog({
               <span className="font-bold tabular-nums text-primary">${totalUsd.toFixed(2)}</span>
             </div>
             <div className="mt-2 text-[10px] text-muted-foreground">
-              {isAr ? "سيتم إرسال إشعار تلقائي للمدير المالي لإدخال سعر الصرف والجمارك." : "CFO will be notified automatically to add FX rate and customs."}
+              {isAr
+                ? "سيتم إرسال إشعار تلقائي للمدير المالي لإدخال سعر الصرف والجمارك."
+                : "CFO will be notified automatically to add FX rate and customs."}
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {isAr ? "إلغاء" : "Cancel"}
+          </Button>
           <Button onClick={submit} disabled={saving || selected.length === 0}>
-            {saving ? (isAr ? "جارٍ الحفظ…" : "Saving…") : (isAr ? "إنشاء وإرسال للمالي" : "Create & notify CFO")}
+            {saving
+              ? isAr
+                ? "جارٍ الحفظ…"
+                : "Saving…"
+              : isAr
+                ? "إنشاء وإرسال للمالي"
+                : "Create & notify CFO"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -799,7 +997,15 @@ function CreatePODialog({
 /* ─────────────────────── PO Detail / CFO Pricing ─────────────────────── */
 
 function PODetailDialog({
-  poId, open, onOpenChange, isCFO, isAdmin, isPurchasing, userEmail, userId, onOpenTracker,
+  poId,
+  open,
+  onOpenChange,
+  isCFO,
+  isAdmin,
+  isPurchasing,
+  userEmail,
+  userId,
+  onOpenTracker,
 }: {
   poId: string;
   open: boolean;
@@ -902,7 +1108,11 @@ function PODetailDialog({
         const existing = prev[it.id];
         const serverEdit = { qty: it.quantity, unit: Number(it.unit_cost_usd) };
         // Preserve a user's in-flight edit (silent refresh only) if still dirty
-        if (!initial && existing && (existing.qty !== it.quantity || Number(existing.unit) !== Number(it.unit_cost_usd))) {
+        if (
+          !initial &&
+          existing &&
+          (existing.qty !== it.quantity || Number(existing.unit) !== Number(it.unit_cost_usd))
+        ) {
           next[it.id] = existing;
         } else {
           next[it.id] = serverEdit;
@@ -913,14 +1123,18 @@ function PODetailDialog({
     if (initial) setLoading(false);
   };
 
-  useEffect(() => { if (open) load({ initial: true }); /* eslint-disable-next-line */ }, [open, poId]);
+  useEffect(() => {
+    if (open) load({ initial: true }); /* eslint-disable-next-line */
+  }, [open, poId]);
   // Realtime: skip refresh while the user has unsaved edits to avoid clobbering input.
   useRealtimeTable(
     "purchase_order_items",
     () => {
       if (!open) return;
       // Defer to next tick so local optimistic state has settled
-      setTimeout(() => { void load({ initial: false }); }, 0);
+      setTimeout(() => {
+        void load({ initial: false });
+      }, 0);
     },
     [open, poId],
   );
@@ -936,12 +1150,16 @@ function PODetailDialog({
   }, 0);
 
   const itemsDirty = items.some((it) => {
-    const e = itemEdits[it.id]; if (!e) return false;
+    const e = itemEdits[it.id];
+    if (!e) return false;
     return e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
   });
   const headerDirty = (po?.supplier_name ?? "") !== supplierEdit || (po?.notes ?? "") !== notesEdit;
 
-  const itemColors = useMemo(() => Array.from(new Set(items.map((it) => it.color).filter(Boolean) as string[])).sort(), [items]);
+  const itemColors = useMemo(
+    () => Array.from(new Set(items.map((it) => it.color).filter(Boolean) as string[])).sort(),
+    [items],
+  );
   const itemCollectionCounts = useMemo(() => {
     const counts: Record<string, number> = { __all__: items.length, __none__: 0 };
     for (const c of COLLECTIONS) counts[c] = 0;
@@ -960,14 +1178,18 @@ function PODetailDialog({
       if (itemKindFilter === "spare" && !it.is_spare_part) return false;
       if (itemKindFilter === "products" && it.is_spare_part) return false;
       if (itemCollectionFilter) {
-        if (itemCollectionFilter === "__none__") { if (it.collection) return false; }
-        else if ((it.collection ?? "").toUpperCase() !== itemCollectionFilter) return false;
+        if (itemCollectionFilter === "__none__") {
+          if (it.collection) return false;
+        } else if ((it.collection ?? "").toUpperCase() !== itemCollectionFilter) return false;
       }
       if (itemColorFilter && (it.color ?? "") !== itemColorFilter) return false;
       if (!q) return true;
       return (
         it.product_name.toLowerCase().includes(q) ||
-        (it.serial_number ?? "").toLowerCase().replace(/[\s_\-./]+/g, "").includes(serialQ) ||
+        (it.serial_number ?? "")
+          .toLowerCase()
+          .replace(/[\s_\-./]+/g, "")
+          .includes(serialQ) ||
         (it.color ?? "").toLowerCase().includes(q) ||
         (it.collection ?? "").toLowerCase().includes(q)
       );
@@ -1015,7 +1237,8 @@ function PODetailDialog({
       const changes: any[] = [];
       // Update changed items
       for (const it of items) {
-        const e = itemEdits[it.id]; if (!e) continue;
+        const e = itemEdits[it.id];
+        if (!e) continue;
         if (e.qty === it.quantity && Number(e.unit) === Number(it.unit_cost_usd)) continue;
         const lineTotal = e.qty * e.unit;
         const { error } = await supabase
@@ -1023,7 +1246,12 @@ function PODetailDialog({
           .update({ quantity: e.qty, unit_cost_usd: e.unit, line_total_usd: lineTotal } as any)
           .eq("id", it.id);
         if (error) throw error;
-        changes.push({ item_id: it.id, name: it.product_name, before: { qty: it.quantity, unit: Number(it.unit_cost_usd) }, after: { qty: e.qty, unit: e.unit } });
+        changes.push({
+          item_id: it.id,
+          name: it.product_name,
+          before: { qty: it.quantity, unit: Number(it.unit_cost_usd) },
+          after: { qty: e.qty, unit: e.unit },
+        });
       }
       // Header edits
       const headerPatch: any = {};
@@ -1040,7 +1268,8 @@ function PODetailDialog({
         .eq("id", poId);
       if (e2) throw e2;
       if (changes.length) await audit("po_items_updated", { changes });
-      if (headerDirty) await audit("po_header_updated", { supplier: supplierEdit, notes: notesEdit });
+      if (headerDirty)
+        await audit("po_header_updated", { supplier: supplierEdit, notes: notesEdit });
       toast.success(isAr ? "تم حفظ التعديلات" : "Changes saved");
       load();
     } catch (err: any) {
@@ -1051,11 +1280,19 @@ function PODetailDialog({
   };
 
   const removeItem = async (it: POItem) => {
-    if (!confirm(isAr ? `حذف "${it.product_name}" من الأمر؟` : `Remove "${it.product_name}" from PO?`)) return;
+    if (
+      !confirm(isAr ? `حذف "${it.product_name}" من الأمر؟` : `Remove "${it.product_name}" from PO?`)
+    )
+      return;
     try {
       const { error } = await supabase.from("purchase_order_items").delete().eq("id", it.id);
       if (error) throw error;
-      await audit("po_item_removed", { item_id: it.id, name: it.product_name, qty: it.quantity, unit_cost_usd: Number(it.unit_cost_usd) });
+      await audit("po_item_removed", {
+        item_id: it.id,
+        name: it.product_name,
+        qty: it.quantity,
+        unit_cost_usd: Number(it.unit_cost_usd),
+      });
       // Recompute totals after deletion
       const remaining = items.filter((x) => x.id !== it.id);
       const usd = remaining.reduce((s, x) => {
@@ -1109,10 +1346,14 @@ function PODetailDialog({
         .from("purchase_orders")
         .update({
           usd_rate: rate,
-          customs_mode: customsMode, customs_value: Number(customsValue) || 0,
-          taxes_mode: taxesMode, taxes_value: Number(taxesValue) || 0,
-          shipping_mode: shippingMode, shipping_value: Number(shippingValue) || 0,
-          other_mode: otherMode, other_value: Number(otherValue) || 0,
+          customs_mode: customsMode,
+          customs_value: Number(customsValue) || 0,
+          taxes_mode: taxesMode,
+          taxes_value: Number(taxesValue) || 0,
+          shipping_mode: shippingMode,
+          shipping_value: Number(shippingValue) || 0,
+          other_mode: otherMode,
+          other_value: Number(otherValue) || 0,
           total_egp: totalEgp,
           cfo_notes: cfoNotes || null,
           status: "priced",
@@ -1162,7 +1403,12 @@ function PODetailDialog({
             </span>
             <span className="flex items-center gap-2">
               {onOpenTracker && (
-                <Button variant="outline" size="sm" onClick={() => onOpenTracker(poId)} className="gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenTracker(poId)}
+                  className="gap-1"
+                >
                   <Activity className="h-3.5 w-3.5" />
                   {isAr ? "تتبع" : "Track"}
                 </Button>
@@ -1177,38 +1423,65 @@ function PODetailDialog({
         </DialogHeader>
 
         {loading || !po ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جارٍ التحميل…" : "Loading…"}</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            {isAr ? "جارٍ التحميل…" : "Loading…"}
+          </div>
         ) : (
           <>
             {/* Header info — supplier editable */}
             <div className="grid gap-3 sm:grid-cols-3 text-sm">
               <div className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground mb-1">{isAr ? "المورد" : "Supplier"}</div>
+                <div className="text-xs text-muted-foreground mb-1">
+                  {isAr ? "المورد" : "Supplier"}
+                </div>
                 {canEditItems ? (
-                  <Input className="h-8" value={supplierEdit} onChange={(e) => setSupplierEdit(e.target.value)} placeholder={isAr ? "اسم المورد" : "Supplier name"} />
+                  <Input
+                    className="h-8"
+                    value={supplierEdit}
+                    onChange={(e) => setSupplierEdit(e.target.value)}
+                    placeholder={isAr ? "اسم المورد" : "Supplier name"}
+                  />
                 ) : (
                   <div className="font-semibold">{po.supplier_name || "—"}</div>
                 )}
               </div>
               <div className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</div>
-                <div className="font-bold text-primary tabular-nums">${liveTotalUsd.toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground">{liveTotalQty} {isAr ? "قطعة" : "units"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {isAr ? "إجمالي USD" : "Total USD"}
+                </div>
+                <div className="font-bold text-primary tabular-nums">
+                  ${liveTotalUsd.toFixed(2)}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {liveTotalQty} {isAr ? "قطعة" : "units"}
+                </div>
               </div>
               <div className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground">{isAr ? "أُنشئ بواسطة" : "Created by"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {isAr ? "أُنشئ بواسطة" : "Created by"}
+                </div>
                 <div className="text-xs">{po.created_by_email || "—"}</div>
-                <div className="text-[10px] text-muted-foreground">{fmtDateTime(po.created_at, lang)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {fmtDateTime(po.created_at, lang)}
+                </div>
               </div>
             </div>
 
             {/* Items — editable */}
             <div className="rounded-lg border overflow-hidden">
               <div className="flex items-center justify-between bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                <span>{isAr ? "البنود" : "Items"} ({items.length})</span>
+                <span>
+                  {isAr ? "البنود" : "Items"} ({items.length})
+                </span>
                 {canEditItems && (
-                  <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setPickerOpen(true)}>
-                    <Plus className="h-3 w-3" />{isAr ? "إضافة منتج" : "Add product"}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1"
+                    onClick={() => setPickerOpen(true)}
+                  >
+                    <Plus className="h-3 w-3" />
+                    {isAr ? "إضافة منتج" : "Add product"}
                   </Button>
                 )}
               </div>
@@ -1220,15 +1493,21 @@ function PODetailDialog({
                       className="h-8 ps-8 text-xs"
                       value={itemSearch}
                       onChange={(e) => setItemSearch(e.target.value)}
-                      placeholder={isAr ? "فلتر داخل البنود: اسم / سيريال / لون / كولكشن" : "Filter items: name / serial / color / collection"}
+                      placeholder={
+                        isAr
+                          ? "فلتر داخل البنود: اسم / سيريال / لون / كولكشن"
+                          : "Filter items: name / serial / color / collection"
+                      }
                     />
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {([
-                      ["all", isAr ? "الكل" : "All"],
-                      ["products", isAr ? "منتجات" : "Products"],
-                      ["spare", isAr ? "قطع غيار" : "Spare parts"],
-                    ] as const).map(([k, label]) => (
+                    {(
+                      [
+                        ["all", isAr ? "الكل" : "All"],
+                        ["products", isAr ? "منتجات" : "Products"],
+                        ["spare", isAr ? "قطع غيار" : "Spare parts"],
+                      ] as const
+                    ).map(([k, label]) => (
                       <button
                         key={k}
                         type="button"
@@ -1241,29 +1520,58 @@ function PODetailDialog({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => setItemCollectionFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemCollectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setItemCollectionFilter("")}
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemCollectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                  >
                     {isAr ? "كل الكولكشن" : "All collections"} ({itemCollectionCounts.__all__})
                   </button>
                   {COLLECTIONS.map((c) => (
-                    <button key={c} type="button" onClick={() => setItemCollectionFilter(c)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, itemCollectionFilter === c)}`}>
-                      <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setItemCollectionFilter(c)}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, itemCollectionFilter === c)}`}
+                    >
+                      <span
+                        className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`}
+                        aria-hidden
+                      />
                       {c} ({itemCollectionCounts[c] ?? 0})
                     </button>
                   ))}
                   {itemCollectionCounts.__none__ > 0 && (
-                    <button type="button" onClick={() => setItemCollectionFilter("__none__")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemCollectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}>
+                    <button
+                      type="button"
+                      onClick={() => setItemCollectionFilter("__none__")}
+                      className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemCollectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                    >
                       {isAr ? "بدون كولكشن" : "No collection"} ({itemCollectionCounts.__none__})
                     </button>
                   )}
                 </div>
                 {itemColors.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <button type="button" onClick={() => setItemColorFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemColorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}>
+                    <button
+                      type="button"
+                      onClick={() => setItemColorFilter("")}
+                      className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${itemColorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/70"}`}
+                    >
                       {isAr ? "كل الألوان" : "All colors"}
                     </button>
                     {itemColors.map((c) => (
-                      <button key={c} type="button" onClick={() => setItemColorFilter(c)} title={c} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${itemColorFilter === c ? "bg-primary/10 ring-2 ring-primary" : "bg-muted hover:bg-muted/70"}`}>
-                        <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setItemColorFilter(c)}
+                        title={c}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${itemColorFilter === c ? "bg-primary/10 ring-2 ring-primary" : "bg-muted hover:bg-muted/70"}`}
+                      >
+                        <span
+                          className="inline-block h-3 w-3 rounded-full border"
+                          style={swatchStyle(c)}
+                        />
                         {c}
                       </button>
                     ))}
@@ -1278,29 +1586,45 @@ function PODetailDialog({
                   <thead className="bg-muted/30">
                     <tr>
                       <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
-                      <th className="p-2 text-start whitespace-nowrap">{isAr ? "الكمية" : "Qty"}</th>
-                      <th className="p-2 text-start whitespace-nowrap">{isAr ? "سعر الوحدة USD" : "Unit USD"}</th>
-                      <th className="p-2 text-end whitespace-nowrap">{isAr ? "إجمالي USD" : "Line USD"}</th>
+                      <th className="p-2 text-start whitespace-nowrap">
+                        {isAr ? "الكمية" : "Qty"}
+                      </th>
+                      <th className="p-2 text-start whitespace-nowrap">
+                        {isAr ? "سعر الوحدة USD" : "Unit USD"}
+                      </th>
+                      <th className="p-2 text-end whitespace-nowrap">
+                        {isAr ? "إجمالي USD" : "Line USD"}
+                      </th>
                       {canDeleteItems && <th className="p-2"></th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {visibleItems.map((it) => {
-                      const e = itemEdits[it.id] ?? { qty: it.quantity, unit: Number(it.unit_cost_usd) };
-                      const dirty = e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
+                      const e = itemEdits[it.id] ?? {
+                        qty: it.quantity,
+                        unit: Number(it.unit_cost_usd),
+                      };
+                      const dirty =
+                        e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
                       return (
                         <tr key={it.id} className={dirty ? "bg-amber-500/5" : ""}>
                           <td className="p-2">
                             <div className="flex items-center gap-2">
                               {it.image_url ? (
-                                <img src={it.image_url} alt={it.product_name} className="h-10 w-10 rounded border object-cover" />
+                                <img
+                                  src={it.image_url}
+                                  alt={it.product_name}
+                                  className="h-10 w-10 rounded border object-cover"
+                                />
                               ) : (
                                 <div className="h-10 w-10 rounded border bg-muted" />
                               )}
                               <div className="min-w-0">
                                 <div className="font-medium truncate">{it.product_name}</div>
                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-                                  {it.serial_number && <span className="font-mono">{it.serial_number}</span>}
+                                  {it.serial_number && (
+                                    <span className="font-mono">{it.serial_number}</span>
+                                  )}
                                   {it.color && (
                                     <span className="inline-flex items-center gap-1">
                                       <ColorSwatch value={it.color} size="sm" />
@@ -1308,8 +1632,13 @@ function PODetailDialog({
                                     </span>
                                   )}
                                   {it.collection && (
-                                    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-bold ${collectionBadgeClass(it.collection)}`}>
-                                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(it.collection)}`} aria-hidden />
+                                    <span
+                                      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-bold ${collectionBadgeClass(it.collection)}`}
+                                    >
+                                      <span
+                                        className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(it.collection)}`}
+                                        aria-hidden
+                                      />
                                       {it.collection}
                                     </span>
                                   )}
@@ -1319,27 +1648,52 @@ function PODetailDialog({
                           </td>
                           <td className="p-2">
                             <Input
-                              type="number" min={0} className="h-7 w-20"
+                              type="number"
+                              min={0}
+                              className="h-7 w-20"
                               disabled={!canEditItems}
                               value={e.qty || ""}
-                              onChange={(ev) => setItemEdits((prev) => ({ ...prev, [it.id]: { ...e, qty: Math.max(0, Number(ev.target.value) || 0) } }))}
+                              onChange={(ev) =>
+                                setItemEdits((prev) => ({
+                                  ...prev,
+                                  [it.id]: { ...e, qty: Math.max(0, Number(ev.target.value) || 0) },
+                                }))
+                              }
                             />
                           </td>
                           <td className="p-2">
                             <div className="relative">
                               <DollarSign className="absolute start-1 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                               <Input
-                                type="number" min={0} step="any" className="h-7 w-24 ps-5"
+                                type="number"
+                                min={0}
+                                step="any"
+                                className="h-7 w-24 ps-5"
                                 disabled={!canEditItems}
                                 value={Number.isFinite(e.unit) ? String(e.unit) : ""}
-                                onChange={(ev) => setItemEdits((prev) => ({ ...prev, [it.id]: { ...e, unit: Math.max(0, Number(ev.target.value) || 0) } }))}
+                                onChange={(ev) =>
+                                  setItemEdits((prev) => ({
+                                    ...prev,
+                                    [it.id]: {
+                                      ...e,
+                                      unit: Math.max(0, Number(ev.target.value) || 0),
+                                    },
+                                  }))
+                                }
                               />
                             </div>
                           </td>
-                          <td className="p-2 text-end font-semibold tabular-nums whitespace-nowrap">${(e.qty * e.unit).toFixed(2)}</td>
+                          <td className="p-2 text-end font-semibold tabular-nums whitespace-nowrap">
+                            ${(e.qty * e.unit).toFixed(2)}
+                          </td>
                           {canDeleteItems && (
                             <td className="p-2">
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeItem(it)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-destructive"
+                                onClick={() => removeItem(it)}
+                              >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </td>
@@ -1348,7 +1702,20 @@ function PODetailDialog({
                       );
                     })}
                     {visibleItems.length === 0 && (
-                      <tr><td colSpan={canDeleteItems ? 5 : 4} className="p-6 text-center text-muted-foreground">{items.length === 0 ? (isAr ? "لا توجد بنود" : "No items") : (isAr ? "لا توجد بنود تطابق الفلاتر" : "No items match the filters")}</td></tr>
+                      <tr>
+                        <td
+                          colSpan={canDeleteItems ? 5 : 4}
+                          className="p-6 text-center text-muted-foreground"
+                        >
+                          {items.length === 0
+                            ? isAr
+                              ? "لا توجد بنود"
+                              : "No items"
+                            : isAr
+                              ? "لا توجد بنود تطابق الفلاتر"
+                              : "No items match the filters"}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -1359,11 +1726,22 @@ function PODetailDialog({
                     {isAr ? "لديك تعديلات غير محفوظة" : "You have unsaved changes"}
                   </span>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => load({ initial: true })} disabled={savingItems}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => load({ initial: true })}
+                      disabled={savingItems}
+                    >
                       {isAr ? "تجاهل" : "Discard"}
                     </Button>
                     <Button size="sm" onClick={saveItemChanges} disabled={savingItems}>
-                      {savingItems ? (isAr ? "جارٍ الحفظ…" : "Saving…") : (isAr ? "حفظ التعديلات" : "Save changes")}
+                      {savingItems
+                        ? isAr
+                          ? "جارٍ الحفظ…"
+                          : "Saving…"
+                        : isAr
+                          ? "حفظ التعديلات"
+                          : "Save changes"}
                     </Button>
                   </div>
                 </div>
@@ -1372,9 +1750,15 @@ function PODetailDialog({
 
             {/* Purchasing notes — editable */}
             <div className="rounded-lg border p-3 text-xs">
-              <div className="font-semibold text-muted-foreground mb-1">{isAr ? "ملاحظات المشتريات" : "Purchasing notes"}</div>
+              <div className="font-semibold text-muted-foreground mb-1">
+                {isAr ? "ملاحظات المشتريات" : "Purchasing notes"}
+              </div>
               {canEditItems ? (
-                <Textarea rows={2} value={notesEdit} onChange={(e) => setNotesEdit(e.target.value)} />
+                <Textarea
+                  rows={2}
+                  value={notesEdit}
+                  onChange={(e) => setNotesEdit(e.target.value)}
+                />
               ) : (
                 <div className="whitespace-pre-wrap">{po.notes || "—"}</div>
               )}
@@ -1394,56 +1778,122 @@ function PODetailDialog({
 
               {!canEditPricing && (
                 <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700">
-                  {isAr ? "هذه البيانات يُدخلها المدير المالي فقط." : "Only the CFO can edit pricing."}
+                  {isAr
+                    ? "هذه البيانات يُدخلها المدير المالي فقط."
+                    : "Only the CFO can edit pricing."}
                 </div>
               )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label className="text-xs">{isAr ? "سعر صرف الدولار (EGP لكل $1)" : "USD → EGP rate"}</Label>
-                  <Input type="number" step="any" min={0} value={usdRate} onChange={(e) => setUsdRate(e.target.value)} disabled={!canEditPricing} />
+                  <Label className="text-xs">
+                    {isAr ? "سعر صرف الدولار (EGP لكل $1)" : "USD → EGP rate"}
+                  </Label>
+                  <Input
+                    type="number"
+                    step="any"
+                    min={0}
+                    value={usdRate}
+                    onChange={(e) => setUsdRate(e.target.value)}
+                    disabled={!canEditPricing}
+                  />
                 </div>
                 <div className="rounded border bg-background p-2 text-xs">
-                  <div className="text-muted-foreground">{isAr ? "أساس بالجنيه (USD × سعر الصرف)" : "Base EGP (USD × rate)"}</div>
+                  <div className="text-muted-foreground">
+                    {isAr ? "أساس بالجنيه (USD × سعر الصرف)" : "Base EGP (USD × rate)"}
+                  </div>
                   <div className="font-bold tabular-nums">{fmtMoney(baseEgp, "EGP", lang)}</div>
                 </div>
 
-                <PricingRow label={isAr ? "الجمارك" : "Customs"} mode={customsMode} setMode={setCustomsMode} value={customsValue} setValue={setCustomsValue} computedEgp={customsEgp} disabled={!canEditPricing} lang={lang} />
-                <PricingRow label={isAr ? "الضرائب" : "Taxes"} mode={taxesMode} setMode={setTaxesMode} value={taxesValue} setValue={setTaxesValue} computedEgp={taxesEgp} disabled={!canEditPricing} lang={lang} />
-                <PricingRow label={isAr ? "الشحن" : "Shipping"} mode={shippingMode} setMode={setShippingMode} value={shippingValue} setValue={setShippingValue} computedEgp={shippingEgp} disabled={!canEditPricing} lang={lang} />
-                <PricingRow label={isAr ? "تكلفة إضافية" : "Other"} mode={otherMode} setMode={setOtherMode} value={otherValue} setValue={setOtherValue} computedEgp={otherEgp} disabled={!canEditPricing} lang={lang} />
+                <PricingRow
+                  label={isAr ? "الجمارك" : "Customs"}
+                  mode={customsMode}
+                  setMode={setCustomsMode}
+                  value={customsValue}
+                  setValue={setCustomsValue}
+                  computedEgp={customsEgp}
+                  disabled={!canEditPricing}
+                  lang={lang}
+                />
+                <PricingRow
+                  label={isAr ? "الضرائب" : "Taxes"}
+                  mode={taxesMode}
+                  setMode={setTaxesMode}
+                  value={taxesValue}
+                  setValue={setTaxesValue}
+                  computedEgp={taxesEgp}
+                  disabled={!canEditPricing}
+                  lang={lang}
+                />
+                <PricingRow
+                  label={isAr ? "الشحن" : "Shipping"}
+                  mode={shippingMode}
+                  setMode={setShippingMode}
+                  value={shippingValue}
+                  setValue={setShippingValue}
+                  computedEgp={shippingEgp}
+                  disabled={!canEditPricing}
+                  lang={lang}
+                />
+                <PricingRow
+                  label={isAr ? "تكلفة إضافية" : "Other"}
+                  mode={otherMode}
+                  setMode={setOtherMode}
+                  value={otherValue}
+                  setValue={setOtherValue}
+                  computedEgp={otherEgp}
+                  disabled={!canEditPricing}
+                  lang={lang}
+                />
 
                 <div className="sm:col-span-2">
                   <Label className="text-xs">{isAr ? "ملاحظات المالي" : "CFO notes"}</Label>
-                  <Textarea rows={2} value={cfoNotes} onChange={(e) => setCfoNotes(e.target.value)} disabled={!canEditPricing} />
+                  <Textarea
+                    rows={2}
+                    value={cfoNotes}
+                    onChange={(e) => setCfoNotes(e.target.value)}
+                    disabled={!canEditPricing}
+                  />
                 </div>
               </div>
 
               <div className="mt-4 space-y-2">
                 <div className="rounded-lg bg-background border p-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{isAr ? "إجمالي التكلفة التقريبية (EGP)" : "Approx. landed cost (EGP)"}</span>
-                    <span className="font-bold text-base tabular-nums">{fmtMoney(totalEgp, "EGP", lang)}</span>
+                    <span className="text-muted-foreground">
+                      {isAr ? "إجمالي التكلفة التقريبية (EGP)" : "Approx. landed cost (EGP)"}
+                    </span>
+                    <span className="font-bold text-base tabular-nums">
+                      {fmtMoney(totalEgp, "EGP", lang)}
+                    </span>
                   </div>
                   {liveTotalQty > 0 && (
                     <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
                       <span>{isAr ? "متوسط تقريبي للقطعة" : "Approx. avg / unit"}</span>
-                      <span className="font-semibold tabular-nums">{fmtMoney(totalEgp / liveTotalQty, "EGP", lang)}</span>
+                      <span className="font-semibold tabular-nums">
+                        {fmtMoney(totalEgp / liveTotalQty, "EGP", lang)}
+                      </span>
                     </div>
                   )}
                 </div>
 
                 <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
                   {isAr
-                    ? "لحساب صافي الربح وتجربة خصم نهائي على فاتورة المورد، افتح صفحة \"حاسبة الربح\" من القائمة الجانبية."
-                    : "To compute net profit and try a final supplier-invoice discount, open the \"Profit Calculator\" page from the sidebar."}
+                    ? 'لحساب صافي الربح وتجربة خصم نهائي على فاتورة المورد، افتح صفحة "حاسبة الربح" من القائمة الجانبية.'
+                    : 'To compute net profit and try a final supplier-invoice discount, open the "Profit Calculator" page from the sidebar.'}
                 </div>
               </div>
 
               {canEditPricing && (
                 <div className="mt-3 flex justify-end">
                   <Button onClick={savePricing} disabled={saving}>
-                    {saving ? (isAr ? "جارٍ الحفظ…" : "Saving…") : (isAr ? "حفظ التسعير وإشعار المشتريات" : "Save pricing & notify Purchasing")}
+                    {saving
+                      ? isAr
+                        ? "جارٍ الحفظ…"
+                        : "Saving…"
+                      : isAr
+                        ? "حفظ التسعير وإشعار المشتريات"
+                        : "Save pricing & notify Purchasing"}
                   </Button>
                 </div>
               )}
@@ -1451,7 +1901,9 @@ function PODetailDialog({
           </>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{isAr ? "إغلاق" : "Close"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {isAr ? "إغلاق" : "Close"}
+          </Button>
         </DialogFooter>
       </DialogContent>
 
@@ -1468,11 +1920,23 @@ function PODetailDialog({
 }
 
 function PricingRow({
-  label, mode, setMode, value, setValue, computedEgp, disabled, lang,
+  label,
+  mode,
+  setMode,
+  value,
+  setValue,
+  computedEgp,
+  disabled,
+  lang,
 }: {
-  label: string; mode: Mode; setMode: (m: Mode) => void;
-  value: string; setValue: (v: string) => void;
-  computedEgp: number; disabled: boolean; lang: "ar" | "en";
+  label: string;
+  mode: Mode;
+  setMode: (m: Mode) => void;
+  value: string;
+  setValue: (v: string) => void;
+  computedEgp: number;
+  disabled: boolean;
+  lang: "ar" | "en";
 }) {
   const isAr = lang === "ar";
   return (
@@ -1480,17 +1944,37 @@ function PricingRow({
       <div className="flex items-center justify-between text-xs">
         <span className="font-semibold">{label}</span>
         <div className="flex gap-1">
-          <button type="button" disabled={disabled} onClick={() => setMode("percent")}
-            className={`rounded px-2 py-0.5 text-[10px] ${mode === "percent" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>%</button>
-          <button type="button" disabled={disabled} onClick={() => setMode("fixed")}
-            className={`rounded px-2 py-0.5 text-[10px] ${mode === "fixed" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>EGP</button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setMode("percent")}
+            className={`rounded px-2 py-0.5 text-[10px] ${mode === "percent" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            %
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setMode("fixed")}
+            className={`rounded px-2 py-0.5 text-[10px] ${mode === "fixed" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            EGP
+          </button>
         </div>
       </div>
-      <Input type="number" step="any" min={0} className="mt-1 h-7"
-        value={value} onChange={(e) => setValue(e.target.value)} disabled={disabled}
-        placeholder={mode === "percent" ? "0.00 %" : "0.00 EGP"} />
+      <Input
+        type="number"
+        step="any"
+        min={0}
+        className="mt-1 h-7"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={disabled}
+        placeholder={mode === "percent" ? "0.00 %" : "0.00 EGP"}
+      />
       <div className="mt-1 text-[10px] text-muted-foreground">
-        ≈ {fmtMoney(computedEgp, "EGP", lang)} {mode === "percent" ? (isAr ? "(محسوبة من الأساس)" : "(of base)") : ""}
+        ≈ {fmtMoney(computedEgp, "EGP", lang)}{" "}
+        {mode === "percent" ? (isAr ? "(محسوبة من الأساس)" : "(of base)") : ""}
       </div>
     </div>
   );
@@ -1499,7 +1983,10 @@ function PricingRow({
 /* ─────────────────────── Bulk Qty Adjust Bar ─────────────────────── */
 
 function BulkAdjustBar({
-  isAr, filteredIds, rows, setRows,
+  isAr,
+  filteredIds,
+  rows,
+  setRows,
 }: {
   isAr: boolean;
   filteredIds: string[];
@@ -1518,7 +2005,8 @@ function BulkAdjustBar({
     setRows((prev) => {
       const next = { ...prev };
       targetIds.forEach((id) => {
-        const r = next[id]; if (!r) return;
+        const r = next[id];
+        if (!r) return;
         const newQty = Math.max(0, (r.qty || 0) + sign * n);
         next[id] = { ...r, qty: newQty, selected: scope === "visible" ? newQty > 0 : r.selected };
       });
@@ -1531,8 +2019,13 @@ function BulkAdjustBar({
     setRows((prev) => {
       const next = { ...prev };
       targetIds.forEach((id) => {
-        const r = next[id]; if (!r) return;
-        next[id] = { ...r, qty: Math.max(0, val), selected: scope === "visible" ? val > 0 : r.selected };
+        const r = next[id];
+        if (!r) return;
+        next[id] = {
+          ...r,
+          qty: Math.max(0, val),
+          selected: scope === "visible" ? val > 0 : r.selected,
+        };
       });
       return next;
     });
@@ -1542,7 +2035,8 @@ function BulkAdjustBar({
     setRows((prev) => {
       const next = { ...prev };
       filteredIds.forEach((id) => {
-        const r = next[id]; if (!r) return;
+        const r = next[id];
+        if (!r) return;
         next[id] = { ...r, selected: on };
       });
       return next;
@@ -1556,31 +2050,66 @@ function BulkAdjustBar({
           {isAr ? "تعديل جماعي للكمية" : "Bulk qty adjust"}
         </div>
         <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
-          <button type="button" onClick={() => setScope("selected")}
-            className={`rounded px-2 py-0.5 text-[11px] ${scope === "selected" ? "bg-primary text-primary-foreground" : ""}`}>
+          <button
+            type="button"
+            onClick={() => setScope("selected")}
+            className={`rounded px-2 py-0.5 text-[11px] ${scope === "selected" ? "bg-primary text-primary-foreground" : ""}`}
+          >
             {isAr ? `المختار (${selectedIds.length})` : `Selected (${selectedIds.length})`}
           </button>
-          <button type="button" onClick={() => setScope("visible")}
-            className={`rounded px-2 py-0.5 text-[11px] ${scope === "visible" ? "bg-primary text-primary-foreground" : ""}`}>
+          <button
+            type="button"
+            onClick={() => setScope("visible")}
+            className={`rounded px-2 py-0.5 text-[11px] ${scope === "visible" ? "bg-primary text-primary-foreground" : ""}`}
+          >
             {isAr ? `الظاهر (${filteredIds.length})` : `Visible (${filteredIds.length})`}
           </button>
         </div>
-        <Input type="number" min={0} value={delta} onChange={(e) => setDelta(e.target.value)}
-          className="h-8 w-20" />
-        <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => apply(1)}>
+        <Input
+          type="number"
+          min={0}
+          value={delta}
+          onChange={(e) => setDelta(e.target.value)}
+          className="h-8 w-20"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 gap-1"
+          onClick={() => apply(1)}
+        >
           <Plus className="h-3 w-3" /> {isAr ? "زيادة" : "Add"}
         </Button>
-        <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => apply(-1)}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 gap-1"
+          onClick={() => apply(-1)}
+        >
           <Minus className="h-3 w-3" /> {isAr ? "نقصان" : "Subtract"}
         </Button>
         <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setAll(n)}>
           {isAr ? "ضبط على" : "Set to"} {n}
         </Button>
         <div className="ms-auto flex items-center gap-1">
-          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1" onClick={() => selectAllVisible(true)}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1"
+            onClick={() => selectAllVisible(true)}
+          >
             <CheckSquare className="h-3 w-3" /> {isAr ? "تحديد الكل" : "Select all"}
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1" onClick={() => selectAllVisible(false)}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1"
+            onClick={() => selectAllVisible(false)}
+          >
             <Square className="h-3 w-3" /> {isAr ? "إلغاء" : "Clear"}
           </Button>
         </div>
@@ -1597,7 +2126,10 @@ function BulkAdjustBar({
 /* ─────────────────────── Add Item Picker (for existing PO) ─────────────────────── */
 
 function AddItemPicker({
-  open, onOpenChange, existingProductIds, onAdd,
+  open,
+  onOpenChange,
+  existingProductIds,
+  onAdd,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -1619,13 +2151,18 @@ function AddItemPicker({
     if (!open) return;
     supabase
       .from("products")
-        .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part")
+      .select(
+        "id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part",
+      )
       .order("name")
       .limit(1000)
       .then(({ data }) => setProducts((data as any) ?? []));
   }, [open]);
 
-  const colors = useMemo(() => Array.from(new Set(products.map((p) => p.color).filter(Boolean) as string[])).sort(), [products]);
+  const colors = useMemo(
+    () => Array.from(new Set(products.map((p) => p.color).filter(Boolean) as string[])).sort(),
+    [products],
+  );
   const collectionCounts = useMemo(() => {
     const available = products.filter((p) => !existingProductIds.includes(p.id));
     const counts: Record<string, number> = { __all__: available.length, __none__: 0 };
@@ -1645,15 +2182,19 @@ function AddItemPicker({
       if (kindFilter === "spare" && !p.is_spare_part) return false;
       if (kindFilter === "products" && p.is_spare_part) return false;
       if (collectionFilter) {
-        if (collectionFilter === "__none__") { if (p.collection) return false; }
-        else if ((p.collection ?? "").toUpperCase() !== collectionFilter) return false;
+        if (collectionFilter === "__none__") {
+          if (p.collection) return false;
+        } else if ((p.collection ?? "").toUpperCase() !== collectionFilter) return false;
       }
       if (colorFilter && (p.color ?? "") !== colorFilter) return false;
       if (!q) return true;
       const serialQ = q.replace(/[\s_\-./]+/g, "");
       return (
         p.name.toLowerCase().includes(q) ||
-        (p.serial_number ?? "").toLowerCase().replace(/[\s_\-./]+/g, "").includes(serialQ) ||
+        (p.serial_number ?? "")
+          .toLowerCase()
+          .replace(/[\s_\-./]+/g, "")
+          .includes(serialQ) ||
         (p.color ?? "").toLowerCase().includes(q) ||
         (p.collection ?? "").toLowerCase().includes(q)
       );
@@ -1670,7 +2211,10 @@ function AddItemPicker({
     if (!picked) return;
     const q = Math.max(0, Number(qty) || 0);
     const u = Math.max(0, Number(unit) || 0);
-    if (q <= 0) { toast.error(isAr ? "أدخل كمية" : "Enter quantity"); return; }
+    if (q <= 0) {
+      toast.error(isAr ? "أدخل كمية" : "Enter quantity");
+      return;
+    }
     await onAdd(picked, q, u);
   };
 
@@ -1686,43 +2230,88 @@ function AddItemPicker({
             <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
               <div className="relative">
                 <Search className="absolute start-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="ps-8" placeholder={isAr ? "ابحث بالاسم / السيريال / اللون / الكولكشن…" : "Search name / serial / color / collection…"} value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input
+                  className="ps-8"
+                  placeholder={
+                    isAr
+                      ? "ابحث بالاسم / السيريال / اللون / الكولكشن…"
+                      : "Search name / serial / color / collection…"
+                  }
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {([[
-                  "all", isAr ? "الكل" : "All",
-                ], [
-                  "products", isAr ? "منتجات" : "Products",
-                ], [
-                  "spare", isAr ? "قطع غيار" : "Spare parts",
-                ]] as const).map(([k, label]) => (
-                  <button key={k} type="button" onClick={() => setKindFilter(k)} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${kindFilter === k ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>{label}</button>
+                {(
+                  [
+                    ["all", isAr ? "الكل" : "All"],
+                    ["products", isAr ? "منتجات" : "Products"],
+                    ["spare", isAr ? "قطع غيار" : "Spare parts"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setKindFilter(k)}
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${kindFilter === k ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}
+                  >
+                    {label}
+                  </button>
                 ))}
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <button type="button" onClick={() => setCollectionFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>
+                <button
+                  type="button"
+                  onClick={() => setCollectionFilter("")}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}
+                >
                   {isAr ? "كل الكولكشن" : "All collections"} ({collectionCounts.__all__})
                 </button>
                 {COLLECTIONS.map((c) => (
-                  <button key={c} type="button" onClick={() => setCollectionFilter(c)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}>
-                    <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCollectionFilter(c)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
+                  >
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`}
+                      aria-hidden
+                    />
                     {c} ({collectionCounts[c] ?? 0})
                   </button>
                 ))}
                 {collectionCounts.__none__ > 0 && (
-                  <button type="button" onClick={() => setCollectionFilter("__none__")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setCollectionFilter("__none__")}
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}
+                  >
                     {isAr ? "بدون كولكشن" : "No collection"} ({collectionCounts.__none__})
                   </button>
                 )}
               </div>
               {colors.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <button type="button" onClick={() => setColorFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setColorFilter("")}
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}
+                  >
                     {isAr ? "كل الألوان" : "All colors"}
                   </button>
                   {colors.map((c) => (
-                    <button key={c} type="button" onClick={() => setColorFilter(c)} title={c} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${colorFilter === c ? "bg-primary/10 ring-2 ring-primary" : "bg-background hover:bg-accent"}`}>
-                      <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColorFilter(c)}
+                      title={c}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${colorFilter === c ? "bg-primary/10 ring-2 ring-primary" : "bg-background hover:bg-accent"}`}
+                    >
+                      <span
+                        className="inline-block h-3 w-3 rounded-full border"
+                        style={swatchStyle(c)}
+                      />
                       {c}
                     </button>
                   ))}
@@ -1731,12 +2320,22 @@ function AddItemPicker({
             </div>
             <div className="max-h-[55vh] overflow-y-auto rounded-lg border divide-y">
               {filtered.length === 0 && (
-                <div className="p-6 text-center text-xs text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</div>
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  {isAr ? "لا توجد نتائج" : "No results"}
+                </div>
               )}
               {filtered.map((p) => (
-                <button key={p.id} onClick={() => choose(p)} className="flex w-full items-center gap-3 p-2 text-start hover:bg-accent/40">
+                <button
+                  key={p.id}
+                  onClick={() => choose(p)}
+                  className="flex w-full items-center gap-3 p-2 text-start hover:bg-accent/40"
+                >
                   {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded border object-cover" />
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="h-10 w-10 rounded border object-cover"
+                    />
                   ) : (
                     <div className="h-10 w-10 rounded border bg-muted" />
                   )}
@@ -1744,8 +2343,23 @@ function AddItemPicker({
                     <div className="text-sm font-medium truncate">{p.name}</div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
                       <span className="font-mono">{p.serial_number || "—"}</span>
-                      {p.color && <span className="inline-flex items-center gap-1"><ColorSwatch value={p.color} size="sm" />{p.color}</span>}
-                      {p.collection && <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>}
+                      {p.color && (
+                        <span className="inline-flex items-center gap-1">
+                          <ColorSwatch value={p.color} size="sm" />
+                          {p.color}
+                        </span>
+                      )}
+                      {p.collection && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}
+                        >
+                          <span
+                            className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`}
+                            aria-hidden
+                          />
+                          {p.collection}
+                        </span>
+                      )}
                       <span>${Number(p.cost_price_usd).toFixed(2)}</span>
                     </div>
                   </div>
@@ -1757,7 +2371,11 @@ function AddItemPicker({
           <>
             <div className="flex items-center gap-3 rounded-lg border p-3">
               {picked.image_url ? (
-                <img src={picked.image_url} alt={picked.name} className="h-12 w-12 rounded border object-cover" />
+                <img
+                  src={picked.image_url}
+                  alt={picked.name}
+                  className="h-12 w-12 rounded border object-cover"
+                />
               ) : (
                 <div className="h-12 w-12 rounded border bg-muted" />
               )}
@@ -1767,7 +2385,9 @@ function AddItemPicker({
                   {picked.serial_number || "—"} {picked.color ? `· ${picked.color}` : ""}
                 </div>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => setPicked(null)}>{isAr ? "تغيير" : "Change"}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setPicked(null)}>
+                {isAr ? "تغيير" : "Change"}
+              </Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -1776,18 +2396,28 @@ function AddItemPicker({
               </div>
               <div>
                 <Label className="text-xs">{isAr ? "سعر الوحدة USD" : "Unit USD"}</Label>
-                <Input type="number" min={0} step="any" value={unit} onChange={(e) => setUnit(e.target.value)} />
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                />
               </div>
             </div>
             <div className="rounded-lg border bg-muted/30 p-3 text-sm flex justify-between">
               <span className="text-muted-foreground">{isAr ? "إجمالي السطر" : "Line total"}</span>
-              <span className="font-bold tabular-nums">${((Number(qty) || 0) * (Number(unit) || 0)).toFixed(2)}</span>
+              <span className="font-bold tabular-nums">
+                ${((Number(qty) || 0) * (Number(unit) || 0)).toFixed(2)}
+              </span>
             </div>
           </>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {isAr ? "إلغاء" : "Cancel"}
+          </Button>
           {picked && <Button onClick={submit}>{isAr ? "إضافة" : "Add"}</Button>}
         </DialogFooter>
       </DialogContent>
