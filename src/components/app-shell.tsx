@@ -425,6 +425,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           )}
           <Link
+            to="/finance-audit"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/finance-audit")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Banknote className="h-4 w-4" /> {isAr ? "سجل تعديلات الفواتير" : "Invoice changes ledger"}
+          </Link>
+          <Link
             to="/pending-operations"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
