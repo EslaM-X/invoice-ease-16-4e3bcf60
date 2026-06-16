@@ -1683,9 +1683,51 @@ function AddItemPicker({
 
         {!picked ? (
           <>
-            <div className="relative">
-              <Search className="absolute start-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="ps-8" placeholder={isAr ? "ابحث…" : "Search…"} value={search} onChange={(e) => setSearch(e.target.value)} />
+            <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+              <div className="relative">
+                <Search className="absolute start-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input className="ps-8" placeholder={isAr ? "ابحث بالاسم / السيريال / اللون / الكولكشن…" : "Search name / serial / color / collection…"} value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {([[
+                  "all", isAr ? "الكل" : "All",
+                ], [
+                  "products", isAr ? "منتجات" : "Products",
+                ], [
+                  "spare", isAr ? "قطع غيار" : "Spare parts",
+                ]] as const).map(([k, label]) => (
+                  <button key={k} type="button" onClick={() => setKindFilter(k)} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${kindFilter === k ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>{label}</button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button type="button" onClick={() => setCollectionFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>
+                  {isAr ? "كل الكولكشن" : "All collections"} ({collectionCounts.__all__})
+                </button>
+                {COLLECTIONS.map((c) => (
+                  <button key={c} type="button" onClick={() => setCollectionFilter(c)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}>
+                    <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+                    {c} ({collectionCounts[c] ?? 0})
+                  </button>
+                ))}
+                {collectionCounts.__none__ > 0 && (
+                  <button type="button" onClick={() => setCollectionFilter("__none__")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${collectionFilter === "__none__" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>
+                    {isAr ? "بدون كولكشن" : "No collection"} ({collectionCounts.__none__})
+                  </button>
+                )}
+              </div>
+              {colors.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button type="button" onClick={() => setColorFilter("")} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${colorFilter === "" ? "bg-primary text-primary-foreground shadow" : "bg-background hover:bg-accent"}`}>
+                    {isAr ? "كل الألوان" : "All colors"}
+                  </button>
+                  {colors.map((c) => (
+                    <button key={c} type="button" onClick={() => setColorFilter(c)} title={c} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${colorFilter === c ? "bg-primary/10 ring-2 ring-primary" : "bg-background hover:bg-accent"}`}>
+                      <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="max-h-[55vh] overflow-y-auto rounded-lg border divide-y">
               {filtered.length === 0 && (
@@ -1700,8 +1742,11 @@ function AddItemPicker({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{p.name}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {p.serial_number || "—"} {p.color ? `· ${p.color}` : ""} · ${Number(p.cost_price_usd).toFixed(2)}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                      <span className="font-mono">{p.serial_number || "—"}</span>
+                      {p.color && <span className="inline-flex items-center gap-1"><ColorSwatch value={p.color} size="sm" />{p.color}</span>}
+                      {p.collection && <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>}
+                      <span>${Number(p.cost_price_usd).toFixed(2)}</span>
                     </div>
                   </div>
                 </button>
