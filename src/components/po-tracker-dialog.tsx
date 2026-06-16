@@ -385,6 +385,12 @@ export function POTrackerDialog({
                   {isAr ? `تسليم جزئي · متبقي ${totalRemaining}` : `Partial · ${totalRemaining} remaining`}
                 </Badge>
               )}
+              {po && receivedUnpaid && !installment1Paid && (
+                <Badge variant="outline" className="gap-1 bg-rose-500/15 text-rose-700 border-rose-500/40">
+                  <AlertCircle className="h-3 w-3" />
+                  {isAr ? "غير مدفوع للمورد" : "Unpaid to supplier"}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
 
