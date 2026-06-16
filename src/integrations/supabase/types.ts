@@ -597,6 +597,109 @@ export type Database = {
         }
         Relationships: []
       }
+      defective_item_returns: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          defective_item_id: string
+          id: string
+          notes: string | null
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          defective_item_id: string
+          id?: string
+          notes?: string | null
+          quantity: number
+          user_id: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          defective_item_id?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "defective_item_returns_defective_item_id_fkey"
+            columns: ["defective_item_id"]
+            isOneToOne: false
+            referencedRelation: "defective_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      defective_items: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          product_name: string
+          quantity: number
+          reason: string
+          registered_by: string | null
+          registered_by_email: string | null
+          returned_quantity: number
+          serial_number: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          product_name: string
+          quantity: number
+          reason: string
+          registered_by?: string | null
+          registered_by_email?: string | null
+          returned_quantity?: number
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          reason?: string
+          registered_by?: string | null
+          registered_by_email?: string | null
+          returned_quantity?: number
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "defective_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_receipt_audit_log: {
         Row: {
           action: string
@@ -1478,6 +1581,7 @@ export type Database = {
           actor_email: string | null
           actor_id: string | null
           created_at: string
+          discount_amount: number
           id: string
           notes: string | null
           po_id: string
@@ -1490,6 +1594,7 @@ export type Database = {
           actor_email?: string | null
           actor_id?: string | null
           created_at?: string
+          discount_amount?: number
           id?: string
           notes?: string | null
           po_id: string
@@ -1502,6 +1607,7 @@ export type Database = {
           actor_email?: string | null
           actor_id?: string | null
           created_at?: string
+          discount_amount?: number
           id?: string
           notes?: string | null
           po_id?: string
@@ -3332,6 +3438,21 @@ export type Database = {
           _supplier_name: string
         }
         Returns: string
+      }
+      register_defective_item: {
+        Args: {
+          _color?: string
+          _notes?: string
+          _product_id: string
+          _quantity: number
+          _reason: string
+          _serial_number?: string
+        }
+        Returns: string
+      }
+      return_defective_item: {
+        Args: { _defective_id: string; _notes?: string; _quantity: number }
+        Returns: undefined
       }
       revert_po_inventory: {
         Args: { p_actor_email: string; p_po_id: string }

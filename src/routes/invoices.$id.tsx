@@ -17,6 +17,7 @@ import steinheimLogo from "@/assets/steinheim-logo.png";
 import { InvoiceTimeline } from "@/components/invoice-timeline";
 import { useRealtimeTable } from "@/lib/realtime";
 import { PaymentsManager } from "@/components/payments-manager";
+import { InvoiceActivityPanel } from "@/components/invoice-activity-panel";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
@@ -403,6 +404,10 @@ function InvoiceView() {
           </div>
           <DeliveryReceiptsForInvoice invoiceId={id} />
         </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl no-print">
+        <InvoiceActivityPanel invoiceId={id} />
       </div>
 
       <div className="mx-auto max-w-3xl">
