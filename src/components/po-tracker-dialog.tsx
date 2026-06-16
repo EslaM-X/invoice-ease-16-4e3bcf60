@@ -489,6 +489,29 @@ export function POTrackerDialog({
                         : "Cannot move to Ordered until Installment 1 is paid."}
                     </div>
                   )}
+
+                  {/* Receive-without-payment toggle */}
+                  {canTransition && !bothInstallmentsPaid && (
+                    <label className="flex items-start gap-2 rounded-md border border-dashed border-rose-500/40 bg-rose-500/5 p-2.5 text-xs cursor-pointer hover:bg-rose-500/10 transition">
+                      <input
+                        type="checkbox"
+                        checked={receivedUnpaid}
+                        disabled={busy}
+                        onChange={(e) => toggleReceivedWithoutPayment(e.target.checked)}
+                        className="mt-0.5 accent-rose-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-rose-700">
+                          {isAr ? "مستلم بدون دفع للمورد" : "Received without supplier payment"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {isAr
+                            ? "فعّل هذا الخيار لتسجيل الاستلام والمتابعة في المراحل قبل تأكيد دفع المورد. سيظهر شارة «غير مدفوع» في كل مكان."
+                            : "Enable to advance through stages and receive stock before confirming supplier payment. An «Unpaid» badge will show everywhere."}
+                        </div>
+                      </div>
+                    </label>
+                  )}
                 </div>
               )}
 
