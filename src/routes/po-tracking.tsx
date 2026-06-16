@@ -193,6 +193,11 @@ function POTrackingPage() {
                         {isAr ? "أُضيف للمخزون" : "Stock applied"}
                       </Badge>
                     )}
+                    {p.received_without_payment && !p.payment_installment_1_at && (
+                      <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/40 text-[10px] font-bold">
+                        {isAr ? "غير مدفوع للمورد" : "Unpaid to supplier"}
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(p.created_at, lang)}
