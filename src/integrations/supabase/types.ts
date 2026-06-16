@@ -1909,6 +1909,7 @@ export type Database = {
           received_at: string | null
           received_by: string | null
           received_by_email: string | null
+          received_without_payment: boolean
           shipment_code: string | null
           shipment_date: string
           shipment_type: string
@@ -1958,6 +1959,7 @@ export type Database = {
           received_at?: string | null
           received_by?: string | null
           received_by_email?: string | null
+          received_without_payment?: boolean
           shipment_code?: string | null
           shipment_date?: string
           shipment_type?: string
@@ -2007,6 +2009,7 @@ export type Database = {
           received_at?: string | null
           received_by?: string | null
           received_by_email?: string | null
+          received_without_payment?: boolean
           shipment_code?: string | null
           shipment_date?: string
           shipment_type?: string
