@@ -154,9 +154,17 @@ function PurchaseOrdersPage() {
             </p>
           </div>
           {(isAdmin || isPurchasing) && (
-            <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
-              <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
-            </Button>
+            <div className="flex gap-2">
+              {isAdmin && (
+                <Button onClick={resequenceByDate} variant="outline" size="lg" disabled={resequencing} className="gap-2" title={isAr ? "إعادة ترقيم حسب تاريخ الشحنة" : "Re-sequence by shipment date"}>
+                  <RefreshCw className={`h-4 w-4 ${resequencing ? "animate-spin" : ""}`} />
+                  {isAr ? "إعادة ترقيم بالتاريخ" : "Re-sequence by date"}
+                </Button>
+              )}
+              <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
+                <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
+              </Button>
+            </div>
           )}
         </div>
       </div>
