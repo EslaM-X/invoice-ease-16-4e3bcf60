@@ -99,6 +99,7 @@ type PO = {
   payment_installment_2_at: string | null;
   payment_installment_2_amount: number | null;
   payment_installment_2_by_email: string | null;
+  received_without_payment?: boolean | null;
 };
 
 type POItem = {
