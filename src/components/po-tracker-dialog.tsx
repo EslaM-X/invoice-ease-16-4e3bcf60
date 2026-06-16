@@ -340,6 +340,29 @@ export function POTrackerDialog({
     await load();
   };
 
+  const toggleReceivedWithoutPayment = async (val: boolean) => {
+    if (!po || !user) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("purchase_orders")
+        .update({ received_without_payment: val } as any)
+        .eq("id", po.id);
+      if (error) throw error;
+      await supabase.from("po_status_history").insert({
+        po_id: po.id, from_status: po.status, to_status: po.status,
+        note: val
+          ? (isAr ? "تم تعليم: مستلم بدون دفع للمورد" : "Marked: received without supplier payment")
+          : (isAr ? "إلغاء: مستلم بدون دفع" : "Unmarked: received without payment"),
+        actor_id: user.id, actor_email: user.email,
+      });
+      toast.success(isAr ? "تم التحديث" : "Updated");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally { setBusy(false); }
+  };
+
   const cancelPO = async () => {
     if (!po || !user) return;
     if (!confirm(isAr ? "تأكيد إلغاء أمر الشراء؟" : "Cancel this PO?")) return;
