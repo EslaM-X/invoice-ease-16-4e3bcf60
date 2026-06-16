@@ -3314,6 +3314,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      fulfill_reservations_for_po_item: {
+        Args: { _po_item_id: string; _quantity: number }
+        Returns: number
+      }
       get_active_invoice_reservations: {
         Args: never
         Returns: {
@@ -3450,6 +3454,7 @@ export type Database = {
         }
         Returns: string
       }
+      renumber_purchase_orders: { Args: never; Returns: Json }
       return_defective_item: {
         Args: { _defective_id: string; _notes?: string; _quantity: number }
         Returns: undefined

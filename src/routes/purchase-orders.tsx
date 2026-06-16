@@ -22,6 +22,8 @@ import { AppShell } from "@/components/app-shell";
 import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components/po-tracker-dialog";
 import { EditShipmentDialog } from "@/components/edit-shipment-dialog";
 import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-types";
+import { parseSupplierInvoicePdf } from "@/lib/pdf-po-import";
+import { FileUp, Loader2 } from "lucide-react";
 
 import { ExecutiveGate } from "@/components/executive-gate";
 
@@ -104,13 +106,30 @@ function PurchaseOrdersPage() {
     }
   }, [roleLoading, isAdmin, isPurchasing, isCFO, navigate, isAr]);
 
+  const [resequencing, setResequencing] = useState(false);
   const loadPOs = async () => {
     const { data } = await supabase
       .from("purchase_orders")
       .select("*")
+      .order("shipment_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(200);
     setPos((data as any) ?? []);
+  };
+
+  const resequenceByDate = async () => {
+    if (!confirm(isAr ? "سيتم إعادة ترقيم جميع أوامر الشراء حسب تاريخ الشحنة (الأقدم = 0001). هل تريد المتابعة؟" : "All PO numbers will be re-sequenced by shipment date (oldest = 0001). Continue?")) return;
+    setResequencing(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("renumber_purchase_orders");
+      if (error) throw error;
+      toast.success(isAr ? `تم إعادة ترقيم ${data?.updated ?? 0} أمر شراء` : `Re-sequenced ${data?.updated ?? 0} POs`);
+      loadPOs();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setResequencing(false);
+    }
   };
 
   useEffect(() => { loadPOs(); }, []);
@@ -137,9 +156,17 @@ function PurchaseOrdersPage() {
             </p>
           </div>
           {(isAdmin || isPurchasing) && (
-            <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
-              <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
-            </Button>
+            <div className="flex gap-2">
+              {isAdmin && (
+                <Button onClick={resequenceByDate} variant="outline" size="lg" disabled={resequencing} className="gap-2" title={isAr ? "إعادة ترقيم حسب تاريخ الشحنة" : "Re-sequence by shipment date"}>
+                  <RefreshCw className={`h-4 w-4 ${resequencing ? "animate-spin" : ""}`} />
+                  {isAr ? "إعادة ترقيم بالتاريخ" : "Re-sequence by date"}
+                </Button>
+              )}
+              <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
+                <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -290,6 +317,54 @@ function CreatePODialog({
   const [notes, setNotes] = useState("");
   const [shipmentType, setShipmentType] = useState<ShipmentType>("grounded");
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [lastImportSummary, setLastImportSummary] = useState<{ matched: number; missed: string[]; totalLines: number } | null>(null);
+
+  const handlePdfImport = async (file: File) => {
+    if (!file) return;
+    setImporting(true);
+    setLastImportSummary(null);
+    try {
+      const { lines } = await parseSupplierInvoicePdf(file);
+      if (lines.length === 0) {
+        toast.error(isAr ? "لم يتم العثور على أي منتج (SKU) في الـ PDF" : "No SKUs detected in the PDF");
+        return;
+      }
+      // Build index by serial_number (case-insensitive, trimmed)
+      const bySerial = new Map<string, Product>();
+      for (const p of products) {
+        if (p.serial_number) bySerial.set(p.serial_number.trim().toUpperCase(), p);
+      }
+      const missed: string[] = [];
+      let matched = 0;
+      setRows((prev) => {
+        const next = { ...prev };
+        for (const ln of lines) {
+          const p = bySerial.get(ln.sku.trim().toUpperCase());
+          if (!p) { missed.push(ln.sku); continue; }
+          const cur = next[p.id] ?? { selected: false, qty: 0, unitUsd: Number(p.cost_price_usd) || 0 };
+          next[p.id] = { ...cur, selected: true, qty: (cur.selected ? cur.qty : 0) + ln.quantity };
+          matched++;
+        }
+        return next;
+      });
+      setLastImportSummary({ matched, missed, totalLines: lines.length });
+      if (matched > 0) {
+        toast.success(
+          isAr
+            ? `تم استيراد ${matched} منتج من الـ PDF${missed.length ? ` · ${missed.length} غير موجود في القاعدة` : ""}`
+            : `Imported ${matched} items from PDF${missed.length ? ` · ${missed.length} not found in catalog` : ""}`,
+        );
+      } else {
+        toast.error(isAr ? "لم يتطابق أي SKU مع منتجاتك" : "No SKUs matched your catalog");
+      }
+    } catch (e: any) {
+      toast.error((isAr ? "فشل قراءة الـ PDF: " : "Failed to parse PDF: ") + (e?.message ?? "unknown"));
+    } finally {
+      setImporting(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!open) return;
@@ -467,6 +542,60 @@ function CreatePODialog({
           </div>
         </div>
 
+        {/* Import from supplier PDF — auto-fills selected items + qty */}
+        <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/15 text-primary">
+              <FileUp className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <div className="text-sm font-bold">{isAr ? "استيراد من فاتورة المورد (PDF)" : "Import from supplier invoice (PDF)"}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {isAr
+                  ? "سنقرأ كل SKU وكميته من الفاتورة ونحدد المنتجات تلقائياً."
+                  : "We'll read every SKU + qty from the invoice and auto-select your products."}
+              </div>
+            </div>
+            <label className={`inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-accent ${importing ? "pointer-events-none opacity-60" : ""}`}>
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+              {importing ? (isAr ? "جارٍ القراءة…" : "Reading…") : (isAr ? "اختر ملف PDF" : "Choose PDF")}
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) handlePdfImport(f);
+                }}
+              />
+            </label>
+          </div>
+          {lastImportSummary && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700">
+                ✓ {lastImportSummary.matched} {isAr ? "مطابق" : "matched"}
+              </Badge>
+              {lastImportSummary.missed.length > 0 && (
+                <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700" title={lastImportSummary.missed.join(", ")}>
+                  ⚠ {lastImportSummary.missed.length} {isAr ? "غير موجود" : "not in catalog"}
+                </Badge>
+              )}
+              <span className="text-muted-foreground">
+                {isAr ? `إجمالي البنود في الـ PDF: ${lastImportSummary.totalLines}` : `Total lines in PDF: ${lastImportSummary.totalLines}`}
+              </span>
+              {lastImportSummary.missed.length > 0 && (
+                <details className="basis-full mt-1">
+                  <summary className="cursor-pointer text-amber-700 underline decoration-dotted">{isAr ? "عرض الـ SKUs المفقودة" : "Show missing SKUs"}</summary>
+                  <div className="mt-1 flex flex-wrap gap-1 font-mono text-[10px]">
+                    {lastImportSummary.missed.map((s) => <span key={s} className="rounded bg-amber-500/10 px-1.5 py-0.5">{s}</span>)}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs">{isAr ? "المورد" : "Supplier"}</Label>
@@ -483,6 +612,7 @@ function CreatePODialog({
             </label>
           </div>
         </div>
+
 
         {/* Kind / Collection / Color filter pills */}
         <div className="space-y-2">
