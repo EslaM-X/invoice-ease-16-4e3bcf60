@@ -99,6 +99,7 @@ type PO = {
   payment_installment_2_at: string | null;
   payment_installment_2_amount: number | null;
   payment_installment_2_by_email: string | null;
+  received_without_payment?: boolean | null;
 };
 
 type POItem = {
@@ -267,15 +268,17 @@ export function POTrackerDialog({
   const installment2Paid = !!po?.payment_installment_2_at;
   const bothInstallmentsPaid = installment1Paid && installment2Paid;
 
+  const receivedUnpaid = !!po?.received_without_payment;
+
   const nextStatus = useMemo(() => {
     if (!po) return null;
     if (po.status === "cancelled" || po.status === "received") return null;
     if (po.status === "in_warehouse") return null; // handled via receive flow
-    if (po.status === "priced" && !installment1Paid) return null; // gate on installment 1
+    if (po.status === "priced" && !installment1Paid && !receivedUnpaid) return null; // gate on installment 1 unless receive-without-payment
     const i = PO_FLOW.indexOf(po.status as any);
     if (i < 0) return null;
     return PO_FLOW[i + 1] ?? null;
-  }, [po, installment1Paid]);
+  }, [po, installment1Paid, receivedUnpaid]);
 
   const allowedNext = (target: string) => {
     if (!canTransition || !po) return false;
@@ -337,6 +340,29 @@ export function POTrackerDialog({
     await load();
   };
 
+  const toggleReceivedWithoutPayment = async (val: boolean) => {
+    if (!po || !user) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("purchase_orders")
+        .update({ received_without_payment: val } as any)
+        .eq("id", po.id);
+      if (error) throw error;
+      await supabase.from("po_status_history").insert({
+        po_id: po.id, from_status: po.status, to_status: po.status,
+        note: val
+          ? (isAr ? "تم تعليم: مستلم بدون دفع للمورد" : "Marked: received without supplier payment")
+          : (isAr ? "إلغاء: مستلم بدون دفع" : "Unmarked: received without payment"),
+        actor_id: user.id, actor_email: user.email,
+      });
+      toast.success(isAr ? "تم التحديث" : "Updated");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally { setBusy(false); }
+  };
+
   const cancelPO = async () => {
     if (!po || !user) return;
     if (!confirm(isAr ? "تأكيد إلغاء أمر الشراء؟" : "Cancel this PO?")) return;
@@ -357,6 +383,12 @@ export function POTrackerDialog({
                 <Badge variant="outline" className="gap-1 bg-amber-500/15 text-amber-700 border-amber-500/40">
                   <Package className="h-3 w-3" />
                   {isAr ? `تسليم جزئي · متبقي ${totalRemaining}` : `Partial · ${totalRemaining} remaining`}
+                </Badge>
+              )}
+              {po && receivedUnpaid && !installment1Paid && (
+                <Badge variant="outline" className="gap-1 bg-rose-500/15 text-rose-700 border-rose-500/40">
+                  <AlertCircle className="h-3 w-3" />
+                  {isAr ? "غير مدفوع للمورد" : "Unpaid to supplier"}
                 </Badge>
               )}
             </DialogTitle>
@@ -456,6 +488,29 @@ export function POTrackerDialog({
                         ? "لا يمكن الانتقال إلى «تم الطلب» قبل تأكيد الدفعة الأولى."
                         : "Cannot move to Ordered until Installment 1 is paid."}
                     </div>
+                  )}
+
+                  {/* Receive-without-payment toggle */}
+                  {canTransition && !bothInstallmentsPaid && (
+                    <label className="flex items-start gap-2 rounded-md border border-dashed border-rose-500/40 bg-rose-500/5 p-2.5 text-xs cursor-pointer hover:bg-rose-500/10 transition">
+                      <input
+                        type="checkbox"
+                        checked={receivedUnpaid}
+                        disabled={busy}
+                        onChange={(e) => toggleReceivedWithoutPayment(e.target.checked)}
+                        className="mt-0.5 accent-rose-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-rose-700">
+                          {isAr ? "مستلم بدون دفع للمورد" : "Received without supplier payment"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {isAr
+                            ? "فعّل هذا الخيار لتسجيل الاستلام والمتابعة في المراحل قبل تأكيد دفع المورد. سيظهر شارة «غير مدفوع» في كل مكان."
+                            : "Enable to advance through stages and receive stock before confirming supplier payment. An «Unpaid» badge will show everywhere."}
+                        </div>
+                      </div>
+                    </label>
                   )}
                 </div>
               )}
