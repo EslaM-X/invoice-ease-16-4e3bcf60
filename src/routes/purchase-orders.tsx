@@ -1608,6 +1608,9 @@ function AddItemPicker({
   const isAr = lang === "ar";
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
+  const [collectionFilter, setCollectionFilter] = useState("");
+  const [colorFilter, setColorFilter] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
   const [picked, setPicked] = useState<Product | null>(null);
   const [qty, setQty] = useState<string>("1");
   const [unit, setUnit] = useState<string>("0");
@@ -1616,24 +1619,46 @@ function AddItemPicker({
     if (!open) return;
     supabase
       .from("products")
-      .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price")
+        .select("id,name,serial_number,color,image_url,stock_quantity,low_stock_threshold,cost_price_usd,price,collection,is_spare_part")
       .order("name")
       .limit(1000)
       .then(({ data }) => setProducts((data as any) ?? []));
   }, [open]);
 
+  const colors = useMemo(() => Array.from(new Set(products.map((p) => p.color).filter(Boolean) as string[])).sort(), [products]);
+  const collectionCounts = useMemo(() => {
+    const available = products.filter((p) => !existingProductIds.includes(p.id));
+    const counts: Record<string, number> = { __all__: available.length, __none__: 0 };
+    for (const c of COLLECTIONS) counts[c] = 0;
+    for (const p of available) {
+      const c = (p.collection ?? "").toUpperCase();
+      if (c && counts[c] !== undefined) counts[c]++;
+      else if (!c) counts.__none__++;
+    }
+    return counts;
+  }, [products, existingProductIds]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (existingProductIds.includes(p.id)) return false;
+      if (kindFilter === "spare" && !p.is_spare_part) return false;
+      if (kindFilter === "products" && p.is_spare_part) return false;
+      if (collectionFilter) {
+        if (collectionFilter === "__none__") { if (p.collection) return false; }
+        else if ((p.collection ?? "").toUpperCase() !== collectionFilter) return false;
+      }
+      if (colorFilter && (p.color ?? "") !== colorFilter) return false;
       if (!q) return true;
+      const serialQ = q.replace(/[\s_\-./]+/g, "");
       return (
         p.name.toLowerCase().includes(q) ||
-        (p.serial_number ?? "").toLowerCase().includes(q) ||
-        (p.color ?? "").toLowerCase().includes(q)
+        (p.serial_number ?? "").toLowerCase().replace(/[\s_\-./]+/g, "").includes(serialQ) ||
+        (p.color ?? "").toLowerCase().includes(q) ||
+        (p.collection ?? "").toLowerCase().includes(q)
       );
     });
-  }, [products, search, existingProductIds]);
+  }, [products, search, existingProductIds, kindFilter, collectionFilter, colorFilter]);
 
   const choose = (p: Product) => {
     setPicked(p);
