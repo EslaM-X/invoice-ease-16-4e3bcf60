@@ -10,6 +10,45 @@ import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+const CAIRO_TZ = "Africa/Cairo";
+
+function cairoParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CAIRO_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? "00";
+  return { y: get("year"), m: get("month"), d: get("day"), h: get("hour"), min: get("minute"), s: get("second") };
+}
+
+function isoToCairoInput(iso: string) {
+  const p = cairoParts(new Date(iso));
+  return `${p.y}-${p.m}-${p.d}T${p.h}:${p.min}`;
+}
+
+function cairoOffsetMs(date: Date) {
+  const p = cairoParts(date);
+  const cairoAsUtc = Date.UTC(Number(p.y), Number(p.m) - 1, Number(p.d), Number(p.h), Number(p.min), Number(p.s));
+  return cairoAsUtc - date.getTime();
+}
+
+function cairoInputToIso(localValue: string) {
+  const [datePart, timePart = "00:00"] = localValue.split("T");
+  const [y, m, d] = datePart.split("-").map(Number);
+  const [h, min] = timePart.split(":").map(Number);
+  const wallClockUtc = Date.UTC(y, m - 1, d, h || 0, min || 0, 0);
+  let utc = new Date(wallClockUtc - cairoOffsetMs(new Date(wallClockUtc)));
+  utc = new Date(wallClockUtc - cairoOffsetMs(utc));
+  return utc.toISOString();
+}
+
 /**
  * Edit a PO's shipment type and/or shipment date.
  * On save: calls the SECURITY DEFINER RPC `update_po_shipment` which also
@@ -30,7 +69,7 @@ export function EditShipmentDialog({
   currentCode: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onSaved?: (next: { shipment_code: string | null; shipment_type: string; shipment_date: string | null }) => void;
+  onSaved?: (next: { po_number?: string | null; shipment_code: string | null; shipment_type: string; shipment_date: string | null }) => void;
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
@@ -42,26 +81,20 @@ export function EditShipmentDialog({
   useEffect(() => {
     if (!open) return;
     setType((currentType as ShipmentType) || "grounded");
-    // Convert ISO -> local "YYYY-MM-DDTHH:mm" for <input type=datetime-local>
-    const iso = currentDate ?? new Date().toISOString();
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    setLocalDt(
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
-    );
+    setLocalDt(isoToCairoInput(currentDate ?? new Date().toISOString()));
   }, [open, currentType, currentDate]);
 
   const save = async () => {
     setBusy(true);
     try {
-      const iso = localDt ? new Date(localDt).toISOString() : null;
+      const iso = localDt ? cairoInputToIso(localDt) : null;
       const { data, error } = await (supabase as any).rpc("update_po_shipment", {
         _po_id: poId,
         _new_type: type,
         _new_date: iso,
       });
       if (error) throw error;
-      const next = (data ?? {}) as { shipment_code: string | null; shipment_type: string; shipment_date: string | null };
+      const next = (data ?? {}) as { po_number?: string | null; shipment_code: string | null; shipment_type: string; shipment_date: string | null };
       toast.success(
         isAr
           ? `تم تحديث الشحنة · الكود الجديد: ${next.shipment_code ?? "—"}`
