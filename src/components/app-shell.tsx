@@ -433,7 +433,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
             }`}
           >
-            <Banknote className="h-4 w-4" /> {isAr ? "سجل تعديلات الفواتير" : "Invoice changes ledger"}
+            <Banknote className="h-4 w-4" /> {lang === "ar" ? "سجل تعديلات الفواتير" : "Invoice changes ledger"}
           </Link>
           <Link
             to="/pending-operations"
