@@ -203,7 +203,7 @@ function PurchaseOrdersPage() {
                   <span className="font-mono text-[11px] text-muted-foreground">{p.po_number}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {fmtDateTime(p.created_at, lang)}
+                  {p.supplier_name || (isAr ? "بدون مورد" : "No supplier")} · {isAr ? "تاريخ الشحنة" : "Shipment date"}: {fmtDateTime(p.shipment_date ?? p.created_at, lang)}
                 </div>
                 {p.created_by_email && (
                   <div className="text-[10px] text-muted-foreground">{p.created_by_email}</div>
