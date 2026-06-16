@@ -858,7 +858,11 @@ function PODetailDialog({
     if (initial) setLoading(true);
     const [{ data: poData }, { data: itemsData }] = await Promise.all([
       supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
-      supabase.from("purchase_order_items").select("*").eq("po_id", poId).order("created_at"),
+      (supabase as any)
+        .from("purchase_order_items")
+        .select("*, products(collection,is_spare_part)")
+        .eq("po_id", poId)
+        .order("created_at"),
     ]);
     if (poData) {
       const p = poData as any as PO & any;
@@ -882,7 +886,11 @@ function PODetailDialog({
         setCfoNotes(p.cfo_notes ?? "");
       }
     }
-    const list = (itemsData as any as POItem[]) ?? [];
+    const list = ((itemsData as any[]) ?? []).map((it) => ({
+      ...it,
+      collection: it.collection ?? it.products?.collection ?? null,
+      is_spare_part: it.is_spare_part ?? it.products?.is_spare_part ?? false,
+    })) as POItem[];
     setItems(list);
     setItemEdits((prev) => {
       const next: Record<string, { qty: number; unit: number }> = {};
