@@ -317,6 +317,54 @@ function CreatePODialog({
   const [notes, setNotes] = useState("");
   const [shipmentType, setShipmentType] = useState<ShipmentType>("grounded");
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [lastImportSummary, setLastImportSummary] = useState<{ matched: number; missed: string[]; totalLines: number } | null>(null);
+
+  const handlePdfImport = async (file: File) => {
+    if (!file) return;
+    setImporting(true);
+    setLastImportSummary(null);
+    try {
+      const { lines } = await parseSupplierInvoicePdf(file);
+      if (lines.length === 0) {
+        toast.error(isAr ? "لم يتم العثور على أي منتج (SKU) في الـ PDF" : "No SKUs detected in the PDF");
+        return;
+      }
+      // Build index by serial_number (case-insensitive, trimmed)
+      const bySerial = new Map<string, Product>();
+      for (const p of products) {
+        if (p.serial_number) bySerial.set(p.serial_number.trim().toUpperCase(), p);
+      }
+      const missed: string[] = [];
+      let matched = 0;
+      setRows((prev) => {
+        const next = { ...prev };
+        for (const ln of lines) {
+          const p = bySerial.get(ln.sku.trim().toUpperCase());
+          if (!p) { missed.push(ln.sku); continue; }
+          const cur = next[p.id] ?? { selected: false, qty: 0, unitUsd: Number(p.cost_price_usd) || 0 };
+          next[p.id] = { ...cur, selected: true, qty: (cur.selected ? cur.qty : 0) + ln.quantity };
+          matched++;
+        }
+        return next;
+      });
+      setLastImportSummary({ matched, missed, totalLines: lines.length });
+      if (matched > 0) {
+        toast.success(
+          isAr
+            ? `تم استيراد ${matched} منتج من الـ PDF${missed.length ? ` · ${missed.length} غير موجود في القاعدة` : ""}`
+            : `Imported ${matched} items from PDF${missed.length ? ` · ${missed.length} not found in catalog` : ""}`,
+        );
+      } else {
+        toast.error(isAr ? "لم يتطابق أي SKU مع منتجاتك" : "No SKUs matched your catalog");
+      }
+    } catch (e: any) {
+      toast.error((isAr ? "فشل قراءة الـ PDF: " : "Failed to parse PDF: ") + (e?.message ?? "unknown"));
+    } finally {
+      setImporting(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!open) return;
