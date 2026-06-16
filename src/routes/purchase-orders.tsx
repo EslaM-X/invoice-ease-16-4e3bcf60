@@ -845,6 +845,10 @@ function PODetailDialog({
   const [cfoNotes, setCfoNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savingItems, setSavingItems] = useState(false);
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemCollectionFilter, setItemCollectionFilter] = useState("");
+  const [itemColorFilter, setItemColorFilter] = useState("");
+  const [itemKindFilter, setItemKindFilter] = useState<"all" | "products" | "spare">("all");
 
   /**
    * load(opts):
@@ -936,6 +940,39 @@ function PODetailDialog({
     return e.qty !== it.quantity || Number(e.unit) !== Number(it.unit_cost_usd);
   });
   const headerDirty = (po?.supplier_name ?? "") !== supplierEdit || (po?.notes ?? "") !== notesEdit;
+
+  const itemColors = useMemo(() => Array.from(new Set(items.map((it) => it.color).filter(Boolean) as string[])).sort(), [items]);
+  const itemCollectionCounts = useMemo(() => {
+    const counts: Record<string, number> = { __all__: items.length, __none__: 0 };
+    for (const c of COLLECTIONS) counts[c] = 0;
+    for (const it of items) {
+      const c = (it.collection ?? "").toUpperCase();
+      if (c && counts[c] !== undefined) counts[c]++;
+      else if (!c) counts.__none__++;
+    }
+    return counts;
+  }, [items]);
+  const visibleItems = useMemo(() => {
+    const raw = itemSearch.trim().toLowerCase();
+    const q = raw.replace(/\s+/g, " ");
+    const serialQ = raw.replace(/[\s_\-./]+/g, "");
+    return items.filter((it) => {
+      if (itemKindFilter === "spare" && !it.is_spare_part) return false;
+      if (itemKindFilter === "products" && it.is_spare_part) return false;
+      if (itemCollectionFilter) {
+        if (itemCollectionFilter === "__none__") { if (it.collection) return false; }
+        else if ((it.collection ?? "").toUpperCase() !== itemCollectionFilter) return false;
+      }
+      if (itemColorFilter && (it.color ?? "") !== itemColorFilter) return false;
+      if (!q) return true;
+      return (
+        it.product_name.toLowerCase().includes(q) ||
+        (it.serial_number ?? "").toLowerCase().replace(/[\s_\-./]+/g, "").includes(serialQ) ||
+        (it.color ?? "").toLowerCase().includes(q) ||
+        (it.collection ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [items, itemSearch, itemCollectionFilter, itemColorFilter, itemKindFilter]);
 
   const rate = Number(usdRate) || 0;
   const baseEgp = liveTotalUsd * rate;
