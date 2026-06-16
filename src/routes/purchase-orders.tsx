@@ -542,6 +542,60 @@ function CreatePODialog({
           </div>
         </div>
 
+        {/* Import from supplier PDF — auto-fills selected items + qty */}
+        <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/15 text-primary">
+              <FileUp className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <div className="text-sm font-bold">{isAr ? "استيراد من فاتورة المورد (PDF)" : "Import from supplier invoice (PDF)"}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {isAr
+                  ? "سنقرأ كل SKU وكميته من الفاتورة ونحدد المنتجات تلقائياً."
+                  : "We'll read every SKU + qty from the invoice and auto-select your products."}
+              </div>
+            </div>
+            <label className={`inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-accent ${importing ? "pointer-events-none opacity-60" : ""}`}>
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+              {importing ? (isAr ? "جارٍ القراءة…" : "Reading…") : (isAr ? "اختر ملف PDF" : "Choose PDF")}
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) handlePdfImport(f);
+                }}
+              />
+            </label>
+          </div>
+          {lastImportSummary && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700">
+                ✓ {lastImportSummary.matched} {isAr ? "مطابق" : "matched"}
+              </Badge>
+              {lastImportSummary.missed.length > 0 && (
+                <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700" title={lastImportSummary.missed.join(", ")}>
+                  ⚠ {lastImportSummary.missed.length} {isAr ? "غير موجود" : "not in catalog"}
+                </Badge>
+              )}
+              <span className="text-muted-foreground">
+                {isAr ? `إجمالي البنود في الـ PDF: ${lastImportSummary.totalLines}` : `Total lines in PDF: ${lastImportSummary.totalLines}`}
+              </span>
+              {lastImportSummary.missed.length > 0 && (
+                <details className="basis-full mt-1">
+                  <summary className="cursor-pointer text-amber-700 underline decoration-dotted">{isAr ? "عرض الـ SKUs المفقودة" : "Show missing SKUs"}</summary>
+                  <div className="mt-1 flex flex-wrap gap-1 font-mono text-[10px]">
+                    {lastImportSummary.missed.map((s) => <span key={s} className="rounded bg-amber-500/10 px-1.5 py-0.5">{s}</span>)}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs">{isAr ? "المورد" : "Supplier"}</Label>
@@ -558,6 +612,7 @@ function CreatePODialog({
             </label>
           </div>
         </div>
+
 
         {/* Kind / Collection / Color filter pills */}
         <div className="space-y-2">
