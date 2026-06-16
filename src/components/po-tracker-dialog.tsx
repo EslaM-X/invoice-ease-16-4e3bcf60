@@ -131,6 +131,7 @@ type ReceiptRow = {
   notes: string | null;
   actor_email: string | null;
   created_at: string;
+  discount_amount?: number | null;
   po_receipt_items: {
     id: string;
     product_name: string;
@@ -236,7 +237,7 @@ export function POTrackerDialog({
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
       (supabase as any)
         .from("po_receipts")
-        .select("id,receipt_number,receipt_code,total_qty,notes,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
         .eq("po_id", poId)
         .order("receipt_number", { ascending: false }),
     ]);
@@ -757,6 +758,12 @@ export function POTrackerDialog({
                             </div>
                           </div>
                           {r.notes && <div className="mt-1 text-xs italic text-muted-foreground">{r.notes}</div>}
+                          {Number(r.discount_amount ?? 0) > 0 && (
+                            <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                              {isAr ? "خصم داخلي" : "Internal discount"}: {Number(r.discount_amount).toFixed(2)}
+                              <span className="text-[9px] opacity-70">({isAr ? "لا يُطبع" : "not printed"})</span>
+                            </div>
+                          )}
                           <div className="mt-2 space-y-1">
                             {r.po_receipt_items?.map((ri) => (
                               <div key={ri.id} className="flex flex-wrap items-center gap-2 rounded border bg-background px-2 py-1 text-xs">
