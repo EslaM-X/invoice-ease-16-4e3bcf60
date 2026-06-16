@@ -36,6 +36,7 @@ import { Route as InTransitRouteImport } from './routes/in-transit'
 import { Route as FulfillmentTestsRouteImport } from './routes/fulfillment-tests'
 import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit'
 import { Route as FulfillmentRouteImport } from './routes/fulfillment'
+import { Route as FinanceAuditRouteImport } from './routes/finance-audit'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
@@ -201,6 +202,11 @@ const FulfillmentAuditRoute = FulfillmentAuditRouteImport.update({
 const FulfillmentRoute = FulfillmentRouteImport.update({
   id: '/fulfillment',
   path: '/fulfillment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceAuditRoute = FinanceAuditRouteImport.update({
+  id: '/finance-audit',
+  path: '/finance-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -376,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/defective-items': typeof DefectiveItemsRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/download': typeof DownloadRoute
+  '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
@@ -436,6 +443,7 @@ export interface FileRoutesByTo {
   '/defective-items': typeof DefectiveItemsRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/download': typeof DownloadRoute
+  '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
@@ -497,6 +505,7 @@ export interface FileRoutesById {
   '/defective-items': typeof DefectiveItemsRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/download': typeof DownloadRoute
+  '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
@@ -559,6 +568,7 @@ export interface FileRouteTypes {
     | '/defective-items'
     | '/diagnostics'
     | '/download'
+    | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
     | '/fulfillment-tests'
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/defective-items'
     | '/diagnostics'
     | '/download'
+    | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
     | '/fulfillment-tests'
@@ -679,6 +690,7 @@ export interface FileRouteTypes {
     | '/defective-items'
     | '/diagnostics'
     | '/download'
+    | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
     | '/fulfillment-tests'
@@ -740,6 +752,7 @@ export interface RootRouteChildren {
   DefectiveItemsRoute: typeof DefectiveItemsRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
   DownloadRoute: typeof DownloadRoute
+  FinanceAuditRoute: typeof FinanceAuditRoute
   FulfillmentRoute: typeof FulfillmentRoute
   FulfillmentAuditRoute: typeof FulfillmentAuditRoute
   FulfillmentTestsRoute: typeof FulfillmentTestsRoute
@@ -980,6 +993,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FulfillmentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/finance-audit': {
+      id: '/finance-audit'
+      path: '/finance-audit'
+      fullPath: '/finance-audit'
+      preLoaderRoute: typeof FinanceAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/download': {
       id: '/download'
       path: '/download'
@@ -1212,6 +1232,7 @@ const rootRouteChildren: RootRouteChildren = {
   DefectiveItemsRoute: DefectiveItemsRoute,
   DiagnosticsRoute: DiagnosticsRoute,
   DownloadRoute: DownloadRoute,
+  FinanceAuditRoute: FinanceAuditRoute,
   FulfillmentRoute: FulfillmentRoute,
   FulfillmentAuditRoute: FulfillmentAuditRoute,
   FulfillmentTestsRoute: FulfillmentTestsRoute,
