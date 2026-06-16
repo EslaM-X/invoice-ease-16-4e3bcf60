@@ -23,6 +23,8 @@ import { POTrackerDialog, statusBadge as trackerStatusBadge } from "@/components
 import { EditShipmentDialog } from "@/components/edit-shipment-dialog";
 import { SHIPMENT_TYPES, shipmentMeta, type ShipmentType } from "@/lib/shipment-types";
 import { parseSupplierInvoicePdf } from "@/lib/pdf-po-import";
+import { collectionBadgeClass, collectionDotClass, collectionPillClass } from "@/lib/collection-styles";
+import { COLLECTIONS } from "@/lib/data";
 import { FileUp, Loader2 } from "lucide-react";
 
 import { ExecutiveGate } from "@/components/executive-gate";
@@ -77,6 +79,8 @@ type POItem = {
   product_name: string;
   serial_number: string | null;
   color: string | null;
+  collection?: string | null;
+  is_spare_part?: boolean | null;
   image_url: string | null;
   quantity: number;
   unit_cost_usd: number;
