@@ -78,7 +78,7 @@ function FinanceAuditPage() {
   };
 
   useEffect(() => {
-    if (user) load(); /* eslint-disable-next-line */
+    if (user) load();
   }, [user]);
   useRealtimeTable("audit_log", load, []);
   useRealtimeTable("invoice_events", load, []);
