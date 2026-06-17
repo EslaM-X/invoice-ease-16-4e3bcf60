@@ -404,65 +404,119 @@ function CreatePODialog({
   const [shipmentType, setShipmentType] = useState<ShipmentType>("grounded");
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; fileName: string } | null>(null);
   const [lastImportSummary, setLastImportSummary] = useState<{
     matched: number;
-    missed: string[];
     totalLines: number;
+    files: Array<{
+      name: string;
+      lines: number;
+      matched: number;
+      missed: Array<{ sku: string; quantity: number }>;
+      error?: string;
+    }>;
+    /** Aggregated missing SKUs across all files */
+    missingAgg: Array<{ sku: string; quantity: number; files: string[] }>;
   } | null>(null);
 
-  const handlePdfImport = async (file: File) => {
-    if (!file) return;
+  const handlePdfImport = async (files: File[]) => {
+    if (!files || files.length === 0) return;
     setImporting(true);
     setLastImportSummary(null);
+    setImportProgress({ current: 0, total: files.length, fileName: files[0].name });
     try {
-      const { lines } = await parseSupplierInvoicePdf(file);
-      if (lines.length === 0) {
-        toast.error(
-          isAr ? "لم يتم العثور على أي منتج (SKU) في الـ PDF" : "No SKUs detected in the PDF",
-        );
-        return;
-      }
-      // Build index by serial_number (case-insensitive, trimmed)
+      // Build catalog index ONCE (case-insensitive, trimmed)
       const bySerial = new Map<string, Product>();
       for (const p of products) {
         if (p.serial_number) bySerial.set(p.serial_number.trim().toUpperCase(), p);
       }
-      const missed: string[] = [];
-      let matched = 0;
+
+      const perFile: Array<{
+        name: string;
+        lines: number;
+        matched: number;
+        missed: Array<{ sku: string; quantity: number }>;
+        error?: string;
+      }> = [];
+      const missingAgg = new Map<string, { sku: string; quantity: number; files: Set<string> }>();
+      // Aggregate matched quantities across all files first, then commit once.
+      const toAdd = new Map<string, number>();
+      let totalMatched = 0;
+      let totalLines = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setImportProgress({ current: i + 1, total: files.length, fileName: file.name });
+        try {
+          const { lines } = await parseSupplierInvoicePdf(file);
+          let fileMatched = 0;
+          const fileMissed: Array<{ sku: string; quantity: number }> = [];
+          for (const ln of lines) {
+            const key = ln.sku.trim().toUpperCase();
+            const p = bySerial.get(key);
+            if (!p) {
+              fileMissed.push({ sku: ln.sku, quantity: ln.quantity });
+              const ex = missingAgg.get(key);
+              if (ex) { ex.quantity += ln.quantity; ex.files.add(file.name); }
+              else missingAgg.set(key, { sku: ln.sku, quantity: ln.quantity, files: new Set([file.name]) });
+              continue;
+            }
+            toAdd.set(p.id, (toAdd.get(p.id) ?? 0) + ln.quantity);
+            fileMatched += 1;
+          }
+          totalMatched += fileMatched;
+          totalLines += lines.length;
+          perFile.push({ name: file.name, lines: lines.length, matched: fileMatched, missed: fileMissed });
+        } catch (e: any) {
+          perFile.push({ name: file.name, lines: 0, matched: 0, missed: [], error: e?.message ?? "parse error" });
+        }
+      }
+
       setRows((prev) => {
         const next = { ...prev };
-        for (const ln of lines) {
-          const p = bySerial.get(ln.sku.trim().toUpperCase());
-          if (!p) {
-            missed.push(ln.sku);
-            continue;
-          }
-          const cur = next[p.id] ?? {
+        for (const [pid, addQty] of toAdd.entries()) {
+          const p = products.find((x) => x.id === pid);
+          const cur = next[pid] ?? {
             selected: false,
             qty: 0,
-            unitUsd: Number(p.cost_price_usd) || 0,
+            unitUsd: Number(p?.cost_price_usd) || 0,
           };
-          next[p.id] = { ...cur, selected: true, qty: (cur.selected ? cur.qty : 0) + ln.quantity };
-          matched++;
+          next[pid] = {
+            ...cur,
+            selected: true,
+            qty: (cur.selected ? cur.qty : 0) + addQty,
+          };
         }
         return next;
       });
-      setLastImportSummary({ matched, missed, totalLines: lines.length });
-      if (matched > 0) {
+
+      setLastImportSummary({
+        matched: totalMatched,
+        totalLines,
+        files: perFile,
+        missingAgg: Array.from(missingAgg.values())
+          .map((m) => ({ sku: m.sku, quantity: m.quantity, files: Array.from(m.files) }))
+          .sort((a, b) => b.quantity - a.quantity),
+      });
+
+      const missedCount = missingAgg.size;
+      const errCount = perFile.filter((f) => f.error).length;
+      if (totalMatched > 0) {
         toast.success(
           isAr
-            ? `تم استيراد ${matched} منتج من الـ PDF${missed.length ? ` · ${missed.length} غير موجود في القاعدة` : ""}`
-            : `Imported ${matched} items from PDF${missed.length ? ` · ${missed.length} not found in catalog` : ""}`,
+            ? `تم استيراد ${totalMatched} بند من ${files.length} ملف${missedCount ? ` · ${missedCount} SKU غير موجود` : ""}${errCount ? ` · فشل ${errCount} ملف` : ""}`
+            : `Imported ${totalMatched} lines from ${files.length} file(s)${missedCount ? ` · ${missedCount} missing SKU` : ""}${errCount ? ` · ${errCount} failed file(s)` : ""}`,
         );
       } else {
         toast.error(isAr ? "لم يتطابق أي SKU مع منتجاتك" : "No SKUs matched your catalog");
       }
     } catch (e: any) {
       toast.error(
-        (isAr ? "فشل قراءة الـ PDF: " : "Failed to parse PDF: ") + (e?.message ?? "unknown"),
+        (isAr ? "فشل قراءة الملفات: " : "Failed to read files: ") + (e?.message ?? "unknown"),
       );
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   };
 
