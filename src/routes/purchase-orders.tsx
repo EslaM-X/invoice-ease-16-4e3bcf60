@@ -1411,7 +1411,7 @@ function PODetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-2">
+          <DialogTitle className="flex items-center justify-between gap-2 pe-10">
             <span className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
               {po?.po_number || (isAr ? "أمر شراء" : "Purchase Order")}
@@ -1429,9 +1429,18 @@ function PODetailDialog({
                 </Button>
               )}
               {canDeletePO && (
-                <Button variant="ghost" size="sm" onClick={deletePO} className="text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <>
+                  <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={deletePO}
+                    className="gap-1 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{isAr ? "حذف" : "Delete"}</span>
+                  </Button>
+                </>
               )}
             </span>
           </DialogTitle>
