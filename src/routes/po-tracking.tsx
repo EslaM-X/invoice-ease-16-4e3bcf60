@@ -58,22 +58,50 @@ function POTrackingPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(300);
-    setPos((data as any) ?? []);
+    const list = (data as any[]) ?? [];
+    setPos(list);
+    // Aggregate ordered/received per PO for the receipt-status filter
+    const ids = list.map((p) => p.id);
+    if (ids.length) {
+      const { data: items } = await (supabase as any)
+        .from("purchase_order_items")
+        .select("po_id,quantity,received_qty")
+        .in("po_id", ids);
+      const agg: Record<string, { ordered: number; received: number }> = {};
+      for (const it of (items as any[]) ?? []) {
+        const k = it.po_id as string;
+        const e = agg[k] ?? { ordered: 0, received: 0 };
+        e.ordered += Number(it.quantity) || 0;
+        e.received += Number(it.received_qty) || 0;
+        agg[k] = e;
+      }
+      setPoProgress(agg);
+    } else {
+      setPoProgress({});
+    }
   };
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
-    ["purchase_orders", "po_status_history"],
+    ["purchase_orders", "po_status_history", "po_receipts", "po_receipt_items", "purchase_order_items"],
     () => { if (user) load(); },
     [user?.id],
   );
 
+  const receiptStatusOf = (poId: string): "fully" | "partial" | "none" => {
+    const a = poProgress[poId];
+    if (!a || a.ordered === 0) return "none";
+    if (a.received >= a.ordered) return "fully";
+    if (a.received > 0) return "partial";
+    return "none";
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return pos.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
       if (shipFilter !== "all" && (p.shipment_type ?? "grounded") !== shipFilter) return false;
+      if (receiptFilter !== "all" && receiptStatusOf(p.id) !== receiptFilter) return false;
       if (!q) return true;
       return (
         (p.po_number ?? "").toLowerCase().includes(q) ||
