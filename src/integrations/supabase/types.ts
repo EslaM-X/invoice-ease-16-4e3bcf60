@@ -643,6 +643,7 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          item_type: string
           notes: string | null
           product_id: string
           product_name: string
@@ -660,6 +661,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          item_type?: string
           notes?: string | null
           product_id: string
           product_name: string
@@ -677,6 +679,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          item_type?: string
           notes?: string | null
           product_id?: string
           product_name?: string
@@ -3444,17 +3447,30 @@ export type Database = {
         }
         Returns: string
       }
-      register_defective_item: {
-        Args: {
-          _color?: string
-          _notes?: string
-          _product_id: string
-          _quantity: number
-          _reason: string
-          _serial_number?: string
-        }
-        Returns: string
-      }
+      register_defective_item:
+        | {
+            Args: {
+              _color?: string
+              _notes?: string
+              _product_id: string
+              _quantity: number
+              _reason: string
+              _serial_number?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _color?: string
+              _item_type?: string
+              _notes?: string
+              _product_id: string
+              _quantity: number
+              _reason: string
+              _serial_number?: string
+            }
+            Returns: string
+          }
       renumber_purchase_orders: { Args: never; Returns: Json }
       return_defective_item: {
         Args: { _defective_id: string; _notes?: string; _quantity: number }
