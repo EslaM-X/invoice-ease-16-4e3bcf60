@@ -3418,6 +3418,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      reassign_shipment_codes_global: { Args: never; Returns: undefined }
       recalc_invoice_delivery_status: {
         Args: { _invoice_id: string }
         Returns: undefined
