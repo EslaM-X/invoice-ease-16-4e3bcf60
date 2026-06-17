@@ -741,6 +741,9 @@ export type Database = {
       }
       delivery_receipt_items: {
         Row: {
+          back_deducted_at: string | null
+          back_deducted_by_email: string | null
+          back_deducted_from_po: string | null
           color: string | null
           created_at: string
           id: string
@@ -752,6 +755,9 @@ export type Database = {
           serial_number: string | null
         }
         Insert: {
+          back_deducted_at?: string | null
+          back_deducted_by_email?: string | null
+          back_deducted_from_po?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -763,6 +769,9 @@ export type Database = {
           serial_number?: string | null
         }
         Update: {
+          back_deducted_at?: string | null
+          back_deducted_by_email?: string | null
+          back_deducted_from_po?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -3232,6 +3241,10 @@ export type Database = {
         Args: { _change: number; _product_id: string; _reason: string }
         Returns: string
       }
+      apply_back_deductions: {
+        Args: { p_actor_email: string; p_dri_ids: string[]; p_from_po: string }
+        Returns: Json
+      }
       apply_po_receipt: {
         Args: {
           items_in: Json
@@ -3380,6 +3393,23 @@ export type Database = {
       }
       is_company_member: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
+      list_pending_back_deductions: {
+        Args: { p_po_id: string }
+        Returns: {
+          color: string
+          current_stock: number
+          customer_name: string
+          dri_id: string
+          invoice_id: string
+          invoice_number: string
+          product_id: string
+          product_name: string
+          quantity: number
+          receipt_delivered_at: string
+          receipt_id: string
+          serial_number: string
+        }[]
+      }
       manual_reconcile_stock: {
         Args: { _new_qty: number; _product_id: string; _reason: string }
         Returns: number
