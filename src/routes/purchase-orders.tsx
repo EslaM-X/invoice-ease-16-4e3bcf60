@@ -1492,6 +1492,20 @@ function PODetailDialog({
       } as any);
       if (error) throw error;
       await audit("po_item_added", { product_id: p.id, name: p.name, qty, unit_cost_usd: unitUsd });
+      // Retro-update product cost when it differs from the current cost.
+      const oldCost = Number(p.cost_price_usd) || 0;
+      if (unitUsd > 0 && unitUsd !== oldCost) {
+        const { error: upErr } = await supabase
+          .from("products")
+          .update({ cost_price_usd: unitUsd } as any)
+          .eq("id", p.id);
+        if (!upErr) {
+          await audit("product_cost_retro_updated", {
+            from_po: poId,
+            updates: [{ product_id: p.id, name: p.name, old: oldCost, new: unitUsd }],
+          });
+        }
+      }
       // Recompute totals
       const newUsd = liveTotalUsd + qty * unitUsd;
       const newQty = liveTotalQty + qty;
