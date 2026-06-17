@@ -1350,3 +1350,202 @@ function InstallmentRow({
     </div>
   );
 }
+
+function BatchDetailsDialog({
+  receipt,
+  poItems,
+  poNumber,
+  open,
+  onOpenChange,
+}: {
+  receipt: ReceiptRow;
+  poItems: POItem[];
+  poNumber: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const lines = receipt.po_receipt_items ?? [];
+
+  // Build per-product summary with serial / color / before-after, comparing to PO ordered qty
+  const perProduct = useMemo(() => {
+    type Row = {
+      key: string;
+      product_id: string | null;
+      product_name: string;
+      serial_number: string | null;
+      color: string | null;
+      received_in_batch: number;
+      ordered: number;
+      stock_before: number | null;
+      stock_after: number | null;
+      delta: number;
+    };
+    const map = new Map<string, Row>();
+    lines.forEach((ri) => {
+      const key = ri.po_item_id || ri.product_id || ri.product_name;
+      const poItem = poItems.find(
+        (p) => p.id === ri.po_item_id || (ri.product_id && p.product_id === ri.product_id),
+      );
+      const existing = map.get(key);
+      const delta = (ri.stock_after ?? 0) - (ri.stock_before ?? 0);
+      if (existing) {
+        existing.received_in_batch += ri.quantity || 0;
+        existing.stock_after = ri.stock_after ?? existing.stock_after;
+        existing.delta += delta;
+      } else {
+        map.set(key, {
+          key,
+          product_id: ri.product_id,
+          product_name: ri.product_name,
+          serial_number: ri.serial_number ?? poItem?.serial_number ?? null,
+          color: ri.color ?? poItem?.color ?? null,
+          received_in_batch: ri.quantity || 0,
+          ordered: poItem?.quantity ?? 0,
+          stock_before: ri.stock_before,
+          stock_after: ri.stock_after,
+          delta,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [lines, poItems]);
+
+  const totalDelta = perProduct.reduce((s, r) => s + r.delta, 0);
+  const isHistorical = (receipt.notes ?? "").toLowerCase().includes("historical") ||
+    (receipt.notes ?? "").includes("تاريخية");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <Package className="h-5 w-5 text-emerald-600" />
+            {isAr ? "تفاصيل دفعة الاستلام" : "Receipt batch details"}
+            <span className="rounded-md bg-emerald-600 px-2 py-0.5 font-mono text-xs font-bold text-white">
+              {receipt.receipt_code || `#${receipt.receipt_number}`}
+            </span>
+            {poNumber && (
+              <span className="text-xs font-normal text-muted-foreground">
+                · {isAr ? "أمر شراء" : "PO"} {poNumber}
+              </span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Meta panel */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Fact
+              label={isAr ? "نوع التحديث" : "Update type"}
+              value={isHistorical ? (isAr ? "دفعة تاريخية" : "Historical receipt") : (isAr ? "استلام عادي" : "Regular receipt")}
+            />
+            <Fact
+              label={isAr ? "التاريخ والوقت" : "Date & time"}
+              value={fmtDateTime(receipt.created_at, lang)}
+            />
+            <Fact
+              label={isAr ? "نفّذها" : "Performed by"}
+              value={receipt.actor_email || "—"}
+            />
+            <Fact
+              label={isAr ? "إجمالي الكميات" : "Total qty"}
+              value={`+${receipt.total_qty}`}
+            />
+          </div>
+
+          {/* Inventory impact */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-md border bg-background px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {isAr ? "بنود الدفعة" : "Batch lines"}
+              </div>
+              <div className="text-lg font-bold tabular-nums">{lines.length}</div>
+            </div>
+            <div className="rounded-md border bg-background px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {isAr ? "منتجات مختلفة" : "Distinct products"}
+              </div>
+              <div className="text-lg font-bold tabular-nums">{perProduct.length}</div>
+            </div>
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-emerald-700">
+                {isAr ? "إجمالي تغيير المخزون" : "Total stock change"}
+              </div>
+              <div className={`text-lg font-bold tabular-nums ${totalDelta >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                {totalDelta >= 0 ? "+" : ""}{totalDelta}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes / reason */}
+          {receipt.notes && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                {isAr ? "سبب / ملاحظات" : "Reason / notes"}
+              </div>
+              <div className="whitespace-pre-wrap text-sm">{receipt.notes}</div>
+            </div>
+          )}
+
+          {/* Per-product breakdown */}
+          <div className="rounded-md border bg-background">
+            <div className="border-b bg-muted/40 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              {isAr ? "تفاصيل المنتجات: قبل وبعد" : "Per-product breakdown: before & after"}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-xs">
+                <thead className="bg-muted/20 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
+                    <th className="p-2 text-start">{isAr ? "السيريال" : "Serial #"}</th>
+                    <th className="p-2 text-start">{isAr ? "اللون" : "Color"}</th>
+                    <th className="p-2 text-center">{isAr ? "في الدفعة" : "In batch"}</th>
+                    <th className="p-2 text-center">{isAr ? "إجمالي مطلوب" : "Ordered"}</th>
+                    <th className="p-2 text-center">{isAr ? "مخزون قبل" : "Stock before"}</th>
+                    <th className="p-2 text-center">{isAr ? "مخزون بعد" : "Stock after"}</th>
+                    <th className="p-2 text-center">{isAr ? "الفرق" : "Δ"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {perProduct.map((r) => (
+                    <tr key={r.key}>
+                      <td className="p-2 font-medium">{r.product_name}</td>
+                      <td className="p-2 font-mono text-[10px] text-muted-foreground">
+                        {r.serial_number || "—"}
+                      </td>
+                      <td className="p-2">
+                        {r.color ? (
+                          <span className="inline-flex items-center gap-1">
+                            <ColorSwatch value={r.color} size="sm" />
+                            <span className="text-[10px]">{r.color}</span>
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="p-2 text-center font-bold tabular-nums text-emerald-700">
+                        +{r.received_in_batch}
+                      </td>
+                      <td className="p-2 text-center tabular-nums text-muted-foreground">{r.ordered || "—"}</td>
+                      <td className="p-2 text-center tabular-nums text-muted-foreground">{r.stock_before ?? "—"}</td>
+                      <td className="p-2 text-center font-semibold tabular-nums">{r.stock_after ?? "—"}</td>
+                      <td className={`p-2 text-center font-bold tabular-nums ${r.delta >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                        {r.delta >= 0 ? "+" : ""}{r.delta}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {isAr ? "إغلاق" : "Close"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
