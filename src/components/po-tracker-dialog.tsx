@@ -174,6 +174,12 @@ export function POTrackerDialog({
   const [tlFrom, setTlFrom] = useState("");
   const [tlTo, setTlTo] = useState("");
 
+  // Batch list filters
+  const [batchSearch, setBatchSearch] = useState("");
+  const [batchActor, setBatchActor] = useState("");
+  const [batchFrom, setBatchFrom] = useState("");
+  const [batchTo, setBatchTo] = useState("");
+
   // Per-user / per-PO read state for timeline events (localStorage)
   const readKey = useMemo(
     () => (user?.id && poId ? `po-tl-read:${user.id}:${poId}` : ""),
