@@ -1075,20 +1075,44 @@ function ReceiveDialog({
   const [notes, setNotes] = useState("");
   const [discount, setDiscount] = useState<number>(0);
   const [stockNow, setStockNow] = useState<Record<string, number>>({});
+  const [productMeta, setProductMeta] = useState<Record<string, { collection: string | null }>>({});
   const [busy, setBusy] = useState(false);
+  const [colorFilter, setColorFilter] = useState<string>("all");
+  const [collectionFilter, setCollectionFilter] = useState<string>("all");
 
-  // Live current stock per product (the "before" the user verifies against)
+  // Live current stock + collection per product (the "before" the user verifies against)
   useEffect(() => {
     if (!open) return;
     const ids = Array.from(new Set(openItems.map((i) => i.product_id)));
-    if (ids.length === 0) { setStockNow({}); return; }
+    if (ids.length === 0) { setStockNow({}); setProductMeta({}); return; }
     (async () => {
-      const { data } = await supabase.from("products").select("id,stock_quantity").in("id", ids);
+      const { data } = await supabase.from("products").select("id,stock_quantity,collection").in("id", ids);
       const m: Record<string, number> = {};
-      (data ?? []).forEach((p: any) => { m[p.id] = p.stock_quantity; });
+      const meta: Record<string, { collection: string | null }> = {};
+      (data ?? []).forEach((p: any) => { m[p.id] = p.stock_quantity; meta[p.id] = { collection: p.collection ?? null }; });
       setStockNow(m);
+      setProductMeta(meta);
     })();
   }, [open, openItems]);
+
+  const availableColors = useMemo(() => {
+    const s = new Set<string>();
+    openItems.forEach((i) => { if (i.color) s.add(i.color); });
+    return Array.from(s).sort();
+  }, [openItems]);
+  const availableCollections = useMemo(() => {
+    const s = new Set<string>();
+    openItems.forEach((i) => { const c = productMeta[i.product_id]?.collection; if (c) s.add(c); });
+    return Array.from(s).sort();
+  }, [openItems, productMeta]);
+
+  const visibleItems = useMemo(() => {
+    return openItems.filter((i) => {
+      if (colorFilter !== "all" && (i.color ?? "") !== colorFilter) return false;
+      if (collectionFilter !== "all" && (productMeta[i.product_id]?.collection ?? "") !== collectionFilter) return false;
+      return true;
+    });
+  }, [openItems, colorFilter, collectionFilter, productMeta]);
 
   const totalRemaining = openItems.reduce((s, i) => s + remainingMap[i.id], 0);
   const totalRecv = openItems.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
