@@ -44,6 +44,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
 import { Route as CallCenterRouteImport } from './routes/call-center'
+import { Route as BackDeductionReportRouteImport } from './routes/back-deduction-report'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditLogRouteImport } from './routes/audit-log'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -244,6 +245,11 @@ const CallCenterRoute = CallCenterRouteImport.update({
   path: '/call-center',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BackDeductionReportRoute = BackDeductionReportRouteImport.update({
+  id: '/back-deduction-report',
+  path: '/back-deduction-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -375,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
+  '/back-deduction-report': typeof BackDeductionReportRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
@@ -436,6 +443,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
+  '/back-deduction-report': typeof BackDeductionReportRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
@@ -498,6 +506,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
+  '/back-deduction-report': typeof BackDeductionReportRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
@@ -561,6 +570,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit-log'
     | '/auth'
+    | '/back-deduction-report'
     | '/call-center'
     | '/call-center-reports'
     | '/customers'
@@ -622,6 +632,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit-log'
     | '/auth'
+    | '/back-deduction-report'
     | '/call-center'
     | '/call-center-reports'
     | '/customers'
@@ -683,6 +694,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit-log'
     | '/auth'
+    | '/back-deduction-report'
     | '/call-center'
     | '/call-center-reports'
     | '/customers'
@@ -745,6 +757,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuditLogRoute: typeof AuditLogRoute
   AuthRoute: typeof AuthRoute
+  BackDeductionReportRoute: typeof BackDeductionReportRoute
   CallCenterRoute: typeof CallCenterRoute
   CallCenterReportsRoute: typeof CallCenterReportsRoute
   CustomersRoute: typeof CustomersRoute
@@ -1049,6 +1062,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CallCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/back-deduction-report': {
+      id: '/back-deduction-report'
+      path: '/back-deduction-report'
+      fullPath: '/back-deduction-report'
+      preLoaderRoute: typeof BackDeductionReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -1225,6 +1245,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuditLogRoute: AuditLogRoute,
   AuthRoute: AuthRoute,
+  BackDeductionReportRoute: BackDeductionReportRoute,
   CallCenterRoute: CallCenterRoute,
   CallCenterReportsRoute: CallCenterReportsRoute,
   CustomersRoute: CustomersRoute,
