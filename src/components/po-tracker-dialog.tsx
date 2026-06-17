@@ -168,6 +168,7 @@ export function POTrackerDialog({
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [historicalOpen, setHistoricalOpen] = useState(false);
   const [detailReceipt, setDetailReceipt] = useState<ReceiptRow | null>(null);
+  const [backDeductOpen, setBackDeductOpen] = useState(false);
 
   // Timeline filters
   const [tlType, setTlType] = useState<"all" | "status" | "shipment" | "historical">("all");
@@ -1008,7 +1009,28 @@ export function POTrackerDialog({
           items={items}
           open={receiveOpen}
           onOpenChange={setReceiveOpen}
-          onDone={() => { setReceiveOpen(false); load(); }}
+          onDone={async () => {
+            setReceiveOpen(false);
+            // After a receipt is recorded, check for historical delivery receipts
+            // that haven't been deducted from stock yet (pre-system sales).
+            try {
+              const { data } = await (supabase as any).rpc("list_pending_back_deductions", { p_po_id: po.id });
+              if (Array.isArray(data) && data.length > 0) {
+                setBackDeductOpen(true);
+              }
+            } catch { /* ignore */ }
+            load();
+          }}
+        />
+      )}
+
+      {backDeductOpen && po && (
+        <BackDeductReviewDialog
+          poId={po.id}
+          poNumber={po.shipment_code || po.po_number}
+          open={backDeductOpen}
+          onOpenChange={setBackDeductOpen}
+          onDone={() => { setBackDeductOpen(false); load(); }}
         />
       )}
 
@@ -1624,6 +1646,209 @@ function BatchDetailsDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {isAr ? "إغلاق" : "Close"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type PendingBackDeductRow = {
+  dri_id: string;
+  receipt_id: string;
+  receipt_delivered_at: string;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  customer_name: string | null;
+  product_id: string;
+  product_name: string;
+  serial_number: string | null;
+  color: string | null;
+  quantity: number;
+  current_stock: number;
+};
+
+function BackDeductReviewDialog({
+  poId,
+  poNumber,
+  open,
+  onOpenChange,
+  onDone,
+}: {
+  poId: string;
+  poNumber: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onDone: () => void;
+}) {
+  const { user } = useAuth();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const [rows, setRows] = useState<PendingBackDeductRow[]>([]);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    (async () => {
+      const { data, error } = await (supabase as any).rpc("list_pending_back_deductions", { p_po_id: poId });
+      if (error) {
+        toast.error(error.message);
+        setRows([]);
+      } else {
+        const list = (data as PendingBackDeductRow[]) ?? [];
+        setRows(list);
+        setSelected(Object.fromEntries(list.map((r) => [r.dri_id, true])));
+      }
+      setLoading(false);
+    })();
+  }, [open, poId]);
+
+  const totalSelectedQty = useMemo(
+    () => rows.filter((r) => selected[r.dri_id]).reduce((s, r) => s + (r.quantity || 0), 0),
+    [rows, selected],
+  );
+  const selectedCount = useMemo(
+    () => rows.filter((r) => selected[r.dri_id]).length,
+    [rows, selected],
+  );
+  const allSelected = rows.length > 0 && rows.every((r) => selected[r.dri_id]);
+
+  const toggleAll = () => {
+    const next = !allSelected;
+    setSelected(Object.fromEntries(rows.map((r) => [r.dri_id, next])));
+  };
+
+  const confirm = async () => {
+    if (!user) return;
+    const ids = rows.filter((r) => selected[r.dri_id]).map((r) => r.dri_id);
+    if (ids.length === 0) {
+      onOpenChange(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("apply_back_deductions", {
+        p_dri_ids: ids,
+        p_from_po: poId,
+        p_actor_email: user.email ?? "",
+      });
+      if (error) throw error;
+      const items = (data as any)?.items ?? 0;
+      const qty = (data as any)?.total_qty ?? 0;
+      toast.success(isAr
+        ? `تم خصم ${qty} قطعة من ${items} محضر استلام تاريخي`
+        : `Deducted ${qty} units across ${items} historical receipts`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <AlertCircle className="h-5 w-5 text-amber-600" />
+            {isAr ? "خصم محاضر استلام تاريخية" : "Back-deduct historical delivery receipts"}
+            <span className="font-mono text-sm text-muted-foreground">{poNumber}</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 text-xs">
+          {isAr
+            ? "تم العثور على بيع/تسليم سابق لمنتجات هذه الشحنة لم يُخصم بعد من المخزون. اختر اللي تأكدت من تسليمه فعلاً، وسيُخصم من رصيد المخزون مع تسجيل سجل تدقيق كامل."
+            : "We found earlier deliveries/sales for products in this PO that haven't been deducted from stock yet. Tick the rows that were actually delivered — they will be deducted from stock and recorded in the audit log."}
+        </div>
+
+        {loading ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">{isAr ? "جارٍ التحميل..." : "Loading..."}</div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+            {isAr ? "لا توجد محاضر استلام تاريخية مطلوب خصمها." : "No historical receipts to deduct."}
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
+                {allSelected ? (isAr ? "إلغاء تحديد الكل" : "Unselect all") : (isAr ? "تحديد الكل" : "Select all")}
+              </Button>
+              <div className="text-muted-foreground">
+                {selectedCount} / {rows.length} {isAr ? "محضر" : "receipts"} · {isAr ? "إجمالي" : "Total"}: <b className="text-foreground tabular-nums">{totalSelectedQty}</b>
+              </div>
+            </div>
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40">
+                  <tr>
+                    <th className="p-2 w-8"></th>
+                    <th className="p-2 text-start">{isAr ? "التاريخ" : "Date"}</th>
+                    <th className="p-2 text-start">{isAr ? "الفاتورة / العميل" : "Invoice / Customer"}</th>
+                    <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
+                    <th className="p-2 text-center">{isAr ? "الكمية" : "Qty"}</th>
+                    <th className="p-2 text-center">{isAr ? "المخزون الحالي" : "Stock now"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {rows.map((r) => {
+                    const after = (r.current_stock || 0) - r.quantity;
+                    const willGoNegative = after < 0;
+                    return (
+                      <tr key={r.dri_id} className={selected[r.dri_id] ? "bg-amber-50/40 dark:bg-amber-500/5" : ""}>
+                        <td className="p-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!!selected[r.dri_id]}
+                            onChange={(e) => setSelected((s) => ({ ...s, [r.dri_id]: e.target.checked }))}
+                            className="h-4 w-4 cursor-pointer"
+                          />
+                        </td>
+                        <td className="p-2 whitespace-nowrap text-[11px]">
+                          {fmtDateTime(r.receipt_delivered_at, lang)}
+                        </td>
+                        <td className="p-2 text-[11px]">
+                          <div className="font-mono">{r.invoice_number ?? "—"}</div>
+                          <div className="text-muted-foreground truncate max-w-[180px]">{r.customer_name ?? "—"}</div>
+                        </td>
+                        <td className="p-2 text-[11px]">
+                          <div className="font-semibold truncate max-w-[220px]">{r.product_name}</div>
+                          <div className="text-muted-foreground flex flex-wrap items-center gap-2">
+                            {r.serial_number && <span className="font-mono">{r.serial_number}</span>}
+                            {r.color && (
+                              <span className="inline-flex items-center gap-1">
+                                <ColorSwatch value={r.color} size="xs" />
+                                {r.color}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2 text-center font-bold tabular-nums text-rose-700">−{r.quantity}</td>
+                        <td className={`p-2 text-center tabular-nums ${willGoNegative && selected[r.dri_id] ? "text-rose-700 font-bold" : "text-muted-foreground"}`}>
+                          {r.current_stock} → {after}
+                          {willGoNegative && selected[r.dri_id] && (
+                            <div className="text-[10px] text-rose-700">{isAr ? "سيصبح سالب!" : "Will go negative!"}</div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            {isAr ? "تخطّي" : "Skip"}
+          </Button>
+          <Button onClick={confirm} disabled={busy || loading || selectedCount === 0} className="bg-amber-600 hover:bg-amber-700">
+            {isAr ? `خصم ${selectedCount} محضر (${totalSelectedQty} قطعة)` : `Deduct ${selectedCount} receipts (${totalSelectedQty} units)`}
           </Button>
         </DialogFooter>
       </DialogContent>

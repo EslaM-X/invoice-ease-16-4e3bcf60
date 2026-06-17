@@ -1370,6 +1370,7 @@ function PODetailDialog({
     setSavingItems(true);
     try {
       const changes: any[] = [];
+      const productCostUpdates: { product_id: string; name: string; old: number; new: number }[] = [];
       // Update changed items
       for (const it of items) {
         const e = itemEdits[it.id];
@@ -1387,6 +1388,29 @@ function PODetailDialog({
           before: { qty: it.quantity, unit: Number(it.unit_cost_usd) },
           after: { qty: e.qty, unit: e.unit },
         });
+        // Retro-update the product's cost_price_usd when unit cost changed.
+        if (it.product_id && Number(e.unit) !== Number(it.unit_cost_usd)) {
+          const { data: prod } = await supabase
+            .from("products")
+            .select("cost_price_usd")
+            .eq("id", it.product_id)
+            .maybeSingle();
+          const oldCost = Number((prod as any)?.cost_price_usd) || 0;
+          if (Number(e.unit) !== oldCost) {
+            const { error: upErr } = await supabase
+              .from("products")
+              .update({ cost_price_usd: e.unit } as any)
+              .eq("id", it.product_id);
+            if (!upErr) {
+              productCostUpdates.push({
+                product_id: it.product_id,
+                name: it.product_name,
+                old: oldCost,
+                new: Number(e.unit),
+              });
+            }
+          }
+        }
       }
       // Header edits
       const headerPatch: any = {};
@@ -1403,9 +1427,16 @@ function PODetailDialog({
         .eq("id", poId);
       if (e2) throw e2;
       if (changes.length) await audit("po_items_updated", { changes });
+      if (productCostUpdates.length) await audit("product_cost_retro_updated", { from_po: poId, updates: productCostUpdates });
       if (headerDirty)
         await audit("po_header_updated", { supplier: supplierEdit, notes: notesEdit });
-      toast.success(isAr ? "تم حفظ التعديلات" : "Changes saved");
+      toast.success(
+        productCostUpdates.length > 0
+          ? (isAr
+              ? `تم حفظ التعديلات وتحديث تكلفة ${productCostUpdates.length} منتج بأثر رجعي`
+              : `Saved · ${productCostUpdates.length} product cost(s) updated retroactively`)
+          : (isAr ? "تم حفظ التعديلات" : "Changes saved"),
+      );
       load();
     } catch (err: any) {
       toast.error(err.message || "Error");
@@ -1461,6 +1492,20 @@ function PODetailDialog({
       } as any);
       if (error) throw error;
       await audit("po_item_added", { product_id: p.id, name: p.name, qty, unit_cost_usd: unitUsd });
+      // Retro-update product cost when it differs from the current cost.
+      const oldCost = Number(p.cost_price_usd) || 0;
+      if (unitUsd > 0 && unitUsd !== oldCost) {
+        const { error: upErr } = await supabase
+          .from("products")
+          .update({ cost_price_usd: unitUsd } as any)
+          .eq("id", p.id);
+        if (!upErr) {
+          await audit("product_cost_retro_updated", {
+            from_po: poId,
+            updates: [{ product_id: p.id, name: p.name, old: oldCost, new: unitUsd }],
+          });
+        }
+      }
       // Recompute totals
       const newUsd = liveTotalUsd + qty * unitUsd;
       const newQty = liveTotalQty + qty;
