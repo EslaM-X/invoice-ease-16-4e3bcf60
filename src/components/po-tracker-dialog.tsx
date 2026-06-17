@@ -1009,7 +1009,28 @@ export function POTrackerDialog({
           items={items}
           open={receiveOpen}
           onOpenChange={setReceiveOpen}
-          onDone={() => { setReceiveOpen(false); load(); }}
+          onDone={async () => {
+            setReceiveOpen(false);
+            // After a receipt is recorded, check for historical delivery receipts
+            // that haven't been deducted from stock yet (pre-system sales).
+            try {
+              const { data } = await (supabase as any).rpc("list_pending_back_deductions", { p_po_id: po.id });
+              if (Array.isArray(data) && data.length > 0) {
+                setBackDeductOpen(true);
+              }
+            } catch { /* ignore */ }
+            load();
+          }}
+        />
+      )}
+
+      {backDeductOpen && po && (
+        <BackDeductReviewDialog
+          poId={po.id}
+          poNumber={po.shipment_code || po.po_number}
+          open={backDeductOpen}
+          onOpenChange={setBackDeductOpen}
+          onDone={() => { setBackDeductOpen(false); load(); }}
         />
       )}
 
