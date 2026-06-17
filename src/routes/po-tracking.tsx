@@ -195,6 +195,30 @@ function POTrackingPage() {
           />
         ))}
       </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground me-1">
+          {isAr ? "حالة الاستلام:" : "Receipt:"}
+        </span>
+        <FilterChip active={receiptFilter === "all"} onClick={() => setReceiptFilter("all")} label={isAr ? "الكل" : "All"} count={receiptCounts.all} />
+        <button
+          onClick={() => setReceiptFilter("fully")}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${receiptFilter === "fully" ? "bg-emerald-600 text-white border-emerald-600" : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/20"}`}
+        >
+          {isAr ? "مستلم بالكامل" : "Fully received"} <span className="opacity-70">({receiptCounts.fully})</span>
+        </button>
+        <button
+          onClick={() => setReceiptFilter("partial")}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${receiptFilter === "partial" ? "bg-amber-500 text-white border-amber-500" : "bg-amber-500/10 text-amber-700 border-amber-500/30 hover:bg-amber-500/20"}`}
+        >
+          {isAr ? "استلام جزئي" : "Partially received"} <span className="opacity-70">({receiptCounts.partial})</span>
+        </button>
+        <button
+          onClick={() => setReceiptFilter("none")}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${receiptFilter === "none" ? "bg-rose-500 text-white border-rose-500" : "bg-rose-500/10 text-rose-700 border-rose-500/30 hover:bg-rose-500/20"}`}
+        >
+          {isAr ? "غير مستلم" : "Not received"} <span className="opacity-70">({receiptCounts.none})</span>
+        </button>
+      </div>
 
       {/* List */}
       <Card className="overflow-hidden">
