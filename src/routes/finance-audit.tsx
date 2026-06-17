@@ -104,7 +104,26 @@ function FinanceAuditPage() {
       action: r.event_type,
       details: r.details,
     }));
-    return [...a, ...e].sort((x, y) => +new Date(y.created_at) - +new Date(x.created_at));
+    // Deduplicate: when both an `invoice_events` row and an `audit_log` row
+    // describe the same invoice change within a 30-second window, keep only
+    // the invoice_event one (richer, finance-friendly payload).
+    const eventKeys = new Set(
+      e
+        .filter((r) => normalizedAction(r.action) === "edited" && r.entity_id)
+        .map(
+          (r) => `${r.entity_id}|${Math.floor(+new Date(r.created_at) / 30000)}`,
+        ),
+    );
+    const filteredAudit = a.filter((r) => {
+      if (r.entity_type !== "invoices") return true;
+      if (normalizedAction(r.action) !== "edited") return true;
+      if (!r.entity_id) return true;
+      const k = `${r.entity_id}|${Math.floor(+new Date(r.created_at) / 30000)}`;
+      return !eventKeys.has(k);
+    });
+    return [...filteredAudit, ...e].sort(
+      (x, y) => +new Date(y.created_at) - +new Date(x.created_at),
+    );
   }, [auditRows, eventRows]);
 
   const filtered = useMemo(() => {
