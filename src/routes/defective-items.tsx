@@ -515,18 +515,31 @@ function AddDialog({ products, onDone, isAr }: { products: ProductOpt[]; onDone:
 
 function ReturnDialog({ row, onClose, onDone, isAr }: { row: DefectiveRow; onClose: () => void; onDone: () => void; isAr: boolean }) {
   const remaining = row.quantity - row.returned_quantity;
+  const RETURN_REASONS = isAr
+    ? ["تم الإصلاح", "العميل أعاد المنتج", "انتهت فترة العرض/المعرض", "رجوع من العينة", "خطأ في التسجيل", "أخرى"]
+    : ["Repaired", "Customer returned it", "Display/showroom period ended", "Sample returned", "Logged by mistake", "Other"];
   const [qty, setQty] = useState<number>(remaining);
+  const [reasonPreset, setReasonPreset] = useState<string>(RETURN_REASONS[0]);
+  const [reasonOther, setReasonOther] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const isOther = reasonPreset === RETURN_REASONS[RETURN_REASONS.length - 1];
+  const finalReason = (isOther ? reasonOther : reasonPreset).trim();
+
   const submit = async () => {
     if (qty <= 0 || qty > remaining) return toast.error(isAr ? "كمية غير صحيحة" : "Invalid quantity");
+    if (!finalReason) return toast.error(isAr ? "سبب الإرجاع مطلوب" : "Return reason is required");
     setBusy(true);
     try {
+      // Combine reason + optional notes so the audit trail keeps both.
+      const combined = notes.trim()
+        ? `${finalReason} — ${notes.trim()}`
+        : finalReason;
       const { error } = await (supabase as any).rpc("return_defective_item", {
         _defective_id: row.id,
         _quantity: qty,
-        _notes: notes.trim() || null,
+        _notes: combined,
       });
       if (error) throw error;
       toast.success(isAr ? "تم إرجاع الكمية للمخزون" : "Returned to stock");
@@ -548,7 +561,13 @@ function ReturnDialog({ row, onClose, onDone, isAr }: { row: DefectiveRow; onClo
               <span className="font-semibold">{row.product_name}</span>
               {typeBadge((row.item_type ?? "defective") as ItemType, isAr)}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">{isAr ? `متبقي للإرجاع: ${remaining} من ${row.quantity}` : `${remaining} of ${row.quantity} can be returned`}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {isAr ? `متبقي للإرجاع: ${remaining} من ${row.quantity}` : `${remaining} of ${row.quantity} can be returned`}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              {isAr ? "سبب الخصم الأصلي: " : "Original deduction reason: "}
+              <span className="font-medium text-foreground">{row.reason}</span>
+            </div>
           </div>
           <div>
             <Label className="text-xs">{isAr ? "الكمية المراد إرجاعها" : "Quantity to return"}</Label>
@@ -559,13 +578,35 @@ function ReturnDialog({ row, onClose, onDone, isAr }: { row: DefectiveRow; onClo
             </div>
           </div>
           <div>
-            <Label className="text-xs">{isAr ? "ملاحظات الإرجاع" : "Return notes"}</Label>
-            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={isAr ? "مثلاً: تم الإصلاح، حالة المنتج…" : "e.g. Repaired, condition…"} />
+            <Label className="text-xs">
+              {isAr ? "سبب الإرجاع " : "Return reason "}
+              <span className="text-rose-600">*</span>
+            </Label>
+            <Select value={reasonPreset} onValueChange={setReasonPreset}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {RETURN_REASONS.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isOther && (
+              <Input
+                className="mt-2"
+                value={reasonOther}
+                onChange={(e) => setReasonOther(e.target.value)}
+                placeholder={isAr ? "اكتب السبب…" : "Type a reason…"}
+              />
+            )}
+          </div>
+          <div>
+            <Label className="text-xs">{isAr ? "ملاحظات إضافية (اختياري)" : "Additional notes (optional)"}</Label>
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={isAr ? "تفاصيل، حالة المنتج…" : "Details, condition…"} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>{isAr ? "إلغاء" : "Cancel"}</Button>
-          <Button onClick={submit} disabled={busy} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={submit} disabled={busy || !finalReason} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
             <RotateCcw className="h-4 w-4" />{isAr ? "تأكيد الإرجاع" : "Confirm return"}
           </Button>
         </DialogFooter>
