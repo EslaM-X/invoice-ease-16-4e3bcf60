@@ -174,6 +174,12 @@ export function POTrackerDialog({
   const [tlFrom, setTlFrom] = useState("");
   const [tlTo, setTlTo] = useState("");
 
+  // Batch list filters
+  const [batchSearch, setBatchSearch] = useState("");
+  const [batchActor, setBatchActor] = useState("");
+  const [batchFrom, setBatchFrom] = useState("");
+  const [batchTo, setBatchTo] = useState("");
+
   // Per-user / per-PO read state for timeline events (localStorage)
   const readKey = useMemo(
     () => (user?.id && poId ? `po-tl-read:${user.id}:${poId}` : ""),
@@ -261,6 +267,31 @@ export function POTrackerDialog({
   const totalRemaining = Math.max(0, totalOrdered - totalReceived);
   const isPartial = totalReceived > 0 && totalRemaining > 0;
   const canReceive = (po?.status === "shipped" || po?.status === "in_warehouse") && totalRemaining > 0 && (isAdmin || isPurchasing);
+
+  const batchActors = useMemo(
+    () => Array.from(new Set(receipts.map((r) => r.actor_email).filter(Boolean) as string[])).sort(),
+    [receipts],
+  );
+  const filteredReceipts = useMemo(() => {
+    const q = batchSearch.trim().toLowerCase();
+    const from = batchFrom ? new Date(batchFrom).getTime() : null;
+    const to = batchTo ? new Date(batchTo).getTime() + 24 * 3600 * 1000 - 1 : null;
+    return receipts.filter((r) => {
+      if (batchActor && (r.actor_email ?? "") !== batchActor) return false;
+      const t = new Date(r.created_at).getTime();
+      if (from !== null && t < from) return false;
+      if (to !== null && t > to) return false;
+      if (!q) return true;
+      const code = (r.receipt_code || `#${r.receipt_number}`).toLowerCase();
+      return (
+        code.includes(q) ||
+        String(r.receipt_number).includes(q) ||
+        (r.actor_email ?? "").toLowerCase().includes(q) ||
+        (r.notes ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [receipts, batchSearch, batchActor, batchFrom, batchTo]);
+  const batchFiltersActive = !!(batchSearch || batchActor || batchFrom || batchTo);
 
   const canTransition = isAdmin || isPurchasing || isCFO;
   const canCancel = isAdmin;
@@ -819,9 +850,70 @@ export function POTrackerDialog({
                           </table>
                         </div>
                       </div>
-                      {/* Batch list (existing detailed view) */}
-                    <div className="space-y-2">
-                      {receipts.map((r) => (
+                      {/* Batch list toolbar: search / actor / date range */}
+                      {receipts.length > 1 && (
+                        <div className="rounded-md border bg-background p-2 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="relative flex-1 min-w-[180px]">
+                              <Search className="pointer-events-none absolute start-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                value={batchSearch}
+                                onChange={(e) => setBatchSearch(e.target.value)}
+                                placeholder={isAr ? "ابحث برقم / كود الدفعة / ملاحظة / مستخدم" : "Search by # / code / note / user"}
+                                className="h-7 ps-7 text-xs"
+                              />
+                            </div>
+                            <select
+                              value={batchActor}
+                              onChange={(e) => setBatchActor(e.target.value)}
+                              className="h-7 rounded-md border bg-background px-2 text-xs"
+                            >
+                              <option value="">{isAr ? "كل المستخدمين" : "All users"}</option>
+                              {batchActors.map((a) => (
+                                <option key={a} value={a}>{a}</option>
+                              ))}
+                            </select>
+                            <Input
+                              type="date"
+                              value={batchFrom}
+                              onChange={(e) => setBatchFrom(e.target.value)}
+                              className="h-7 w-[140px] text-xs"
+                              title={isAr ? "من تاريخ" : "From date"}
+                            />
+                            <Input
+                              type="date"
+                              value={batchTo}
+                              onChange={(e) => setBatchTo(e.target.value)}
+                              className="h-7 w-[140px] text-xs"
+                              title={isAr ? "إلى تاريخ" : "To date"}
+                            />
+                            {batchFiltersActive && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => { setBatchSearch(""); setBatchActor(""); setBatchFrom(""); setBatchTo(""); }}
+                              >
+                                {isAr ? "مسح الفلاتر" : "Clear"}
+                              </Button>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {filteredReceipts.length} / {receipts.length} {isAr ? "دفعة ظاهرة" : "batches visible"}
+                          </div>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                      {filteredReceipts.length === 0 && batchFiltersActive && (
+                        <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                          {isAr ? "لا توجد دفعات مطابقة للفلاتر." : "No batches match the filters."}
+                        </div>
+                      )}
+                      {filteredReceipts.map((r) => {
+                        const lines = r.po_receipt_items ?? [];
+                        const distinctProducts = new Set(lines.map((ri) => ri.product_id ?? ri.product_name)).size;
+                        const stockDelta = lines.reduce((s, ri) => s + ((ri.stock_after ?? 0) - (ri.stock_before ?? 0)), 0);
+                        return (
                         <div key={r.id} className="rounded-md border bg-muted/20 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2 text-sm font-semibold">
@@ -834,7 +926,28 @@ export function POTrackerDialog({
                               {r.actor_email ? ` · ${r.actor_email}` : ""}
                             </div>
                           </div>
-                          {r.notes && <div className="mt-1 text-xs italic text-muted-foreground">{r.notes}</div>}
+                          {/* Per-batch inventory impact summary */}
+                          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div className="rounded border bg-background px-2 py-1.5">
+                              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{isAr ? "بنود" : "Lines"}</div>
+                              <div className="text-sm font-bold tabular-nums">{lines.length}</div>
+                            </div>
+                            <div className="rounded border bg-background px-2 py-1.5">
+                              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{isAr ? "منتجات متميزة" : "Products"}</div>
+                              <div className="text-sm font-bold tabular-nums">{distinctProducts}</div>
+                            </div>
+                            <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5">
+                              <div className="text-[9px] uppercase tracking-wider text-emerald-700">{isAr ? "إضافة للمخزون" : "Stock added"}</div>
+                              <div className="text-sm font-bold tabular-nums text-emerald-700">+{stockDelta}</div>
+                            </div>
+                            <div className="rounded border bg-background px-2 py-1.5">
+                              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{isAr ? "متبقي بعد الدفعة" : "Remaining after"}</div>
+                              <div className="text-sm font-bold tabular-nums text-amber-700">
+                                {Math.max(0, totalOrdered - receipts.filter((x) => x.receipt_number <= r.receipt_number).reduce((s, x) => s + (x.total_qty || 0), 0))}
+                              </div>
+                            </div>
+                          </div>
+                          {r.notes && <div className="mt-2 text-xs italic text-muted-foreground">{r.notes}</div>}
                           {Number(r.discount_amount ?? 0) > 0 && (
                             <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
                               {isAr ? "خصم داخلي" : "Internal discount"}: {Number(r.discount_amount).toFixed(2)}
@@ -842,7 +955,9 @@ export function POTrackerDialog({
                             </div>
                           )}
                           <div className="mt-2 space-y-1">
-                            {r.po_receipt_items?.map((ri) => (
+                            {lines.map((ri) => {
+                              const delta = (ri.stock_after ?? 0) - (ri.stock_before ?? 0);
+                              return (
                               <div key={ri.id} className="flex flex-wrap items-center gap-2 rounded border bg-background px-2 py-1 text-xs">
                                 <span className="flex-1 truncate font-medium">{ri.product_name}</span>
                                 {ri.color && (
@@ -854,12 +969,17 @@ export function POTrackerDialog({
                                 <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold tabular-nums text-emerald-700">+{ri.quantity}</span>
                                 <span className="tabular-nums text-muted-foreground">
                                   {ri.stock_before ?? 0} → <span className="font-semibold text-foreground">{ri.stock_after ?? 0}</span>
+                                  <span className={`ms-1 font-bold ${delta >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                    ({delta >= 0 ? "+" : ""}{delta})
+                                  </span>
                                 </span>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     </div>
                   )}

@@ -38,9 +38,11 @@ function POTrackingPage() {
   const isAr = lang === "ar";
 
   const [pos, setPos] = useState<any[]>([]);
+  const [poProgress, setPoProgress] = useState<Record<string, { ordered: number; received: number }>>({});
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [shipFilter, setShipFilter] = useState<ShipmentType | "all">("all");
+  const [receiptFilter, setReceiptFilter] = useState<"all" | "fully" | "partial" | "none">("all");
   const [trackId, setTrackId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,22 +58,50 @@ function POTrackingPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(300);
-    setPos((data as any) ?? []);
+    const list = (data as any[]) ?? [];
+    setPos(list);
+    // Aggregate ordered/received per PO for the receipt-status filter
+    const ids = list.map((p) => p.id);
+    if (ids.length) {
+      const { data: items } = await (supabase as any)
+        .from("purchase_order_items")
+        .select("po_id,quantity,received_qty")
+        .in("po_id", ids);
+      const agg: Record<string, { ordered: number; received: number }> = {};
+      for (const it of (items as any[]) ?? []) {
+        const k = it.po_id as string;
+        const e = agg[k] ?? { ordered: 0, received: 0 };
+        e.ordered += Number(it.quantity) || 0;
+        e.received += Number(it.received_qty) || 0;
+        agg[k] = e;
+      }
+      setPoProgress(agg);
+    } else {
+      setPoProgress({});
+    }
   };
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
-    ["purchase_orders", "po_status_history"],
+    ["purchase_orders", "po_status_history", "po_receipts", "po_receipt_items", "purchase_order_items"],
     () => { if (user) load(); },
     [user?.id],
   );
 
+  const receiptStatusOf = (poId: string): "fully" | "partial" | "none" => {
+    const a = poProgress[poId];
+    if (!a || a.ordered === 0) return "none";
+    if (a.received >= a.ordered) return "fully";
+    if (a.received > 0) return "partial";
+    return "none";
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return pos.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
       if (shipFilter !== "all" && (p.shipment_type ?? "grounded") !== shipFilter) return false;
+      if (receiptFilter !== "all" && receiptStatusOf(p.id) !== receiptFilter) return false;
       if (!q) return true;
       return (
         (p.po_number ?? "").toLowerCase().includes(q) ||
@@ -79,7 +109,7 @@ function POTrackingPage() {
         (p.supplier_name ?? "").toLowerCase().includes(q)
       );
     });
-  }, [pos, search, filter, shipFilter]);
+  }, [pos, search, filter, shipFilter, receiptFilter, poProgress]);
 
   const shipCounts = useMemo(() => {
     const c: Record<string, number> = { all: pos.length, grounded: 0, air: 0, door_to_door: 0 };
@@ -93,6 +123,12 @@ function POTrackingPage() {
     pos.forEach((p) => { c[p.status] = (c[p.status] ?? 0) + 1; });
     return c;
   }, [pos]);
+
+  const receiptCounts = useMemo(() => {
+    const c = { all: pos.length, fully: 0, partial: 0, none: 0 };
+    pos.forEach((p) => { c[receiptStatusOf(p.id)]++; });
+    return c;
+  }, [pos, poProgress]);
 
   return (
     <div className="space-y-6">
@@ -158,6 +194,30 @@ function POTrackingPage() {
             count={counts[s] ?? 0}
           />
         ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground me-1">
+          {isAr ? "حالة الاستلام:" : "Receipt:"}
+        </span>
+        <FilterChip active={receiptFilter === "all"} onClick={() => setReceiptFilter("all")} label={isAr ? "الكل" : "All"} count={receiptCounts.all} />
+        <button
+          onClick={() => setReceiptFilter("fully")}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${receiptFilter === "fully" ? "bg-emerald-600 text-white border-emerald-600" : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/20"}`}
+        >
+          {isAr ? "مستلم بالكامل" : "Fully received"} <span className="opacity-70">({receiptCounts.fully})</span>
+        </button>
+        <button
+          onClick={() => setReceiptFilter("partial")}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${receiptFilter === "partial" ? "bg-amber-500 text-white border-amber-500" : "bg-amber-500/10 text-amber-700 border-amber-500/30 hover:bg-amber-500/20"}`}
+        >
+          {isAr ? "استلام جزئي" : "Partially received"} <span className="opacity-70">({receiptCounts.partial})</span>
+        </button>
+        <button
+          onClick={() => setReceiptFilter("none")}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${receiptFilter === "none" ? "bg-rose-500 text-white border-rose-500" : "bg-rose-500/10 text-rose-700 border-rose-500/30 hover:bg-rose-500/20"}`}
+        >
+          {isAr ? "غير مستلم" : "Not received"} <span className="opacity-70">({receiptCounts.none})</span>
+        </button>
       </div>
 
       {/* List */}
