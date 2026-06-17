@@ -169,6 +169,12 @@ function POTrackingPage() {
                 : "Track every PO from pricing through warehouse receipt with a full timeline and precise received quantities."}
             </p>
           </div>
+          <Link to="/back-deduction-report">
+            <Button variant="outline" size="sm" className="gap-1">
+              <History className="h-4 w-4" />
+              {isAr ? "تقرير تسوية الخصومات" : "Back-deduction report"}
+            </Button>
+          </Link>
         </div>
       </div>
 
