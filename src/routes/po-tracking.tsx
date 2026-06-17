@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Search, Route as RouteIcon } from "lucide-react";
+import { Activity, Search, Route as RouteIcon, History as HistoryIcon } from "lucide-react";
 import { POTrackerDialog, statusBadge, statusLabel, PO_FLOW } from "@/components/po-tracker-dialog";
 import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 import { toast } from "sonner";
@@ -169,6 +169,12 @@ function POTrackingPage() {
                 : "Track every PO from pricing through warehouse receipt with a full timeline and precise received quantities."}
             </p>
           </div>
+          <Link to="/back-deduction-report">
+            <Button variant="outline" size="sm" className="gap-1">
+              <HistoryIcon className="h-4 w-4" />
+              {isAr ? "تقرير تسوية الخصومات" : "Back-deduction report"}
+            </Button>
+          </Link>
         </div>
       </div>
 
