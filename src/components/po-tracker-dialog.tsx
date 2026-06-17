@@ -1022,6 +1022,16 @@ export function POTrackerDialog({
           onSaved={() => { setHistoricalOpen(false); load(); }}
         />
       )}
+
+      {detailReceipt && (
+        <BatchDetailsDialog
+          receipt={detailReceipt}
+          poItems={items}
+          poNumber={po?.shipment_code || po?.po_number || ""}
+          open={!!detailReceipt}
+          onOpenChange={(v) => !v && setDetailReceipt(null)}
+        />
+      )}
     </>
   );
 }
