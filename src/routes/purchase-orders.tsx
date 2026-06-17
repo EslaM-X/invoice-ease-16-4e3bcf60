@@ -1389,24 +1389,28 @@ function PODetailDialog({
           after: { qty: e.qty, unit: e.unit },
         });
         // Retro-update the product's cost_price_usd when unit cost changed.
-        if (it.product_id && Number(e.unit) !== Number(it.unit_cost_usd)) {
+        if (it.product_id) {
           const { data: prod } = await supabase
             .from("products")
             .select("cost_price_usd")
             .eq("id", it.product_id)
             .maybeSingle();
-          const oldCost = Number((prod as any)?.cost_price_usd) || 0;
-          if (Number(e.unit) !== oldCost) {
+          const decision = decideCostSync(
+            { product_id: it.product_id, quantity: it.quantity, unit_cost_usd: Number(it.unit_cost_usd) },
+            { qty: e.qty, unit: e.unit },
+            Number((prod as any)?.cost_price_usd),
+          );
+          if (decision.updateProductCost) {
             const { error: upErr } = await supabase
               .from("products")
-              .update({ cost_price_usd: e.unit } as any)
+              .update({ cost_price_usd: decision.newProductCost } as any)
               .eq("id", it.product_id);
             if (!upErr) {
               productCostUpdates.push({
                 product_id: it.product_id,
                 name: it.product_name,
-                old: oldCost,
-                new: Number(e.unit),
+                old: decision.oldProductCost,
+                new: decision.newProductCost,
               });
             }
           }
