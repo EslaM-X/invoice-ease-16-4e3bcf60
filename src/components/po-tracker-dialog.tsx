@@ -861,6 +861,7 @@ export function POTrackerDialog({
                         </div>
                       ))}
                     </div>
+                    </div>
                   )}
                 </div>
               )}
