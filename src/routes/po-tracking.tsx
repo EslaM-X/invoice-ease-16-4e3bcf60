@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Search, Route as RouteIcon } from "lucide-react";
+import { Activity, Search, Route as RouteIcon, History as HistoryIcon } from "lucide-react";
 import { POTrackerDialog, statusBadge, statusLabel, PO_FLOW } from "@/components/po-tracker-dialog";
 import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 import { toast } from "sonner";
