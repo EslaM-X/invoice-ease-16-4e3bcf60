@@ -922,9 +922,20 @@ export function POTrackerDialog({
                               {isAr ? "دفعة" : "Batch"}
                               <span className="tabular-nums text-emerald-700">+{r.total_qty}</span>
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {fmtDateTime(r.created_at, lang)}
-                              {r.actor_email ? ` · ${r.actor_email}` : ""}
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 gap-1 text-xs"
+                                onClick={() => setDetailReceipt(r)}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                {isAr ? "تفاصيل كاملة" : "Full details"}
+                              </Button>
+                              <div className="text-[11px] text-muted-foreground">
+                                {fmtDateTime(r.created_at, lang)}
+                                {r.actor_email ? ` · ${r.actor_email}` : ""}
+                              </div>
                             </div>
                           </div>
                           {/* Per-batch inventory impact summary */}
