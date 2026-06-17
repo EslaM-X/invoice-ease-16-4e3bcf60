@@ -18,7 +18,7 @@ import { ReservationAlertsBell } from "@/components/reservation-alerts-bell";
 import { useRole } from "@/lib/use-role";
 import { useIsExecutive } from "@/lib/use-executive";
 import { NotificationsBell } from "@/components/notifications-bell";
-import { LangStatusPill } from "@/components/lang-status-pill";
+import { InvoiceEditsBell } from "@/components/invoice-edits-bell";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { XAssistant } from "@/components/x-assistant";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
@@ -515,7 +515,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <div className="flex-1" />
-          <LangStatusPill />
+          <InvoiceEditsBell />
           <NotificationsBell />
           <ReservationAlertsBell />
           <LowStockAlerts />

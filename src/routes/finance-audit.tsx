@@ -52,6 +52,9 @@ function FinanceAuditPage() {
 
   const [auditRows, setAuditRows] = useState<any[]>([]);
   const [eventRows, setEventRows] = useState<any[]>([]);
+  const [productMap, setProductMap] = useState<
+    Record<string, { name: string; image_url: string | null; color: string | null; serial_number: string | null }>
+  >({});
   const [entity, setEntity] = useState("all");
   const [action, setAction] = useState("all");
   const [q, setQ] = useState("");
@@ -75,6 +78,24 @@ function FinanceAuditPage() {
     ]);
     setAuditRows((a as any[]) ?? []);
     setEventRows((e as any[]) ?? []);
+
+    // Collect product_ids referenced in invoice_items rows to enrich the view.
+    const pids = new Set<string>();
+    for (const r of (a as any[]) ?? []) {
+      if (r.entity_type !== "invoice_items") continue;
+      const d = r.details ?? {};
+      const pid = d.product_id ?? d.after?.product_id ?? d.before?.product_id;
+      if (pid) pids.add(pid);
+    }
+    if (pids.size > 0) {
+      const { data: prods } = await supabase
+        .from("products")
+        .select("id,name,image_url,color,serial_number")
+        .in("id", Array.from(pids));
+      const map: Record<string, any> = {};
+      for (const p of (prods as any[]) ?? []) map[p.id] = p;
+      setProductMap(map);
+    }
   };
 
   useEffect(() => {
@@ -104,7 +125,26 @@ function FinanceAuditPage() {
       action: r.event_type,
       details: r.details,
     }));
-    return [...a, ...e].sort((x, y) => +new Date(y.created_at) - +new Date(x.created_at));
+    // Deduplicate: when both an `invoice_events` row and an `audit_log` row
+    // describe the same invoice change within a 30-second window, keep only
+    // the invoice_event one (richer, finance-friendly payload).
+    const eventKeys = new Set(
+      e
+        .filter((r) => normalizedAction(r.action) === "edited" && r.entity_id)
+        .map(
+          (r) => `${r.entity_id}|${Math.floor(+new Date(r.created_at) / 30000)}`,
+        ),
+    );
+    const filteredAudit = a.filter((r) => {
+      if (r.entity_type !== "invoices") return true;
+      if (normalizedAction(r.action) !== "edited") return true;
+      if (!r.entity_id) return true;
+      const k = `${r.entity_id}|${Math.floor(+new Date(r.created_at) / 30000)}`;
+      return !eventKeys.has(k);
+    });
+    return [...filteredAudit, ...e].sort(
+      (x, y) => +new Date(y.created_at) - +new Date(x.created_at),
+    );
   }, [auditRows, eventRows]);
 
   const filtered = useMemo(() => {
@@ -240,15 +280,30 @@ function FinanceAuditPage() {
             const meta = actionMeta(normalizedAction(r.action), isAr);
             const Icon = meta.Icon;
             const isOpen = openIds.has(r.id);
+            const det = r.details ?? {};
+            const pid =
+              det.product_id ?? det.after?.product_id ?? det.before?.product_id ?? null;
+            const product = pid ? productMap[pid] : null;
+            const itemColor =
+              det.after?.color ?? det.before?.color ?? det.color ?? product?.color ?? null;
+            const itemSerial =
+              det.after?.serial_number ??
+              det.before?.serial_number ??
+              det.serial_number ??
+              product?.serial_number ??
+              null;
+            const itemQty = det.after?.quantity ?? det.before?.quantity ?? det.quantity ?? null;
+            const positive = (d.delta ?? 0) > 0;
+            const negative = (d.delta ?? 0) < 0;
             return (
               <article key={r.id} className="ios-card overflow-hidden p-0">
-                <div className="flex flex-wrap items-start gap-3 p-4">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
                   <span
                     className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border ${meta.cls}`}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
-                  <div className="min-w-[220px] flex-1 space-y-1">
+                  <div className="min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className={meta.cls}>
                         {meta.label}
@@ -268,6 +323,90 @@ function FinanceAuditPage() {
                     </div>
                     <h2 className="text-sm font-semibold text-foreground">{d.title}</h2>
                     <p className="text-xs leading-relaxed text-muted-foreground">{d.subtitle}</p>
+
+                    {(product || itemSerial || itemColor || itemQty != null) && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2">
+                        {product?.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product?.name ?? ""}
+                            className="h-10 w-10 shrink-0 rounded-md border object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
+                            <Receipt className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1 text-xs">
+                          <div className="truncate font-medium">
+                            {product?.name ?? det.after?.product_name ?? det.before?.product_name ?? det.product_name ?? "—"}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                            {itemSerial && (
+                              <span className="rounded bg-background px-1.5 py-0.5 font-mono">
+                                S/N {itemSerial}
+                              </span>
+                            )}
+                            {itemColor && (
+                              <span className="rounded bg-background px-1.5 py-0.5">
+                                {isAr ? "اللون" : "Color"}: {itemColor}
+                              </span>
+                            )}
+                            {itemQty != null && (
+                              <span className="rounded bg-background px-1.5 py-0.5 tabular-nums">
+                                {isAr ? "الكمية" : "Qty"}: {itemQty}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {d.delta != null && d.delta !== 0 && (
+                      <div
+                        className={`mt-2 flex flex-wrap items-center gap-2 rounded-xl border-2 px-3 py-2 ${
+                          positive
+                            ? "border-emerald-500/40 bg-emerald-500/5"
+                            : "border-destructive/40 bg-destructive/5"
+                        }`}
+                      >
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            positive
+                              ? "bg-emerald-500/15 text-emerald-700"
+                              : "bg-destructive/15 text-destructive"
+                          }`}
+                        >
+                          {positive
+                            ? isAr ? "زيادة" : "Increase"
+                            : isAr ? "نقصان" : "Decrease"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {isAr ? "قبل" : "Before"}:
+                        </span>
+                        <span className="text-sm font-semibold tabular-nums">
+                          {fmtMoney(numberOrNull(r.details?.previous_total ?? r.details?.before?.total) ?? 0, "EGP", lang)}
+                        </span>
+                        <span className="text-muted-foreground">→</span>
+                        <span className="text-xs text-muted-foreground">
+                          {isAr ? "بعد" : "After"}:
+                        </span>
+                        <span className="text-sm font-semibold tabular-nums">
+                          {fmtMoney(numberOrNull(r.details?.total ?? r.details?.after?.total) ?? 0, "EGP", lang)}
+                        </span>
+                        <span
+                          className={`ms-auto rounded-lg px-2.5 py-1 text-base font-extrabold tabular-nums shadow-sm ${
+                            positive
+                              ? "bg-emerald-500 text-white"
+                              : "bg-destructive text-destructive-foreground"
+                          }`}
+                        >
+                          {positive ? "+" : ""}
+                          {fmtMoney(d.delta, "EGP", lang)}
+                        </span>
+                      </div>
+                    )}
+
                     {d.changes.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {d.changes.slice(0, 5).map((c) => (
@@ -281,34 +420,36 @@ function FinanceAuditPage() {
                       </div>
                     )}
                   </div>
-                  <div className="min-w-[160px] text-end text-xs text-muted-foreground">
-                    <div>{r.actor_email || (isAr ? "مستخدم غير معروف" : "Unknown user")}</div>
-                    <div>{fmtDateTime(r.created_at, lang)}</div>
-                    {d.delta != null && d.delta !== 0 && (
-                      <div
-                        className={`mt-1 font-bold ${d.delta > 0 ? "text-emerald-600" : "text-destructive"}`}
-                      >
-                        {d.delta > 0 ? "+" : ""}
-                        {fmtMoney(d.delta, "EGP", lang)}
+                  <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground sm:col-span-1 sm:min-w-[180px] sm:flex-col sm:items-end sm:border-t-0 sm:pt-0">
+                    <div className="min-w-0">
+                      <div className="truncate">
+                        {r.actor_email || (isAr ? "مستخدم غير معروف" : "Unknown user")}
                       </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 h-7 gap-1 text-[11px]"
-                      onClick={() => toggle(r.id)}
-                    >
-                      {isOpen
-                        ? isAr
-                          ? "إخفاء التفاصيل"
-                          : "Hide details"
-                        : isAr
-                          ? "تفاصيل"
-                          : "Details"}
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                      />
-                    </Button>
+                      <div className="tabular-nums">{fmtDateTime(r.created_at, lang)}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {r.entity_id && (
+                        <Link to="/invoices/$id" params={{ id: r.entity_id }}>
+                          <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px]">
+                            <FileText className="h-3.5 w-3.5" />
+                            {isAr ? "فتح" : "Open"}
+                          </Button>
+                        </Link>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-[11px]"
+                        onClick={() => toggle(r.id)}
+                      >
+                        {isOpen
+                          ? isAr ? "إخفاء" : "Hide"
+                          : isAr ? "تفاصيل" : "Details"}
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 {isOpen && <DetailsPanel row={r} isAr={isAr} lang={lang} />}
