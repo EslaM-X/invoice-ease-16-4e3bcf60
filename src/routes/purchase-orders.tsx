@@ -1070,7 +1070,7 @@ function PODetailDialog({
       supabase.from("purchase_orders").select("*").eq("id", poId).maybeSingle(),
       (supabase as any)
         .from("purchase_order_items")
-        .select("*, products(collection,is_spare_part)")
+        .select("*")
         .eq("po_id", poId)
         .order("created_at"),
     ]);
@@ -1096,10 +1096,25 @@ function PODetailDialog({
         setCfoNotes(p.cfo_notes ?? "");
       }
     }
-    const list = ((itemsData as any[]) ?? []).map((it) => ({
+    // purchase_order_items has no FK to products in the schema cache, so an
+    // embedded select (`products(...)`) fails with PGRST200 and wipes the
+    // entire response. Fetch product metadata in a second query keyed by id.
+    const rawItems = ((itemsData as any[]) ?? []);
+    const productIds = Array.from(new Set(rawItems.map((it) => it.product_id).filter(Boolean)));
+    const productMeta: Record<string, { collection: string | null; is_spare_part: boolean }> = {};
+    if (productIds.length) {
+      const { data: prods } = await (supabase as any)
+        .from("products")
+        .select("id,collection,is_spare_part")
+        .in("id", productIds);
+      for (const p of ((prods as any[]) ?? [])) {
+        productMeta[p.id] = { collection: p.collection ?? null, is_spare_part: !!p.is_spare_part };
+      }
+    }
+    const list = rawItems.map((it) => ({
       ...it,
-      collection: it.collection ?? it.products?.collection ?? null,
-      is_spare_part: it.is_spare_part ?? it.products?.is_spare_part ?? false,
+      collection: productMeta[it.product_id]?.collection ?? null,
+      is_spare_part: productMeta[it.product_id]?.is_spare_part ?? false,
     })) as POItem[];
     setItems(list);
     setItemEdits((prev) => {

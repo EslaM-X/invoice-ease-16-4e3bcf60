@@ -134,6 +134,8 @@ type ReceiptRow = {
   discount_amount?: number | null;
   po_receipt_items: {
     id: string;
+    po_item_id: string | null;
+    product_id: string | null;
     product_name: string;
     serial_number: string | null;
     color: string | null;
@@ -237,7 +239,7 @@ export function POTrackerDialog({
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
       (supabase as any)
         .from("po_receipts")
-        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,po_receipt_items(id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,po_receipt_items(id,po_item_id,product_id,product_name,serial_number,color,quantity,stock_before,stock_after)")
         .eq("po_id", poId)
         .order("receipt_number", { ascending: false }),
     ]);
@@ -743,6 +745,81 @@ export function POTrackerDialog({
                   {receipts.length === 0 ? (
                     <div className="text-xs text-muted-foreground">{isAr ? "لا توجد دفعات بعد." : "No batches yet."}</div>
                   ) : (
+                    <div className="space-y-4">
+                      {/* Per-item breakdown: ordered vs received per batch, with remaining */}
+                      <div className="rounded-md border bg-background">
+                        <div className="border-b bg-muted/40 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {isAr ? "ملخص الكميات لكل منتج" : "Per-item summary"}
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[520px] text-xs">
+                            <thead className="bg-muted/20 text-[10px] uppercase tracking-wider text-muted-foreground">
+                              <tr>
+                                <th className="p-2 text-start">{isAr ? "المنتج" : "Item"}</th>
+                                <th className="p-2 text-center">{isAr ? "مطلوب" : "Ordered"}</th>
+                                <th className="p-2 text-center">{isAr ? "مستلم" : "Received"}</th>
+                                <th className="p-2 text-center">{isAr ? "متبقي" : "Remaining"}</th>
+                                <th className="p-2 text-start">{isAr ? "تفاصيل الدفعات" : "Batches"}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {items.map((it) => {
+                                const ordered = it.quantity;
+                                const perBatch = receipts
+                                  .map((r) => {
+                                    const qty = (r.po_receipt_items ?? [])
+                                      .filter((ri) => ri.po_item_id === it.id || (ri.product_id && ri.product_id === (it as any).product_id))
+                                      .reduce((s, ri) => s + (ri.quantity || 0), 0);
+                                    return { code: r.receipt_code || `#${r.receipt_number}`, qty, at: r.created_at };
+                                  })
+                                  .filter((b) => b.qty > 0);
+                                const received = perBatch.reduce((s, b) => s + b.qty, 0);
+                                const remaining = Math.max(0, ordered - received);
+                                return (
+                                  <tr key={it.id} className={remaining === 0 ? "bg-emerald-500/5" : ""}>
+                                    <td className="p-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="truncate font-medium">{it.product_name}</span>
+                                        {it.color && (
+                                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                                            <ColorSwatch value={it.color} size="sm" />
+                                            {it.color}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {it.serial_number && (
+                                        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{it.serial_number}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-2 text-center tabular-nums font-semibold">{ordered}</td>
+                                    <td className="p-2 text-center tabular-nums font-semibold text-emerald-700">{received}</td>
+                                    <td className={`p-2 text-center tabular-nums font-bold ${remaining === 0 ? "text-emerald-700" : "text-amber-700"}`}>{remaining}</td>
+                                    <td className="p-2">
+                                      {perBatch.length === 0 ? (
+                                        <span className="text-[10px] text-muted-foreground">{isAr ? "لم يُستلم بعد" : "Not received yet"}</span>
+                                      ) : (
+                                        <div className="flex flex-wrap gap-1">
+                                          {perBatch.map((b, idx) => (
+                                            <span
+                                              key={idx}
+                                              title={fmtDateTime(b.at, lang)}
+                                              className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
+                                            >
+                                              <span className="font-mono">{b.code}</span>
+                                              <span className="tabular-nums">+{b.qty}</span>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      {/* Batch list (existing detailed view) */}
                     <div className="space-y-2">
                       {receipts.map((r) => (
                         <div key={r.id} className="rounded-md border bg-muted/20 p-3">
@@ -783,6 +860,7 @@ export function POTrackerDialog({
                           </div>
                         </div>
                       ))}
+                    </div>
                     </div>
                   )}
                 </div>
