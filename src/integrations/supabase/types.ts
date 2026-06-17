@@ -3258,6 +3258,29 @@ export type Database = {
         Args: { items_in: Json; p_actor_email: string; p_po_id: string }
         Returns: Json
       }
+      back_deduction_report: {
+        Args: never
+        Returns: {
+          applied_at: string
+          applied_by_email: string
+          color: string
+          current_stock: number
+          customer_name: string
+          dri_id: string
+          invoice_id: string
+          invoice_number: string
+          po_id: string
+          po_number: string
+          product_id: string
+          product_name: string
+          quantity: number
+          receipt_delivered_at: string
+          receipt_id: string
+          serial_number: string
+          shipment_code: string
+          shipment_date: string
+        }[]
+      }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
       change_delivery_receipt_status: {
@@ -3506,6 +3529,10 @@ export type Database = {
       return_defective_item: {
         Args: { _defective_id: string; _notes?: string; _quantity: number }
         Returns: undefined
+      }
+      revert_back_deductions: {
+        Args: { p_actor_email: string; p_dri_ids: string[]; p_reason: string }
+        Returns: Json
       }
       revert_po_inventory: {
         Args: { p_actor_email: string; p_po_id: string }
