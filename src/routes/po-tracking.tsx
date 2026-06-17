@@ -171,7 +171,7 @@ function POTrackingPage() {
           </div>
           <Link to="/back-deduction-report">
             <Button variant="outline" size="sm" className="gap-1">
-              <History className="h-4 w-4" />
+              <HistoryIcon className="h-4 w-4" />
               {isAr ? "تقرير تسوية الخصومات" : "Back-deduction report"}
             </Button>
           </Link>
