@@ -134,6 +134,8 @@ type ReceiptRow = {
   discount_amount?: number | null;
   po_receipt_items: {
     id: string;
+    po_item_id: string | null;
+    product_id: string | null;
     product_name: string;
     serial_number: string | null;
     color: string | null;
