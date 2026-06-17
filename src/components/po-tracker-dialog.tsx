@@ -1029,7 +1029,7 @@ export function POTrackerDialog({
           poItems={items}
           poNumber={po?.shipment_code || po?.po_number || ""}
           open={!!detailReceipt}
-          onOpenChange={(v) => !v && setDetailReceipt(null)}
+          onOpenChange={(v: boolean) => !v && setDetailReceipt(null)}
         />
       )}
     </>
