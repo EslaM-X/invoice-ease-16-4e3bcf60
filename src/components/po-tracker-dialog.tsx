@@ -168,6 +168,7 @@ export function POTrackerDialog({
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [historicalOpen, setHistoricalOpen] = useState(false);
   const [detailReceipt, setDetailReceipt] = useState<ReceiptRow | null>(null);
+  const [backDeductOpen, setBackDeductOpen] = useState(false);
 
   // Timeline filters
   const [tlType, setTlType] = useState<"all" | "status" | "shipment" | "historical">("all");
