@@ -109,7 +109,7 @@ function POTrackingPage() {
         (p.supplier_name ?? "").toLowerCase().includes(q)
       );
     });
-  }, [pos, search, filter, shipFilter]);
+  }, [pos, search, filter, shipFilter, receiptFilter, poProgress]);
 
   const shipCounts = useMemo(() => {
     const c: Record<string, number> = { all: pos.length, grounded: 0, air: 0, door_to_door: 0 };
@@ -123,6 +123,12 @@ function POTrackingPage() {
     pos.forEach((p) => { c[p.status] = (c[p.status] ?? 0) + 1; });
     return c;
   }, [pos]);
+
+  const receiptCounts = useMemo(() => {
+    const c = { all: pos.length, fully: 0, partial: 0, none: 0 };
+    pos.forEach((p) => { c[receiptStatusOf(p.id)]++; });
+    return c;
+  }, [pos, poProgress]);
 
   return (
     <div className="space-y-6">
