@@ -268,6 +268,31 @@ export function POTrackerDialog({
   const isPartial = totalReceived > 0 && totalRemaining > 0;
   const canReceive = (po?.status === "shipped" || po?.status === "in_warehouse") && totalRemaining > 0 && (isAdmin || isPurchasing);
 
+  const batchActors = useMemo(
+    () => Array.from(new Set(receipts.map((r) => r.actor_email).filter(Boolean) as string[])).sort(),
+    [receipts],
+  );
+  const filteredReceipts = useMemo(() => {
+    const q = batchSearch.trim().toLowerCase();
+    const from = batchFrom ? new Date(batchFrom).getTime() : null;
+    const to = batchTo ? new Date(batchTo).getTime() + 24 * 3600 * 1000 - 1 : null;
+    return receipts.filter((r) => {
+      if (batchActor && (r.actor_email ?? "") !== batchActor) return false;
+      const t = new Date(r.created_at).getTime();
+      if (from !== null && t < from) return false;
+      if (to !== null && t > to) return false;
+      if (!q) return true;
+      const code = (r.receipt_code || `#${r.receipt_number}`).toLowerCase();
+      return (
+        code.includes(q) ||
+        String(r.receipt_number).includes(q) ||
+        (r.actor_email ?? "").toLowerCase().includes(q) ||
+        (r.notes ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [receipts, batchSearch, batchActor, batchFrom, batchTo]);
+  const batchFiltersActive = !!(batchSearch || batchActor || batchFrom || batchTo);
+
   const canTransition = isAdmin || isPurchasing || isCFO;
   const canCancel = isAdmin;
 
