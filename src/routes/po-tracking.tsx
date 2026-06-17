@@ -59,6 +59,27 @@ function POTrackingPage() {
       .order("created_at", { ascending: false })
       .limit(300);
     const list = (data as any[]) ?? [];
+    // Sort: shipment_date desc → shipment prefix (A/G/D) → numeric suffix desc → created_at desc.
+    const codeNum = (c: string | null | undefined) => {
+      const m = c ? String(c).match(/(\d+)/) : null;
+      return m ? parseInt(m[1], 10) : -1;
+    };
+    const codePrefix = (c: string | null | undefined) => {
+      const m = c ? String(c).match(/^([A-Za-z]+)/) : null;
+      return m ? m[1].toUpperCase() : "";
+    };
+    list.sort((a, b) => {
+      const da = a.shipment_date ? new Date(a.shipment_date).getTime() : 0;
+      const db = b.shipment_date ? new Date(b.shipment_date).getTime() : 0;
+      if (db !== da) return db - da;
+      const pa = codePrefix(a.shipment_code);
+      const pb = codePrefix(b.shipment_code);
+      if (pa !== pb) return pa.localeCompare(pb);
+      const na = codeNum(a.shipment_code);
+      const nb = codeNum(b.shipment_code);
+      if (nb !== na) return nb - na;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
     setPos(list);
     // Aggregate ordered/received per PO for the receipt-status filter
     const ids = list.map((p) => p.id);

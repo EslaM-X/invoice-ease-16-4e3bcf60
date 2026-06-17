@@ -1075,20 +1075,44 @@ function ReceiveDialog({
   const [notes, setNotes] = useState("");
   const [discount, setDiscount] = useState<number>(0);
   const [stockNow, setStockNow] = useState<Record<string, number>>({});
+  const [productMeta, setProductMeta] = useState<Record<string, { collection: string | null }>>({});
   const [busy, setBusy] = useState(false);
+  const [colorFilter, setColorFilter] = useState<string>("all");
+  const [collectionFilter, setCollectionFilter] = useState<string>("all");
 
-  // Live current stock per product (the "before" the user verifies against)
+  // Live current stock + collection per product (the "before" the user verifies against)
   useEffect(() => {
     if (!open) return;
     const ids = Array.from(new Set(openItems.map((i) => i.product_id)));
-    if (ids.length === 0) { setStockNow({}); return; }
+    if (ids.length === 0) { setStockNow({}); setProductMeta({}); return; }
     (async () => {
-      const { data } = await supabase.from("products").select("id,stock_quantity").in("id", ids);
+      const { data } = await supabase.from("products").select("id,stock_quantity,collection").in("id", ids);
       const m: Record<string, number> = {};
-      (data ?? []).forEach((p: any) => { m[p.id] = p.stock_quantity; });
+      const meta: Record<string, { collection: string | null }> = {};
+      (data ?? []).forEach((p: any) => { m[p.id] = p.stock_quantity; meta[p.id] = { collection: p.collection ?? null }; });
       setStockNow(m);
+      setProductMeta(meta);
     })();
   }, [open, openItems]);
+
+  const availableColors = useMemo(() => {
+    const s = new Set<string>();
+    openItems.forEach((i) => { if (i.color) s.add(i.color); });
+    return Array.from(s).sort();
+  }, [openItems]);
+  const availableCollections = useMemo(() => {
+    const s = new Set<string>();
+    openItems.forEach((i) => { const c = productMeta[i.product_id]?.collection; if (c) s.add(c); });
+    return Array.from(s).sort();
+  }, [openItems, productMeta]);
+
+  const visibleItems = useMemo(() => {
+    return openItems.filter((i) => {
+      if (colorFilter !== "all" && (i.color ?? "") !== colorFilter) return false;
+      if (collectionFilter !== "all" && (productMeta[i.product_id]?.collection ?? "") !== collectionFilter) return false;
+      return true;
+    });
+  }, [openItems, colorFilter, collectionFilter, productMeta]);
 
   const totalRemaining = openItems.reduce((s, i) => s + remainingMap[i.id], 0);
   const totalRecv = openItems.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
@@ -1165,12 +1189,69 @@ function ReceiveDialog({
             : "Review each product's current stock (before) and confirm the received quantity. Remaining items can be received in later batches."}</span>
         </div>
 
+        {(availableColors.length > 0 || availableCollections.length > 0) && (
+          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {isAr ? "تصفية البنود" : "Filter items"}
+            </div>
+            {availableCollections.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground me-1">{isAr ? "كولكشن:" : "Collection:"}</span>
+                <button
+                  onClick={() => setCollectionFilter("all")}
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${collectionFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                >{isAr ? "الكل" : "All"}</button>
+                {availableCollections.map((c) => (
+                  <button key={c}
+                    onClick={() => setCollectionFilter(c)}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${collectionFilter === c ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                  >{c}</button>
+                ))}
+              </div>
+            )}
+            {availableColors.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground me-1">{isAr ? "لون:" : "Color:"}</span>
+                <button
+                  onClick={() => setColorFilter("all")}
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${colorFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                >{isAr ? "الكل" : "All"}</button>
+                {availableColors.map((c) => (
+                  <button key={c}
+                    onClick={() => setColorFilter(c)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${colorFilter === c ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                    title={c}
+                  >
+                    <ColorSwatch value={c} size="xs" />
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(colorFilter !== "all" || collectionFilter !== "all") && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">
+                  {visibleItems.length} / {openItems.length} {isAr ? "بند ظاهر" : "items visible"}
+                </span>
+                <Button variant="ghost" size="sm" className="h-6 text-[11px]"
+                  onClick={() => { setColorFilter("all"); setCollectionFilter("all"); }}>
+                  {isAr ? "مسح الفلاتر" : "Clear filters"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-2">
           {openItems.length === 0 ? (
             <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
               {isAr ? "لا توجد بنود متبقية للاستلام." : "No items left to receive."}
             </div>
-          ) : openItems.map((it) => {
+          ) : visibleItems.length === 0 ? (
+            <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              {isAr ? "لا بنود مطابقة للفلاتر." : "No items match the filters."}
+            </div>
+          ) : visibleItems.map((it) => {
             const remaining = remainingMap[it.id];
             const recv = qty[it.id] ?? 0;
             const before = stockNow[it.product_id];
