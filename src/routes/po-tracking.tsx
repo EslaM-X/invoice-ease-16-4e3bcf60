@@ -38,9 +38,11 @@ function POTrackingPage() {
   const isAr = lang === "ar";
 
   const [pos, setPos] = useState<any[]>([]);
+  const [poProgress, setPoProgress] = useState<Record<string, { ordered: number; received: number }>>({});
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [shipFilter, setShipFilter] = useState<ShipmentType | "all">("all");
+  const [receiptFilter, setReceiptFilter] = useState<"all" | "fully" | "partial" | "none">("all");
   const [trackId, setTrackId] = useState<string | null>(null);
 
   useEffect(() => {
