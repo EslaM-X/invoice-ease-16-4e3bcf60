@@ -260,7 +260,7 @@ function Page() {
                         <td className="p-2">
                           {r.color ? (
                             <span className="inline-flex items-center gap-1">
-                              <ColorSwatch color={r.color} size={14} />
+                              <ColorSwatch color={r.color} size="sm" />
                               {r.color}
                             </span>
                           ) : (
