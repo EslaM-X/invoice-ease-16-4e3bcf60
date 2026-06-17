@@ -52,6 +52,9 @@ function FinanceAuditPage() {
 
   const [auditRows, setAuditRows] = useState<any[]>([]);
   const [eventRows, setEventRows] = useState<any[]>([]);
+  const [productMap, setProductMap] = useState<
+    Record<string, { name: string; image_url: string | null; color: string | null; serial_number: string | null }>
+  >({});
   const [entity, setEntity] = useState("all");
   const [action, setAction] = useState("all");
   const [q, setQ] = useState("");
@@ -75,6 +78,24 @@ function FinanceAuditPage() {
     ]);
     setAuditRows((a as any[]) ?? []);
     setEventRows((e as any[]) ?? []);
+
+    // Collect product_ids referenced in invoice_items rows to enrich the view.
+    const pids = new Set<string>();
+    for (const r of (a as any[]) ?? []) {
+      if (r.entity_type !== "invoice_items") continue;
+      const d = r.details ?? {};
+      const pid = d.product_id ?? d.after?.product_id ?? d.before?.product_id;
+      if (pid) pids.add(pid);
+    }
+    if (pids.size > 0) {
+      const { data: prods } = await supabase
+        .from("products")
+        .select("id,name,image_url,color,serial_number")
+        .in("id", Array.from(pids));
+      const map: Record<string, any> = {};
+      for (const p of (prods as any[]) ?? []) map[p.id] = p;
+      setProductMap(map);
+    }
   };
 
   useEffect(() => {
