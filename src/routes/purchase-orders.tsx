@@ -404,65 +404,119 @@ function CreatePODialog({
   const [shipmentType, setShipmentType] = useState<ShipmentType>("grounded");
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; fileName: string } | null>(null);
   const [lastImportSummary, setLastImportSummary] = useState<{
     matched: number;
-    missed: string[];
     totalLines: number;
+    files: Array<{
+      name: string;
+      lines: number;
+      matched: number;
+      missed: Array<{ sku: string; quantity: number }>;
+      error?: string;
+    }>;
+    /** Aggregated missing SKUs across all files */
+    missingAgg: Array<{ sku: string; quantity: number; files: string[] }>;
   } | null>(null);
 
-  const handlePdfImport = async (file: File) => {
-    if (!file) return;
+  const handlePdfImport = async (files: File[]) => {
+    if (!files || files.length === 0) return;
     setImporting(true);
     setLastImportSummary(null);
+    setImportProgress({ current: 0, total: files.length, fileName: files[0].name });
     try {
-      const { lines } = await parseSupplierInvoicePdf(file);
-      if (lines.length === 0) {
-        toast.error(
-          isAr ? "لم يتم العثور على أي منتج (SKU) في الـ PDF" : "No SKUs detected in the PDF",
-        );
-        return;
-      }
-      // Build index by serial_number (case-insensitive, trimmed)
+      // Build catalog index ONCE (case-insensitive, trimmed)
       const bySerial = new Map<string, Product>();
       for (const p of products) {
         if (p.serial_number) bySerial.set(p.serial_number.trim().toUpperCase(), p);
       }
-      const missed: string[] = [];
-      let matched = 0;
+
+      const perFile: Array<{
+        name: string;
+        lines: number;
+        matched: number;
+        missed: Array<{ sku: string; quantity: number }>;
+        error?: string;
+      }> = [];
+      const missingAgg = new Map<string, { sku: string; quantity: number; files: Set<string> }>();
+      // Aggregate matched quantities across all files first, then commit once.
+      const toAdd = new Map<string, number>();
+      let totalMatched = 0;
+      let totalLines = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setImportProgress({ current: i + 1, total: files.length, fileName: file.name });
+        try {
+          const { lines } = await parseSupplierInvoicePdf(file);
+          let fileMatched = 0;
+          const fileMissed: Array<{ sku: string; quantity: number }> = [];
+          for (const ln of lines) {
+            const key = ln.sku.trim().toUpperCase();
+            const p = bySerial.get(key);
+            if (!p) {
+              fileMissed.push({ sku: ln.sku, quantity: ln.quantity });
+              const ex = missingAgg.get(key);
+              if (ex) { ex.quantity += ln.quantity; ex.files.add(file.name); }
+              else missingAgg.set(key, { sku: ln.sku, quantity: ln.quantity, files: new Set([file.name]) });
+              continue;
+            }
+            toAdd.set(p.id, (toAdd.get(p.id) ?? 0) + ln.quantity);
+            fileMatched += 1;
+          }
+          totalMatched += fileMatched;
+          totalLines += lines.length;
+          perFile.push({ name: file.name, lines: lines.length, matched: fileMatched, missed: fileMissed });
+        } catch (e: any) {
+          perFile.push({ name: file.name, lines: 0, matched: 0, missed: [], error: e?.message ?? "parse error" });
+        }
+      }
+
       setRows((prev) => {
         const next = { ...prev };
-        for (const ln of lines) {
-          const p = bySerial.get(ln.sku.trim().toUpperCase());
-          if (!p) {
-            missed.push(ln.sku);
-            continue;
-          }
-          const cur = next[p.id] ?? {
+        for (const [pid, addQty] of toAdd.entries()) {
+          const p = products.find((x) => x.id === pid);
+          const cur = next[pid] ?? {
             selected: false,
             qty: 0,
-            unitUsd: Number(p.cost_price_usd) || 0,
+            unitUsd: Number(p?.cost_price_usd) || 0,
           };
-          next[p.id] = { ...cur, selected: true, qty: (cur.selected ? cur.qty : 0) + ln.quantity };
-          matched++;
+          next[pid] = {
+            ...cur,
+            selected: true,
+            qty: (cur.selected ? cur.qty : 0) + addQty,
+          };
         }
         return next;
       });
-      setLastImportSummary({ matched, missed, totalLines: lines.length });
-      if (matched > 0) {
+
+      setLastImportSummary({
+        matched: totalMatched,
+        totalLines,
+        files: perFile,
+        missingAgg: Array.from(missingAgg.values())
+          .map((m) => ({ sku: m.sku, quantity: m.quantity, files: Array.from(m.files) }))
+          .sort((a, b) => b.quantity - a.quantity),
+      });
+
+      const missedCount = missingAgg.size;
+      const errCount = perFile.filter((f) => f.error).length;
+      if (totalMatched > 0) {
         toast.success(
           isAr
-            ? `تم استيراد ${matched} منتج من الـ PDF${missed.length ? ` · ${missed.length} غير موجود في القاعدة` : ""}`
-            : `Imported ${matched} items from PDF${missed.length ? ` · ${missed.length} not found in catalog` : ""}`,
+            ? `تم استيراد ${totalMatched} بند من ${files.length} ملف${missedCount ? ` · ${missedCount} SKU غير موجود` : ""}${errCount ? ` · فشل ${errCount} ملف` : ""}`
+            : `Imported ${totalMatched} lines from ${files.length} file(s)${missedCount ? ` · ${missedCount} missing SKU` : ""}${errCount ? ` · ${errCount} failed file(s)` : ""}`,
         );
       } else {
         toast.error(isAr ? "لم يتطابق أي SKU مع منتجاتك" : "No SKUs matched your catalog");
       }
     } catch (e: any) {
       toast.error(
-        (isAr ? "فشل قراءة الـ PDF: " : "Failed to parse PDF: ") + (e?.message ?? "unknown"),
+        (isAr ? "فشل قراءة الملفات: " : "Failed to read files: ") + (e?.message ?? "unknown"),
       );
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   };
 
@@ -682,56 +736,122 @@ function CreatePODialog({
               )}
               {importing
                 ? isAr
-                  ? "جارٍ القراءة…"
-                  : "Reading…"
+                  ? importProgress
+                    ? `جارٍ القراءة (${importProgress.current}/${importProgress.total})…`
+                    : "جارٍ القراءة…"
+                  : importProgress
+                    ? `Reading (${importProgress.current}/${importProgress.total})…`
+                    : "Reading…"
                 : isAr
-                  ? "اختر ملف PDF"
-                  : "Choose PDF"}
+                  ? "اختر ملفات PDF (يمكن اختيار أكثر من ملف)"
+                  : "Choose PDF files (multiple allowed)"}
               <input
                 type="file"
                 accept="application/pdf,.pdf"
+                multiple
                 className="hidden"
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
+                  const fs = Array.from(e.target.files ?? []);
                   e.target.value = "";
-                  if (f) handlePdfImport(f);
+                  if (fs.length) handlePdfImport(fs);
                 }}
               />
             </label>
           </div>
+          {importing && importProgress && (
+            <div className="mt-2 text-[11px] text-muted-foreground truncate">
+              {isAr ? "جارٍ قراءة: " : "Reading: "}
+              <span className="font-mono">{importProgress.fileName}</span>
+            </div>
+          )}
           {lastImportSummary && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-              <Badge
-                variant="outline"
-                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
-              >
-                ✓ {lastImportSummary.matched} {isAr ? "مطابق" : "matched"}
-              </Badge>
-              {lastImportSummary.missed.length > 0 && (
-                <Badge
-                  variant="outline"
-                  className="border-amber-500/40 bg-amber-500/10 text-amber-700"
-                  title={lastImportSummary.missed.join(", ")}
-                >
-                  ⚠ {lastImportSummary.missed.length} {isAr ? "غير موجود" : "not in catalog"}
+            <div className="mt-2 space-y-2 text-[11px]">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700">
+                  ✓ {lastImportSummary.matched} {isAr ? "بند مطابق" : "matched"}
                 </Badge>
-              )}
-              <span className="text-muted-foreground">
-                {isAr
-                  ? `إجمالي البنود في الـ PDF: ${lastImportSummary.totalLines}`
-                  : `Total lines in PDF: ${lastImportSummary.totalLines}`}
-              </span>
-              {lastImportSummary.missed.length > 0 && (
-                <details className="basis-full mt-1">
-                  <summary className="cursor-pointer text-amber-700 underline decoration-dotted">
-                    {isAr ? "عرض الـ SKUs المفقودة" : "Show missing SKUs"}
+                {lastImportSummary.missingAgg.length > 0 && (
+                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700">
+                    ⚠ {lastImportSummary.missingAgg.length} {isAr ? "SKU غير موجود" : "missing SKU"}
+                  </Badge>
+                )}
+                <Badge variant="outline">
+                  {isAr ? `الملفات: ${lastImportSummary.files.length}` : `Files: ${lastImportSummary.files.length}`}
+                </Badge>
+                <span className="text-muted-foreground">
+                  {isAr
+                    ? `إجمالي البنود: ${lastImportSummary.totalLines}`
+                    : `Total lines: ${lastImportSummary.totalLines}`}
+                </span>
+              </div>
+
+              {/* Per-file breakdown */}
+              <details open className="rounded-md border bg-background/60">
+                <summary className="cursor-pointer px-2 py-1.5 text-[11px] font-semibold">
+                  {isAr ? "تفاصيل لكل ملف" : "Per-file breakdown"}
+                </summary>
+                <div className="divide-y">
+                  {lastImportSummary.files.map((f, idx) => (
+                    <div key={`${f.name}-${idx}`} className="px-2 py-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[10.5px] truncate max-w-[260px]" title={f.name}>{f.name}</span>
+                        {f.error ? (
+                          <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 text-rose-700">
+                            {isAr ? `خطأ: ${f.error}` : `Error: ${f.error}`}
+                          </Badge>
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700">
+                              ✓ {f.matched}
+                            </Badge>
+                            {f.missed.length > 0 && (
+                              <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700">
+                                ⚠ {f.missed.length}
+                              </Badge>
+                            )}
+                            <span className="text-muted-foreground">
+                              {isAr ? `بنود: ${f.lines}` : `lines: ${f.lines}`}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {f.missed.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1 font-mono text-[10px]">
+                          {f.missed.map((m, i) => (
+                            <span key={`${m.sku}-${i}`} className="rounded bg-amber-500/10 px-1.5 py-0.5 text-amber-800">
+                              {m.sku} <span className="opacity-60">×{m.quantity}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </details>
+
+              {/* Aggregated missing across files */}
+              {lastImportSummary.missingAgg.length > 0 && (
+                <details className="rounded-md border border-amber-500/30 bg-amber-500/5">
+                  <summary className="cursor-pointer px-2 py-1.5 text-[11px] font-semibold text-amber-800">
+                    {isAr
+                      ? `كل الـ SKUs المفقودة (${lastImportSummary.missingAgg.length}) — مجمّعة من كل الملفات`
+                      : `All missing SKUs (${lastImportSummary.missingAgg.length}) — aggregated`}
                   </summary>
-                  <div className="mt-1 flex flex-wrap gap-1 font-mono text-[10px]">
-                    {lastImportSummary.missed.map((s) => (
-                      <span key={s} className="rounded bg-amber-500/10 px-1.5 py-0.5">
-                        {s}
-                      </span>
-                    ))}
+                  <div className="px-2 py-1.5">
+                    <div className="grid gap-1">
+                      {lastImportSummary.missingAgg.map((m) => (
+                        <div key={m.sku} className="flex flex-wrap items-center gap-2 rounded bg-background/60 px-2 py-1">
+                          <span className="font-mono text-[10.5px] font-semibold text-amber-900">{m.sku}</span>
+                          <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700">
+                            {isAr ? `كمية: ${m.quantity}` : `qty: ${m.quantity}`}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {isAr ? "من: " : "from: "}
+                            <span className="font-mono">{m.files.join(", ")}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </details>
               )}
