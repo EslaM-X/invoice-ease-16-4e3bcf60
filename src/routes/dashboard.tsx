@@ -8,6 +8,7 @@ import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock, Package, Sparkles, Coins } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
@@ -16,6 +17,7 @@ import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
 import { cachedListFetch } from "@/lib/list-cache";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -29,11 +31,13 @@ function Dashboard() {
   const { hidden, toggle } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0, inventoryStock: 0, sampleStock: 0, costValueEgp: 0, salesValueEgp: 0, latestUsdRate: 50 });
   const [recent, setRecent] = useState<any[]>([]);
+  const [fxInput, setFxInput] = useState("50.5");
+  const [savingFx, setSavingFx] = useState(false);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
   const load = async (forceRefresh = false) => {
-    const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: latestRateRows }] = await Promise.all([
+    const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
         .not("status", "in", "(voided,draft)")
@@ -53,6 +57,9 @@ function Dashboard() {
         .select("quantity, returned_quantity, item_type, status")
         .eq("item_type", "sample")
         .neq("status", "returned_full"),
+      user
+        ? (supabase as any).from("settings").select("dashboard_usd_rate").eq("user_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
       supabase
         .from("purchase_orders")
         .select("usd_rate")
@@ -64,7 +71,7 @@ function Dashboard() {
 
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
-    const latestUsdRate = Number((latestRateRows as any[])?.[0]?.usd_rate) || 50;
+    const latestUsdRate = Number((settingsRow as any)?.dashboard_usd_rate) || Number((latestRateRows as any[])?.[0]?.usd_rate) || 50.5;
     const inventoryStock = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0), 0);
     const costValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.cost_price_usd) || 0) * latestUsdRate, 0);
     const salesValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.price) || 0), 0);
@@ -95,7 +102,29 @@ function Dashboard() {
       salesValueEgp,
       latestUsdRate,
     });
+    setFxInput(String(latestUsdRate));
     setRecent((invs ?? []).slice(0, 5));
+  };
+
+  const saveFxRate = async () => {
+    if (!user) return;
+    const rate = Number(fxInput);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      toast.error(lang === "ar" ? "أدخل سعر دولار صحيح" : "Enter a valid USD rate");
+      return;
+    }
+    setSavingFx(true);
+    const { error } = await (supabase as any)
+      .from("settings")
+      .upsert({ user_id: user.id, dashboard_usd_rate: rate, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    setSavingFx(false);
+    if (error) return toast.error(error.message);
+    setStats((s) => ({
+      ...s,
+      latestUsdRate: rate,
+      costValueEgp: s.latestUsdRate > 0 ? (s.costValueEgp / s.latestUsdRate) * rate : s.costValueEgp,
+    }));
+    toast.success(lang === "ar" ? "تم تحديث سعر الدولار" : "USD rate updated");
   };
 
   useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
