@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter } from "lucide-react";
+import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
 import { POPdfReceiptDialog } from "@/components/po-pdf-receipt-dialog";
@@ -134,6 +134,7 @@ type ReceiptRow = {
   notes: string | null;
   actor_email: string | null;
   created_at: string;
+  receipt_date?: string | null;
   discount_amount?: number | null;
   po_receipt_items: {
     id: string;
@@ -251,7 +252,7 @@ export function POTrackerDialog({
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
       (supabase as any)
         .from("po_receipts")
-        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,po_receipt_items(id,po_item_id,product_id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,receipt_date,po_receipt_items(id,po_item_id,product_id,product_name,serial_number,color,quantity,stock_before,stock_after)")
         .eq("po_id", poId)
         .order("receipt_number", { ascending: false }),
     ]);
