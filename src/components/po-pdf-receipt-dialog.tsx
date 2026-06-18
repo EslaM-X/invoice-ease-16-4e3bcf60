@@ -369,6 +369,31 @@ export function POPdfReceiptDialog({
                   {isAr ? "مفقود" : "missing"}
                 </Badge>
               )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const rows: string[] = ["file,sku,status,pdf_qty,po_remaining,note"];
+                  const esc = (s: string) => `"${(s ?? "").replace(/"/g, '""')}"`;
+                  for (const fm of matches) {
+                    for (const m of fm.matched) rows.push(`${esc(fm.file.fileName)},${esc(m.sku)},matched,${m.qty},${m.remaining},`);
+                    for (const m of fm.excess) rows.push(`${esc(fm.file.fileName)},${esc(m.sku)},excess,${m.qty},${m.remaining},${esc("clamped to remaining")}`);
+                    for (const m of fm.missing) rows.push(`${esc(fm.file.fileName)},${esc(m.sku)},missing,${m.qty},0,${esc("not in PO")}`);
+                  }
+                  const blob = new Blob(["\ufeff" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `PDF-match-${poNumber}-${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="gap-1 h-7 text-[11px]"
+              >
+                <Download className="h-3 w-3" />
+                {isAr ? "تنزيل تقرير CSV" : "Download CSV"}
+              </Button>
               <div className="ms-auto flex items-center gap-2 text-xs">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
