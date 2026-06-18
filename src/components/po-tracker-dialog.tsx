@@ -1011,14 +1011,7 @@ export function POTrackerDialog({
           onOpenChange={setReceiveOpen}
           onDone={async () => {
             setReceiveOpen(false);
-            // After a receipt is recorded, check for historical delivery receipts
-            // that haven't been deducted from stock yet (pre-system sales).
-            try {
-              const { data } = await (supabase as any).rpc("list_pending_back_deductions", { p_po_id: po.id });
-              if (Array.isArray(data) && data.length > 0) {
-                setBackDeductOpen(true);
-              }
-            } catch { /* ignore */ }
+            // Back-deductions are now applied automatically inside the receipt RPC.
             load();
           }}
         />
