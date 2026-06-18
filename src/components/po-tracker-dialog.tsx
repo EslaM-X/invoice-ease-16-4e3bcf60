@@ -791,6 +791,18 @@ export function POTrackerDialog({
                       {isAr ? "دفعات الاستلام" : "Receipt Batches"}
                     </div>
                     <div className="flex items-center gap-2">
+                      {canUndoReceipt && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          className="gap-1 border-rose-500/40 text-rose-700 hover:bg-rose-500/10"
+                          onClick={undoLastReceipt}
+                        >
+                          <Undo2 className="h-3.5 w-3.5" />
+                          {isAr ? "تراجع آخر استلام" : "Undo last receipt"}
+                        </Button>
+                      )}
                       {(isAdmin || isPurchasing) && totalRemaining > 0 && (
                         <Button
                           size="sm"
@@ -840,7 +852,7 @@ export function POTrackerDialog({
                                      return {
                                        code: r.receipt_code || `#${r.receipt_number}`,
                                        qty,
-                                       at: r.created_at,
+                                        at: r.receipt_date || r.created_at,
                                        actor: r.actor_email || "",
                                        total: r.total_qty || 0,
                                      };
@@ -1008,7 +1020,7 @@ export function POTrackerDialog({
                                 {isAr ? "تفاصيل كاملة" : "Full details"}
                               </Button>
                               <div className="text-[11px] text-muted-foreground">
-                                {fmtDateTime(r.created_at, lang)}
+                                {fmtDateTime(r.receipt_date || r.created_at, lang)}
                                 {r.actor_email ? ` · ${r.actor_email}` : ""}
                               </div>
                             </div>
