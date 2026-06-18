@@ -230,6 +230,17 @@ function POTrackingPage() {
           );
         })}
       </div>
+      <div className="rounded-md border bg-muted/30 p-2">
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {isAr ? "حسب كود الشحنة" : "By shipment code"}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <FilterChip active={codeFilter === "all"} onClick={() => setCodeFilter("all")} label={isAr ? "كل الأكواد" : "All codes"} count={codeCounts.all} />
+          {Object.entries(codeCounts).filter(([k]) => k !== "all").sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([code, count]) => (
+            <FilterChip key={code} active={codeFilter === code} onClick={() => setCodeFilter(code)} label={code} count={count} />
+          ))}
+        </div>
+      </div>
       <div className="flex flex-wrap gap-1.5">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label={isAr ? "الكل" : "All"} count={counts.all} />
         {FILTER_STATUSES.map((s) => (
@@ -283,6 +294,7 @@ function POTrackingPage() {
             const progress = p.status === "received" ? 100 : p.status === "cancelled" ? 0 : idx >= 0 ? Math.round(((idx + 1) / PO_FLOW.length) * 100) : 0;
             const meta = shipmentMeta(p.shipment_type);
             const ShipIcon = meta.icon;
+            const receipts = poReceipts[p.id] ?? [];
             return (
               <div key={p.id} className={`flex flex-wrap items-center gap-3 border-s-4 p-4 ${meta.surfaceClass}`}>
                 <div className="flex-1 min-w-[200px] space-y-1">
@@ -312,6 +324,15 @@ function POTrackingPage() {
                   {p.status !== "cancelled" && (
                     <div className="mt-1 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
+                  {receipts.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {receipts.map((r) => (
+                        <button key={r.id ?? `${p.id}-${r.receipt_number}`} type="button" onClick={() => setTrackId(p.id)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
+                          {r.receipt_code || `${p.shipment_code || p.po_number}#${r.receipt_number}`} · +{r.total_qty}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
