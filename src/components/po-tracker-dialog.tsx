@@ -1144,9 +1144,9 @@ function ReceiveDialog({
     [openItems],
   );
 
-  // Default: receive all remaining
+  // Default: all zero — user explicitly sets quantities
   const [qty, setQty] = useState<Record<string, number>>(() =>
-    Object.fromEntries(openItems.map((i) => [i.id, i.quantity - (i.received_qty || 0)])),
+    Object.fromEntries(openItems.map((i) => [i.id, 0])),
   );
   const [notes, setNotes] = useState("");
   const [discount, setDiscount] = useState<number>(0);
@@ -1155,6 +1155,8 @@ function ReceiveDialog({
   const [busy, setBusy] = useState(false);
   const [colorFilter, setColorFilter] = useState<string>("all");
   const [collectionFilter, setCollectionFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [uniformQty, setUniformQty] = useState<string>("");
 
   // Live current stock + collection per product (the "before" the user verifies against)
   useEffect(() => {
