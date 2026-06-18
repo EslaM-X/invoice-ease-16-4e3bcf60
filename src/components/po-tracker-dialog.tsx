@@ -1048,6 +1048,17 @@ export function POTrackerDialog({
         />
       )}
 
+      {pdfReceiveOpen && po && (
+        <POPdfReceiptDialog
+          open={pdfReceiveOpen}
+          onOpenChange={setPdfReceiveOpen}
+          poId={po.id}
+          poNumber={po.shipment_code || po.po_number}
+          items={items as any}
+          onDone={() => { setPdfReceiveOpen(false); load(); }}
+        />
+      )}
+
       {detailReceipt && (
         <BatchDetailsDialog
           receipt={detailReceipt}
