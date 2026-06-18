@@ -603,6 +603,12 @@ export function POTrackerDialog({
                           : (isPartial ? `Receive next batch (${totalRemaining} left)` : "Confirm Receive → Inventory")}
                       </Button>
                     )}
+                    {canReceive && (
+                      <Button onClick={() => setPdfReceiveOpen(true)} disabled={busy} variant="outline" className="gap-2 border-indigo-500/40 text-indigo-700 hover:bg-indigo-500/10">
+                        <FileText className="h-4 w-4" />
+                        {isAr ? "استلام من PDF" : "Receive from PDF"}
+                      </Button>
+                    )}
                     {canCancel && (
                       <Button variant="outline" onClick={cancelPO} disabled={busy} className="gap-2 text-destructive hover:text-destructive">
                         <XCircle className="h-4 w-4" /> {isAr ? "إلغاء الأمر" : "Cancel PO"}
