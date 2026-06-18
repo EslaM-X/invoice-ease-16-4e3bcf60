@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
-import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock } from "lucide-react";
+import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock, Package, Sparkles, Coins } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
@@ -27,13 +27,13 @@ function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const { hidden, toggle } = useHideNumbers();
-  const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0 });
+  const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0, inventoryStock: 0, sampleStock: 0, costValueEgp: 0, salesValueEgp: 0, latestUsdRate: 50 });
   const [recent, setRecent] = useState<any[]>([]);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
   const load = async (forceRefresh = false) => {
-    const [{ data: invs }, { count: cust }, productsResult] = await Promise.all([
+    const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
         .not("status", "in", "(voided,draft)")
@@ -41,18 +41,34 @@ function Dashboard() {
         .limit(200),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       cachedListFetch(
-        "dashboard:product-stock",
+        "dashboard:product-stock-v2",
         async () => {
-          const { data } = await supabase.from("products").select("stock_quantity, low_stock_threshold");
+          const { data } = await supabase.from("products").select("stock_quantity, low_stock_threshold, cost_price_usd, price");
           return (data as any[]) ?? [];
         },
         { ttl: 60_000, forceRefresh },
       ),
+      (supabase as any)
+        .from("defective_items")
+        .select("quantity, returned_quantity, item_type, status")
+        .eq("item_type", "sample")
+        .neq("status", "returned_full"),
+      supabase
+        .from("purchase_orders")
+        .select("usd_rate")
+        .not("usd_rate", "is", null)
+        .order("cfo_priced_at", { ascending: false, nullsFirst: false })
+        .limit(1),
     ]);
     const prods = productsResult.data;
 
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
+    const latestUsdRate = Number((latestRateRows as any[])?.[0]?.usd_rate) || 50;
+    const inventoryStock = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0), 0);
+    const costValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.cost_price_usd) || 0) * latestUsdRate, 0);
+    const salesValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.price) || 0), 0);
+    const sampleStock = ((sampleRows as any[]) ?? []).reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
     
     let closed = 0, partial = 0, open = 0;
     (invs ?? []).forEach((i: any) => {
@@ -73,6 +89,11 @@ function Dashboard() {
       customers: cust ?? 0,
       products: prods?.length ?? 0,
       lowStock,
+      inventoryStock,
+      sampleStock,
+      costValueEgp,
+      salesValueEgp,
+      latestUsdRate,
     });
     setRecent((invs ?? []).slice(0, 5));
   };
@@ -90,7 +111,7 @@ function Dashboard() {
     }, 300);
   };
 
-  useBatchedRealtimeTables(["invoices", "products", "customers"], scheduleRealtimeRefresh, [user?.id]);
+  useBatchedRealtimeTables(["invoices", "products", "customers", "defective_items", "purchase_orders"], scheduleRealtimeRefresh, [user?.id]);
 
   const cards = [
     { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
@@ -161,6 +182,35 @@ function Dashboard() {
 
       <PoShipmentsTracker />
 
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <InventoryValueCard
+          label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
+          value={stats.inventoryStock}
+          sub={lang === "ar" ? `${stats.products} صنف نشط` : `${stats.products} active SKUs`}
+          Icon={Package}
+        />
+        <InventoryValueCard
+          label={lang === "ar" ? "منتجات في العيانات" : "Samples out"}
+          value={stats.sampleStock}
+          sub={lang === "ar" ? "عينات خارج المخزون" : "Sample units outside stock"}
+          Icon={Sparkles}
+        />
+        <InventoryValueCard
+          label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
+          value={hidden ? "•••••" : fmtMoney(stats.costValueEgp, "EGP", lang)}
+          sub={lang === "ar" ? `محسوبة بسعر دولار ${stats.latestUsdRate}` : `Using FX ${stats.latestUsdRate}`}
+          Icon={Coins}
+          sensitive
+        />
+        <InventoryValueCard
+          label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
+          value={hidden ? "•••••" : fmtMoney(stats.salesValueEgp, "EGP", lang)}
+          sub={lang === "ar" ? "للدashboard فقط" : "Dashboard only"}
+          Icon={TrendingUp}
+          sensitive
+        />
+      </section>
+
       <SalesOverview />
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -189,6 +239,36 @@ function Dashboard() {
       </div>
 
       <ActivityFeed limit={10} />
+    </div>
+  );
+}
+
+function InventoryValueCard({
+  label,
+  value,
+  sub,
+  Icon,
+}: {
+  label: string;
+  value: number | string;
+  sub: string;
+  Icon: typeof Package;
+  sensitive?: boolean;
+}) {
+  return (
+    <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="eyebrow text-[0.62rem] sm:text-[0.68rem]">{label}</div>
+          <div className="ltr-nums mt-3 font-display text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-3xl break-words">
+            {value}
+          </div>
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      <div className="mt-3 text-xs text-muted-foreground">{sub}</div>
     </div>
   );
 }
