@@ -1331,6 +1331,65 @@ function ReceiveDialog({
                   onClick={() => setColorFilter("all")}
                   className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${colorFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
                 >{isAr ? "الكل" : "All"}</button>
+        {/* Search + Bulk actions (always visible) */}
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={isAr ? "بحث بالاسم / السيريال / اللون..." : "Search name / serial / color..."}
+                className="ps-8 h-8 text-xs"
+              />
+            </div>
+            <Input
+              type="number" min={0}
+              value={uniformQty}
+              onChange={(e) => setUniformQty(e.target.value)}
+              placeholder={isAr ? "كمية موحدة" : "Uniform qty"}
+              className="w-28 h-8 text-xs text-center"
+            />
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={applyUniform}>
+              {isAr ? "تطبيق" : "Apply"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px] gap-1 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50" onClick={fillAllRemaining}>
+              <CheckCheck className="h-3.5 w-3.5" />
+              {isAr ? "ملء بالكامل" : "Fill remaining"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={zeroAll}>
+              {isAr ? "تصفير" : "Zero"}
+            </Button>
+          </div>
+        </div>
+
+        {(availableColors.length > 0 || availableCollections.length > 0) && (
+          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {isAr ? "تصفية البنود" : "Filter items"}
+            </div>
+            {availableCollections.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground me-1">{isAr ? "كولكشن:" : "Collection:"}</span>
+                <button
+                  onClick={() => setCollectionFilter("all")}
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${collectionFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                >{isAr ? "الكل" : "All"}</button>
+                {availableCollections.map((c) => (
+                  <button key={c}
+                    onClick={() => setCollectionFilter(c)}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${collectionFilter === c ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                  >{c}</button>
+                ))}
+              </div>
+            )}
+            {availableColors.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground me-1">{isAr ? "لون:" : "Color:"}</span>
+                <button
+                  onClick={() => setColorFilter("all")}
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${colorFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+                >{isAr ? "الكل" : "All"}</button>
                 {availableColors.map((c) => (
                   <button key={c}
                     onClick={() => setColorFilter(c)}
@@ -1343,13 +1402,13 @@ function ReceiveDialog({
                 ))}
               </div>
             )}
-            {(colorFilter !== "all" || collectionFilter !== "all") && (
+            {(colorFilter !== "all" || collectionFilter !== "all" || search) && (
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">
                   {visibleItems.length} / {openItems.length} {isAr ? "بند ظاهر" : "items visible"}
                 </span>
                 <Button variant="ghost" size="sm" className="h-6 text-[11px]"
-                  onClick={() => { setColorFilter("all"); setCollectionFilter("all"); }}>
+                  onClick={() => { setColorFilter("all"); setCollectionFilter("all"); setSearch(""); }}>
                   {isAr ? "مسح الفلاتر" : "Clear filters"}
                 </Button>
               </div>
