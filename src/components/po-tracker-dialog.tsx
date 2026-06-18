@@ -808,46 +808,92 @@ export function POTrackerDialog({
                             <tbody className="divide-y">
                               {items.map((it) => {
                                 const ordered = it.quantity;
-                                const perBatch = receipts
-                                  .map((r) => {
-                                    const qty = (r.po_receipt_items ?? [])
-                                      .filter((ri) => ri.po_item_id === it.id || (ri.product_id && ri.product_id === (it as any).product_id))
-                                      .reduce((s, ri) => s + (ri.quantity || 0), 0);
-                                    return { code: r.receipt_code || `#${r.receipt_number}`, qty, at: r.created_at };
-                                  })
-                                  .filter((b) => b.qty > 0);
-                                const received = perBatch.reduce((s, b) => s + b.qty, 0);
-                                const remaining = Math.max(0, ordered - received);
-                                return (
-                                  <tr key={it.id} className={remaining === 0 ? "bg-emerald-500/5" : ""}>
-                                    <td className="p-2">
-                                      <div className="flex items-center gap-2">
-                                        <span className="truncate font-medium">{it.product_name}</span>
-                                        {it.color && (
-                                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                                            <ColorSwatch value={it.color} size="sm" />
-                                            {it.color}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {it.serial_number && (
-                                        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{it.serial_number}</div>
-                                      )}
-                                    </td>
-                                    <td className="p-2 text-center tabular-nums font-semibold">{ordered}</td>
-                                    <td className="p-2 text-center tabular-nums font-semibold text-emerald-700">{received}</td>
-                                    <td className={`p-2 text-center tabular-nums font-bold ${remaining === 0 ? "text-emerald-700" : "text-amber-700"}`}>{remaining}</td>
-                                    <td className="p-2">
-                                      {perBatch.length === 0 ? (
-                                        <span className="text-[10px] text-muted-foreground">{isAr ? "لم يُستلم بعد" : "Not received yet"}</span>
-                                      ) : (
-                                        <div className="flex flex-wrap gap-1">
-                                          {perBatch.map((b, idx) => (
-                                            <span
-                                              key={idx}
-                                              title={fmtDateTime(b.at, lang)}
-                                              className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
-                                            >
+                                 const perBatch = receipts
+                                   .map((r) => {
+                                     const qty = (r.po_receipt_items ?? [])
+                                       .filter((ri) => ri.po_item_id === it.id || (ri.product_id && ri.product_id === (it as any).product_id))
+                                       .reduce((s, ri) => s + (ri.quantity || 0), 0);
+                                     return {
+                                       code: r.receipt_code || `#${r.receipt_number}`,
+                                       qty,
+                                       at: r.created_at,
+                                       actor: r.actor_email || "",
+                                       total: r.total_qty || 0,
+                                     };
+                                   })
+                                   .filter((b) => b.qty > 0);
+                                 const received = perBatch.reduce((s, b) => s + b.qty, 0);
+                                 const remaining = Math.max(0, ordered - received);
+                                 // Color palette per batch index (1-based)
+                                 const batchPalette = [
+                                   "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
+                                   "border-sky-500/40 bg-sky-500/10 text-sky-700",
+                                   "border-violet-500/40 bg-violet-500/10 text-violet-700",
+                                   "border-amber-500/40 bg-amber-500/10 text-amber-700",
+                                   "border-rose-500/40 bg-rose-500/10 text-rose-700",
+                                   "border-teal-500/40 bg-teal-500/10 text-teal-700",
+                                 ];
+                                 return (
+                                   <tr key={it.id} className={remaining === 0 ? "bg-emerald-500/5" : ""}>
+                                     <td className="p-2">
+                                       <div className="flex items-center gap-2">
+                                         <span className="truncate font-medium">{it.product_name}</span>
+                                         {it.color && (
+                                           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                                             <ColorSwatch value={it.color} size="sm" />
+                                             {it.color}
+                                           </span>
+                                         )}
+                                       </div>
+                                       {it.serial_number && (
+                                         <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{it.serial_number}</div>
+                                       )}
+                                     </td>
+                                     <td className="p-2 text-center tabular-nums font-semibold">{ordered}</td>
+                                     <td className="p-2 text-center tabular-nums font-semibold text-emerald-700">{received}</td>
+                                     <td className={`p-2 text-center tabular-nums font-bold ${remaining === 0 ? "text-emerald-700" : "text-amber-700"}`}>{remaining}</td>
+                                     <td className="p-2">
+                                       {perBatch.length === 0 ? (
+                                         <span className="text-[10px] text-muted-foreground">{isAr ? "لم يُستلم بعد" : "Not received yet"}</span>
+                                       ) : (
+                                         <div className="flex flex-wrap gap-1">
+                                           {perBatch.map((b, idx) => (
+                                             <Popover key={idx}>
+                                               <PopoverTrigger asChild>
+                                                 <button
+                                                   className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold cursor-pointer hover:scale-105 transition-transform ${batchPalette[idx % batchPalette.length]}`}
+                                                 >
+                                                   <span className="font-mono">{b.code}</span>
+                                                   <span className="tabular-nums">+{b.qty}</span>
+                                                 </button>
+                                               </PopoverTrigger>
+                                               <PopoverContent className="w-72 text-xs p-3" align="start">
+                                                 <div className="font-mono text-sm font-bold mb-1.5">{b.code}</div>
+                                                 <div className="space-y-1 text-muted-foreground">
+                                                   <div className="flex justify-between gap-2">
+                                                     <span>{isAr ? "التاريخ:" : "Date:"}</span>
+                                                     <span className="font-medium text-foreground">{fmtDateTime(b.at, lang)}</span>
+                                                   </div>
+                                                   <div className="flex justify-between gap-2">
+                                                     <span>{isAr ? "كمية هذا المنتج:" : "Qty (this item):"}</span>
+                                                     <span className="font-bold text-emerald-700 tabular-nums">+{b.qty}</span>
+                                                   </div>
+                                                   <div className="flex justify-between gap-2">
+                                                     <span>{isAr ? "إجمالي الدفعة:" : "Batch total:"}</span>
+                                                     <span className="font-medium text-foreground tabular-nums">{b.total}</span>
+                                                   </div>
+                                                   {b.actor && (
+                                                     <div className="flex justify-between gap-2">
+                                                       <span>{isAr ? "بواسطة:" : "By:"}</span>
+                                                       <span className="font-medium text-foreground truncate" title={b.actor}>{b.actor}</span>
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                               </PopoverContent>
+                                             </Popover>
+                                           ))}
+                                         </div>
+                                       )}
                                               <span className="font-mono">{b.code}</span>
                                               <span className="tabular-nums">+{b.qty}</span>
                                             </span>
