@@ -2328,6 +2328,7 @@ export type Database = {
           company_phone: string | null
           created_at: string
           currency: string
+          dashboard_usd_rate: number
           default_language: string
           delivery_terms: string | null
           id: string
@@ -2347,6 +2348,7 @@ export type Database = {
           company_phone?: string | null
           created_at?: string
           currency?: string
+          dashboard_usd_rate?: number
           default_language?: string
           delivery_terms?: string | null
           id?: string
@@ -2366,6 +2368,7 @@ export type Database = {
           company_phone?: string | null
           created_at?: string
           currency?: string
+          dashboard_usd_rate?: number
           default_language?: string
           delivery_terms?: string | null
           id?: string
@@ -3501,6 +3504,7 @@ export type Database = {
         Args: { _invoice_id: string }
         Returns: undefined
       }
+      recalculate_po_receipt_state: { Args: { p_po_id: string }; Returns: Json }
       record_historical_po_receipt: {
         Args: {
           _apply_to_inventory?: boolean
@@ -3570,6 +3574,10 @@ export type Database = {
           product_name: string
           serial_number: string
         }[]
+      }
+      undo_last_po_receipt: {
+        Args: { p_actor_email: string; p_po_id: string }
+        Returns: Json
       }
       update_delivery_receipt:
         | {
