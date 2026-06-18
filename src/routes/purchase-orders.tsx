@@ -1527,25 +1527,28 @@ function PODetailDialog({
     if (!rate) return toast.error(isAr ? "أدخل سعر الصرف أولاً" : "Enter the FX rate first");
     setSaving(true);
     try {
+      const pricingPatch: any = {
+        usd_rate: rate,
+        customs_mode: customsMode,
+        customs_value: Number(customsValue) || 0,
+        taxes_mode: taxesMode,
+        taxes_value: Number(taxesValue) || 0,
+        shipping_mode: shippingMode,
+        shipping_value: Number(shippingValue) || 0,
+        other_mode: otherMode,
+        other_value: Number(otherValue) || 0,
+        total_egp: totalEgp,
+        cfo_notes: cfoNotes || null,
+        cfo_priced_at: new Date().toISOString(),
+        cfo_priced_by: userId,
+        cfo_priced_by_email: userEmail,
+      };
+      if (!po || po.status === "pending_cfo" || po.status === "priced") {
+        pricingPatch.status = "priced";
+      }
       const { error } = await supabase
         .from("purchase_orders")
-        .update({
-          usd_rate: rate,
-          customs_mode: customsMode,
-          customs_value: Number(customsValue) || 0,
-          taxes_mode: taxesMode,
-          taxes_value: Number(taxesValue) || 0,
-          shipping_mode: shippingMode,
-          shipping_value: Number(shippingValue) || 0,
-          other_mode: otherMode,
-          other_value: Number(otherValue) || 0,
-          total_egp: totalEgp,
-          cfo_notes: cfoNotes || null,
-          status: "priced",
-          cfo_priced_at: new Date().toISOString(),
-          cfo_priced_by: userId,
-          cfo_priced_by_email: userEmail,
-        } as any)
+        .update(pricingPatch)
         .eq("id", poId);
       if (error) throw error;
       await audit("po_priced", { total_egp: totalEgp, usd_rate: rate });
