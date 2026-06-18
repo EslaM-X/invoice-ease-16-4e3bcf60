@@ -1172,7 +1172,7 @@ function ReceiveDialog({
           ? `تم خصم ${bdCount} محضر استلام تاريخي من المخزون تلقائيًا`
           : `Auto-deducted ${bdCount} historical receipt items from stock`);
       }
-      const batch = data?.receipt_number;
+      const batch = receipt?.receipt_number;
       // Persist UI-only discount on the just-created receipt row (latest for this PO).
       if (discount > 0) {
         const { data: latest } = await supabase
