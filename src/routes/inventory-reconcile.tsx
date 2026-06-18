@@ -135,6 +135,8 @@ function Reconcile() {
         </div>
       </div>
 
+      <ReconciliationReport isAr={isAr} onChanged={load} />
+
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
         <Input
