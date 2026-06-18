@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter } from "lucide-react";
+import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
 import { POPdfReceiptDialog } from "@/components/po-pdf-receipt-dialog";
@@ -134,6 +134,7 @@ type ReceiptRow = {
   notes: string | null;
   actor_email: string | null;
   created_at: string;
+  receipt_date?: string | null;
   discount_amount?: number | null;
   po_receipt_items: {
     id: string;
@@ -251,7 +252,7 @@ export function POTrackerDialog({
       supabase.from("po_status_history").select("*").eq("po_id", poId).order("created_at", { ascending: true }),
       (supabase as any)
         .from("po_receipts")
-        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,po_receipt_items(id,po_item_id,product_id,product_name,serial_number,color,quantity,stock_before,stock_after)")
+        .select("id,receipt_number,receipt_code,total_qty,notes,discount_amount,actor_email,created_at,receipt_date,po_receipt_items(id,po_item_id,product_id,product_name,serial_number,color,quantity,stock_before,stock_after)")
         .eq("po_id", poId)
         .order("receipt_number", { ascending: false }),
     ]);
@@ -272,7 +273,7 @@ export function POTrackerDialog({
   const totalReceived = items.reduce((s, i) => s + (i.received_qty || 0), 0);
   const totalRemaining = Math.max(0, totalOrdered - totalReceived);
   const isPartial = totalReceived > 0 && totalRemaining > 0;
-  const canReceive = (po?.status === "shipped" || po?.status === "in_warehouse") && totalRemaining > 0 && (isAdmin || isPurchasing);
+  const canReceive = !!po && (["shipped", "in_warehouse", "received"].includes(po.status)) && totalRemaining > 0 && (isAdmin || isPurchasing);
 
   const batchActors = useMemo(
     () => Array.from(new Set(receipts.map((r) => r.actor_email).filter(Boolean) as string[])).sort(),
@@ -284,7 +285,7 @@ export function POTrackerDialog({
     const to = batchTo ? new Date(batchTo).getTime() + 24 * 3600 * 1000 - 1 : null;
     return receipts.filter((r) => {
       if (batchActor && (r.actor_email ?? "") !== batchActor) return false;
-      const t = new Date(r.created_at).getTime();
+      const t = new Date(r.receipt_date || r.created_at).getTime();
       if (from !== null && t < from) return false;
       if (to !== null && t > to) return false;
       if (!q) return true;
@@ -301,6 +302,29 @@ export function POTrackerDialog({
 
   const canTransition = isAdmin || isPurchasing || isCFO;
   const canCancel = isAdmin;
+  const canUndoReceipt = (isAdmin || isPurchasing) && receipts.length > 0;
+
+  const undoLastReceipt = async () => {
+    if (!po || !user || !canUndoReceipt) return;
+    const last = [...receipts].sort((a, b) => b.receipt_number - a.receipt_number)[0];
+    if (!confirm(isAr
+      ? `تراجع عن آخر دفعة ${last.receipt_code || "#" + last.receipt_number} وإرجاع المخزون؟`
+      : `Undo last batch ${last.receipt_code || "#" + last.receipt_number} and roll inventory back?`)) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase as any).rpc("undo_last_po_receipt", {
+        p_po_id: po.id,
+        p_actor_email: user.email ?? "",
+      });
+      if (error) throw error;
+      toast.success(isAr ? "تم التراجع عن آخر دفعة وإعادة ضبط الحالة" : "Last receipt undone and status recalculated");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message?.includes("NO_RECEIPT_TO_UNDO") ? (isAr ? "لا توجد دفعات للتراجع" : "No receipt to undo") : (e?.message ?? "Failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const currentIdx = po ? PO_FLOW.indexOf(po.status as any) : -1;
 
@@ -767,6 +791,18 @@ export function POTrackerDialog({
                       {isAr ? "دفعات الاستلام" : "Receipt Batches"}
                     </div>
                     <div className="flex items-center gap-2">
+                      {canUndoReceipt && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          className="gap-1 border-rose-500/40 text-rose-700 hover:bg-rose-500/10"
+                          onClick={undoLastReceipt}
+                        >
+                          <Undo2 className="h-3.5 w-3.5" />
+                          {isAr ? "تراجع آخر استلام" : "Undo last receipt"}
+                        </Button>
+                      )}
                       {(isAdmin || isPurchasing) && totalRemaining > 0 && (
                         <Button
                           size="sm"
@@ -816,7 +852,7 @@ export function POTrackerDialog({
                                      return {
                                        code: r.receipt_code || `#${r.receipt_number}`,
                                        qty,
-                                       at: r.created_at,
+                                        at: r.receipt_date || r.created_at,
                                        actor: r.actor_email || "",
                                        total: r.total_qty || 0,
                                      };
@@ -984,7 +1020,7 @@ export function POTrackerDialog({
                                 {isAr ? "تفاصيل كاملة" : "Full details"}
                               </Button>
                               <div className="text-[11px] text-muted-foreground">
-                                {fmtDateTime(r.created_at, lang)}
+                                {fmtDateTime(r.receipt_date || r.created_at, lang)}
                                 {r.actor_email ? ` · ${r.actor_email}` : ""}
                               </div>
                             </div>

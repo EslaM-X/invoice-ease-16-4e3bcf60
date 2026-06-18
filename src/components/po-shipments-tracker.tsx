@@ -48,6 +48,14 @@ type HistoryRow = {
   po?: { po_number: string; shipment_code: string | null; shipment_type: ShipmentType | null };
 };
 
+type ReceiptRow = {
+  po_id: string;
+  receipt_number: number;
+  receipt_code: string | null;
+  total_qty: number;
+  created_at: string;
+};
+
 const STATUS_ORDER: POStatus[] = ["ordered", "shipped", "in_warehouse", "received"];
 
 const STATUS_META: Record<POStatus, { Icon: typeof Package; tone: string; dot: string }> = {
@@ -78,6 +86,7 @@ export function PoShipmentsTracker() {
   const isAr = lang === "ar";
   const [pos, setPos] = useState<PO[] | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
 
   const statusLabel = (s: POStatus) =>
     s === "ordered"
@@ -89,7 +98,7 @@ export function PoShipmentsTracker() {
           : isAr ? "تم الاستلام" : "Received";
 
   const load = async () => {
-    const [{ data: poRows }, { data: histRows }] = await Promise.all([
+    const [{ data: poRows }, { data: histRows }, { data: receiptRows }] = await Promise.all([
       supabase
         .from("purchase_orders")
         .select("id, po_number, shipment_type, shipment_code, supplier_name, status, expected_arrival_at, shipped_at, received_at, total_qty")
@@ -101,8 +110,14 @@ export function PoShipmentsTracker() {
         .select("id, po_id, from_status, to_status, actor_email, created_at, purchase_orders!inner(po_number, shipment_code, shipment_type)")
         .order("created_at", { ascending: false })
         .limit(12),
+      (supabase as any)
+        .from("po_receipts")
+        .select("po_id, receipt_number, receipt_code, total_qty, created_at")
+        .order("receipt_number", { ascending: true })
+        .limit(800),
     ]);
     setPos(((poRows as any[]) ?? []) as PO[]);
+    setReceipts(((receiptRows as any[]) ?? []) as ReceiptRow[]);
     setHistory(
       ((histRows as any[]) ?? []).map((r) => ({
         id: r.id,
@@ -125,6 +140,7 @@ export function PoShipmentsTracker() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
   useRealtimeTable("purchase_orders", load);
   useRealtimeTable("po_status_history", load);
+  useRealtimeTable("po_receipts" as any, load);
 
   const grouped = useMemo(() => {
     const out = new Map<
@@ -154,6 +170,12 @@ export function PoShipmentsTracker() {
     for (const p of pos ?? []) acc[p.status] = (acc[p.status] ?? 0) + 1;
     return acc;
   }, [pos]);
+
+  const receiptsByPo = useMemo(() => {
+    const map = new Map<string, ReceiptRow[]>();
+    receipts.forEach((r) => map.set(r.po_id, [...(map.get(r.po_id) ?? []), r]));
+    return map;
+  }, [receipts]);
 
   return (
     <section className="rounded-md border border-border bg-card overflow-hidden">
@@ -258,18 +280,31 @@ export function PoShipmentsTracker() {
                     {g.pos.slice(0, 8).map((p) => {
                       const meta = STATUS_META[p.status];
                       const code = p.shipment_code || p.po_number;
+                      const poReceipts = receiptsByPo.get(p.id) ?? [];
                       return (
                         <Link
                           key={p.id}
                           to="/po-tracking"
-                          className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px] transition hover:bg-accent/60"
+                          className="block rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px] transition hover:bg-accent/60"
                           title={`${code} · ${p.po_number}`}
                         >
-                          <span className="min-w-0 truncate font-mono font-extrabold text-foreground">{code}</span>
-                          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${meta.tone}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                            {statusLabel(p.status)}
-                          </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 truncate font-mono font-extrabold text-foreground">{code}</span>
+                            <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${meta.tone}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                              {statusLabel(p.status)}
+                            </span>
+                          </div>
+                          {poReceipts.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {poReceipts.slice(0, 4).map((r) => (
+                                <span key={`${p.id}-${r.receipt_number}`} className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                                  {r.receipt_code || `${code}#${r.receipt_number}`} · +{r.total_qty}
+                                </span>
+                              ))}
+                              {poReceipts.length > 4 && <span className="text-muted-foreground">+{poReceipts.length - 4}</span>}
+                            </div>
+                          )}
                         </Link>
                       );
                     })}

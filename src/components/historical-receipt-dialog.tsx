@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { History, AlertCircle, Package } from "lucide-react";
+import { History, AlertCircle, Package, Search, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 
 type POItem = {
@@ -63,12 +63,19 @@ export function HistoricalReceiptDialog({
   const [notes, setNotes] = useState("");
   const [applyInv, setApplyInv] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [colorFilter, setColorFilter] = useState("all");
+  const [collectionFilter, setCollectionFilter] = useState("all");
+  const [productMeta, setProductMeta] = useState<Record<string, { collection: string | null }>>({});
 
   useEffect(() => {
     if (!open) return;
     setQty(Object.fromEntries(openItems.map((i) => [i.id, 0])));
     setNotes("");
     setApplyInv(false);
+    setSearch("");
+    setColorFilter("all");
+    setCollectionFilter("all");
     const d = new Date();
     d.setDate(d.getDate() - 7); // default to a week ago for historical entries
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -77,7 +84,43 @@ export function HistoricalReceiptDialog({
     );
   }, [open, openItems]);
 
+  useEffect(() => {
+    if (!open) return;
+    const ids = Array.from(new Set(openItems.map((i) => i.product_id)));
+    if (ids.length === 0) { setProductMeta({}); return; }
+    (async () => {
+      const { data } = await supabase.from("products").select("id,collection").in("id", ids);
+      const meta: Record<string, { collection: string | null }> = {};
+      (data ?? []).forEach((p: any) => { meta[p.id] = { collection: p.collection ?? null }; });
+      setProductMeta(meta);
+    })();
+  }, [open, openItems]);
+
   const totalRecv = openItems.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
+
+  const availableColors = useMemo(() => Array.from(new Set(openItems.map((i) => i.color).filter(Boolean) as string[])).sort(), [openItems]);
+  const availableCollections = useMemo(() => Array.from(new Set(openItems.map((i) => productMeta[i.product_id]?.collection).filter(Boolean) as string[])).sort(), [openItems, productMeta]);
+  const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return openItems.filter((i) => {
+      if (colorFilter !== "all" && (i.color ?? "") !== colorFilter) return false;
+      if (collectionFilter !== "all" && (productMeta[i.product_id]?.collection ?? "") !== collectionFilter) return false;
+      if (!q) return true;
+      return `${i.product_name} ${i.serial_number ?? ""} ${i.color ?? ""} ${productMeta[i.product_id]?.collection ?? ""}`.toLowerCase().includes(q);
+    });
+  }, [openItems, search, colorFilter, collectionFilter, productMeta]);
+
+  const fillVisible = () => setQty((prev) => {
+    const next = { ...prev };
+    visibleItems.forEach((i) => { next[i.id] = remainingMap[i.id] ?? 0; });
+    return next;
+  });
+
+  const zeroVisible = () => setQty((prev) => {
+    const next = { ...prev };
+    visibleItems.forEach((i) => { next[i.id] = 0; });
+    return next;
+  });
 
   const setItemQty = (id: string, n: number) => {
     const max = remainingMap[id] ?? 0;
@@ -198,12 +241,41 @@ export function HistoricalReceiptDialog({
                 <span className="font-semibold block">{isAr ? "تحديث المخزون فعلياً" : "Apply to live inventory"}</span>
                 <span className="text-muted-foreground text-[11px]">
                   {isAr
-                    ? "اتركه مغلقاً لو الكميات بالفعل في المخزون من الأوراق القديمة."
-                    : "Leave off if those qtys are already in your current stock."}
+                    ? "مغلق = يسجل الدفعة فقط ولا يزود المخزون. مفتوح = يزود المخزون فعلياً ثم تُخصم الاستلامات القديمة تلقائياً عند الحاجة."
+                    : "Off = records the batch only. On = adds live stock, then old delivery receipts can be deducted automatically."}
                 </span>
               </span>
             </label>
           </div>
+        </div>
+
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isAr ? "بحث: منتج / سيريال / لون / كولكشن" : "Search product / serial / color / collection"} className="h-8 ps-8 text-xs" />
+            </div>
+            <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-[11px]" onClick={fillVisible}>
+              <CheckCheck className="h-3.5 w-3.5" />
+              {isAr ? "تحديد كل الظاهر" : "Fill visible"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={zeroVisible}>
+              {isAr ? "تصفير الظاهر" : "Zero visible"}
+            </Button>
+          </div>
+          {(availableCollections.length > 0 || availableColors.length > 0) && (
+            <div className="flex flex-wrap gap-1.5">
+              <select value={collectionFilter} onChange={(e) => setCollectionFilter(e.target.value)} className="h-8 rounded-md border bg-background px-2 text-xs">
+                <option value="all">{isAr ? "كل الكولكشن" : "All collections"}</option>
+                {availableCollections.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={colorFilter} onChange={(e) => setColorFilter(e.target.value)} className="h-8 rounded-md border bg-background px-2 text-xs">
+                <option value="all">{isAr ? "كل الألوان" : "All colors"}</option>
+                {availableColors.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <span className="self-center text-[11px] text-muted-foreground">{visibleItems.length} / {openItems.length}</span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -211,7 +283,11 @@ export function HistoricalReceiptDialog({
             <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
               {isAr ? "لا توجد بنود متبقية." : "No remaining items."}
             </div>
-          ) : openItems.map((it) => {
+          ) : visibleItems.length === 0 ? (
+            <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              {isAr ? "لا توجد منتجات مطابقة للفلاتر." : "No products match the filters."}
+            </div>
+          ) : visibleItems.map((it) => {
             const remaining = remainingMap[it.id];
             const recv = qty[it.id] ?? 0;
             return (

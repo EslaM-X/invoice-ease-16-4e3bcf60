@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -8,6 +8,7 @@ import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock, Package, Sparkles, Coins } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
@@ -16,6 +17,7 @@ import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
 import { cachedListFetch } from "@/lib/list-cache";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -29,11 +31,13 @@ function Dashboard() {
   const { hidden, toggle } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0, inventoryStock: 0, sampleStock: 0, costValueEgp: 0, salesValueEgp: 0, latestUsdRate: 50 });
   const [recent, setRecent] = useState<any[]>([]);
+  const [fxInput, setFxInput] = useState("50.5");
+  const [savingFx, setSavingFx] = useState(false);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
   const load = async (forceRefresh = false) => {
-    const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: latestRateRows }] = await Promise.all([
+    const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
         .not("status", "in", "(voided,draft)")
@@ -53,6 +57,9 @@ function Dashboard() {
         .select("quantity, returned_quantity, item_type, status")
         .eq("item_type", "sample")
         .neq("status", "returned_full"),
+      user
+        ? (supabase as any).from("settings").select("dashboard_usd_rate").eq("user_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
       supabase
         .from("purchase_orders")
         .select("usd_rate")
@@ -64,7 +71,7 @@ function Dashboard() {
 
     const sales = (invs ?? []).reduce((s: number, i: any) => s + Number(i.total ?? 0), 0);
     const lowStock = (prods ?? []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).length;
-    const latestUsdRate = Number((latestRateRows as any[])?.[0]?.usd_rate) || 50;
+    const latestUsdRate = Number((settingsRow as any)?.dashboard_usd_rate) || Number((latestRateRows as any[])?.[0]?.usd_rate) || 50.5;
     const inventoryStock = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0), 0);
     const costValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.cost_price_usd) || 0) * latestUsdRate, 0);
     const salesValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.price) || 0), 0);
@@ -95,7 +102,29 @@ function Dashboard() {
       salesValueEgp,
       latestUsdRate,
     });
+    setFxInput(String(latestUsdRate));
     setRecent((invs ?? []).slice(0, 5));
+  };
+
+  const saveFxRate = async () => {
+    if (!user) return;
+    const rate = Number(fxInput);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      toast.error(lang === "ar" ? "أدخل سعر دولار صحيح" : "Enter a valid USD rate");
+      return;
+    }
+    setSavingFx(true);
+    const { error } = await (supabase as any)
+      .from("settings")
+      .upsert({ user_id: user.id, dashboard_usd_rate: rate, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    setSavingFx(false);
+    if (error) return toast.error(error.message);
+    setStats((s) => ({
+      ...s,
+      latestUsdRate: rate,
+      costValueEgp: s.latestUsdRate > 0 ? (s.costValueEgp / s.latestUsdRate) * rate : s.costValueEgp,
+    }));
+    toast.success(lang === "ar" ? "تم تحديث سعر الدولار" : "USD rate updated");
   };
 
   useEffect(() => { if (user) load(); /* eslint-disable-next-line */ }, [user]);
@@ -198,14 +227,30 @@ function Dashboard() {
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
           value={hidden ? "•••••" : fmtMoney(stats.costValueEgp, "EGP", lang)}
-          sub={lang === "ar" ? `محسوبة بسعر دولار ${stats.latestUsdRate}` : `Using FX ${stats.latestUsdRate}`}
+          sub={lang === "ar" ? `سعر الدولار المستخدم: ${stats.latestUsdRate}` : `USD rate used: ${stats.latestUsdRate}`}
           Icon={Coins}
           sensitive
+          footer={
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={fxInput}
+                onChange={(e) => setFxInput(e.target.value)}
+                className="h-8 min-w-0 text-xs tabular-nums"
+                aria-label={lang === "ar" ? "سعر الدولار" : "USD rate"}
+              />
+              <Button size="sm" variant="outline" className="h-8 shrink-0 px-3 text-xs" disabled={savingFx} onClick={saveFxRate}>
+                {lang === "ar" ? "تطبيق" : "Apply"}
+              </Button>
+            </div>
+          }
         />
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
           value={hidden ? "•••••" : fmtMoney(stats.salesValueEgp, "EGP", lang)}
-          sub={lang === "ar" ? "للدashboard فقط" : "Dashboard only"}
+          sub={lang === "ar" ? "إجمالي سعر البيع للكمية المتاحة" : "Total sale value of available stock"}
           Icon={TrendingUp}
           sensitive
         />
@@ -248,12 +293,14 @@ function InventoryValueCard({
   value,
   sub,
   Icon,
+  footer,
 }: {
   label: string;
   value: number | string;
   sub: string;
   Icon: typeof Package;
   sensitive?: boolean;
+  footer?: ReactNode;
 }) {
   return (
     <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
@@ -269,6 +316,7 @@ function InventoryValueCard({
         </div>
       </div>
       <div className="mt-3 text-xs text-muted-foreground">{sub}</div>
+      {footer}
     </div>
   );
 }

@@ -42,8 +42,10 @@ function POTrackingPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [shipFilter, setShipFilter] = useState<ShipmentType | "all">("all");
+  const [codeFilter, setCodeFilter] = useState<string>("all");
   const [receiptFilter, setReceiptFilter] = useState<"all" | "fully" | "partial" | "none">("all");
   const [trackId, setTrackId] = useState<string | null>(null);
+  const [poReceipts, setPoReceipts] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isPurchasing && !isCFO) {
@@ -84,10 +86,17 @@ function POTrackingPage() {
     // Aggregate ordered/received per PO for the receipt-status filter
     const ids = list.map((p) => p.id);
     if (ids.length) {
-      const { data: items } = await (supabase as any)
-        .from("purchase_order_items")
-        .select("po_id,quantity,received_qty")
-        .in("po_id", ids);
+      const [{ data: items }, { data: receipts }] = await Promise.all([
+        (supabase as any)
+          .from("purchase_order_items")
+          .select("po_id,quantity,received_qty")
+          .in("po_id", ids),
+        (supabase as any)
+          .from("po_receipts")
+          .select("po_id,receipt_number,receipt_code,total_qty,created_at")
+          .in("po_id", ids)
+          .order("receipt_number", { ascending: true }),
+      ]);
       const agg: Record<string, { ordered: number; received: number }> = {};
       for (const it of (items as any[]) ?? []) {
         const k = it.po_id as string;
@@ -97,8 +106,12 @@ function POTrackingPage() {
         agg[k] = e;
       }
       setPoProgress(agg);
+      const recMap: Record<string, any[]> = {};
+      ((receipts as any[]) ?? []).forEach((r) => { recMap[r.po_id] = [...(recMap[r.po_id] ?? []), r]; });
+      setPoReceipts(recMap);
     } else {
       setPoProgress({});
+      setPoReceipts({});
     }
   };
 
@@ -122,6 +135,7 @@ function POTrackingPage() {
     return pos.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
       if (shipFilter !== "all" && (p.shipment_type ?? "grounded") !== shipFilter) return false;
+      if (codeFilter !== "all" && (p.shipment_code ?? p.po_number) !== codeFilter) return false;
       if (receiptFilter !== "all" && receiptStatusOf(p.id) !== receiptFilter) return false;
       if (!q) return true;
       return (
@@ -130,7 +144,7 @@ function POTrackingPage() {
         (p.supplier_name ?? "").toLowerCase().includes(q)
       );
     });
-  }, [pos, search, filter, shipFilter, receiptFilter, poProgress]);
+  }, [pos, search, filter, shipFilter, codeFilter, receiptFilter, poProgress]);
 
   const shipCounts = useMemo(() => {
     const c: Record<string, number> = { all: pos.length, grounded: 0, air: 0, door_to_door: 0 };
@@ -150,6 +164,12 @@ function POTrackingPage() {
     pos.forEach((p) => { c[receiptStatusOf(p.id)]++; });
     return c;
   }, [pos, poProgress]);
+
+  const codeCounts = useMemo(() => {
+    const c: Record<string, number> = { all: pos.length };
+    pos.forEach((p) => { const k = p.shipment_code ?? p.po_number; c[k] = (c[k] ?? 0) + 1; });
+    return c;
+  }, [pos]);
 
   return (
     <div className="space-y-6">
@@ -210,6 +230,17 @@ function POTrackingPage() {
           );
         })}
       </div>
+      <div className="rounded-md border bg-muted/30 p-2">
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {isAr ? "حسب كود الشحنة" : "By shipment code"}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <FilterChip active={codeFilter === "all"} onClick={() => setCodeFilter("all")} label={isAr ? "كل الأكواد" : "All codes"} count={codeCounts.all} />
+          {Object.entries(codeCounts).filter(([k]) => k !== "all").sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([code, count]) => (
+            <FilterChip key={code} active={codeFilter === code} onClick={() => setCodeFilter(code)} label={code} count={count} />
+          ))}
+        </div>
+      </div>
       <div className="flex flex-wrap gap-1.5">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label={isAr ? "الكل" : "All"} count={counts.all} />
         {FILTER_STATUSES.map((s) => (
@@ -263,6 +294,7 @@ function POTrackingPage() {
             const progress = p.status === "received" ? 100 : p.status === "cancelled" ? 0 : idx >= 0 ? Math.round(((idx + 1) / PO_FLOW.length) * 100) : 0;
             const meta = shipmentMeta(p.shipment_type);
             const ShipIcon = meta.icon;
+            const receipts = poReceipts[p.id] ?? [];
             return (
               <div key={p.id} className={`flex flex-wrap items-center gap-3 border-s-4 p-4 ${meta.surfaceClass}`}>
                 <div className="flex-1 min-w-[200px] space-y-1">
@@ -292,6 +324,15 @@ function POTrackingPage() {
                   {p.status !== "cancelled" && (
                     <div className="mt-1 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
+                  {receipts.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {receipts.map((r) => (
+                        <button key={r.id ?? `${p.id}-${r.receipt_number}`} type="button" onClick={() => setTrackId(p.id)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
+                          {r.receipt_code || `${p.shipment_code || p.po_number}#${r.receipt_number}`} · +{r.total_qty}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
