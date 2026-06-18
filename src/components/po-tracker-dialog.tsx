@@ -302,6 +302,29 @@ export function POTrackerDialog({
 
   const canTransition = isAdmin || isPurchasing || isCFO;
   const canCancel = isAdmin;
+  const canUndoReceipt = (isAdmin || isPurchasing) && receipts.length > 0;
+
+  const undoLastReceipt = async () => {
+    if (!po || !user || !canUndoReceipt) return;
+    const last = [...receipts].sort((a, b) => b.receipt_number - a.receipt_number)[0];
+    if (!confirm(isAr
+      ? `تراجع عن آخر دفعة ${last.receipt_code || "#" + last.receipt_number} وإرجاع المخزون؟`
+      : `Undo last batch ${last.receipt_code || "#" + last.receipt_number} and roll inventory back?`)) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase as any).rpc("undo_last_po_receipt", {
+        p_po_id: po.id,
+        p_actor_email: user.email ?? "",
+      });
+      if (error) throw error;
+      toast.success(isAr ? "تم التراجع عن آخر دفعة وإعادة ضبط الحالة" : "Last receipt undone and status recalculated");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message?.includes("NO_RECEIPT_TO_UNDO") ? (isAr ? "لا توجد دفعات للتراجع" : "No receipt to undo") : (e?.message ?? "Failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const currentIdx = po ? PO_FLOW.indexOf(po.status as any) : -1;
 
