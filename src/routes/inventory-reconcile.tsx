@@ -232,3 +232,174 @@ function Reconcile() {
     </div>
   );
 }
+
+type ReconRow = {
+  product_id: string;
+  product_name: string;
+  serial_number: string | null;
+  color: string | null;
+  current_stock: number;
+  logs_sum: number;
+  diff: number;
+};
+
+function ReconciliationReport({ isAr, onChanged }: { isAr: boolean; onChanged: () => void }) {
+  const [rows, setRows] = useState<ReconRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [onlyMismatch, setOnlyMismatch] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await (supabase as any).rpc("stock_reconciliation_report");
+    if (error) toast.error(error.message);
+    else setRows((data as ReconRow[]) ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { void load(); }, []);
+
+  const mismatched = rows.filter((r) => r.diff !== 0);
+  const view = onlyMismatch ? mismatched : rows;
+
+  const rebuildAll = async () => {
+    if (!confirm(isAr
+      ? `إعادة بناء المخزون لكل ${mismatched.length} منتج من سجل الحركات؟ الفروقات هتتصحح تلقائياً.`
+      : `Rebuild stock for ${mismatched.length} mismatched products from inventory logs? Differences will be auto-corrected.`)) return;
+    setBusy(true);
+    const { error } = await (supabase as any).rpc("rebuild_product_stock", { p_product_id: null });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(isAr ? "تم إعادة البناء" : "Rebuilt");
+    await load();
+    onChanged();
+  };
+
+  const rebuildOne = async (productId: string) => {
+    setBusy(true);
+    const { error } = await (supabase as any).rpc("rebuild_product_stock", { p_product_id: productId });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(isAr ? "تم" : "Done");
+    await load();
+    onChanged();
+  };
+
+  const downloadCsv = () => {
+    const headers = ["product_id", "product_name", "serial", "color", "current_stock", "logs_sum", "diff"];
+    const esc = (s: any) => `"${String(s ?? "").replace(/"/g, '""')}"`;
+    const csv = [headers.join(",")].concat(
+      rows.map((r) => [r.product_id, r.product_name, r.serial_number, r.color, r.current_stock, r.logs_sum, r.diff].map(esc).join(",")),
+    ).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stock-reconciliation-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Card className="p-4 space-y-3 border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <div>
+            <h2 className="text-base font-bold">
+              {isAr ? "تقرير تسوية المخزون" : "Stock reconciliation report"}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {isAr
+                ? "مقارنة المخزون الحالي بمجموع كل حركات السجل. لو في فرق = خطأ في البيانات."
+                : "Compares current stock vs sum of all inventory logs. A diff = data error."}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={load} disabled={loading} className="gap-1 h-8">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            {isAr ? "تحديث" : "Refresh"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={downloadCsv} disabled={rows.length === 0} className="gap-1 h-8">
+            <Download className="h-3.5 w-3.5" />
+            CSV
+          </Button>
+          <Button
+            size="sm" disabled={busy || mismatched.length === 0}
+            onClick={rebuildAll}
+            className="gap-1 h-8 bg-amber-600 hover:bg-amber-700"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {isAr ? `إعادة بناء (${mismatched.length})` : `Rebuild (${mismatched.length})`}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs">
+        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+          <CheckCircle2 className="h-3 w-3 me-1" />
+          {rows.length - mismatched.length} {isAr ? "متطابق" : "ok"}
+        </Badge>
+        <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/30">
+          <AlertTriangle className="h-3 w-3 me-1" />
+          {mismatched.length} {isAr ? "فرق" : "mismatched"}
+        </Badge>
+        <label className="ms-auto inline-flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={onlyMismatch}
+            onChange={(e) => setOnlyMismatch(e.target.checked)}
+            className="h-3.5 w-3.5"
+          />
+          {isAr ? "إظهار الفروقات فقط" : "Show mismatches only"}
+        </label>
+      </div>
+
+      {view.length > 0 && (
+        <div className="rounded border bg-background overflow-x-auto max-h-72 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted/60 z-10">
+              <tr>
+                <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
+                <th className="p-2 text-center">{isAr ? "حالي" : "Current"}</th>
+                <th className="p-2 text-center">{isAr ? "من السجل" : "Logs sum"}</th>
+                <th className="p-2 text-center">{isAr ? "الفرق" : "Diff"}</th>
+                <th className="p-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {view.slice(0, 100).map((r) => (
+                <tr key={r.product_id} className={r.diff !== 0 ? "bg-rose-500/5" : ""}>
+                  <td className="p-2">
+                    <div className="font-medium">{r.product_name}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono">
+                      {r.serial_number || "—"} · {r.color || "—"}
+                    </div>
+                  </td>
+                  <td className="p-2 text-center tabular-nums font-semibold">{r.current_stock}</td>
+                  <td className="p-2 text-center tabular-nums text-muted-foreground">{r.logs_sum}</td>
+                  <td className={`p-2 text-center tabular-nums font-bold ${r.diff === 0 ? "text-emerald-600" : "text-rose-700"}`}>
+                    {r.diff > 0 ? "+" : ""}{r.diff}
+                  </td>
+                  <td className="p-2">
+                    {r.diff !== 0 && (
+                      <Button size="sm" variant="ghost" className="h-6 text-[11px]" disabled={busy}
+                        onClick={() => rebuildOne(r.product_id)}>
+                        {isAr ? "إصلاح" : "Fix"}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {view.length > 100 && (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">
+              {isAr ? `أول 100 من ${view.length}` : `First 100 of ${view.length}`}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
