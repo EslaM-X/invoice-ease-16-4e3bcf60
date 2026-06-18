@@ -1157,14 +1157,21 @@ function ReceiveDialog({
       const payload = openItems
         .map((i) => ({ item_id: i.id, received_qty: qty[i.id] ?? 0 }))
         .filter((x) => x.received_qty > 0);
-      const { data, error } = await (supabase as any).rpc("apply_po_receipt", {
+      const { data, error } = await (supabase as any).rpc("apply_po_receipt_with_back_deduct", {
         p_po_id: po.id,
         items_in: payload,
         p_notes: notes.trim(),
         p_actor_email: user.email ?? "",
       });
       if (error) throw error;
-      const fully = data?.fully_received;
+      const receipt = data?.receipt ?? data;
+      const fully = receipt?.fully_received;
+      const bdCount = data?.back_deduct?.items ?? 0;
+      if (bdCount > 0) {
+        toast.success(isAr
+          ? `تم خصم ${bdCount} محضر استلام تاريخي من المخزون تلقائيًا`
+          : `Auto-deducted ${bdCount} historical receipt items from stock`);
+      }
       const batch = data?.receipt_number;
       // Persist UI-only discount on the just-created receipt row (latest for this PO).
       if (discount > 0) {
