@@ -15,6 +15,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
+import { POPdfReceiptDialog } from "@/components/po-pdf-receipt-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FileText } from "lucide-react";
 
 export const PO_FLOW = [
   "pending_cfo",
@@ -169,6 +172,7 @@ export function POTrackerDialog({
   const [historicalOpen, setHistoricalOpen] = useState(false);
   const [detailReceipt, setDetailReceipt] = useState<ReceiptRow | null>(null);
   const [backDeductOpen, setBackDeductOpen] = useState(false);
+  const [pdfReceiveOpen, setPdfReceiveOpen] = useState(false);
 
   // Timeline filters
   const [tlType, setTlType] = useState<"all" | "status" | "shipment" | "historical">("all");
@@ -599,6 +603,12 @@ export function POTrackerDialog({
                           : (isPartial ? `Receive next batch (${totalRemaining} left)` : "Confirm Receive → Inventory")}
                       </Button>
                     )}
+                    {canReceive && (
+                      <Button onClick={() => setPdfReceiveOpen(true)} disabled={busy} variant="outline" className="gap-2 border-indigo-500/40 text-indigo-700 hover:bg-indigo-500/10">
+                        <FileText className="h-4 w-4" />
+                        {isAr ? "استلام من PDF" : "Receive from PDF"}
+                      </Button>
+                    )}
                     {canCancel && (
                       <Button variant="outline" onClick={cancelPO} disabled={busy} className="gap-2 text-destructive hover:text-destructive">
                         <XCircle className="h-4 w-4" /> {isAr ? "إلغاء الأمر" : "Cancel PO"}
@@ -798,53 +808,93 @@ export function POTrackerDialog({
                             <tbody className="divide-y">
                               {items.map((it) => {
                                 const ordered = it.quantity;
-                                const perBatch = receipts
-                                  .map((r) => {
-                                    const qty = (r.po_receipt_items ?? [])
-                                      .filter((ri) => ri.po_item_id === it.id || (ri.product_id && ri.product_id === (it as any).product_id))
-                                      .reduce((s, ri) => s + (ri.quantity || 0), 0);
-                                    return { code: r.receipt_code || `#${r.receipt_number}`, qty, at: r.created_at };
-                                  })
-                                  .filter((b) => b.qty > 0);
-                                const received = perBatch.reduce((s, b) => s + b.qty, 0);
-                                const remaining = Math.max(0, ordered - received);
-                                return (
-                                  <tr key={it.id} className={remaining === 0 ? "bg-emerald-500/5" : ""}>
-                                    <td className="p-2">
-                                      <div className="flex items-center gap-2">
-                                        <span className="truncate font-medium">{it.product_name}</span>
-                                        {it.color && (
-                                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                                            <ColorSwatch value={it.color} size="sm" />
-                                            {it.color}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {it.serial_number && (
-                                        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{it.serial_number}</div>
-                                      )}
-                                    </td>
-                                    <td className="p-2 text-center tabular-nums font-semibold">{ordered}</td>
-                                    <td className="p-2 text-center tabular-nums font-semibold text-emerald-700">{received}</td>
-                                    <td className={`p-2 text-center tabular-nums font-bold ${remaining === 0 ? "text-emerald-700" : "text-amber-700"}`}>{remaining}</td>
-                                    <td className="p-2">
-                                      {perBatch.length === 0 ? (
-                                        <span className="text-[10px] text-muted-foreground">{isAr ? "لم يُستلم بعد" : "Not received yet"}</span>
-                                      ) : (
-                                        <div className="flex flex-wrap gap-1">
-                                          {perBatch.map((b, idx) => (
-                                            <span
-                                              key={idx}
-                                              title={fmtDateTime(b.at, lang)}
-                                              className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
-                                            >
-                                              <span className="font-mono">{b.code}</span>
-                                              <span className="tabular-nums">+{b.qty}</span>
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </td>
+                                 const perBatch = receipts
+                                   .map((r) => {
+                                     const qty = (r.po_receipt_items ?? [])
+                                       .filter((ri) => ri.po_item_id === it.id || (ri.product_id && ri.product_id === (it as any).product_id))
+                                       .reduce((s, ri) => s + (ri.quantity || 0), 0);
+                                     return {
+                                       code: r.receipt_code || `#${r.receipt_number}`,
+                                       qty,
+                                       at: r.created_at,
+                                       actor: r.actor_email || "",
+                                       total: r.total_qty || 0,
+                                     };
+                                   })
+                                   .filter((b) => b.qty > 0);
+                                 const received = perBatch.reduce((s, b) => s + b.qty, 0);
+                                 const remaining = Math.max(0, ordered - received);
+                                 // Color palette per batch index (1-based)
+                                 const batchPalette = [
+                                   "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
+                                   "border-sky-500/40 bg-sky-500/10 text-sky-700",
+                                   "border-violet-500/40 bg-violet-500/10 text-violet-700",
+                                   "border-amber-500/40 bg-amber-500/10 text-amber-700",
+                                   "border-rose-500/40 bg-rose-500/10 text-rose-700",
+                                   "border-teal-500/40 bg-teal-500/10 text-teal-700",
+                                 ];
+                                 return (
+                                   <tr key={it.id} className={remaining === 0 ? "bg-emerald-500/5" : ""}>
+                                     <td className="p-2">
+                                       <div className="flex items-center gap-2">
+                                         <span className="truncate font-medium">{it.product_name}</span>
+                                         {it.color && (
+                                           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                                             <ColorSwatch value={it.color} size="sm" />
+                                             {it.color}
+                                           </span>
+                                         )}
+                                       </div>
+                                       {it.serial_number && (
+                                         <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{it.serial_number}</div>
+                                       )}
+                                     </td>
+                                     <td className="p-2 text-center tabular-nums font-semibold">{ordered}</td>
+                                     <td className="p-2 text-center tabular-nums font-semibold text-emerald-700">{received}</td>
+                                     <td className={`p-2 text-center tabular-nums font-bold ${remaining === 0 ? "text-emerald-700" : "text-amber-700"}`}>{remaining}</td>
+                                     <td className="p-2">
+                                       {perBatch.length === 0 ? (
+                                         <span className="text-[10px] text-muted-foreground">{isAr ? "لم يُستلم بعد" : "Not received yet"}</span>
+                                       ) : (
+                                         <div className="flex flex-wrap gap-1">
+                                           {perBatch.map((b, idx) => (
+                                             <Popover key={idx}>
+                                               <PopoverTrigger asChild>
+                                                 <button
+                                                   className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold cursor-pointer hover:scale-105 transition-transform ${batchPalette[idx % batchPalette.length]}`}
+                                                 >
+                                                   <span className="font-mono">{b.code}</span>
+                                                   <span className="tabular-nums">+{b.qty}</span>
+                                                 </button>
+                                               </PopoverTrigger>
+                                               <PopoverContent className="w-72 text-xs p-3" align="start">
+                                                 <div className="font-mono text-sm font-bold mb-1.5">{b.code}</div>
+                                                 <div className="space-y-1 text-muted-foreground">
+                                                   <div className="flex justify-between gap-2">
+                                                     <span>{isAr ? "التاريخ:" : "Date:"}</span>
+                                                     <span className="font-medium text-foreground">{fmtDateTime(b.at, lang)}</span>
+                                                   </div>
+                                                   <div className="flex justify-between gap-2">
+                                                     <span>{isAr ? "كمية هذا المنتج:" : "Qty (this item):"}</span>
+                                                     <span className="font-bold text-emerald-700 tabular-nums">+{b.qty}</span>
+                                                   </div>
+                                                   <div className="flex justify-between gap-2">
+                                                     <span>{isAr ? "إجمالي الدفعة:" : "Batch total:"}</span>
+                                                     <span className="font-medium text-foreground tabular-nums">{b.total}</span>
+                                                   </div>
+                                                   {b.actor && (
+                                                     <div className="flex justify-between gap-2">
+                                                       <span>{isAr ? "بواسطة:" : "By:"}</span>
+                                                       <span className="font-medium text-foreground truncate" title={b.actor}>{b.actor}</span>
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                               </PopoverContent>
+                                             </Popover>
+                                           ))}
+                                         </div>
+                                       )}
+                                     </td>
                                   </tr>
                                 );
                               })}
@@ -1011,14 +1061,7 @@ export function POTrackerDialog({
           onOpenChange={setReceiveOpen}
           onDone={async () => {
             setReceiveOpen(false);
-            // After a receipt is recorded, check for historical delivery receipts
-            // that haven't been deducted from stock yet (pre-system sales).
-            try {
-              const { data } = await (supabase as any).rpc("list_pending_back_deductions", { p_po_id: po.id });
-              if (Array.isArray(data) && data.length > 0) {
-                setBackDeductOpen(true);
-              }
-            } catch { /* ignore */ }
+            // Back-deductions are now applied automatically inside the receipt RPC.
             load();
           }}
         />
@@ -1042,6 +1085,17 @@ export function POTrackerDialog({
           open={historicalOpen}
           onOpenChange={setHistoricalOpen}
           onSaved={() => { setHistoricalOpen(false); load(); }}
+        />
+      )}
+
+      {pdfReceiveOpen && po && (
+        <POPdfReceiptDialog
+          open={pdfReceiveOpen}
+          onOpenChange={setPdfReceiveOpen}
+          poId={po.id}
+          poNumber={po.shipment_code || po.po_number}
+          items={items as any}
+          onDone={() => { setPdfReceiveOpen(false); load(); }}
         />
       )}
 
@@ -1157,15 +1211,22 @@ function ReceiveDialog({
       const payload = openItems
         .map((i) => ({ item_id: i.id, received_qty: qty[i.id] ?? 0 }))
         .filter((x) => x.received_qty > 0);
-      const { data, error } = await (supabase as any).rpc("apply_po_receipt", {
+      const { data, error } = await (supabase as any).rpc("apply_po_receipt_with_back_deduct", {
         p_po_id: po.id,
         items_in: payload,
         p_notes: notes.trim(),
         p_actor_email: user.email ?? "",
       });
       if (error) throw error;
-      const fully = data?.fully_received;
-      const batch = data?.receipt_number;
+      const receipt = data?.receipt ?? data;
+      const fully = receipt?.fully_received;
+      const bdCount = data?.back_deduct?.items ?? 0;
+      if (bdCount > 0) {
+        toast.success(isAr
+          ? `تم خصم ${bdCount} محضر استلام تاريخي من المخزون تلقائيًا`
+          : `Auto-deducted ${bdCount} historical receipt items from stock`);
+      }
+      const batch = receipt?.receipt_number;
       // Persist UI-only discount on the just-created receipt row (latest for this PO).
       if (discount > 0) {
         const { data: latest } = await supabase

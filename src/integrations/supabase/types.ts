@@ -3254,6 +3254,15 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_po_receipt_with_back_deduct: {
+        Args: {
+          items_in: Json
+          p_actor_email: string
+          p_notes: string
+          p_po_id: string
+        }
+        Returns: Json
+      }
       apply_po_to_inventory: {
         Args: { items_in: Json; p_actor_email: string; p_po_id: string }
         Returns: Json
