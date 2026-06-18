@@ -1304,33 +1304,6 @@ function ReceiveDialog({
             : "Review each product's current stock (before) and confirm the received quantity. Remaining items can be received in later batches."}</span>
         </div>
 
-        {(availableColors.length > 0 || availableCollections.length > 0) && (
-          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {isAr ? "تصفية البنود" : "Filter items"}
-            </div>
-            {availableCollections.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground me-1">{isAr ? "كولكشن:" : "Collection:"}</span>
-                <button
-                  onClick={() => setCollectionFilter("all")}
-                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${collectionFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
-                >{isAr ? "الكل" : "All"}</button>
-                {availableCollections.map((c) => (
-                  <button key={c}
-                    onClick={() => setCollectionFilter(c)}
-                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${collectionFilter === c ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
-                  >{c}</button>
-                ))}
-              </div>
-            )}
-            {availableColors.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground me-1">{isAr ? "لون:" : "Color:"}</span>
-                <button
-                  onClick={() => setColorFilter("all")}
-                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${colorFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
-                >{isAr ? "الكل" : "All"}</button>
         {/* Search + Bulk actions (always visible) */}
         <div className="rounded-md border bg-muted/30 p-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
