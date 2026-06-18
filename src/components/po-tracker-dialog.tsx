@@ -1682,10 +1682,17 @@ function BatchDetailsDialog({
               label={isAr ? "نوع التحديث" : "Update type"}
               value={isHistorical ? (isAr ? "دفعة تاريخية" : "Historical receipt") : (isAr ? "استلام عادي" : "Regular receipt")}
             />
-            <Fact
-              label={isAr ? "التاريخ والوقت" : "Date & time"}
-              value={fmtDateTime(receipt.created_at, lang)}
-            />
+            {editMode ? (
+              <div className="rounded-md border bg-amber-50 dark:bg-amber-500/10 border-amber-500/40 p-2">
+                <div className="text-[10px] uppercase tracking-wider text-amber-700">{isAr ? "تاريخ الاستلام" : "Receipt date"}</div>
+                <Input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-7 text-xs mt-1" />
+              </div>
+            ) : (
+              <Fact
+                label={isAr ? "التاريخ والوقت" : "Date & time"}
+                value={fmtDateTime((receipt as any).receipt_date || receipt.created_at, lang)}
+              />
+            )}
             <Fact
               label={isAr ? "نفّذها" : "Performed by"}
               value={receipt.actor_email || "—"}
