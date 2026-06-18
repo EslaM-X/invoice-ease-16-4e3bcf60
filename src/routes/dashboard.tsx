@@ -41,7 +41,7 @@ function Dashboard() {
         .limit(200),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       cachedListFetch(
-        "dashboard:product-stock",
+        "dashboard:product-stock-v2",
         async () => {
           const { data } = await supabase.from("products").select("stock_quantity, low_stock_threshold, cost_price_usd, price");
           return (data as any[]) ?? [];
