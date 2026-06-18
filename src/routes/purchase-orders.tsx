@@ -1569,13 +1569,34 @@ function PODetailDialog({
   };
 
   const deletePO = async () => {
-    if (!confirm(isAr ? "حذف أمر الشراء نهائيًا؟" : "Delete this PO permanently?")) return;
-    const { error } = await supabase.from("purchase_orders").delete().eq("id", poId);
-    if (error) return toast.error(error.message);
-    await audit("po_deleted", { po_number: po?.po_number });
-    toast.success(isAr ? "تم الحذف" : "Deleted");
+    if (!confirm(isAr
+      ? "حذف أمر الشراء نهائيًا وإرجاع المخزون؟ (سيتم رفض الحذف لو فيه فواتير محجوزة)"
+      : "Delete this PO permanently and roll back inventory? (Will refuse if invoices are reserved)")) return;
+    const { data, error } = await (supabase as any).rpc("delete_po_with_inventory_rollback", {
+      p_po_id: poId,
+      p_actor_email: user?.email ?? "",
+      p_force: false,
+    });
+    if (error) {
+      // Offer force-delete when reservations exist
+      if (/reservation/i.test(error.message)) {
+        if (confirm(isAr
+          ? `${error.message}\n\nهل تريد الحذف بالقوة وإزالة الحجوزات؟`
+          : `${error.message}\n\nForce-delete and remove reservations?`)) {
+          const r2 = await (supabase as any).rpc("delete_po_with_inventory_rollback", {
+            p_po_id: poId, p_actor_email: user?.email ?? "", p_force: true,
+          });
+          if (r2.error) return toast.error(r2.error.message);
+        } else return;
+      } else {
+        return toast.error(error.message);
+      }
+    }
+    await audit("po_deleted", { po_number: po?.po_number, rolled_back: true });
+    toast.success(isAr ? "تم الحذف وإرجاع المخزون" : "Deleted & inventory rolled back");
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
