@@ -1144,9 +1144,9 @@ function ReceiveDialog({
     [openItems],
   );
 
-  // Default: receive all remaining
+  // Default: all zero — user explicitly sets quantities
   const [qty, setQty] = useState<Record<string, number>>(() =>
-    Object.fromEntries(openItems.map((i) => [i.id, i.quantity - (i.received_qty || 0)])),
+    Object.fromEntries(openItems.map((i) => [i.id, 0])),
   );
   const [notes, setNotes] = useState("");
   const [discount, setDiscount] = useState<number>(0);
@@ -1155,6 +1155,8 @@ function ReceiveDialog({
   const [busy, setBusy] = useState(false);
   const [colorFilter, setColorFilter] = useState<string>("all");
   const [collectionFilter, setCollectionFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [uniformQty, setUniformQty] = useState<string>("");
 
   // Live current stock + collection per product (the "before" the user verifies against)
   useEffect(() => {
@@ -1183,12 +1185,42 @@ function ReceiveDialog({
   }, [openItems, productMeta]);
 
   const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return openItems.filter((i) => {
       if (colorFilter !== "all" && (i.color ?? "") !== colorFilter) return false;
       if (collectionFilter !== "all" && (productMeta[i.product_id]?.collection ?? "") !== collectionFilter) return false;
+      if (q) {
+        const hay = `${i.product_name} ${i.serial_number ?? ""} ${i.color ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [openItems, colorFilter, collectionFilter, productMeta]);
+  }, [openItems, colorFilter, collectionFilter, productMeta, search]);
+
+  const fillAllRemaining = () => {
+    setQty((prev) => {
+      const next = { ...prev };
+      visibleItems.forEach((i) => { next[i.id] = remainingMap[i.id] ?? 0; });
+      return next;
+    });
+  };
+  const applyUniform = () => {
+    const n = Math.max(0, Math.floor(parseFloat(uniformQty) || 0));
+    setQty((prev) => {
+      const next = { ...prev };
+      visibleItems.forEach((i) => {
+        next[i.id] = Math.min(n, remainingMap[i.id] ?? 0);
+      });
+      return next;
+    });
+  };
+  const zeroAll = () => {
+    setQty((prev) => {
+      const next = { ...prev };
+      visibleItems.forEach((i) => { next[i.id] = 0; });
+      return next;
+    });
+  };
 
   const totalRemaining = openItems.reduce((s, i) => s + remainingMap[i.id], 0);
   const totalRecv = openItems.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
@@ -1272,6 +1304,38 @@ function ReceiveDialog({
             : "Review each product's current stock (before) and confirm the received quantity. Remaining items can be received in later batches."}</span>
         </div>
 
+        {/* Search + Bulk actions (always visible) */}
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={isAr ? "بحث بالاسم / السيريال / اللون..." : "Search name / serial / color..."}
+                className="ps-8 h-8 text-xs"
+              />
+            </div>
+            <Input
+              type="number" min={0}
+              value={uniformQty}
+              onChange={(e) => setUniformQty(e.target.value)}
+              placeholder={isAr ? "كمية موحدة" : "Uniform qty"}
+              className="w-28 h-8 text-xs text-center"
+            />
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={applyUniform}>
+              {isAr ? "تطبيق" : "Apply"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px] gap-1 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50" onClick={fillAllRemaining}>
+              <CheckCheck className="h-3.5 w-3.5" />
+              {isAr ? "ملء بالكامل" : "Fill remaining"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-[11px]" onClick={zeroAll}>
+              {isAr ? "تصفير" : "Zero"}
+            </Button>
+          </div>
+        </div>
+
         {(availableColors.length > 0 || availableCollections.length > 0) && (
           <div className="rounded-md border bg-muted/30 p-3 space-y-2">
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -1311,13 +1375,13 @@ function ReceiveDialog({
                 ))}
               </div>
             )}
-            {(colorFilter !== "all" || collectionFilter !== "all") && (
+            {(colorFilter !== "all" || collectionFilter !== "all" || search) && (
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">
                   {visibleItems.length} / {openItems.length} {isAr ? "بند ظاهر" : "items visible"}
                 </span>
                 <Button variant="ghost" size="sm" className="h-6 text-[11px]"
-                  onClick={() => { setColorFilter("all"); setCollectionFilter("all"); }}>
+                  onClick={() => { setColorFilter("all"); setCollectionFilter("all"); setSearch(""); }}>
                   {isAr ? "مسح الفلاتر" : "Clear filters"}
                 </Button>
               </div>
@@ -1529,7 +1593,20 @@ function BatchDetailsDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { lang } = useI18n();
+  const { user } = useAuth();
+  const role = useRole();
+  const canEdit = role.isAdmin || role.isPurchasing;
   const isAr = lang === "ar";
+  const [editMode, setEditMode] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editDate, setEditDate] = useState<string>(() => {
+    const d = new Date((receipt as any).receipt_date || receipt.created_at);
+    // datetime-local format: YYYY-MM-DDTHH:mm
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60000);
+    return local.toISOString().slice(0, 16);
+  });
+  const [editQty, setEditQty] = useState<Record<string, number>>({});
   const lines = receipt.po_receipt_items ?? [];
 
   // Build per-product summary with serial / color / before-after, comparing to PO ordered qty
@@ -1605,10 +1682,17 @@ function BatchDetailsDialog({
               label={isAr ? "نوع التحديث" : "Update type"}
               value={isHistorical ? (isAr ? "دفعة تاريخية" : "Historical receipt") : (isAr ? "استلام عادي" : "Regular receipt")}
             />
-            <Fact
-              label={isAr ? "التاريخ والوقت" : "Date & time"}
-              value={fmtDateTime(receipt.created_at, lang)}
-            />
+            {editMode ? (
+              <div className="rounded-md border bg-amber-50 dark:bg-amber-500/10 border-amber-500/40 p-2">
+                <div className="text-[10px] uppercase tracking-wider text-amber-700">{isAr ? "تاريخ الاستلام" : "Receipt date"}</div>
+                <Input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-7 text-xs mt-1" />
+              </div>
+            ) : (
+              <Fact
+                label={isAr ? "التاريخ والوقت" : "Date & time"}
+                value={fmtDateTime((receipt as any).receipt_date || receipt.created_at, lang)}
+              />
+            )}
             <Fact
               label={isAr ? "نفّذها" : "Performed by"}
               value={receipt.actor_email || "—"}
@@ -1673,7 +1757,10 @@ function BatchDetailsDialog({
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {perProduct.map((r) => (
+                  {perProduct.map((r) => {
+                    const draft = editQty[r.key];
+                    const currentQty = draft ?? r.received_in_batch;
+                    return (
                     <tr key={r.key}>
                       <td className="p-2 font-medium">{r.product_name}</td>
                       <td className="p-2 font-mono text-[10px] text-muted-foreground">
@@ -1688,7 +1775,13 @@ function BatchDetailsDialog({
                         ) : "—"}
                       </td>
                       <td className="p-2 text-center font-bold tabular-nums text-emerald-700">
-                        +{r.received_in_batch}
+                        {editMode ? (
+                          <Input type="number" min={0} value={currentQty}
+                            onChange={(e) => setEditQty((q) => ({ ...q, [r.key]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                            className="h-7 w-16 text-center text-xs mx-auto" />
+                        ) : (
+                          <>+{r.received_in_batch}</>
+                        )}
                       </td>
                       <td className="p-2 text-center tabular-nums text-muted-foreground">{r.ordered || "—"}</td>
                       <td className="p-2 text-center tabular-nums text-muted-foreground">{r.stock_before ?? "—"}</td>
@@ -1697,14 +1790,81 @@ function BatchDetailsDialog({
                         {r.delta >= 0 ? "+" : ""}{r.delta}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 flex-wrap">
+          {canEdit && !editMode && (
+            <>
+              <Button
+                variant="outline"
+                className="border-rose-500/40 text-rose-700 hover:bg-rose-50"
+                onClick={async () => {
+                  if (!confirm(isAr
+                    ? `حذف الدفعة ${receipt.receipt_code || "#" + receipt.receipt_number} وإرجاع المخزون؟`
+                    : `Delete batch ${receipt.receipt_code || "#" + receipt.receipt_number} and roll back inventory?`)) return;
+                  const { error } = await (supabase as any).rpc("delete_po_receipt_batch", {
+                    p_receipt_id: receipt.id,
+                    p_actor_email: user?.email ?? "",
+                  });
+                  if (error) return toast.error(error.message);
+                  toast.success(isAr ? "تم الحذف وإرجاع المخزون" : "Deleted & rolled back");
+                  onOpenChange(false);
+                }}
+              >
+                {isAr ? "حذف الدفعة" : "Delete batch"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditMode(true)} className="gap-1">
+                <RefreshCwIcon className="h-3.5 w-3.5" />
+                {isAr ? "تعديل" : "Edit"}
+              </Button>
+            </>
+          )}
+          {editMode && (
+            <>
+              <Button variant="outline" onClick={() => { setEditMode(false); setEditQty({}); }} disabled={savingEdit}>
+                {isAr ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                onClick={async () => {
+                  setSavingEdit(true);
+                  try {
+                    const items = perProduct
+                      .map((r) => {
+                        const ri = lines.find((l) => (l.po_item_id && r.key === l.po_item_id) || (l.product_id && l.product_id === r.product_id));
+                        const poItemId = ri?.po_item_id;
+                        if (!poItemId) return null;
+                        return { po_item_id: poItemId, new_qty: editQty[r.key] ?? r.received_in_batch };
+                      })
+                      .filter(Boolean);
+                    const { error } = await (supabase as any).rpc("update_po_receipt_batch", {
+                      p_receipt_id: receipt.id,
+                      p_receipt_date: new Date(editDate).toISOString(),
+                      p_items: items,
+                      p_actor_email: user?.email ?? "",
+                    });
+                    if (error) throw error;
+                    toast.success(isAr ? "تم الحفظ" : "Saved");
+                    setEditMode(false);
+                    onOpenChange(false);
+                  } catch (e: any) {
+                    toast.error(e?.message ?? "Failed");
+                  } finally {
+                    setSavingEdit(false);
+                  }
+                }}
+                disabled={savingEdit}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {isAr ? "حفظ التعديلات" : "Save changes"}
+              </Button>
+            </>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {isAr ? "إغلاق" : "Close"}
           </Button>
