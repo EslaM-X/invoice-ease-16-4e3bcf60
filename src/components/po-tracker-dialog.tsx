@@ -15,6 +15,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
+import { POPdfReceiptDialog } from "@/components/po-pdf-receipt-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FileText } from "lucide-react";
 
 export const PO_FLOW = [
   "pending_cfo",
