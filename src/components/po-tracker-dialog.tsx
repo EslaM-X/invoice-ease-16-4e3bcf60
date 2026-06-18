@@ -1757,7 +1757,10 @@ function BatchDetailsDialog({
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {perProduct.map((r) => (
+                  {perProduct.map((r) => {
+                    const draft = editQty[r.key];
+                    const currentQty = draft ?? r.received_in_batch;
+                    return (
                     <tr key={r.key}>
                       <td className="p-2 font-medium">{r.product_name}</td>
                       <td className="p-2 font-mono text-[10px] text-muted-foreground">
@@ -1772,7 +1775,13 @@ function BatchDetailsDialog({
                         ) : "—"}
                       </td>
                       <td className="p-2 text-center font-bold tabular-nums text-emerald-700">
-                        +{r.received_in_batch}
+                        {editMode ? (
+                          <Input type="number" min={0} value={currentQty}
+                            onChange={(e) => setEditQty((q) => ({ ...q, [r.key]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                            className="h-7 w-16 text-center text-xs mx-auto" />
+                        ) : (
+                          <>+{r.received_in_batch}</>
+                        )}
                       </td>
                       <td className="p-2 text-center tabular-nums text-muted-foreground">{r.ordered || "—"}</td>
                       <td className="p-2 text-center tabular-nums text-muted-foreground">{r.stock_before ?? "—"}</td>
@@ -1781,14 +1790,81 @@ function BatchDetailsDialog({
                         {r.delta >= 0 ? "+" : ""}{r.delta}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 flex-wrap">
+          {canEdit && !editMode && (
+            <>
+              <Button
+                variant="outline"
+                className="border-rose-500/40 text-rose-700 hover:bg-rose-50"
+                onClick={async () => {
+                  if (!confirm(isAr
+                    ? `حذف الدفعة ${receipt.receipt_code || "#" + receipt.receipt_number} وإرجاع المخزون؟`
+                    : `Delete batch ${receipt.receipt_code || "#" + receipt.receipt_number} and roll back inventory?`)) return;
+                  const { error } = await (supabase as any).rpc("delete_po_receipt_batch", {
+                    p_receipt_id: receipt.id,
+                    p_actor_email: user?.email ?? "",
+                  });
+                  if (error) return toast.error(error.message);
+                  toast.success(isAr ? "تم الحذف وإرجاع المخزون" : "Deleted & rolled back");
+                  onOpenChange(false);
+                }}
+              >
+                {isAr ? "حذف الدفعة" : "Delete batch"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditMode(true)} className="gap-1">
+                <RefreshCwIcon className="h-3.5 w-3.5" />
+                {isAr ? "تعديل" : "Edit"}
+              </Button>
+            </>
+          )}
+          {editMode && (
+            <>
+              <Button variant="outline" onClick={() => { setEditMode(false); setEditQty({}); }} disabled={savingEdit}>
+                {isAr ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                onClick={async () => {
+                  setSavingEdit(true);
+                  try {
+                    const items = perProduct
+                      .map((r) => {
+                        const ri = lines.find((l) => (l.po_item_id && r.key === l.po_item_id) || (l.product_id && l.product_id === r.product_id));
+                        const poItemId = ri?.po_item_id;
+                        if (!poItemId) return null;
+                        return { po_item_id: poItemId, new_qty: editQty[r.key] ?? r.received_in_batch };
+                      })
+                      .filter(Boolean);
+                    const { error } = await (supabase as any).rpc("update_po_receipt_batch", {
+                      p_receipt_id: receipt.id,
+                      p_receipt_date: new Date(editDate).toISOString(),
+                      p_items: items,
+                      p_actor_email: user?.email ?? "",
+                    });
+                    if (error) throw error;
+                    toast.success(isAr ? "تم الحفظ" : "Saved");
+                    setEditMode(false);
+                    onOpenChange(false);
+                  } catch (e: any) {
+                    toast.error(e?.message ?? "Failed");
+                  } finally {
+                    setSavingEdit(false);
+                  }
+                }}
+                disabled={savingEdit}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {isAr ? "حفظ التعديلات" : "Save changes"}
+              </Button>
+            </>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {isAr ? "إغلاق" : "Close"}
           </Button>
