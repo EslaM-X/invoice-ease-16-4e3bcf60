@@ -1593,7 +1593,20 @@ function BatchDetailsDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { lang } = useI18n();
+  const { user } = useAuth();
+  const role = useRole();
+  const canEdit = role.isAdmin || role.isPurchasing;
   const isAr = lang === "ar";
+  const [editMode, setEditMode] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editDate, setEditDate] = useState<string>(() => {
+    const d = new Date((receipt as any).receipt_date || receipt.created_at);
+    // datetime-local format: YYYY-MM-DDTHH:mm
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60000);
+    return local.toISOString().slice(0, 16);
+  });
+  const [editQty, setEditQty] = useState<Record<string, number>>({});
   const lines = receipt.po_receipt_items ?? [];
 
   // Build per-product summary with serial / color / before-after, comparing to PO ordered qty
