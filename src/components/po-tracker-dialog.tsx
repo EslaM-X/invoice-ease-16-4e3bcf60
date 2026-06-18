@@ -1185,12 +1185,42 @@ function ReceiveDialog({
   }, [openItems, productMeta]);
 
   const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return openItems.filter((i) => {
       if (colorFilter !== "all" && (i.color ?? "") !== colorFilter) return false;
       if (collectionFilter !== "all" && (productMeta[i.product_id]?.collection ?? "") !== collectionFilter) return false;
+      if (q) {
+        const hay = `${i.product_name} ${i.serial_number ?? ""} ${i.color ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [openItems, colorFilter, collectionFilter, productMeta]);
+  }, [openItems, colorFilter, collectionFilter, productMeta, search]);
+
+  const fillAllRemaining = () => {
+    setQty((prev) => {
+      const next = { ...prev };
+      visibleItems.forEach((i) => { next[i.id] = remainingMap[i.id] ?? 0; });
+      return next;
+    });
+  };
+  const applyUniform = () => {
+    const n = Math.max(0, Math.floor(parseFloat(uniformQty) || 0));
+    setQty((prev) => {
+      const next = { ...prev };
+      visibleItems.forEach((i) => {
+        next[i.id] = Math.min(n, remainingMap[i.id] ?? 0);
+      });
+      return next;
+    });
+  };
+  const zeroAll = () => {
+    setQty((prev) => {
+      const next = { ...prev };
+      visibleItems.forEach((i) => { next[i.id] = 0; });
+      return next;
+    });
+  };
 
   const totalRemaining = openItems.reduce((s, i) => s + remainingMap[i.id], 0);
   const totalRecv = openItems.reduce((s, i) => s + (qty[i.id] ?? 0), 0);
