@@ -894,13 +894,7 @@ export function POTrackerDialog({
                                            ))}
                                          </div>
                                        )}
-                                              <span className="font-mono">{b.code}</span>
-                                              <span className="tabular-nums">+{b.qty}</span>
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </td>
+                                     </td>
                                   </tr>
                                 );
                               })}
