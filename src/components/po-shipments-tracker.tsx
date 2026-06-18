@@ -48,6 +48,14 @@ type HistoryRow = {
   po?: { po_number: string; shipment_code: string | null; shipment_type: ShipmentType | null };
 };
 
+type ReceiptRow = {
+  po_id: string;
+  receipt_number: number;
+  receipt_code: string | null;
+  total_qty: number;
+  created_at: string;
+};
+
 const STATUS_ORDER: POStatus[] = ["ordered", "shipped", "in_warehouse", "received"];
 
 const STATUS_META: Record<POStatus, { Icon: typeof Package; tone: string; dot: string }> = {
@@ -78,6 +86,7 @@ export function PoShipmentsTracker() {
   const isAr = lang === "ar";
   const [pos, setPos] = useState<PO[] | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
 
   const statusLabel = (s: POStatus) =>
     s === "ordered"
@@ -89,7 +98,7 @@ export function PoShipmentsTracker() {
           : isAr ? "تم الاستلام" : "Received";
 
   const load = async () => {
-    const [{ data: poRows }, { data: histRows }] = await Promise.all([
+    const [{ data: poRows }, { data: histRows }, { data: receiptRows }] = await Promise.all([
       supabase
         .from("purchase_orders")
         .select("id, po_number, shipment_type, shipment_code, supplier_name, status, expected_arrival_at, shipped_at, received_at, total_qty")
@@ -101,8 +110,14 @@ export function PoShipmentsTracker() {
         .select("id, po_id, from_status, to_status, actor_email, created_at, purchase_orders!inner(po_number, shipment_code, shipment_type)")
         .order("created_at", { ascending: false })
         .limit(12),
+      (supabase as any)
+        .from("po_receipts")
+        .select("po_id, receipt_number, receipt_code, total_qty, created_at")
+        .order("receipt_number", { ascending: true })
+        .limit(800),
     ]);
     setPos(((poRows as any[]) ?? []) as PO[]);
+    setReceipts(((receiptRows as any[]) ?? []) as ReceiptRow[]);
     setHistory(
       ((histRows as any[]) ?? []).map((r) => ({
         id: r.id,
@@ -125,6 +140,7 @@ export function PoShipmentsTracker() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
   useRealtimeTable("purchase_orders", load);
   useRealtimeTable("po_status_history", load);
+  useRealtimeTable("po_receipts" as any, load);
 
   const grouped = useMemo(() => {
     const out = new Map<
@@ -154,6 +170,12 @@ export function PoShipmentsTracker() {
     for (const p of pos ?? []) acc[p.status] = (acc[p.status] ?? 0) + 1;
     return acc;
   }, [pos]);
+
+  const receiptsByPo = useMemo(() => {
+    const map = new Map<string, ReceiptRow[]>();
+    receipts.forEach((r) => map.set(r.po_id, [...(map.get(r.po_id) ?? []), r]));
+    return map;
+  }, [receipts]);
 
   return (
     <section className="rounded-md border border-border bg-card overflow-hidden">
