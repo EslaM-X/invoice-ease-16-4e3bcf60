@@ -20,6 +20,7 @@ import {
   XCircle,
   Loader2,
   Trash2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { parseDOReceiptPdfs, type ParsedDO } from "@/lib/pdf-do-receipt";
