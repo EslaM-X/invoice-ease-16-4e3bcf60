@@ -227,14 +227,30 @@ function Dashboard() {
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
           value={hidden ? "•••••" : fmtMoney(stats.costValueEgp, "EGP", lang)}
-          sub={lang === "ar" ? `محسوبة بسعر دولار ${stats.latestUsdRate}` : `Using FX ${stats.latestUsdRate}`}
+          sub={lang === "ar" ? `سعر الدولار المستخدم: ${stats.latestUsdRate}` : `USD rate used: ${stats.latestUsdRate}`}
           Icon={Coins}
           sensitive
+          footer={
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={fxInput}
+                onChange={(e) => setFxInput(e.target.value)}
+                className="h-8 min-w-0 text-xs tabular-nums"
+                aria-label={lang === "ar" ? "سعر الدولار" : "USD rate"}
+              />
+              <Button size="sm" variant="outline" className="h-8 shrink-0 px-3 text-xs" disabled={savingFx} onClick={saveFxRate}>
+                {lang === "ar" ? "تطبيق" : "Apply"}
+              </Button>
+            </div>
+          }
         />
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
           value={hidden ? "•••••" : fmtMoney(stats.salesValueEgp, "EGP", lang)}
-          sub={lang === "ar" ? "للدashboard فقط" : "Dashboard only"}
+          sub={lang === "ar" ? "إجمالي سعر البيع للكمية المتاحة" : "Total sale value of available stock"}
           Icon={TrendingUp}
           sensitive
         />
@@ -277,12 +293,14 @@ function InventoryValueCard({
   value,
   sub,
   Icon,
+  footer,
 }: {
   label: string;
   value: number | string;
   sub: string;
   Icon: typeof Package;
   sensitive?: boolean;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
@@ -298,6 +316,7 @@ function InventoryValueCard({
         </div>
       </div>
       <div className="mt-3 text-xs text-muted-foreground">{sub}</div>
+      {footer}
     </div>
   );
 }
