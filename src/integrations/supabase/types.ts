@@ -1598,6 +1598,7 @@ export type Database = {
           notes: string | null
           po_id: string
           receipt_code: string | null
+          receipt_date: string
           receipt_number: number
           total_qty: number
           user_id: string
@@ -1611,6 +1612,7 @@ export type Database = {
           notes?: string | null
           po_id: string
           receipt_code?: string | null
+          receipt_date?: string
           receipt_number: number
           total_qty?: number
           user_id: string
@@ -1624,6 +1626,7 @@ export type Database = {
           notes?: string | null
           po_id?: string
           receipt_code?: string | null
+          receipt_date?: string
           receipt_number?: number
           total_qty?: number
           user_id?: string
@@ -3354,6 +3357,14 @@ export type Database = {
         Returns: boolean
       }
       delete_invoice: { Args: { _invoice_id: string }; Returns: string }
+      delete_po_receipt_batch: {
+        Args: { p_actor_email: string; p_receipt_id: string }
+        Returns: Json
+      }
+      delete_po_with_inventory_rollback: {
+        Args: { p_actor_email: string; p_force?: boolean; p_po_id: string }
+        Returns: Json
+      }
       delivery_item_effective_qty: {
         Args: { _invoice_item_id: string; _mode?: string }
         Returns: number
@@ -3481,6 +3492,7 @@ export type Database = {
         Returns: undefined
       }
       reassign_shipment_codes_global: { Args: never; Returns: undefined }
+      rebuild_product_stock: { Args: { p_product_id?: string }; Returns: Json }
       recalc_invoice_delivery_status: {
         Args: { _invoice_id: string }
         Returns: undefined
@@ -3547,6 +3559,18 @@ export type Database = {
         Args: { p_actor_email: string; p_po_id: string }
         Returns: undefined
       }
+      stock_reconciliation_report: {
+        Args: never
+        Returns: {
+          color: string
+          current_stock: number
+          diff: number
+          logs_sum: number
+          product_id: string
+          product_name: string
+          serial_number: string
+        }[]
+      }
       update_delivery_receipt:
         | {
             Args: {
@@ -3609,6 +3633,15 @@ export type Database = {
             }
             Returns: string
           }
+      update_po_receipt_batch: {
+        Args: {
+          p_actor_email: string
+          p_items: Json
+          p_receipt_date: string
+          p_receipt_id: string
+        }
+        Returns: Json
+      }
       update_po_shipment: {
         Args: { _new_date: string; _new_type: string; _po_id: string }
         Returns: Json
