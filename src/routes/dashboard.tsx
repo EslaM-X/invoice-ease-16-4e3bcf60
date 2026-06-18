@@ -182,6 +182,35 @@ function Dashboard() {
 
       <PoShipmentsTracker />
 
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <InventoryValueCard
+          label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
+          value={stats.inventoryStock}
+          sub={lang === "ar" ? `${stats.products} صنف نشط` : `${stats.products} active SKUs`}
+          Icon={Package}
+        />
+        <InventoryValueCard
+          label={lang === "ar" ? "منتجات في العيانات" : "Samples out"}
+          value={stats.sampleStock}
+          sub={lang === "ar" ? "عينات خارج المخزون" : "Sample units outside stock"}
+          Icon={Sparkles}
+        />
+        <InventoryValueCard
+          label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
+          value={hidden ? "•••••" : fmtMoney(stats.costValueEgp, "EGP", lang)}
+          sub={lang === "ar" ? `محسوبة بسعر دولار ${stats.latestUsdRate}` : `Using FX ${stats.latestUsdRate}`}
+          Icon={Coins}
+          sensitive
+        />
+        <InventoryValueCard
+          label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
+          value={hidden ? "•••••" : fmtMoney(stats.salesValueEgp, "EGP", lang)}
+          sub={lang === "ar" ? "للدashboard فقط" : "Dashboard only"}
+          Icon={TrendingUp}
+          sensitive
+        />
+      </section>
+
       <SalesOverview />
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -210,6 +239,36 @@ function Dashboard() {
       </div>
 
       <ActivityFeed limit={10} />
+    </div>
+  );
+}
+
+function InventoryValueCard({
+  label,
+  value,
+  sub,
+  Icon,
+}: {
+  label: string;
+  value: number | string;
+  sub: string;
+  Icon: typeof Package;
+  sensitive?: boolean;
+}) {
+  return (
+    <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="eyebrow text-[0.62rem] sm:text-[0.68rem]">{label}</div>
+          <div className="ltr-nums mt-3 font-display text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-3xl break-words">
+            {value}
+          </div>
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      <div className="mt-3 text-xs text-muted-foreground">{sub}</div>
     </div>
   );
 }
