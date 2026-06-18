@@ -254,6 +254,31 @@ export function PoShipmentsTracker() {
                       );
                     })}
                   </div>
+                  <div className="mt-2 grid gap-1">
+                    {g.pos.slice(0, 8).map((p) => {
+                      const meta = STATUS_META[p.status];
+                      const code = p.shipment_code || p.po_number;
+                      return (
+                        <Link
+                          key={p.id}
+                          to="/po-tracking"
+                          className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px] transition hover:bg-accent/60"
+                          title={`${code} · ${p.po_number}`}
+                        >
+                          <span className="min-w-0 truncate font-mono font-extrabold text-foreground">{code}</span>
+                          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${meta.tone}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                            {statusLabel(p.status)}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                    {g.pos.length > 8 && (
+                      <div className="px-2 text-[10px] font-semibold text-muted-foreground">
+                        +{g.pos.length - 8} {isAr ? "أوامر أخرى" : "more POs"}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
