@@ -1574,7 +1574,7 @@ function PODetailDialog({
       : "Delete this PO permanently and roll back inventory? (Will refuse if invoices are reserved)")) return;
     const { data, error } = await (supabase as any).rpc("delete_po_with_inventory_rollback", {
       p_po_id: poId,
-      p_actor_email: user?.email ?? "",
+      p_actor_email: userEmail,
       p_force: false,
     });
     if (error) {
@@ -1584,7 +1584,7 @@ function PODetailDialog({
           ? `${error.message}\n\nهل تريد الحذف بالقوة وإزالة الحجوزات؟`
           : `${error.message}\n\nForce-delete and remove reservations?`)) {
           const r2 = await (supabase as any).rpc("delete_po_with_inventory_rollback", {
-            p_po_id: poId, p_actor_email: user?.email ?? "", p_force: true,
+            p_po_id: poId, p_actor_email: userEmail, p_force: true,
           });
           if (r2.error) return toast.error(r2.error.message);
         } else return;
