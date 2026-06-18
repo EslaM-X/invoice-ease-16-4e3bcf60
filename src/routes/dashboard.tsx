@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -300,7 +300,7 @@ function InventoryValueCard({
   sub: string;
   Icon: typeof Package;
   sensitive?: boolean;
-  footer?: React.ReactNode;
+  footer?: ReactNode;
 }) {
   return (
     <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
