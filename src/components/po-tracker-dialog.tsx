@@ -285,7 +285,7 @@ export function POTrackerDialog({
     const to = batchTo ? new Date(batchTo).getTime() + 24 * 3600 * 1000 - 1 : null;
     return receipts.filter((r) => {
       if (batchActor && (r.actor_email ?? "") !== batchActor) return false;
-      const t = new Date(r.created_at).getTime();
+      const t = new Date(r.receipt_date || r.created_at).getTime();
       if (from !== null && t < from) return false;
       if (to !== null && t > to) return false;
       if (!q) return true;
