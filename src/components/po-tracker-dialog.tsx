@@ -273,7 +273,7 @@ export function POTrackerDialog({
   const totalReceived = items.reduce((s, i) => s + (i.received_qty || 0), 0);
   const totalRemaining = Math.max(0, totalOrdered - totalReceived);
   const isPartial = totalReceived > 0 && totalRemaining > 0;
-  const canReceive = (po?.status === "shipped" || po?.status === "in_warehouse") && totalRemaining > 0 && (isAdmin || isPurchasing);
+  const canReceive = !!po && (["shipped", "in_warehouse", "received"].includes(po.status)) && totalRemaining > 0 && (isAdmin || isPurchasing);
 
   const batchActors = useMemo(
     () => Array.from(new Set(receipts.map((r) => r.actor_email).filter(Boolean) as string[])).sort(),
