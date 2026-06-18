@@ -280,18 +280,31 @@ export function PoShipmentsTracker() {
                     {g.pos.slice(0, 8).map((p) => {
                       const meta = STATUS_META[p.status];
                       const code = p.shipment_code || p.po_number;
+                      const poReceipts = receiptsByPo.get(p.id) ?? [];
                       return (
                         <Link
                           key={p.id}
                           to="/po-tracking"
-                          className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px] transition hover:bg-accent/60"
+                          className="block rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px] transition hover:bg-accent/60"
                           title={`${code} · ${p.po_number}`}
                         >
-                          <span className="min-w-0 truncate font-mono font-extrabold text-foreground">{code}</span>
-                          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${meta.tone}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                            {statusLabel(p.status)}
-                          </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 truncate font-mono font-extrabold text-foreground">{code}</span>
+                            <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${meta.tone}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                              {statusLabel(p.status)}
+                            </span>
+                          </div>
+                          {poReceipts.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {poReceipts.slice(0, 4).map((r) => (
+                                <span key={`${p.id}-${r.receipt_number}`} className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                                  {r.receipt_code || `${code}#${r.receipt_number}`} · +{r.total_qty}
+                                </span>
+                              ))}
+                              {poReceipts.length > 4 && <span className="text-muted-foreground">+{poReceipts.length - 4}</span>}
+                            </div>
+                          )}
                         </Link>
                       );
                     })}
