@@ -433,6 +433,29 @@ export function POTrackerDialog({
     await transitionTo("cancelled");
   };
 
+  const reactivatePO = async () => {
+    if (!po || !user) return;
+    if (!confirm(isAr ? "إعادة تفعيل أمر الشراء؟ سيعود إلى آخر حالة قبل الإلغاء." : "Reactivate this PO? It will return to its last status before cancellation.")) return;
+    // Find last non-cancelled status from history
+    const { data: hist } = await supabase
+      .from("po_status_history")
+      .select("from_status,to_status,created_at")
+      .eq("po_id", po.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    let restore: string = "priced";
+    const rows = (hist as any[]) ?? [];
+    const cancelEntry = rows.find((r) => r.to_status === "cancelled");
+    if (cancelEntry && cancelEntry.from_status && cancelEntry.from_status !== "cancelled") {
+      restore = cancelEntry.from_status;
+    } else {
+      const prior = rows.find((r) => r.to_status && r.to_status !== "cancelled");
+      if (prior) restore = prior.to_status;
+    }
+    if (!PO_FLOW.includes(restore as any)) restore = "priced";
+    await transitionTo(restore);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
