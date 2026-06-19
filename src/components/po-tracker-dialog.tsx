@@ -214,6 +214,28 @@ export function POTrackerDialog({
   const markAllRead = () => persistRead(new Set(history.map((h) => h.id)));
   const markAllUnread = () => persistRead(new Set());
 
+  // Per-user / per-PO collapse state for the Timeline & Change Log card.
+  const timelineCollapseKey = useMemo(
+    () => (user?.id && poId ? `po-tl-collapsed:${user.id}:${poId}` : ""),
+    [user?.id, poId],
+  );
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  useEffect(() => {
+    if (!timelineCollapseKey) return;
+    try {
+      setTimelineCollapsed(localStorage.getItem(timelineCollapseKey) === "1");
+    } catch { setTimelineCollapsed(false); }
+  }, [timelineCollapseKey]);
+  const toggleTimelineCollapsed = () => {
+    setTimelineCollapsed((prev) => {
+      const next = !prev;
+      if (timelineCollapseKey) {
+        try { localStorage.setItem(timelineCollapseKey, next ? "1" : "0"); } catch {}
+      }
+      return next;
+    });
+  };
+
   const classifyEvent = (h: HistoryRow): "shipment" | "historical" | "status" => {
     const n = h.note ?? "";
     if (n.startsWith("[SHIPMENT_EDIT]")) return "shipment";
