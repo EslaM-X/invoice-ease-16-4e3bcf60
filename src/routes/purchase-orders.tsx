@@ -36,6 +36,7 @@ import {
   Square,
   Activity,
   RefreshCw,
+  PackageCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
