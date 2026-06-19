@@ -506,8 +506,16 @@ export function POTrackerDialog({
                   })}
                 </div>
                 {po.status === "cancelled" && (
-                  <div className="mt-3 flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
-                    <XCircle className="h-4 w-4" /> {isAr ? "تم إلغاء هذا الأمر" : "This PO is cancelled"}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
+                    <span className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4" /> {isAr ? "تم إلغاء هذا الأمر" : "This PO is cancelled"}
+                    </span>
+                    {canCancel && (
+                      <Button size="sm" onClick={reactivatePO} disabled={busy} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Activity className="h-4 w-4" />
+                        {isAr ? "إعادة تفعيل الأمر" : "Reactivate PO"}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
