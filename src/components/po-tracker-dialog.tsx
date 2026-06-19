@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter, Undo2 } from "lucide-react";
+import { CheckCircle2, Circle, Truck, Package, DollarSign, Wallet, ShoppingBag, Warehouse, XCircle, Activity, AlertCircle, History, RefreshCw as RefreshCwIcon, Search, Eye, EyeOff, BellDot, CheckCheck, Filter, Undo2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { HistoricalReceiptDialog } from "@/components/historical-receipt-dialog";
 import { POPdfReceiptDialog } from "@/components/po-pdf-receipt-dialog";
@@ -213,6 +213,28 @@ export function POTrackerDialog({
   };
   const markAllRead = () => persistRead(new Set(history.map((h) => h.id)));
   const markAllUnread = () => persistRead(new Set());
+
+  // Per-user / per-PO collapse state for the Timeline & Change Log card.
+  const timelineCollapseKey = useMemo(
+    () => (user?.id && poId ? `po-tl-collapsed:${user.id}:${poId}` : ""),
+    [user?.id, poId],
+  );
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  useEffect(() => {
+    if (!timelineCollapseKey) return;
+    try {
+      setTimelineCollapsed(localStorage.getItem(timelineCollapseKey) === "1");
+    } catch { setTimelineCollapsed(false); }
+  }, [timelineCollapseKey]);
+  const toggleTimelineCollapsed = () => {
+    setTimelineCollapsed((prev) => {
+      const next = !prev;
+      if (timelineCollapseKey) {
+        try { localStorage.setItem(timelineCollapseKey, next ? "1" : "0"); } catch {}
+      }
+      return next;
+    });
+  };
 
   const classifyEvent = (h: HistoryRow): "shipment" | "historical" | "status" => {
     const n = h.note ?? "";
@@ -676,7 +698,15 @@ export function POTrackerDialog({
               {/* Timeline + Change Log */}
               <div className="rounded-lg border bg-card p-4">
                 <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
+                  <button
+                    type="button"
+                    onClick={toggleTimelineCollapsed}
+                    className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition"
+                    title={timelineCollapsed ? (isAr ? "إظهار" : "Show") : (isAr ? "إخفاء" : "Hide")}
+                  >
+                    {timelineCollapsed
+                      ? <ChevronRight className="h-4 w-4" />
+                      : <ChevronDown className="h-4 w-4" />}
                     {isAr ? "السجل الزمني وسجل التغييرات" : "Timeline & Change Log"}
                     {unreadCounts.all > 0 && (
                       <Badge className="gap-1 bg-rose-500 text-white hover:bg-rose-600">
@@ -684,22 +714,32 @@ export function POTrackerDialog({
                         {unreadCounts.all} {isAr ? "جديد" : "new"}
                       </Badge>
                     )}
-                  </div>
+                  </button>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] text-muted-foreground">
                       {filteredHistory.length}/{history.length} {isAr ? "حدث" : "events"}
                     </span>
-                    <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={markAllRead} disabled={unreadCounts.all === 0}>
-                      <CheckCheck className="h-3 w-3" />
-                      {isAr ? "تعليم الكل مقروء" : "Mark all read"}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={markAllUnread} disabled={readIds.size === 0}>
-                      <EyeOff className="h-3 w-3" />
-                      {isAr ? "ارجاع غير مقروء" : "Mark all unread"}
+                    {!timelineCollapsed && (
+                      <>
+                        <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={markAllRead} disabled={unreadCounts.all === 0}>
+                          <CheckCheck className="h-3 w-3" />
+                          {isAr ? "تعليم الكل مقروء" : "Mark all read"}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={markAllUnread} disabled={readIds.size === 0}>
+                          <EyeOff className="h-3 w-3" />
+                          {isAr ? "ارجاع غير مقروء" : "Mark all unread"}
+                        </Button>
+                      </>
+                    )}
+                    <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-[11px]" onClick={toggleTimelineCollapsed}>
+                      {timelineCollapsed
+                        ? (<><Eye className="h-3 w-3" />{isAr ? "إظهار" : "Show"}</>)
+                        : (<><EyeOff className="h-3 w-3" />{isAr ? "إخفاء" : "Hide"}</>)}
                     </Button>
                   </div>
                 </div>
 
+                {!timelineCollapsed && (<>
                 {/* Filters */}
                 <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-md border bg-muted/30 p-2">
                   <Filter className="h-3.5 w-3.5 text-muted-foreground" />
@@ -810,6 +850,7 @@ export function POTrackerDialog({
                     })}
                   </ol>
                 )}
+                </>)}
               </div>
 
 
