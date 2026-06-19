@@ -197,6 +197,57 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_receipt_ops: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          back_deducted_dri_ids: string[]
+          batch_count: number
+          created_at: string
+          id: string
+          payload: Json
+          po_count: number
+          receipt_ids: string[]
+          result: Json | null
+          revert_reason: string | null
+          reverted_at: string | null
+          reverted_by_email: string | null
+          total_qty: number
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          back_deducted_dri_ids?: string[]
+          batch_count?: number
+          created_at?: string
+          id?: string
+          payload: Json
+          po_count?: number
+          receipt_ids?: string[]
+          result?: Json | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by_email?: string | null
+          total_qty?: number
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          back_deducted_dri_ids?: string[]
+          batch_count?: number
+          created_at?: string
+          id?: string
+          payload?: Json
+          po_count?: number
+          receipt_ids?: string[]
+          result?: Json | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by_email?: string | null
+          total_qty?: number
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           agent_email: string | null
@@ -3442,6 +3493,7 @@ export type Database = {
         Returns: boolean
       }
       is_company_member: { Args: never; Returns: boolean }
+      is_inventory_admin: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       list_pending_back_deductions: {
         Args: { p_po_id: string }
@@ -3485,6 +3537,11 @@ export type Database = {
         Returns: undefined
       }
       pair_scan_session: { Args: { _pair_code: string }; Returns: string }
+      preview_bulk_apply_po_receipts: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
+      preview_inventory_reset: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -3579,6 +3636,10 @@ export type Database = {
           product_name: string
           serial_number: string
         }[]
+      }
+      undo_bulk_receipt_op: {
+        Args: { p_actor_email: string; p_op_id: string; p_reason: string }
+        Returns: Json
       }
       undo_last_po_receipt: {
         Args: { p_actor_email: string; p_po_id: string }
