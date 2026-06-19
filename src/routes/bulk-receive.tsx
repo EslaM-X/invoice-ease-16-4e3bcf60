@@ -60,7 +60,8 @@ type Selection = {
 };
 
 function BulkReceivePage() {
-  const { t, isAr } = useI18n();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const { user } = useAuth();
   const { isAdmin } = useRole();
   const [pos, setPos] = useState<PO[]>([]);
