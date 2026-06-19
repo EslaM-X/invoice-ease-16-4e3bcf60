@@ -36,6 +36,7 @@ import {
   Square,
   Activity,
   RefreshCw,
+  PackageCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -210,11 +211,20 @@ function PurchaseOrdersPage() {
                   {isAr ? "إعادة ترقيم بالتاريخ" : "Re-sequence by date"}
                 </Button>
               )}
+              <Button
+                onClick={() => navigate({ to: "/bulk-receive" })}
+                variant="outline"
+                size="lg"
+                className="gap-2"
+                title={isAr ? "اختر عدة أوامر شراء واستلمها دفعة واحدة" : "Receive multiple POs at once"}
+              >
+                <PackageCheck className="h-4 w-4" />
+                {isAr ? "استلام جماعي" : "Bulk Receive"}
+              </Button>
               <Button onClick={() => setCreateOpen(true)} size="lg" className="gap-2 shadow-md">
                 <Plus className="h-4 w-4" /> {isAr ? "أمر شراء جديد" : "New Purchase Order"}
               </Button>
-            </div>
-          )}
+            </div>)}
         </div>
       </div>
 

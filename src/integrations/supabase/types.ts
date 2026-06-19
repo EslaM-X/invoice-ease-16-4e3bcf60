@@ -3296,6 +3296,10 @@ export type Database = {
           shipment_date: string
         }[]
       }
+      bulk_apply_po_receipts: {
+        Args: { p_actor_email: string; p_payload: Json }
+        Returns: Json
+      }
       can_access_call_center: { Args: never; Returns: boolean }
       can_access_user_data: { Args: { _owner_id: string }; Returns: boolean }
       change_delivery_receipt_status: {
@@ -3551,6 +3555,7 @@ export type Database = {
             Returns: string
           }
       renumber_purchase_orders: { Args: never; Returns: Json }
+      reset_all_inventory: { Args: { p_actor_email: string }; Returns: Json }
       return_defective_item: {
         Args: { _defective_id: string; _notes?: string; _quantity: number }
         Returns: undefined

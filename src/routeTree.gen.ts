@@ -44,6 +44,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
 import { Route as CallCenterRouteImport } from './routes/call-center'
+import { Route as BulkReceiveRouteImport } from './routes/bulk-receive'
 import { Route as BackDeductionReportRouteImport } from './routes/back-deduction-report'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditLogRouteImport } from './routes/audit-log'
@@ -245,6 +246,11 @@ const CallCenterRoute = CallCenterRouteImport.update({
   path: '/call-center',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BulkReceiveRoute = BulkReceiveRouteImport.update({
+  id: '/bulk-receive',
+  path: '/bulk-receive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BackDeductionReportRoute = BackDeductionReportRouteImport.update({
   id: '/back-deduction-report',
   path: '/back-deduction-report',
@@ -382,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/back-deduction-report': typeof BackDeductionReportRoute
+  '/bulk-receive': typeof BulkReceiveRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
@@ -444,6 +451,7 @@ export interface FileRoutesByTo {
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/back-deduction-report': typeof BackDeductionReportRoute
+  '/bulk-receive': typeof BulkReceiveRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
@@ -507,6 +515,7 @@ export interface FileRoutesById {
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/back-deduction-report': typeof BackDeductionReportRoute
+  '/bulk-receive': typeof BulkReceiveRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
   '/customers': typeof CustomersRoute
@@ -571,6 +580,7 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/auth'
     | '/back-deduction-report'
+    | '/bulk-receive'
     | '/call-center'
     | '/call-center-reports'
     | '/customers'
@@ -633,6 +643,7 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/auth'
     | '/back-deduction-report'
+    | '/bulk-receive'
     | '/call-center'
     | '/call-center-reports'
     | '/customers'
@@ -695,6 +706,7 @@ export interface FileRouteTypes {
     | '/audit-log'
     | '/auth'
     | '/back-deduction-report'
+    | '/bulk-receive'
     | '/call-center'
     | '/call-center-reports'
     | '/customers'
@@ -758,6 +770,7 @@ export interface RootRouteChildren {
   AuditLogRoute: typeof AuditLogRoute
   AuthRoute: typeof AuthRoute
   BackDeductionReportRoute: typeof BackDeductionReportRoute
+  BulkReceiveRoute: typeof BulkReceiveRoute
   CallCenterRoute: typeof CallCenterRoute
   CallCenterReportsRoute: typeof CallCenterReportsRoute
   CustomersRoute: typeof CustomersRoute
@@ -1062,6 +1075,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CallCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bulk-receive': {
+      id: '/bulk-receive'
+      path: '/bulk-receive'
+      fullPath: '/bulk-receive'
+      preLoaderRoute: typeof BulkReceiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/back-deduction-report': {
       id: '/back-deduction-report'
       path: '/back-deduction-report'
@@ -1246,6 +1266,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditLogRoute: AuditLogRoute,
   AuthRoute: AuthRoute,
   BackDeductionReportRoute: BackDeductionReportRoute,
+  BulkReceiveRoute: BulkReceiveRoute,
   CallCenterRoute: CallCenterRoute,
   CallCenterReportsRoute: CallCenterReportsRoute,
   CustomersRoute: CustomersRoute,
@@ -1305,13 +1326,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
