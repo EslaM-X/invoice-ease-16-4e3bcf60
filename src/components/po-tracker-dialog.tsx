@@ -433,6 +433,29 @@ export function POTrackerDialog({
     await transitionTo("cancelled");
   };
 
+  const reactivatePO = async () => {
+    if (!po || !user) return;
+    if (!confirm(isAr ? "إعادة تفعيل أمر الشراء؟ سيعود إلى آخر حالة قبل الإلغاء." : "Reactivate this PO? It will return to its last status before cancellation.")) return;
+    // Find last non-cancelled status from history
+    const { data: hist } = await supabase
+      .from("po_status_history")
+      .select("from_status,to_status,created_at")
+      .eq("po_id", po.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    let restore: string = "priced";
+    const rows = (hist as any[]) ?? [];
+    const cancelEntry = rows.find((r) => r.to_status === "cancelled");
+    if (cancelEntry && cancelEntry.from_status && cancelEntry.from_status !== "cancelled") {
+      restore = cancelEntry.from_status;
+    } else {
+      const prior = rows.find((r) => r.to_status && r.to_status !== "cancelled");
+      if (prior) restore = prior.to_status;
+    }
+    if (!PO_FLOW.includes(restore as any)) restore = "priced";
+    await transitionTo(restore);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -483,8 +506,16 @@ export function POTrackerDialog({
                   })}
                 </div>
                 {po.status === "cancelled" && (
-                  <div className="mt-3 flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
-                    <XCircle className="h-4 w-4" /> {isAr ? "تم إلغاء هذا الأمر" : "This PO is cancelled"}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
+                    <span className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4" /> {isAr ? "تم إلغاء هذا الأمر" : "This PO is cancelled"}
+                    </span>
+                    {canCancel && (
+                      <Button size="sm" onClick={reactivatePO} disabled={busy} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Activity className="h-4 w-4" />
+                        {isAr ? "إعادة تفعيل الأمر" : "Reactivate PO"}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
