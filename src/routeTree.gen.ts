@@ -30,6 +30,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PoTrackingRouteImport } from './routes/po-tracking'
 import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
+import { Route as InventoryTraceabilityRouteImport } from './routes/inventory-traceability'
 import { Route as InventoryReconcileRouteImport } from './routes/inventory-reconcile'
 import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -175,6 +176,11 @@ const PendingOperationsRoute = PendingOperationsRouteImport.update({
 const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
   id: '/invoices-system-notes',
   path: '/invoices-system-notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryTraceabilityRoute = InventoryTraceabilityRouteImport.update({
+  id: '/inventory-traceability',
+  path: '/inventory-traceability',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryReconcileRoute = InventoryReconcileRouteImport.update({
@@ -410,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/inventory-reconcile': typeof InventoryReconcileRoute
+  '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
@@ -474,6 +481,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/inventory-reconcile': typeof InventoryReconcileRoute
+  '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
@@ -539,6 +547,7 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/inventory-audit': typeof InventoryAuditRoute
   '/inventory-reconcile': typeof InventoryReconcileRoute
+  '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
@@ -605,6 +614,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/inventory-reconcile'
+    | '/inventory-traceability'
     | '/invoices-system-notes'
     | '/pending-operations'
     | '/po-tracking'
@@ -669,6 +679,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/inventory-reconcile'
+    | '/inventory-traceability'
     | '/invoices-system-notes'
     | '/pending-operations'
     | '/po-tracking'
@@ -733,6 +744,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/inventory-audit'
     | '/inventory-reconcile'
+    | '/inventory-traceability'
     | '/invoices-system-notes'
     | '/pending-operations'
     | '/po-tracking'
@@ -798,6 +810,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   InventoryAuditRoute: typeof InventoryAuditRoute
   InventoryReconcileRoute: typeof InventoryReconcileRoute
+  InventoryTraceabilityRoute: typeof InventoryTraceabilityRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   PendingOperationsRoute: typeof PendingOperationsRoute
   PoTrackingRoute: typeof PoTrackingRoute
@@ -988,6 +1001,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices-system-notes'
       fullPath: '/invoices-system-notes'
       preLoaderRoute: typeof InvoicesSystemNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-traceability': {
+      id: '/inventory-traceability'
+      path: '/inventory-traceability'
+      fullPath: '/inventory-traceability'
+      preLoaderRoute: typeof InventoryTraceabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory-reconcile': {
@@ -1302,6 +1322,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   InventoryAuditRoute: InventoryAuditRoute,
   InventoryReconcileRoute: InventoryReconcileRoute,
+  InventoryTraceabilityRoute: InventoryTraceabilityRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   PendingOperationsRoute: PendingOperationsRoute,
   PoTrackingRoute: PoTrackingRoute,
