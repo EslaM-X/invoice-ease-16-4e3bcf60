@@ -489,6 +489,10 @@ function InTransitPage() {
                       ? { wrap: "", chip: "bg-amber-500 text-white", icon: AlertTriangle, label: isAr ? "نقص في التغطية" : "Shortfall", text: "text-amber-700" }
                       : { wrap: "", chip: "bg-blue-500 text-white", icon: Truck, label: isAr ? "بانتظار وصول الشحنة" : "Awaiting arrival", text: "text-blue-700" };
                 const Icon = tone.icon;
+                const incoming = a.severity !== "critical" ? incomingPoByProduct.get(a.product.id) : null;
+                const etaLabel = incoming?.eta
+                  ? new Date(incoming.eta).toLocaleDateString(isAr ? "ar-EG" : "en-GB", { day: "numeric", month: "short", year: "numeric" })
+                  : null;
                 return (
                   <div key={a.product.id} className={`flex flex-wrap items-center gap-3 p-3 ${tone.wrap}`}>
                     <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
@@ -521,9 +525,17 @@ function InTransitPage() {
                         )}
                       </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.chip}`}>
-                      <Icon className="h-3 w-3" /> {tone.label}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.chip}`}>
+                        <Icon className="h-3 w-3" /> {tone.label}
+                        {incoming && (
+                          <span className="ms-1 inline-flex items-center gap-1 rounded-full bg-white/25 px-1.5 py-0.5 font-mono text-[10px] font-bold">
+                            {incoming.po_number}
+                            {etaLabel && <span className="opacity-90">· {etaLabel}</span>}
+                          </span>
+                        )}
+                      </span>
+                    </div>
                     <Button
                       size="sm"
                       variant={a.severity === "critical" ? "destructive" : "outline"}
