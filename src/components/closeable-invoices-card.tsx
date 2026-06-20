@@ -80,7 +80,7 @@ export function CloseableInvoicesCard() {
       const suggestions = computeSuggestions({
         invoices: invs,
         items,
-        delivered: deliveredRows,
+        deliveredRows,
         products: productMap,
         poItems,
         pos: poMap,
