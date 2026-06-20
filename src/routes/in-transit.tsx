@@ -426,7 +426,7 @@ function InTransitPage() {
         <Card className={`overflow-hidden border-2 ${criticalCount > 0 ? "border-destructive/40 bg-destructive/5" : shortfallCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/30 bg-blue-500/5"}`}>
           <button
             type="button"
-            onClick={() => setAlertsOpen((v) => !v)}
+            onClick={() => { userToggledRef.current = true; setAlertsOpen((v) => !v); }}
             className="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-muted/30"
           >
             <div className={`relative grid h-10 w-10 place-items-center rounded-xl ${criticalCount > 0 ? "bg-destructive/15 text-destructive" : shortfallCount > 0 ? "bg-amber-500/15 text-amber-700" : "bg-blue-500/15 text-blue-700"}`}>
