@@ -208,7 +208,10 @@ function Dashboard() {
         ))}
       </div>
 
+      <CloseableInvoicesCard />
+
       <IncomingShipmentsStrip />
+
 
       <PoShipmentsTracker />
 
