@@ -301,7 +301,35 @@ function InTransitPage() {
   const shortfallCount = alerts.filter((a) => a.severity === "shortfall").length;
   const coveredCount = alerts.filter((a) => a.severity === "covered").length;
 
-  const [alertsOpen, setAlertsOpen] = useState(true);
+  // Collapsed by default. Auto-expands only when there's a critical or shortfall alert.
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const userToggledRef = useRef(false);
+  useEffect(() => {
+    if (userToggledRef.current) return;
+    if (criticalCount > 0 || shortfallCount > 0) setAlertsOpen(true);
+    else setAlertsOpen(false);
+  }, [criticalCount, shortfallCount]);
+
+  // Map product_id → earliest incoming PO (po_number + ETA) for "awaiting arrival" alerts.
+  const incomingPoByProduct = useMemo(() => {
+    const m = new Map<string, { po_number: string; eta: string | null }>();
+    items.forEach((it) => {
+      const po = pos[it.po_id];
+      if (!po) return;
+      const cur = m.get(it.product_id);
+      const candEta = po.expected_arrival_at ?? null;
+      if (!cur) { m.set(it.product_id, { po_number: po.po_number, eta: candEta }); return; }
+      // pick earliest ETA; nulls last
+      const curEta = cur.eta;
+      const better = (() => {
+        if (!candEta) return false;
+        if (!curEta) return true;
+        return new Date(candEta).getTime() < new Date(curEta).getTime();
+      })();
+      if (better) m.set(it.product_id, { po_number: po.po_number, eta: candEta });
+    });
+    return m;
+  }, [items, pos]);
   const [restockOpen, setRestockOpen] = useState(false);
   const [restockPid, setRestockPid] = useState<string | null>(null);
   const seenCritsRef = useRef<Set<string> | null>(null);
@@ -398,7 +426,7 @@ function InTransitPage() {
         <Card className={`overflow-hidden border-2 ${criticalCount > 0 ? "border-destructive/40 bg-destructive/5" : shortfallCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/30 bg-blue-500/5"}`}>
           <button
             type="button"
-            onClick={() => setAlertsOpen((v) => !v)}
+            onClick={() => { userToggledRef.current = true; setAlertsOpen((v) => !v); }}
             className="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-muted/30"
           >
             <div className={`relative grid h-10 w-10 place-items-center rounded-xl ${criticalCount > 0 ? "bg-destructive/15 text-destructive" : shortfallCount > 0 ? "bg-amber-500/15 text-amber-700" : "bg-blue-500/15 text-blue-700"}`}>
@@ -461,6 +489,10 @@ function InTransitPage() {
                       ? { wrap: "", chip: "bg-amber-500 text-white", icon: AlertTriangle, label: isAr ? "نقص في التغطية" : "Shortfall", text: "text-amber-700" }
                       : { wrap: "", chip: "bg-blue-500 text-white", icon: Truck, label: isAr ? "بانتظار وصول الشحنة" : "Awaiting arrival", text: "text-blue-700" };
                 const Icon = tone.icon;
+                const incoming = a.severity !== "critical" ? incomingPoByProduct.get(a.product.id) : null;
+                const etaLabel = incoming?.eta
+                  ? new Date(incoming.eta).toLocaleDateString(isAr ? "ar-EG" : "en-GB", { day: "numeric", month: "short", year: "numeric" })
+                  : null;
                 return (
                   <div key={a.product.id} className={`flex flex-wrap items-center gap-3 p-3 ${tone.wrap}`}>
                     <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border bg-muted">
@@ -493,9 +525,17 @@ function InTransitPage() {
                         )}
                       </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.chip}`}>
-                      <Icon className="h-3 w-3" /> {tone.label}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone.chip}`}>
+                        <Icon className="h-3 w-3" /> {tone.label}
+                        {incoming && (
+                          <span className="ms-1 inline-flex items-center gap-1 rounded-full bg-white/25 px-1.5 py-0.5 font-mono text-[10px] font-bold">
+                            {incoming.po_number}
+                            {etaLabel && <span className="opacity-90">· {etaLabel}</span>}
+                          </span>
+                        )}
+                      </span>
+                    </div>
                     <Button
                       size="sm"
                       variant={a.severity === "critical" ? "destructive" : "outline"}

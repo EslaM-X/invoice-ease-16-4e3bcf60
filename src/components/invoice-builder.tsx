@@ -82,9 +82,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     discount_mode: "amount",
     discount_percent: undefined,
   });
-  const [items, setItems] = useState<BuilderItem[]>(
-    initial?.items ?? (mode === "new" ? [defaultFeeItem()] : []),
-  );
+  // رسوم الشحن لم تعد تُضاف تلقائياً — يقدر المستخدم يضيفها يدوياً من زر "إعادة رسوم الشحن".
+  const [items, setItems] = useState<BuilderItem[]>(initial?.items ?? []);
   const [discount, setDiscount] = useState<number>(initial?.discount ?? 0);
   const [discountMode, setDiscountMode] = useState<"amount" | "percent">(
     mode === "edit" ? "amount" : "percent",
