@@ -301,7 +301,35 @@ function InTransitPage() {
   const shortfallCount = alerts.filter((a) => a.severity === "shortfall").length;
   const coveredCount = alerts.filter((a) => a.severity === "covered").length;
 
-  const [alertsOpen, setAlertsOpen] = useState(true);
+  // Collapsed by default. Auto-expands only when there's a critical or shortfall alert.
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const userToggledRef = useRef(false);
+  useEffect(() => {
+    if (userToggledRef.current) return;
+    if (criticalCount > 0 || shortfallCount > 0) setAlertsOpen(true);
+    else setAlertsOpen(false);
+  }, [criticalCount, shortfallCount]);
+
+  // Map product_id → earliest incoming PO (po_number + ETA) for "awaiting arrival" alerts.
+  const incomingPoByProduct = useMemo(() => {
+    const m = new Map<string, { po_number: string; eta: string | null }>();
+    items.forEach((it) => {
+      const po = pos[it.po_id];
+      if (!po) return;
+      const cur = m.get(it.product_id);
+      const candEta = po.expected_arrival_at ?? null;
+      if (!cur) { m.set(it.product_id, { po_number: po.po_number, eta: candEta }); return; }
+      // pick earliest ETA; nulls last
+      const curEta = cur.eta;
+      const better = (() => {
+        if (!candEta) return false;
+        if (!curEta) return true;
+        return new Date(candEta).getTime() < new Date(curEta).getTime();
+      })();
+      if (better) m.set(it.product_id, { po_number: po.po_number, eta: candEta });
+    });
+    return m;
+  }, [items, pos]);
   const [restockOpen, setRestockOpen] = useState(false);
   const [restockPid, setRestockPid] = useState<string | null>(null);
   const seenCritsRef = useRef<Set<string> | null>(null);
