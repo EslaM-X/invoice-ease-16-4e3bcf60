@@ -312,23 +312,22 @@ function InTransitPage() {
     else setAlertsOpen(false);
   }, [criticalCount, shortfallCount]);
 
-  // Map product_id → earliest incoming PO (po_number + ETA) for "awaiting arrival" alerts.
+  // Map product_id → earliest incoming PO (po_number + shipment_code + ETA) for "awaiting arrival" alerts.
   const incomingPoByProduct = useMemo(() => {
-    const m = new Map<string, { po_number: string; eta: string | null }>();
+    const m = new Map<string, { po_number: string; shipment_code: string | null; eta: string | null }>();
     items.forEach((it) => {
       const po = pos[it.po_id];
       if (!po) return;
       const cur = m.get(it.product_id);
       const candEta = po.expected_arrival_at ?? null;
-      if (!cur) { m.set(it.product_id, { po_number: po.po_number, eta: candEta }); return; }
-      // pick earliest ETA; nulls last
+      if (!cur) { m.set(it.product_id, { po_number: po.po_number, shipment_code: po.shipment_code ?? null, eta: candEta }); return; }
       const curEta = cur.eta;
       const better = (() => {
         if (!candEta) return false;
         if (!curEta) return true;
         return new Date(candEta).getTime() < new Date(curEta).getTime();
       })();
-      if (better) m.set(it.product_id, { po_number: po.po_number, eta: candEta });
+      if (better) m.set(it.product_id, { po_number: po.po_number, shipment_code: po.shipment_code ?? null, eta: candEta });
     });
     return m;
   }, [items, pos]);
