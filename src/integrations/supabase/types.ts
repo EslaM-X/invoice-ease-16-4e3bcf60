@@ -2238,6 +2238,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sample_return_items: {
+        Row: {
+          created_at: string
+          defective_item_id: string
+          id: string
+          quantity: number
+          return_id: string
+        }
+        Insert: {
+          created_at?: string
+          defective_item_id: string
+          id?: string
+          quantity: number
+          return_id: string
+        }
+        Update: {
+          created_at?: string
+          defective_item_id?: string
+          id?: string
+          quantity?: number
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sample_return_items_defective_item_id_fkey"
+            columns: ["defective_item_id"]
+            isOneToOne: false
+            referencedRelation: "defective_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sample_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sample_returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sample_returns: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          registered_by: string | null
+          registered_by_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          registered_by?: string | null
+          registered_by_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          registered_by?: string | null
+          registered_by_email?: string | null
+        }
+        Relationships: []
+      }
       scan_events: {
         Row: {
           color: string | null
