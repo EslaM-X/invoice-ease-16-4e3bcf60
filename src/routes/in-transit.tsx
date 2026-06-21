@@ -531,7 +531,7 @@ function InTransitPage() {
                         <Icon className="h-3 w-3" /> {tone.label}
                         {incoming && (
                           <span className="ms-1 inline-flex items-center gap-1 rounded-full bg-white/25 px-1.5 py-0.5 font-mono text-[10px] font-bold">
-                            {incoming.po_number}
+                            {incoming.shipment_code || incoming.po_number}
                             {etaLabel && <span className="opacity-90">· {etaLabel}</span>}
                           </span>
                         )}
