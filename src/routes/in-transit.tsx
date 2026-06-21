@@ -86,7 +86,7 @@ function InTransitPage() {
   const load = async () => {
     const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
-      supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
+      supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at,shipment_code,shipment_type").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.rpc("get_active_invoice_reservations" as any),
       supabase.rpc("get_sold_qty_by_product" as any),
       supabase.rpc("get_reserved_qty_by_product" as any),
