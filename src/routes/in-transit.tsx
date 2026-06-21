@@ -61,6 +61,8 @@ type PO = {
   status: string;
   expected_arrival_at: string | null;
   shipped_at: string | null;
+  shipment_code: string | null;
+  shipment_type: string | null;
 };
 
 function InTransitPage() {
