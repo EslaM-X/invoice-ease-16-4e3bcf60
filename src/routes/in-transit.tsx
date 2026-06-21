@@ -61,6 +61,8 @@ type PO = {
   status: string;
   expected_arrival_at: string | null;
   shipped_at: string | null;
+  shipment_code: string | null;
+  shipment_type: string | null;
 };
 
 function InTransitPage() {
@@ -84,7 +86,7 @@ function InTransitPage() {
   const load = async () => {
     const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
-      supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at").in("status", IN_TRANSIT_STATUSES as any).limit(500),
+      supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at,shipment_code,shipment_type").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.rpc("get_active_invoice_reservations" as any),
       supabase.rpc("get_sold_qty_by_product" as any),
       supabase.rpc("get_reserved_qty_by_product" as any),
@@ -310,23 +312,22 @@ function InTransitPage() {
     else setAlertsOpen(false);
   }, [criticalCount, shortfallCount]);
 
-  // Map product_id → earliest incoming PO (po_number + ETA) for "awaiting arrival" alerts.
+  // Map product_id → earliest incoming PO (po_number + shipment_code + ETA) for "awaiting arrival" alerts.
   const incomingPoByProduct = useMemo(() => {
-    const m = new Map<string, { po_number: string; eta: string | null }>();
+    const m = new Map<string, { po_number: string; shipment_code: string | null; eta: string | null }>();
     items.forEach((it) => {
       const po = pos[it.po_id];
       if (!po) return;
       const cur = m.get(it.product_id);
       const candEta = po.expected_arrival_at ?? null;
-      if (!cur) { m.set(it.product_id, { po_number: po.po_number, eta: candEta }); return; }
-      // pick earliest ETA; nulls last
+      if (!cur) { m.set(it.product_id, { po_number: po.po_number, shipment_code: po.shipment_code ?? null, eta: candEta }); return; }
       const curEta = cur.eta;
       const better = (() => {
         if (!candEta) return false;
         if (!curEta) return true;
         return new Date(candEta).getTime() < new Date(curEta).getTime();
       })();
-      if (better) m.set(it.product_id, { po_number: po.po_number, eta: candEta });
+      if (better) m.set(it.product_id, { po_number: po.po_number, shipment_code: po.shipment_code ?? null, eta: candEta });
     });
     return m;
   }, [items, pos]);
@@ -530,7 +531,7 @@ function InTransitPage() {
                         <Icon className="h-3 w-3" /> {tone.label}
                         {incoming && (
                           <span className="ms-1 inline-flex items-center gap-1 rounded-full bg-white/25 px-1.5 py-0.5 font-mono text-[10px] font-bold">
-                            {incoming.po_number}
+                            {incoming.shipment_code || incoming.po_number}
                             {etaLabel && <span className="opacity-90">· {etaLabel}</span>}
                           </span>
                         )}
