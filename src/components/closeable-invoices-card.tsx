@@ -65,7 +65,7 @@ export function CloseableInvoicesCard() {
         const out: T[] = [];
         for (let i = 0; i < ids.length; i += 200) {
           const slice = ids.slice(i, i + 200);
-          const { data } = await supabase.from(table).select(cols).in(key, slice);
+          const { data } = await supabase.from(table as any).select(cols).in(key, slice);
           if (data) out.push(...(data as T[]));
         }
         return out;
