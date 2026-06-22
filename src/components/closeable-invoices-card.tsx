@@ -111,7 +111,7 @@ export function CloseableInvoicesCard() {
     } catch (e) {
       console.error("Error loading dashboard data:", e);
     } finally {
-      setIsLoading(false);
+      setIsFirstLoad(false);
     }
   };
 
