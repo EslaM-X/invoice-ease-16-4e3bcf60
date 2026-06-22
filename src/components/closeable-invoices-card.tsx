@@ -25,12 +25,12 @@ export function CloseableInvoicesCard() {
 
   const [counts, setCounts] = useState<{ nowFull: number; incomingFull: number; total: number } | null>(null);
   const [incomingSlots, setIncomingSlots] = useState<IncomingSlot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const reloadRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  void reloadRef;
 
   const load = async () => {
     if (!user) return;
-    setIsLoading(true);
     try {
       const PAGE = 1000;
       const pageAll = async <T,>(build: (from: number, to: number) => any): Promise<T[]> => {
@@ -65,7 +65,7 @@ export function CloseableInvoicesCard() {
         const out: T[] = [];
         for (let i = 0; i < ids.length; i += 200) {
           const slice = ids.slice(i, i + 200);
-          const { data } = await supabase.from(table).select(cols).in(key, slice);
+          const { data } = await supabase.from(table as any).select(cols).in(key, slice);
           if (data) out.push(...(data as T[]));
         }
         return out;
@@ -111,7 +111,7 @@ export function CloseableInvoicesCard() {
     } catch (e) {
       console.error("Error loading dashboard data:", e);
     } finally {
-      setIsLoading(false);
+      setIsFirstLoad(false);
     }
   };
 
@@ -135,11 +135,11 @@ export function CloseableInvoicesCard() {
             </div>
             <div className="mt-2 flex gap-6">
               <div className="flex flex-col">
-                <span className="text-2xl font-bold">{isLoading ? "..." : counts?.nowFull ?? 0}</span>
+                <span className="text-2xl font-bold tabular-nums transition-all">{isFirstLoad && !counts ? "—" : counts?.nowFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "جاهزة للإقفال الآن" : "Ready now"}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-bold text-blue-600">{isLoading ? "..." : counts?.incomingFull ?? 0}</span>
+                <span className="text-2xl font-bold tabular-nums text-blue-600 transition-all">{isFirstLoad && !counts ? "—" : counts?.incomingFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "إقفال بعد الوصول" : "After arrival"}</span>
               </div>
             </div>
