@@ -76,7 +76,7 @@ export function CloseableInvoicesCard() {
         inChunks<FDeliveredRow & { invoice_id?: string }>("delivery_receipt_items", "invoice_item_id, quantity, note, invoice_id", "invoice_id", invIds),
         supabase.from("products").select("id, name, stock_quantity, serial_number, color").then(({ data }) => (data as FProductRow[]) ?? []),
         supabase.from("purchase_order_items").select("po_id, product_id, quantity, received_qty").then(({ data }) => (data as FPOItemRow[]) ?? []),
-        supabase.from("purchase_orders").select("id, po_number, status, expected_arrival_at, shipment_code, shipment_type").then(({ data }) => (data as (FPORow & { shipment_code: string | null; shipment_type: string | null })[]) ?? []),
+        supabase.from("purchase_orders").select("id, po_number, status, expected_arrival_at, shipment_code, shipment_type").in("status", Array.from(INCOMING_PO_STATUSES)).then(({ data }) => (data as (FPORow & { shipment_code: string | null; shipment_type: string | null })[]) ?? []),
       ]);
 
       const suggestions = computeSuggestions({
