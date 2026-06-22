@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import {
-  computeSuggestions, DEFAULT_DELIVERY_MODE,
+  computeSuggestions, DEFAULT_DELIVERY_MODE, INCOMING_PO_STATUSES,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
 
