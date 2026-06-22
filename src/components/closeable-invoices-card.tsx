@@ -79,13 +79,16 @@ export function CloseableInvoicesCard() {
         supabase.from("purchase_orders").select("id, po_number, status, expected_arrival_at, shipment_code, shipment_type").in("status", Array.from(INCOMING_PO_STATUSES)).then(({ data }) => (data as (FPORow & { shipment_code: string | null; shipment_type: string | null })[]) ?? []),
       ]);
 
+      const posMap = new Map(posRows.map(p => [p.id, p]));
+      const filteredPoItems = poItems.filter(pi => posMap.has(pi.po_id));
+
       const suggestions = computeSuggestions({
         invoices: invs,
         items,
         deliveredRows,
         products: new Map(prodRows.map(p => [p.id, p])),
-        poItems,
-        pos: new Map(posRows.map(p => [p.id, p])),
+        poItems: filteredPoItems,
+        pos: posMap,
         mode: DEFAULT_DELIVERY_MODE,
       });
 
