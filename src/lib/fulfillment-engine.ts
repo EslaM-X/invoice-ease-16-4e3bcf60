@@ -252,10 +252,12 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
       const delivered = effectiveDelivered.get(it.id) ?? 0;
       const remaining = Math.max(0, (it.quantity || 0) - delivered);
       if (remaining <= 0) continue;
-      anyRemaining = true;
       const isManual = !it.product_id;
-      if (isManual) manualCount += remaining;
-      const key = it.product_id ?? `manual:${it.id}`;
+      // Manual lines (shipping fees, ad-hoc notes) MUST NOT block fulfillment
+      // or count toward stock/incoming math. They are excluded entirely.
+      if (isManual) { manualCount += remaining; continue; }
+      anyRemaining = true;
+      const key = it.product_id!;
       const pendingParts = getPendingPartCounts(it);
       const cur = perProduct.get(key);
       if (cur) {
@@ -268,7 +270,7 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
           serial: it.serial_number,
           color: it.color,
           needed: remaining,
-          isManual,
+          isManual: false,
           pendingMixer: pendingParts.pendingMixer,
           pendingTrim: pendingParts.pendingTrim,
         });
