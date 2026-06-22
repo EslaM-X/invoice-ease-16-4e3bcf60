@@ -25,12 +25,12 @@ export function CloseableInvoicesCard() {
 
   const [counts, setCounts] = useState<{ nowFull: number; incomingFull: number; total: number } | null>(null);
   const [incomingSlots, setIncomingSlots] = useState<IncomingSlot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const reloadRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  void reloadRef;
 
   const load = async () => {
     if (!user) return;
-    setIsLoading(true);
     try {
       const PAGE = 1000;
       const pageAll = async <T,>(build: (from: number, to: number) => any): Promise<T[]> => {
