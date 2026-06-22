@@ -632,9 +632,13 @@ export function SalesOverview() {
 
         <div className="rounded-2xl border bg-background/50 p-4 backdrop-blur">
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground"><Wallet className="h-3 w-3" /> {isAr ? "المحصّل / المتوقع" : "Collected / Expected"}</div>
-          <div className="mt-1 flex items-baseline gap-1.5"><span className="font-display text-2xl font-semibold tabular-nums">{fmtMoney(totalPaid, "EGP", lang)}</span><span className="text-xs text-muted-foreground">/ {fmtMoney(totalSales, "EGP", lang)}</span></div>
+          <div className="mt-1 flex items-baseline gap-1.5"><span className="font-display text-xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{fmtMoney(totalPaid, "EGP", lang)}</span><span className="text-[11px] text-muted-foreground">/ {fmtMoney(totalSales, "EGP", lang)}</span></div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all" style={{ width: `${Math.min(100, collectionRate)}%` }} /></div>
-          <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground"><span>{collectionRate.toFixed(1)}% {isAr ? "تحصيل" : "collected"}</span><span className="font-semibold text-amber-700 dark:text-amber-400">{isAr ? "متبقي" : "Outstanding"}: {fmtMoney(outstanding, "EGP", lang)}</span></div>
+          <div className="mt-1.5 text-[11px] text-muted-foreground">{collectionRate.toFixed(1)}% {isAr ? "تحصيل" : "collected"}</div>
+          <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">{isAr ? "المتبقي" : "Outstanding"}</div>
+            <div className="mt-0.5 font-display text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{fmtMoney(outstanding, "EGP", lang)}</div>
+          </div>
         </div>
       </div>
 
