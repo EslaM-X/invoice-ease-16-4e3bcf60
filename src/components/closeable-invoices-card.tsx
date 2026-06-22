@@ -135,11 +135,11 @@ export function CloseableInvoicesCard() {
             </div>
             <div className="mt-2 flex gap-6">
               <div className="flex flex-col">
-                <span className="text-2xl font-bold">{isLoading ? "..." : counts?.nowFull ?? 0}</span>
+                <span className="text-2xl font-bold tabular-nums transition-all">{isFirstLoad && !counts ? "—" : counts?.nowFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "جاهزة للإقفال الآن" : "Ready now"}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-bold text-blue-600">{isLoading ? "..." : counts?.incomingFull ?? 0}</span>
+                <span className="text-2xl font-bold tabular-nums text-blue-600 transition-all">{isFirstLoad && !counts ? "—" : counts?.incomingFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "إقفال بعد الوصول" : "After arrival"}</span>
               </div>
             </div>
