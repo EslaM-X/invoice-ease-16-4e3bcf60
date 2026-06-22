@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import {
-  computeSuggestions, DEFAULT_DELIVERY_MODE,
+  computeSuggestions, DEFAULT_DELIVERY_MODE, INCOMING_PO_STATUSES,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
 
@@ -76,16 +76,19 @@ export function CloseableInvoicesCard() {
         inChunks<FDeliveredRow & { invoice_id?: string }>("delivery_receipt_items", "invoice_item_id, quantity, note, invoice_id", "invoice_id", invIds),
         supabase.from("products").select("id, name, stock_quantity, serial_number, color").then(({ data }) => (data as FProductRow[]) ?? []),
         supabase.from("purchase_order_items").select("po_id, product_id, quantity, received_qty").then(({ data }) => (data as FPOItemRow[]) ?? []),
-        supabase.from("purchase_orders").select("id, po_number, status, expected_arrival_at, shipment_code, shipment_type").then(({ data }) => (data as (FPORow & { shipment_code: string | null; shipment_type: string | null })[]) ?? []),
+        supabase.from("purchase_orders").select("id, po_number, status, expected_arrival_at, shipment_code, shipment_type").in("status", Array.from(INCOMING_PO_STATUSES)).then(({ data }) => (data as (FPORow & { shipment_code: string | null; shipment_type: string | null })[]) ?? []),
       ]);
+
+      const posMap = new Map(posRows.map(p => [p.id, p]));
+      const filteredPoItems = poItems.filter(pi => posMap.has(pi.po_id));
 
       const suggestions = computeSuggestions({
         invoices: invs,
         items,
         deliveredRows,
         products: new Map(prodRows.map(p => [p.id, p])),
-        poItems,
-        pos: new Map(posRows.map(p => [p.id, p])),
+        poItems: filteredPoItems,
+        pos: posMap,
         mode: DEFAULT_DELIVERY_MODE,
       });
 
