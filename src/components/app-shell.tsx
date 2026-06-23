@@ -447,6 +447,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <CloudUpload className="h-4 w-4" /> {t("pending_operations")}
           </Link>
+          <Link
+            to="/distributors"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/distributors") || location.pathname === "/distributor"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Store className="h-4 w-4" /> {lang === "ar" ? "الموزّعين" : "Distributors"}
+          </Link>
           {isAdmin && isExecutive && (
             <Link
               to="/admin"
