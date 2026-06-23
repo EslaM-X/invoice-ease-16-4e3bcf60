@@ -188,4 +188,3 @@ function DistributorRouteGuard({ accountType, children }: { accountType: string 
   }
   return <>{children}</>;
 }
-}
