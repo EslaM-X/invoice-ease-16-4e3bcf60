@@ -14,6 +14,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { CloseableInvoicesCard } from "@/components/closeable-invoices-card";
+import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
 import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
@@ -209,6 +210,7 @@ function Dashboard() {
       </div>
 
       <CloseableInvoicesCard />
+      <DistributorApprovalsCard />
 
       <IncomingShipmentsStrip />
 
