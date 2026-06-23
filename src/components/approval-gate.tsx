@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -54,7 +55,9 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
   }
   // If no profile exists yet, treat as pending but allow the UI to show the type picker
   const activeProfile = profile || { account_type: null, approval_status: "pending", approval_notes: null };
-  if (activeProfile.approval_status === "approved") return <>{children}</>;
+  if (activeProfile.approval_status === "approved") {
+    return <DistributorRouteGuard accountType={activeProfile.account_type}>{children}</DistributorRouteGuard>;
+  }
 
   const saveType = async () => {
     if (!picked || !user) return;
@@ -152,4 +155,36 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+}
+
+function DistributorRouteGuard({ accountType, children }: { accountType: string | null; children: ReactNode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isDist, setIsDist] = useState<boolean | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) { setIsDist(false); return; }
+    if (accountType !== "distributor") { setIsDist(false); return; }
+    let cancel = false;
+    (supabase.from as any)("distributors").select("id,is_active").eq("user_id", user.id).maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setIsDist(!!data?.is_active); });
+    return () => { cancel = true; };
+  }, [user?.id, accountType]);
+
+  useEffect(() => {
+    if (isDist !== true) return;
+    const p = location.pathname;
+    const allowed = p === "/distributor" || p.startsWith("/distributor/") || p === "/auth" || p === "/reset-password";
+    if (!allowed) navigate({ to: "/distributor", replace: true });
+  }, [isDist, location.pathname, navigate]);
+
+  if (isDist === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  return <>{children}</>;
 }

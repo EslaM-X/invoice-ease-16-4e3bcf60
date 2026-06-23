@@ -749,6 +749,13 @@ export type Database = {
             foreignKeyName: "defective_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "distributor_products_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "defective_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -938,6 +945,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      distributors: {
+        Row: {
+          address: string | null
+          branches_count: number
+          city: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          location: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          showroom_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          branches_count?: number
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          showroom_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          branches_count?: number
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          showroom_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       email_send_log: {
         Row: {
@@ -1132,6 +1193,13 @@ export type Database = {
             foreignKeyName: "inventory_logs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "distributor_products_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1224,6 +1292,13 @@ export type Database = {
             foreignKeyName: "invoice_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "distributor_products_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1305,6 +1380,13 @@ export type Database = {
             foreignKeyName: "invoice_po_reservations_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "distributor_products_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_po_reservations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1342,6 +1424,11 @@ export type Database = {
       }
       invoices: {
         Row: {
+          approval_discount_pct: number
+          approval_notes: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -1351,12 +1438,16 @@ export type Database = {
           customer_phone: string | null
           delivery_status: string
           discount: number
+          distributor_id: string | null
           id: string
           invoice_number: string
           language: string
           notes: string | null
           paid_amount: number | null
           receipt_number: number | null
+          rejected_at: string | null
+          rejected_by: string | null
+          source: string
           status: string
           subtotal: number
           system_notes: string | null
@@ -1367,6 +1458,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approval_discount_pct?: number
+          approval_notes?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -1376,12 +1472,16 @@ export type Database = {
           customer_phone?: string | null
           delivery_status?: string
           discount?: number
+          distributor_id?: string | null
           id?: string
           invoice_number: string
           language?: string
           notes?: string | null
           paid_amount?: number | null
           receipt_number?: number | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          source?: string
           status?: string
           subtotal?: number
           system_notes?: string | null
@@ -1392,6 +1492,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approval_discount_pct?: number
+          approval_notes?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -1401,12 +1506,16 @@ export type Database = {
           customer_phone?: string | null
           delivery_status?: string
           discount?: number
+          distributor_id?: string | null
           id?: string
           invoice_number?: string
           language?: string
           notes?: string | null
           paid_amount?: number | null
           receipt_number?: number | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          source?: string
           status?: string
           subtotal?: number
           system_notes?: string | null
@@ -1422,6 +1531,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
             referencedColumns: ["id"]
           },
         ]
@@ -1876,6 +1992,7 @@ export type Database = {
           parent_product_id: string | null
           price: number
           qr_code: string | null
+          safety_margin: number
           serial_number: string | null
           stock_quantity: number
           updated_at: string
@@ -1899,6 +2016,7 @@ export type Database = {
           parent_product_id?: string | null
           price?: number
           qr_code?: string | null
+          safety_margin?: number
           serial_number?: string | null
           stock_quantity?: number
           updated_at?: string
@@ -1922,6 +2040,7 @@ export type Database = {
           parent_product_id?: string | null
           price?: number
           qr_code?: string | null
+          safety_margin?: number
           serial_number?: string | null
           stock_quantity?: number
           updated_at?: string
@@ -1930,6 +2049,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "distributor_products_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_parent_product_id_fkey"
             columns: ["parent_product_id"]
@@ -3343,7 +3469,69 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      distributor_products_view: {
+        Row: {
+          available_stock: number | null
+          collection: string | null
+          color: string | null
+          created_at: string | null
+          id: string | null
+          image_url: string | null
+          is_spare_part: boolean | null
+          low_stock_threshold: number | null
+          name: string | null
+          parent_product_id: string | null
+          price: number | null
+          serial_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          available_stock?: never
+          collection?: string | null
+          color?: string | null
+          created_at?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_spare_part?: boolean | null
+          low_stock_threshold?: number | null
+          name?: string | null
+          parent_product_id?: string | null
+          price?: number | null
+          serial_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          available_stock?: never
+          collection?: string | null
+          color?: string | null
+          created_at?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_spare_part?: boolean | null
+          low_stock_threshold?: number | null
+          name?: string | null
+          parent_product_id?: string | null
+          price?: number | null
+          serial_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "distributor_products_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_payment: {
@@ -3386,6 +3574,49 @@ export type Database = {
       apply_po_to_inventory: {
         Args: { items_in: Json; p_actor_email: string; p_po_id: string }
         Returns: Json
+      }
+      approve_distributor_invoice: {
+        Args: { _discount_pct?: number; _invoice_id: string; _notes?: string }
+        Returns: {
+          approval_discount_pct: number
+          approval_notes: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          customer_address: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_status: string
+          discount: number
+          distributor_id: string | null
+          id: string
+          invoice_number: string
+          language: string
+          notes: string | null
+          paid_amount: number | null
+          receipt_number: number | null
+          rejected_at: string | null
+          rejected_by: string | null
+          source: string
+          status: string
+          subtotal: number
+          system_notes: string | null
+          total: number
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       back_deduction_report: {
         Args: never
@@ -3556,6 +3787,7 @@ export type Database = {
         Returns: boolean
       }
       is_company_member: { Args: never; Returns: boolean }
+      is_distributor: { Args: { _user_id?: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       list_pending_back_deductions: {
@@ -3674,6 +3906,49 @@ export type Database = {
             }
             Returns: string
           }
+      reject_distributor_invoice: {
+        Args: { _invoice_id: string; _notes?: string }
+        Returns: {
+          approval_discount_pct: number
+          approval_notes: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          customer_address: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_status: string
+          discount: number
+          distributor_id: string | null
+          id: string
+          invoice_number: string
+          language: string
+          notes: string | null
+          paid_amount: number | null
+          receipt_number: number | null
+          rejected_at: string | null
+          rejected_by: string | null
+          source: string
+          status: string
+          subtotal: number
+          system_notes: string | null
+          total: number
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       renumber_purchase_orders: { Args: never; Returns: Json }
       reset_all_inventory: { Args: { p_actor_email: string }; Returns: Json }
       return_defective_item: {
