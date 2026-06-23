@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -54,7 +55,9 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
   }
   // If no profile exists yet, treat as pending but allow the UI to show the type picker
   const activeProfile = profile || { account_type: null, approval_status: "pending", approval_notes: null };
-  if (activeProfile.approval_status === "approved") return <>{children}</>;
+  if (activeProfile.approval_status === "approved") {
+    return <DistributorRouteGuard accountType={activeProfile.account_type}>{children}</DistributorRouteGuard>;
+  }
 
   const saveType = async () => {
     if (!picked || !user) return;

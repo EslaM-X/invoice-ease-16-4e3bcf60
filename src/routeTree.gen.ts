@@ -40,6 +40,7 @@ import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit
 import { Route as FulfillmentRouteImport } from './routes/fulfillment'
 import { Route as FinanceAuditRouteImport } from './routes/finance-audit'
 import { Route as DownloadRouteImport } from './routes/download'
+import { Route as DistributorsRouteImport } from './routes/distributors'
 import { Route as DistributorRouteImport } from './routes/distributor'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
@@ -229,6 +230,11 @@ const DownloadRoute = DownloadRouteImport.update({
   path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DistributorsRoute = DistributorsRouteImport.update({
+  id: '/distributors',
+  path: '/distributors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DistributorRoute = DistributorRouteImport.update({
   id: '/distributor',
   path: '/distributor',
@@ -414,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/defective-items': typeof DefectiveItemsRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
+  '/distributors': typeof DistributorsRoute
   '/download': typeof DownloadRoute
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/defective-items': typeof DefectiveItemsRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
+  '/distributors': typeof DistributorsRoute
   '/download': typeof DownloadRoute
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
@@ -547,6 +555,7 @@ export interface FileRoutesById {
   '/defective-items': typeof DefectiveItemsRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
+  '/distributors': typeof DistributorsRoute
   '/download': typeof DownloadRoute
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
@@ -615,6 +624,7 @@ export interface FileRouteTypes {
     | '/defective-items'
     | '/diagnostics'
     | '/distributor'
+    | '/distributors'
     | '/download'
     | '/finance-audit'
     | '/fulfillment'
@@ -681,6 +691,7 @@ export interface FileRouteTypes {
     | '/defective-items'
     | '/diagnostics'
     | '/distributor'
+    | '/distributors'
     | '/download'
     | '/finance-audit'
     | '/fulfillment'
@@ -747,6 +758,7 @@ export interface FileRouteTypes {
     | '/defective-items'
     | '/diagnostics'
     | '/distributor'
+    | '/distributors'
     | '/download'
     | '/finance-audit'
     | '/fulfillment'
@@ -814,6 +826,7 @@ export interface RootRouteChildren {
   DefectiveItemsRoute: typeof DefectiveItemsRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
   DistributorRoute: typeof DistributorRoute
+  DistributorsRoute: typeof DistributorsRoute
   DownloadRoute: typeof DownloadRoute
   FinanceAuditRoute: typeof FinanceAuditRoute
   FulfillmentRoute: typeof FulfillmentRoute
@@ -1086,6 +1099,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/distributors': {
+      id: '/distributors'
+      path: '/distributors'
+      fullPath: '/distributors'
+      preLoaderRoute: typeof DistributorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/distributor': {
       id: '/distributor'
       path: '/distributor'
@@ -1334,6 +1354,7 @@ const rootRouteChildren: RootRouteChildren = {
   DefectiveItemsRoute: DefectiveItemsRoute,
   DiagnosticsRoute: DiagnosticsRoute,
   DistributorRoute: DistributorRoute,
+  DistributorsRoute: DistributorsRoute,
   DownloadRoute: DownloadRoute,
   FinanceAuditRoute: FinanceAuditRoute,
   FulfillmentRoute: FulfillmentRoute,
