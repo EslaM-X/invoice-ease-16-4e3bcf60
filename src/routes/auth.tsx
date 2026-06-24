@@ -42,6 +42,11 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState<"employee" | "distributor" | null>(null);
+  const [showroomName, setShowroomName] = useState("");
+  const [distLocation, setDistLocation] = useState("");
+  const [distCity, setDistCity] = useState("");
+  const [distPhone, setDistPhone] = useState("");
+  const [distBranches, setDistBranches] = useState("1");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -149,7 +154,17 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: name, account_type: accountType },
+            data: {
+              full_name: name,
+              account_type: accountType,
+              ...(accountType === "distributor" ? {
+                showroom_name: showroomName,
+                location: distLocation,
+                city: distCity,
+                phone: distPhone,
+                branches_count: distBranches,
+              } : {}),
+            },
           },
         });
         if (error) throw error;
@@ -364,7 +379,7 @@ function AuthPage() {
                   ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
-            >{t("login")}</button>
+            >{lang === "ar" ? "تسجيل دخول موزعين" : "Distributor sign in"}</button>
             <button
               onClick={() => setMode("signup")}
               className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
@@ -372,7 +387,7 @@ function AuthPage() {
                   ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
-            >{t("signup")}</button>
+            >{lang === "ar" ? "إنشاء حساب" : "Create account"}</button>
           </div>
           <Link
             to="/qr-price-list"
