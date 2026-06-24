@@ -42,6 +42,11 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState<"employee" | "distributor" | null>(null);
+  const [showroomName, setShowroomName] = useState("");
+  const [distLocation, setDistLocation] = useState("");
+  const [distCity, setDistCity] = useState("");
+  const [distPhone, setDistPhone] = useState("");
+  const [distBranches, setDistBranches] = useState("1");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -149,7 +154,17 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: name, account_type: accountType },
+            data: {
+              full_name: name,
+              account_type: accountType,
+              ...(accountType === "distributor" ? {
+                showroom_name: showroomName,
+                location: distLocation,
+                city: distCity,
+                phone: distPhone,
+                branches_count: distBranches,
+              } : {}),
+            },
           },
         });
         if (error) throw error;
@@ -364,7 +379,7 @@ function AuthPage() {
                   ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
-            >{t("login")}</button>
+            >{lang === "ar" ? "تسجيل دخول موزعين" : "Distributor sign in"}</button>
             <button
               onClick={() => setMode("signup")}
               className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
@@ -372,7 +387,7 @@ function AuthPage() {
                   ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
                   : "text-white/70 hover:text-white"
               }`}
-            >{t("signup")}</button>
+            >{lang === "ar" ? "إنشاء حساب" : "Create account"}</button>
           </div>
           <Link
             to="/qr-price-list"
@@ -593,6 +608,35 @@ function AuthPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+            {mode === "signup" && accountType === "distributor" && (
+              <div className="space-y-2 rounded-lg border border-amber-400/20 bg-amber-500/5 p-3">
+                <Label className="text-amber-200/90 text-xs font-semibold">
+                  {lang === "ar" ? "بيانات المعرض / الموزّع" : "Distributor / Showroom info"}
+                </Label>
+                <Input value={showroomName} onChange={(e) => setShowroomName(e.target.value)}
+                  placeholder={lang === "ar" ? "اسم المعرض" : "Showroom name"}
+                  className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={distLocation} onChange={(e) => setDistLocation(e.target.value)}
+                    placeholder={lang === "ar" ? "المنطقة" : "Area"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                  <Input value={distCity} onChange={(e) => setDistCity(e.target.value)}
+                    placeholder={lang === "ar" ? "المدينة" : "City"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={distPhone} onChange={(e) => setDistPhone(e.target.value)}
+                    placeholder={lang === "ar" ? "تليفون" : "Phone"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                  <Input type="number" min="1" value={distBranches} onChange={(e) => setDistBranches(e.target.value)}
+                    placeholder={lang === "ar" ? "عدد الفروع" : "Branches"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                </div>
+                <p className="text-[10px] text-amber-200/60">
+                  {lang === "ar" ? "هتظهر للأدمن لمراجعتها قبل الموافقة على الحساب." : "Admin will review these before approving the account."}
+                </p>
               </div>
             )}
             <div className="space-y-1.5">

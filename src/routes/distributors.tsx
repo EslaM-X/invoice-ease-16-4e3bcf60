@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Plus, Store, MapPin, Phone, Mail, Building2, Loader2, Search, ToggleRight, Pencil } from "lucide-react";
 import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
+import { PendingAccountsCard } from "@/components/pending-accounts-card";
 
 export const Route = createFileRoute("/distributors")({ component: DistributorsPage });
 
@@ -65,6 +66,7 @@ function DistributorsInner() {
         </Button>
       </div>
 
+      <PendingAccountsCard />
       <DistributorApprovalsCard />
 
       <div className="relative">

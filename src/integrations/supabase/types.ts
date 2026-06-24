@@ -3521,6 +3521,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_user_account: {
+        Args: { _notes?: string; _user_id: string }
+        Returns: undefined
+      }
       back_deduction_report: {
         Args: never
         Returns: {
@@ -3869,6 +3873,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      reject_user_account: {
+        Args: { _notes?: string; _user_id: string }
+        Returns: undefined
       }
       renumber_purchase_orders: { Args: never; Returns: Json }
       reset_all_inventory: { Args: { p_actor_email: string }; Returns: Json }
