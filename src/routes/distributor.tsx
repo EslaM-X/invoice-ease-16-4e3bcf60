@@ -148,10 +148,9 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
   const [collection, setCollection] = useState<string>("all");
 
   const load = async () => {
-    const { data } = await (supabase.from as any)("distributor_products_view")
-      .select("id,name,serial_number,color,price,image_url,collection,available_stock")
-      .order("name", { ascending: true });
-    setProducts((data as Product[]) ?? []);
+    const { data } = await (supabase as any).rpc("list_distributor_products");
+    const rows = ((data as Product[]) ?? []).slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    setProducts(rows);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);

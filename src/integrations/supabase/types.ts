@@ -749,13 +749,6 @@ export type Database = {
             foreignKeyName: "defective_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "distributor_products_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "defective_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1193,13 +1186,6 @@ export type Database = {
             foreignKeyName: "inventory_logs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "distributor_products_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_logs_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1292,13 +1278,6 @@ export type Database = {
             foreignKeyName: "invoice_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "distributor_products_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoice_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -1374,13 +1353,6 @@ export type Database = {
             columns: ["po_item_id"]
             isOneToOne: false
             referencedRelation: "purchase_order_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoice_po_reservations_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "distributor_products_view"
             referencedColumns: ["id"]
           },
           {
@@ -2049,13 +2021,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "products_parent_product_id_fkey"
-            columns: ["parent_product_id"]
-            isOneToOne: false
-            referencedRelation: "distributor_products_view"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "products_parent_product_id_fkey"
             columns: ["parent_product_id"]
@@ -3469,69 +3434,7 @@ export type Database = {
       }
     }
     Views: {
-      distributor_products_view: {
-        Row: {
-          available_stock: number | null
-          collection: string | null
-          color: string | null
-          created_at: string | null
-          id: string | null
-          image_url: string | null
-          is_spare_part: boolean | null
-          low_stock_threshold: number | null
-          name: string | null
-          parent_product_id: string | null
-          price: number | null
-          serial_number: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          available_stock?: never
-          collection?: string | null
-          color?: string | null
-          created_at?: string | null
-          id?: string | null
-          image_url?: string | null
-          is_spare_part?: boolean | null
-          low_stock_threshold?: number | null
-          name?: string | null
-          parent_product_id?: string | null
-          price?: number | null
-          serial_number?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          available_stock?: never
-          collection?: string | null
-          color?: string | null
-          created_at?: string | null
-          id?: string | null
-          image_url?: string | null
-          is_spare_part?: boolean | null
-          low_stock_threshold?: number | null
-          name?: string | null
-          parent_product_id?: string | null
-          price?: number | null
-          serial_number?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "products_parent_product_id_fkey"
-            columns: ["parent_product_id"]
-            isOneToOne: false
-            referencedRelation: "distributor_products_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_parent_product_id_fkey"
-            columns: ["parent_product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       add_payment: {
@@ -3790,6 +3693,24 @@ export type Database = {
       is_distributor: { Args: { _user_id?: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
+      list_distributor_products: {
+        Args: never
+        Returns: {
+          available_stock: number
+          collection: string
+          color: string
+          created_at: string
+          id: string
+          image_url: string
+          is_spare_part: boolean
+          low_stock_threshold: number
+          name: string
+          parent_product_id: string
+          price: number
+          serial_number: string
+          updated_at: string
+        }[]
+      }
       list_pending_back_deductions: {
         Args: { p_po_id: string }
         Returns: {
