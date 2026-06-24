@@ -610,6 +610,35 @@ function AuthPage() {
                 </div>
               </div>
             )}
+            {mode === "signup" && accountType === "distributor" && (
+              <div className="space-y-2 rounded-lg border border-amber-400/20 bg-amber-500/5 p-3">
+                <Label className="text-amber-200/90 text-xs font-semibold">
+                  {lang === "ar" ? "بيانات المعرض / الموزّع" : "Distributor / Showroom info"}
+                </Label>
+                <Input value={showroomName} onChange={(e) => setShowroomName(e.target.value)}
+                  placeholder={lang === "ar" ? "اسم المعرض" : "Showroom name"}
+                  className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={distLocation} onChange={(e) => setDistLocation(e.target.value)}
+                    placeholder={lang === "ar" ? "المنطقة" : "Area"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                  <Input value={distCity} onChange={(e) => setDistCity(e.target.value)}
+                    placeholder={lang === "ar" ? "المدينة" : "City"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={distPhone} onChange={(e) => setDistPhone(e.target.value)}
+                    placeholder={lang === "ar" ? "تليفون" : "Phone"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                  <Input type="number" min="1" value={distBranches} onChange={(e) => setDistBranches(e.target.value)}
+                    placeholder={lang === "ar" ? "عدد الفروع" : "Branches"}
+                    className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+                </div>
+                <p className="text-[10px] text-amber-200/60">
+                  {lang === "ar" ? "هتظهر للأدمن لمراجعتها قبل الموافقة على الحساب." : "Admin will review these before approving the account."}
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-white/80">{t("email")}</Label>
               <Input
