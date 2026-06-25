@@ -2,8 +2,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type Customer = {
   id: string; user_id: string; name: string; phone: string | null; address: string | null;
+  category?: string | null; company_name?: string | null; contact_person?: string | null;
+  sales_channel?: string | null; sales_event_id?: string | null; source_notes?: string | null;
   created_at: string; updated_at: string;
   created_by_email?: string | null; updated_by_email?: string | null;
+};
+export type SalesEvent = {
+  id: string; name: string; year: number | null; event_type: string | null;
+  starts_at: string | null; ends_at: string | null; location: string | null; notes: string | null;
+  is_active: boolean; created_at: string; updated_at: string;
 };
 export type Product = {
   id: string; user_id: string; name: string; serial_number: string | null; color: string | null;
@@ -22,6 +29,7 @@ export type Collection = (typeof COLLECTIONS)[number];
 export type Invoice = {
   id: string; user_id: string; invoice_number: string;
   customer_id: string | null; customer_name: string | null; customer_phone: string | null; customer_address: string | null;
+  customer_category?: string | null; sales_channel?: string | null; sales_event_id?: string | null;
   subtotal: number; discount: number; total: number;
   notes: string | null; status: string; language: string;
   created_at: string; updated_at: string;

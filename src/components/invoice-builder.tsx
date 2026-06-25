@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
-import type { Customer, Product } from "@/lib/data";
+import type { Customer, Product, SalesEvent } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
+import { CUSTOMER_CATEGORIES, SALES_CHANNELS, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { SparePartBadge } from "@/components/spare-part-badge";
 import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { fmtMoney } from "@/lib/utils-money";
@@ -63,6 +64,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
   const SERVICE_FEE_NAME = "رسوم شحن";
@@ -104,11 +106,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [productSearch, setProductSearch] = useState("");
   const [pickerCollection, setPickerCollection] = useState<string>("");
   const [showPicker, setShowPicker] = useState(false);
+  const [invoiceCategory, setInvoiceCategory] = useState<string>((initial as any)?.customer_category ?? "");
+  const [invoiceChannel, setInvoiceChannel] = useState<string>((initial as any)?.sales_channel ?? "showroom");
+  const [invoiceEventId, setInvoiceEventId] = useState<string>((initial as any)?.sales_event_id ?? "");
   const [saving, setSaving] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
   const [showNewCustomer, setShowNewCustomer] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "", category: "", company_name: "", contact_person: "", sales_channel: "showroom", sales_event_id: "", source_notes: "" });
   const [savingCustomer, setSavingCustomer] = useState(false);
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
@@ -122,9 +127,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
 
   // Load customers/products (RLS handles company-wide visibility)
   const loadLists = async () => {
-    const [{ data: c }, { data: p }, { data: poItems }, { data: reservations }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: events }, { data: poItems }, { data: reservations }] = await Promise.all([
       supabase.from("customers").select("*").order("name"),
       supabase.from("products").select("*").order("name"),
+      (supabase.from as any)("sales_events").select("*").eq("is_active", true).order("year", { ascending: false }).order("name"),
       supabase
         .from("purchase_order_items")
         .select("product_id, quantity, received_qty, purchase_orders!inner(status)")
@@ -136,6 +142,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     ]);
     setCustomers((c ?? []) as Customer[]);
     setProducts((p ?? []) as Product[]);
+    setSalesEvents((events ?? []) as SalesEvent[]);
     const map: Record<string, number> = {};
     for (const it of (poItems ?? []) as any[]) {
       const remaining = Math.max(0, Number(it.quantity || 0) - Number(it.received_qty || 0));
@@ -255,6 +262,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   }, [items, customerId, discount, notes]);
 
   const customer = customers.find((c) => c.id === customerId);
+
+  useEffect(() => {
+    if (!customer) return;
+    if (!invoiceCategory && customer.category) setInvoiceCategory(customer.category);
+    if ((!invoiceChannel || invoiceChannel === "showroom") && customer.sales_channel) setInvoiceChannel(customer.sales_channel);
+    if (!invoiceEventId && customer.sales_event_id) setInvoiceEventId(customer.sales_event_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId, customer?.category, customer?.sales_channel, customer?.sales_event_id]);
 
   const beep = () => {
     try {
@@ -543,6 +558,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           name,
           phone: newCustomer.phone.trim() || null,
           address: newCustomer.address.trim() || null,
+          category: newCustomer.category || null,
+          company_name: newCustomer.company_name.trim() || null,
+          contact_person: newCustomer.contact_person.trim() || null,
+          sales_channel: newCustomer.sales_channel || null,
+          sales_event_id: newCustomer.sales_event_id || null,
+          source_notes: newCustomer.source_notes.trim() || null,
         })
         .select()
         .single();
@@ -553,8 +574,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       const created = data as Customer;
       setCustomers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       setCustomerId(created.id);
+      setInvoiceCategory(created.category ?? newCustomer.category);
+      setInvoiceChannel(created.sales_channel ?? newCustomer.sales_channel);
+      setInvoiceEventId(created.sales_event_id ?? newCustomer.sales_event_id);
       setShowNewCustomer(false);
-      setNewCustomer({ name: "", phone: "", address: "" });
+      setNewCustomer({ name: "", phone: "", address: "", category: "", company_name: "", contact_person: "", sales_channel: "showroom", sales_event_id: "", source_notes: "" });
       toast.success(t("customer_added"));
     } finally {
       setSavingCustomer(false);
@@ -644,6 +668,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           system_notes: systemNotes || null,
           paid_amount: paidMode === "custom" ? paidAmount : null,
           language: lang,
+          customer_category: invoiceCategory || customer?.category || null,
+          sales_channel: invoiceChannel || customer?.sales_channel || null,
+          sales_event_id: invoiceEventId || customer?.sales_event_id || null,
           status: "draft",
           updated_at: new Date().toISOString(),
           updated_by: user.id,
@@ -682,6 +709,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         system_notes: systemNotes || null,
         paid_amount: paidMode === "custom" ? paidAmount : null,
         language: lang,
+        customer_category: invoiceCategory || customer?.category || null,
+        sales_channel: invoiceChannel || customer?.sales_channel || null,
+        sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         status: "draft",
         created_by: user.id,
         created_by_email: user.email ?? null,

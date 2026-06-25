@@ -37,7 +37,7 @@ function AuthPage() {
   const { theme, toggle } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "distributor" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -136,8 +136,8 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    if (user && !enrollPromptOpen && !pauseAuthRedirect) navigate({ to: "/dashboard" });
-  }, [user, navigate, enrollPromptOpen, pauseAuthRedirect]);
+    if (user && !enrollPromptOpen && !pauseAuthRedirect) navigate({ to: mode === "distributor" ? "/distributor" : "/dashboard" });
+  }, [user, navigate, enrollPromptOpen, pauseAuthRedirect, mode]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -191,11 +191,13 @@ function AuthPage() {
             setPauseAuthRedirect(true);
             setEnrollPromptOpen(true);
           }
+        } else if (mode === "distributor") {
+          navigate({ to: "/distributor" });
         }
       }
     } catch (err: any) {
       // Track wrong-password attempts during sign-in (not signup)
-      if (mode === "login") {
+      if (mode !== "signup") {
         const fails = bumpPasswordFailure();
         if (fails > PWD_FAIL_THRESHOLD) {
           triggerLuxurySplash();
@@ -352,7 +354,7 @@ function AuthPage() {
           <div className="mt-6 flex items-center gap-3 sm:mt-8">
             <span className="h-px w-8 bg-gradient-to-r from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
             <p className="font-latin text-[10px] font-semibold uppercase tracking-[0.45em] text-[oklch(0.86_0.01_250)] sm:text-[11px] sm:tracking-[0.55em]">
-              {lang === "ar" ? "منصة الموزعين" : "Distributors Platform"}
+              {lang === "ar" ? "Steinheim Suite" : "Steinheim Suite"}
             </p>
             <span className="h-px w-8 bg-gradient-to-l from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
           </div>
@@ -371,23 +373,25 @@ function AuthPage() {
         <div className="order-2 w-full max-w-md justify-self-center lg:justify-self-end">
         <div className="relative rounded-2xl border border-[oklch(0.86_0.01_250_/_0.2)] bg-[oklch(0.13_0.003_250_/_0.85)] p-5 text-white shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
           <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
-          <div className="mb-3 flex gap-1 rounded-lg bg-white/5 p-1">
-            <button
-              onClick={() => setMode("login")}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
-                mode === "login"
-                  ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
-                  : "text-white/70 hover:text-white"
-              }`}
-            >{lang === "ar" ? "تسجيل دخول موزعين" : "Distributor sign in"}</button>
-            <button
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
-                mode === "signup"
-                  ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
-                  : "text-white/70 hover:text-white"
-              }`}
-            >{lang === "ar" ? "إنشاء حساب" : "Create account"}</button>
+          <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg bg-white/5 p-1">
+            {([
+              { key: "login", ar: "تسجيل الدخول", en: "Sign in" },
+              { key: "distributor", ar: "دخول موزعين", en: "Distributor" },
+              { key: "signup", ar: "إنشاء حساب", en: "Create" },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setMode(tab.key)}
+                className={`rounded-md px-2 py-2 text-xs font-medium transition sm:text-sm ${
+                  mode === tab.key
+                    ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
+                    : "text-white/70 hover:text-white"
+                }`}
+              >
+                {lang === "ar" ? tab.ar : tab.en}
+              </button>
+            ))}
           </div>
           <Link
             to="/qr-price-list"
@@ -407,7 +411,7 @@ function AuthPage() {
             <span className="text-[oklch(0.78_0.11_82)] transition group-hover:translate-x-1">→</span>
           </Link>
 
-          {mode === "login" && enrolledAccounts.length > 0 && (
+          {mode !== "signup" && enrolledAccounts.length > 0 && (
             <div className="mb-5 overflow-hidden rounded-2xl border border-[oklch(0.86_0.01_250_/_0.28)] bg-[linear-gradient(180deg,oklch(0.2_0.004_250_/_0.92),oklch(0.14_0.003_250_/_0.94))] shadow-[0_18px_60px_-24px_oklch(0.86_0.01_250_/_0.45)]">
               <div className="border-b border-white/10 px-4 py-4 sm:px-5">
                 <div className="flex items-start gap-3">
@@ -533,7 +537,7 @@ function AuthPage() {
             </div>
           )}
 
-          {mode === "login" && enrolledAccounts.length === 0 && (
+          {mode !== "signup" && enrolledAccounts.length === 0 && (
             <div className="mb-5 space-y-2">
               <Button
                 type="button"
@@ -653,7 +657,7 @@ function AuthPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-white/80">{t("password")}</Label>
-                {mode === "login" && (
+                {mode !== "signup" && (
                   <button
                     type="button"
                     onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
@@ -683,7 +687,7 @@ function AuthPage() {
                 </button>
               </div>
             </div>
-            {mode === "login" && (
+            {mode !== "signup" && (
               <div className="flex items-center justify-between text-sm">
                 <label className="flex cursor-pointer select-none items-center gap-2 text-white/80">
                   <input
@@ -710,7 +714,7 @@ function AuthPage() {
               disabled={busy}
               className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
             >
-              {mode === "login" ? t("login") : t("signup")}
+              {mode === "signup" ? t("signup") : mode === "distributor" ? (lang === "ar" ? "دخول بوابة الموزعين" : "Distributor sign in") : t("login")}
             </Button>
           </form>
 
