@@ -50,6 +50,9 @@ type Props = {
     paid_amount?: number | null;
     delivery_status?: string | null;
     status?: string | null;
+    customer_category?: string | null;
+    sales_channel?: string | null;
+    sales_event_id?: string | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
