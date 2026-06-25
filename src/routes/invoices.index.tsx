@@ -18,6 +18,8 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
+import type { SalesEvent } from "@/lib/data";
+import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
@@ -25,6 +27,7 @@ function InvoicesList() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
+  const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number }>>({});
   const [serialsByInvoice, setSerialsByInvoice] = useState<Record<string, string[]>>({});
@@ -34,6 +37,9 @@ function InvoicesList() {
   const [to, setTo] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "voided">("all");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
   const [hideClosed, setHideClosed] = useState(true);
   const navigate = useNavigate();
@@ -54,6 +60,8 @@ function InvoicesList() {
     });
     setList(data);
     setLoading(false);
+    const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
+    setSalesEvents((ev ?? []) as SalesEvent[]);
 
     // Linked delivery receipts count + delivered quantity progress
     if (data.length) {
@@ -136,6 +144,9 @@ function InvoicesList() {
       if (i.status === "draft") return false;
       if (hideClosed && isClosed(i)) return false;
       if (statusFilter !== "all" && (i.status ?? "completed") !== statusFilter) return false;
+      if (categoryFilter !== "all" && (i.customer_category ?? "") !== categoryFilter) return false;
+      if (channelFilter !== "all" && (i.sales_channel ?? "") !== channelFilter) return false;
+      if (eventFilter !== "all" && (i.sales_event_id ?? "") !== eventFilter) return false;
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
         const paid = Number(i.paid_amount ?? 0);
@@ -214,10 +225,18 @@ function InvoicesList() {
       _notes: inv.notes ?? null,
       _language: inv.language ?? lang,
       _items: payload as any,
+      _customer_category: inv.customer_category ?? null,
+      _sales_channel: inv.sales_channel ?? null,
+      _sales_event_id: inv.sales_event_id ?? null,
     } as any);
     if (error || !newId) return handleRpcError(error?.message ?? "");
     toast.success(t("saved"));
     navigate({ to: "/invoices/$id", params: { id: newId as string } });
+  };
+
+  const eventLabel = (id?: string | null) => {
+    const ev = salesEvents.find((x) => x.id === id);
+    return ev ? `${ev.name}${ev.year ? ` ${ev.year}` : ""}` : null;
   };
 
   const [exporting, setExporting] = useState(false);
