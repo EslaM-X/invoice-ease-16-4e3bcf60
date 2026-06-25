@@ -1586,6 +1586,43 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
               <Label className="text-xs">{t("address")}</Label>
               <Input value={newCustomer.address} onChange={(e) => setNewCustomer((s) => ({ ...s, address: e.target.value }))} />
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "Catgry العميل" : "Customer category"}</Label>
+                <select value={newCustomer.category} onChange={(e) => setNewCustomer((s) => ({ ...s, category: e.target.value }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "المصدر / القناة" : "Source channel"}</Label>
+                <select value={newCustomer.sales_channel} onChange={(e) => setNewCustomer((s) => ({ ...s, sales_channel: e.target.value }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "اسم الشركة / المعرض" : "Company / showroom"}</Label>
+                <Input value={newCustomer.company_name} onChange={(e) => setNewCustomer((s) => ({ ...s, company_name: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "اسم الشخص المسؤول" : "Contact person"}</Label>
+                <Input value={newCustomer.contact_person} onChange={(e) => setNewCustomer((s) => ({ ...s, contact_person: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">{lang === "ar" ? "المعرض / الحدث" : "Event / exhibition"}</Label>
+              <select value={newCustomer.sales_event_id} onChange={(e) => setNewCustomer((s) => ({ ...s, sales_event_id: e.target.value }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="">{lang === "ar" ? "بدون" : "None"}</option>
+                {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">{lang === "ar" ? "ملاحظات المصدر" : "Source notes"}</Label>
+              <Input value={newCustomer.source_notes} onChange={(e) => setNewCustomer((s) => ({ ...s, source_notes: e.target.value }))} />
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setShowNewCustomer(false)}>{t("cancel")}</Button>
               <Button onClick={saveNewCustomer} disabled={savingCustomer}>{t("save")}</Button>
