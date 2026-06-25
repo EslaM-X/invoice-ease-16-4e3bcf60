@@ -175,6 +175,16 @@ function Customers() {
                 <div><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div><Label>{t("phone")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
                 <div><Label>{t("address")}</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div><Label>Catgry</Label><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>{CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}</select></div>
+                  <div><Label>{lang === "ar" ? "مصدر العميل" : "Source"}</Label><select value={form.sales_channel} onChange={(e) => setForm({ ...form, sales_channel: e.target.value })} className="h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>{SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}</select></div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div><Label>{lang === "ar" ? "اسم الشركة / المعرض" : "Company / showroom"}</Label><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} /></div>
+                  <div><Label>{lang === "ar" ? "اسم الشخص المسؤول" : "Contact person"}</Label><Input value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} /></div>
+                </div>
+                <div><Label>{lang === "ar" ? "المعرض / الحدث" : "Event"}</Label><select value={form.sales_event_id} onChange={(e) => setForm({ ...form, sales_event_id: e.target.value })} className="h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="">{lang === "ar" ? "بدون" : "None"}</option>{salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}</select></div>
+                <div><Label>{lang === "ar" ? "ملاحظات المصدر" : "Source notes"}</Label><Input value={form.source_notes} onChange={(e) => setForm({ ...form, source_notes: e.target.value })} /></div>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
@@ -189,6 +199,11 @@ function Customers() {
         <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9" />
       </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">{lang === "ar" ? "كل تصنيفات العملاء" : "All categories"}</option>{CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}</select>
+        <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">{lang === "ar" ? "كل المصادر" : "All sources"}</option>{SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}</select>
+        <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">{lang === "ar" ? "كل المعارض" : "All events"}</option>{salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}</select>
+      </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {filtered.length === 0 ? (
@@ -200,7 +215,8 @@ function Customers() {
               <tr>
                 <th className="px-4 py-3 text-start font-medium">{t("name")}</th>
                 <th className="px-4 py-3 text-start font-medium">{t("phone")}</th>
-                <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("address")}</th>
+                <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">Catgry</th>
+                <th className="px-4 py-3 text-start font-medium hidden md:table-cell">{lang === "ar" ? "المصدر" : "Source"}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -220,7 +236,8 @@ function Customers() {
                     <AuthorBadge email={c.created_by_email} label="created by" className="mt-0.5" />
                   </td>
                   <td className="px-4 py-3">{c.phone || "—"}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{c.address || "—"}</td>
+                  <td className="px-4 py-3 hidden sm:table-cell"><span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(c.category)}`}>{labelForCustomerCategory(c.category, lang as any)}</span></td>
+                  <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{labelForSalesChannel(c.sales_channel, lang as any)}{c.company_name ? ` · ${c.company_name}` : ""}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
