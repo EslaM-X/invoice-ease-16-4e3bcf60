@@ -20,6 +20,8 @@ import { cachedListFetch } from "@/lib/list-cache";
 import { enqueueOrRun } from "@/lib/outbox";
 import { getPendingRowIds } from "@/lib/sync-state";
 import { CloudUpload } from "lucide-react";
+import type { SalesEvent } from "@/lib/data";
+import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 
 export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
 
@@ -27,10 +29,15 @@ function Customers() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [list, setList] = useState<Customer[]>([]);
+  const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [q, setQ] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const emptyForm = { name: "", phone: "", address: "", category: "", company_name: "", contact_person: "", sales_channel: "showroom", sales_event_id: "", source_notes: "" };
+  const [form, setForm] = useState(emptyForm);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const load = async () => {
@@ -40,6 +47,8 @@ function Customers() {
       return (data ?? []) as Customer[];
     });
     setList(data);
+    const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
+    setSalesEvents((ev ?? []) as SalesEvent[]);
   };
   const refreshPending = async () => setPendingIds(await getPendingRowIds("customers"));
   useEffect(() => { load(); refreshPending(); }, [user]);
@@ -56,12 +65,15 @@ function Customers() {
 
   const filtered = list.filter((c) => {
     const s = q.trim().toLowerCase();
+    if (categoryFilter !== "all" && (c.category ?? "") !== categoryFilter) return false;
+    if (channelFilter !== "all" && (c.sales_channel ?? "") !== channelFilter) return false;
+    if (eventFilter !== "all" && (c.sales_event_id ?? "") !== eventFilter) return false;
     if (!s) return true;
-    return c.name.toLowerCase().includes(s) || (c.phone ?? "").toLowerCase().includes(s) || (c.address ?? "").toLowerCase().includes(s);
+    return [c.name, c.phone, c.address, c.company_name, c.contact_person, c.source_notes].some((x) => (x ?? "").toLowerCase().includes(s));
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", phone: "", address: "" }); setOpen(true); };
-  const openEdit = (c: Customer) => { setEditing(c); setForm({ name: c.name, phone: c.phone ?? "", address: c.address ?? "" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openEdit = (c: Customer) => { setEditing(c); setForm({ name: c.name, phone: c.phone ?? "", address: c.address ?? "", category: c.category ?? "", company_name: c.company_name ?? "", contact_person: c.contact_person ?? "", sales_channel: c.sales_channel ?? "showroom", sales_event_id: c.sales_event_id ?? "", source_notes: c.source_notes ?? "" }); setOpen(true); };
 
   const save = async () => {
     if (!user) return;
