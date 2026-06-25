@@ -793,6 +793,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
           _system_notes: systemNotes || null,
+          _customer_category: invoiceCategory || customer?.category || null,
+          _sales_channel: invoiceChannel || customer?.sales_channel || null,
+          _sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         } as any);
         if (error || !newId) {
           handleRpcError(error?.message ?? "");
@@ -822,6 +825,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
           _system_notes: systemNotes ?? "",
+          _customer_category: invoiceCategory || customer?.category || null,
+          _sales_channel: invoiceChannel || customer?.sales_channel || null,
+          _sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         } as any);
         if (error || !data) {
           handleRpcError(error?.message ?? "");
@@ -842,6 +848,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
           _system_notes: systemNotes || null,
+          _customer_category: invoiceCategory || customer?.category || null,
+          _sales_channel: invoiceChannel || customer?.sales_channel || null,
+          _sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         } as any);
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
