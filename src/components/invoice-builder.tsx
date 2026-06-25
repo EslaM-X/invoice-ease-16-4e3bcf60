@@ -1039,8 +1039,44 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 <div>
                   {t("address")}: {customer.address || "—"}
                 </div>
+                <div>
+                  {lang === "ar" ? "تصنيف العميل" : "Customer category"}: {labelForCustomerCategory(customer.category, lang as "ar" | "en")}
+                </div>
+                <div>
+                  {lang === "ar" ? "قناة المصدر" : "Source channel"}: {labelForSalesChannel(customer.sales_channel, lang as "ar" | "en")}
+                </div>
               </div>
             )}
+          </div>
+
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
+            <div className="mb-3">
+              <h3 className="font-semibold">{lang === "ar" ? "تصنيف الفاتورة والتحليل" : "Invoice classification"}</h3>
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "استخدمها لمعرفة مبيعات المعارض، الأونلاين، المهندسين والموزعين بدقة." : "Track events, online, engineers and distributors accurately."}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "Catgry العميل" : "Customer category"}</Label>
+                <select value={invoiceCategory} onChange={(e) => setInvoiceCategory(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "Catgry الفاتورة / القناة" : "Invoice channel"}</Label>
+                <select value={invoiceChannel} onChange={(e) => setInvoiceChannel(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "المعرض / الحدث" : "Event / exhibition"}</Label>
+                <select value={invoiceEventId} onChange={(e) => setInvoiceEventId(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "بدون معرض" : "No event"}</option>
+                  {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
