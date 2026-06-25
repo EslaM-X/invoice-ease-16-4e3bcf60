@@ -48,7 +48,7 @@ function DistributorPortal() {
   if (authLoading || distLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-[#0b0b0c]"><Loader2 className="h-6 w-6 animate-spin text-white/60" /></div>;
   }
-  if (!distributor) {
+  if (!distributor?.is_active) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0b0b0c] p-4 text-white">
         <div className="max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 text-center">

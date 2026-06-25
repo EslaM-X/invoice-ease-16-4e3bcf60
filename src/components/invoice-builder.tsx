@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
-import type { Customer, Product } from "@/lib/data";
+import type { Customer, Product, SalesEvent } from "@/lib/data";
 import { COLLECTIONS } from "@/lib/data";
+import { CUSTOMER_CATEGORIES, SALES_CHANNELS, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { SparePartBadge } from "@/components/spare-part-badge";
 import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { fmtMoney } from "@/lib/utils-money";
@@ -49,6 +50,9 @@ type Props = {
     paid_amount?: number | null;
     delivery_status?: string | null;
     status?: string | null;
+    customer_category?: string | null;
+    sales_channel?: string | null;
+    sales_event_id?: string | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
@@ -63,6 +67,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState<string>(initial?.customerId ?? "");
   const SERVICE_FEE_NAME = "رسوم شحن";
@@ -104,11 +109,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [productSearch, setProductSearch] = useState("");
   const [pickerCollection, setPickerCollection] = useState<string>("");
   const [showPicker, setShowPicker] = useState(false);
+  const [invoiceCategory, setInvoiceCategory] = useState<string>((initial as any)?.customer_category ?? "");
+  const [invoiceChannel, setInvoiceChannel] = useState<string>((initial as any)?.sales_channel ?? "showroom");
+  const [invoiceEventId, setInvoiceEventId] = useState<string>((initial as any)?.sales_event_id ?? "");
   const [saving, setSaving] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const [draftRecovered, setDraftRecovered] = useState<{ savedAt: string } | null>(null);
   const [showNewCustomer, setShowNewCustomer] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "", category: "", company_name: "", contact_person: "", sales_channel: "showroom", sales_event_id: "", source_notes: "" });
   const [savingCustomer, setSavingCustomer] = useState(false);
   const draftLoaded = useRef(false);
   const beepCtx = useRef<AudioContext | null>(null);
@@ -122,9 +130,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
 
   // Load customers/products (RLS handles company-wide visibility)
   const loadLists = async () => {
-    const [{ data: c }, { data: p }, { data: poItems }, { data: reservations }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: events }, { data: poItems }, { data: reservations }] = await Promise.all([
       supabase.from("customers").select("*").order("name"),
       supabase.from("products").select("*").order("name"),
+      (supabase.from as any)("sales_events").select("*").eq("is_active", true).order("year", { ascending: false }).order("name"),
       supabase
         .from("purchase_order_items")
         .select("product_id, quantity, received_qty, purchase_orders!inner(status)")
@@ -136,6 +145,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     ]);
     setCustomers((c ?? []) as Customer[]);
     setProducts((p ?? []) as Product[]);
+    setSalesEvents((events ?? []) as SalesEvent[]);
     const map: Record<string, number> = {};
     for (const it of (poItems ?? []) as any[]) {
       const remaining = Math.max(0, Number(it.quantity || 0) - Number(it.received_qty || 0));
@@ -255,6 +265,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   }, [items, customerId, discount, notes]);
 
   const customer = customers.find((c) => c.id === customerId);
+
+  useEffect(() => {
+    if (!customer) return;
+    if (!invoiceCategory && customer.category) setInvoiceCategory(customer.category);
+    if ((!invoiceChannel || invoiceChannel === "showroom") && customer.sales_channel) setInvoiceChannel(customer.sales_channel);
+    if (!invoiceEventId && customer.sales_event_id) setInvoiceEventId(customer.sales_event_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId, customer?.category, customer?.sales_channel, customer?.sales_event_id]);
 
   const beep = () => {
     try {
@@ -543,6 +561,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           name,
           phone: newCustomer.phone.trim() || null,
           address: newCustomer.address.trim() || null,
+          category: newCustomer.category || null,
+          company_name: newCustomer.company_name.trim() || null,
+          contact_person: newCustomer.contact_person.trim() || null,
+          sales_channel: newCustomer.sales_channel || null,
+          sales_event_id: newCustomer.sales_event_id || null,
+          source_notes: newCustomer.source_notes.trim() || null,
         })
         .select()
         .single();
@@ -553,8 +577,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       const created = data as Customer;
       setCustomers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       setCustomerId(created.id);
+      setInvoiceCategory(created.category ?? newCustomer.category);
+      setInvoiceChannel(created.sales_channel ?? newCustomer.sales_channel);
+      setInvoiceEventId(created.sales_event_id ?? newCustomer.sales_event_id);
       setShowNewCustomer(false);
-      setNewCustomer({ name: "", phone: "", address: "" });
+      setNewCustomer({ name: "", phone: "", address: "", category: "", company_name: "", contact_person: "", sales_channel: "showroom", sales_event_id: "", source_notes: "" });
       toast.success(t("customer_added"));
     } finally {
       setSavingCustomer(false);
@@ -644,6 +671,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           system_notes: systemNotes || null,
           paid_amount: paidMode === "custom" ? paidAmount : null,
           language: lang,
+          customer_category: invoiceCategory || customer?.category || null,
+          sales_channel: invoiceChannel || customer?.sales_channel || null,
+          sales_event_id: invoiceEventId || customer?.sales_event_id || null,
           status: "draft",
           updated_at: new Date().toISOString(),
           updated_by: user.id,
@@ -682,6 +712,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         system_notes: systemNotes || null,
         paid_amount: paidMode === "custom" ? paidAmount : null,
         language: lang,
+        customer_category: invoiceCategory || customer?.category || null,
+        sales_channel: invoiceChannel || customer?.sales_channel || null,
+        sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         status: "draft",
         created_by: user.id,
         created_by_email: user.email ?? null,
@@ -763,6 +796,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
           _system_notes: systemNotes || null,
+          _customer_category: invoiceCategory || customer?.category || null,
+          _sales_channel: invoiceChannel || customer?.sales_channel || null,
+          _sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         } as any);
         if (error || !newId) {
           handleRpcError(error?.message ?? "");
@@ -792,6 +828,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
           _system_notes: systemNotes ?? "",
+          _customer_category: invoiceCategory || customer?.category || null,
+          _sales_channel: invoiceChannel || customer?.sales_channel || null,
+          _sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         } as any);
         if (error || !data) {
           handleRpcError(error?.message ?? "");
@@ -812,6 +851,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           _items: payload as any,
           _paid_amount: paidMode === "custom" ? paidAmount : null,
           _system_notes: systemNotes || null,
+          _customer_category: invoiceCategory || customer?.category || null,
+          _sales_channel: invoiceChannel || customer?.sales_channel || null,
+          _sales_event_id: invoiceEventId || customer?.sales_event_id || null,
         } as any);
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
@@ -1000,8 +1042,44 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 <div>
                   {t("address")}: {customer.address || "—"}
                 </div>
+                <div>
+                  {lang === "ar" ? "تصنيف العميل" : "Customer category"}: {labelForCustomerCategory(customer.category, lang as "ar" | "en")}
+                </div>
+                <div>
+                  {lang === "ar" ? "قناة المصدر" : "Source channel"}: {labelForSalesChannel(customer.sales_channel, lang as "ar" | "en")}
+                </div>
               </div>
             )}
+          </div>
+
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
+            <div className="mb-3">
+              <h3 className="font-semibold">{lang === "ar" ? "تصنيف الفاتورة والتحليل" : "Invoice classification"}</h3>
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "استخدمها لمعرفة مبيعات المعارض، الأونلاين، المهندسين والموزعين بدقة." : "Track events, online, engineers and distributors accurately."}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "Catgry العميل" : "Customer category"}</Label>
+                <select value={invoiceCategory} onChange={(e) => setInvoiceCategory(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "Catgry الفاتورة / القناة" : "Invoice channel"}</Label>
+                <select value={invoiceChannel} onChange={(e) => setInvoiceChannel(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "المعرض / الحدث" : "Event / exhibition"}</Label>
+                <select value={invoiceEventId} onChange={(e) => setInvoiceEventId(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "بدون معرض" : "No event"}</option>
+                  {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
@@ -1510,6 +1588,43 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             <div>
               <Label className="text-xs">{t("address")}</Label>
               <Input value={newCustomer.address} onChange={(e) => setNewCustomer((s) => ({ ...s, address: e.target.value }))} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "Catgry العميل" : "Customer category"}</Label>
+                <select value={newCustomer.category} onChange={(e) => setNewCustomer((s) => ({ ...s, category: e.target.value }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "المصدر / القناة" : "Source channel"}</Label>
+                <select value={newCustomer.sales_channel} onChange={(e) => setNewCustomer((s) => ({ ...s, sales_channel: e.target.value }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{lang === "ar" ? "غير مصنف" : "Uncategorized"}</option>
+                  {SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "اسم الشركة / المعرض" : "Company / showroom"}</Label>
+                <Input value={newCustomer.company_name} onChange={(e) => setNewCustomer((s) => ({ ...s, company_name: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">{lang === "ar" ? "اسم الشخص المسؤول" : "Contact person"}</Label>
+                <Input value={newCustomer.contact_person} onChange={(e) => setNewCustomer((s) => ({ ...s, contact_person: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">{lang === "ar" ? "المعرض / الحدث" : "Event / exhibition"}</Label>
+              <select value={newCustomer.sales_event_id} onChange={(e) => setNewCustomer((s) => ({ ...s, sales_event_id: e.target.value }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="">{lang === "ar" ? "بدون" : "None"}</option>
+                {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">{lang === "ar" ? "ملاحظات المصدر" : "Source notes"}</Label>
+              <Input value={newCustomer.source_notes} onChange={(e) => setNewCustomer((s) => ({ ...s, source_notes: e.target.value }))} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setShowNewCustomer(false)}>{t("cancel")}</Button>

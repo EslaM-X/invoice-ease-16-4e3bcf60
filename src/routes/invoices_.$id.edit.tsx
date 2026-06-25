@@ -30,6 +30,9 @@ function EditInvoice() {
     paid_amount?: number | null;
     delivery_status?: string | null;
     status?: string | null;
+    customer_category?: string | null;
+    sales_channel?: string | null;
+    sales_event_id?: string | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -89,6 +92,9 @@ function EditInvoice() {
       paid_amount: invAny.paid_amount != null ? Number(invAny.paid_amount) : null,
       delivery_status: invAny.delivery_status ?? null,
       status: invAny.status ?? null,
+      customer_category: invAny.customer_category ?? null,
+      sales_channel: invAny.sales_channel ?? null,
+      sales_event_id: invAny.sales_event_id ?? null,
     });
     setSnapshotKey((k) => k + 1);
     setLoading(false);

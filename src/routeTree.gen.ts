@@ -19,6 +19,7 @@ import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
 import { Route as SalesTodayRouteImport } from './routes/sales-today'
 import { Route as SalesRangeRouteImport } from './routes/sales-range'
 import { Route as SalesAuditRouteImport } from './routes/sales-audit'
+import { Route as SalesAnalysisRouteImport } from './routes/sales-analysis'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrPriceListRouteImport } from './routes/qr-price-list'
@@ -123,6 +124,11 @@ const SalesRangeRoute = SalesRangeRouteImport.update({
 const SalesAuditRoute = SalesAuditRouteImport.update({
   id: '/sales-audit',
   path: '/sales-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesAnalysisRoute = SalesAnalysisRouteImport.update({
+  id: '/sales-analysis',
+  path: '/sales-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -442,6 +448,7 @@ export interface FileRoutesByFullPath {
   '/qr-price-list': typeof QrPriceListRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-analysis': typeof SalesAnalysisRoute
   '/sales-audit': typeof SalesAuditRoute
   '/sales-range': typeof SalesRangeRoute
   '/sales-today': typeof SalesTodayRoute
@@ -509,6 +516,7 @@ export interface FileRoutesByTo {
   '/qr-price-list': typeof QrPriceListRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-analysis': typeof SalesAnalysisRoute
   '/sales-audit': typeof SalesAuditRoute
   '/sales-range': typeof SalesRangeRoute
   '/sales-today': typeof SalesTodayRoute
@@ -577,6 +585,7 @@ export interface FileRoutesById {
   '/qr-price-list': typeof QrPriceListRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sales-analysis': typeof SalesAnalysisRoute
   '/sales-audit': typeof SalesAuditRoute
   '/sales-range': typeof SalesRangeRoute
   '/sales-today': typeof SalesTodayRoute
@@ -646,6 +655,7 @@ export interface FileRouteTypes {
     | '/qr-price-list'
     | '/reports'
     | '/reset-password'
+    | '/sales-analysis'
     | '/sales-audit'
     | '/sales-range'
     | '/sales-today'
@@ -713,6 +723,7 @@ export interface FileRouteTypes {
     | '/qr-price-list'
     | '/reports'
     | '/reset-password'
+    | '/sales-analysis'
     | '/sales-audit'
     | '/sales-range'
     | '/sales-today'
@@ -780,6 +791,7 @@ export interface FileRouteTypes {
     | '/qr-price-list'
     | '/reports'
     | '/reset-password'
+    | '/sales-analysis'
     | '/sales-audit'
     | '/sales-range'
     | '/sales-today'
@@ -848,6 +860,7 @@ export interface RootRouteChildren {
   QrPriceListRoute: typeof QrPriceListRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SalesAnalysisRoute: typeof SalesAnalysisRoute
   SalesAuditRoute: typeof SalesAuditRoute
   SalesRangeRoute: typeof SalesRangeRoute
   SalesTodayRoute: typeof SalesTodayRoute
@@ -950,6 +963,13 @@ declare module '@tanstack/react-router' {
       path: '/sales-audit'
       fullPath: '/sales-audit'
       preLoaderRoute: typeof SalesAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-analysis': {
+      id: '/sales-analysis'
+      path: '/sales-analysis'
+      fullPath: '/sales-analysis'
+      preLoaderRoute: typeof SalesAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1376,6 +1396,7 @@ const rootRouteChildren: RootRouteChildren = {
   QrPriceListRoute: QrPriceListRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SalesAnalysisRoute: SalesAnalysisRoute,
   SalesAuditRoute: SalesAuditRoute,
   SalesRangeRoute: SalesRangeRoute,
   SalesTodayRoute: SalesTodayRoute,
@@ -1410,13 +1431,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

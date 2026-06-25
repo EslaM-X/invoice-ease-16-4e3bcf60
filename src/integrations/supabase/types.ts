@@ -609,12 +609,18 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          category: string | null
+          company_name: string | null
+          contact_person: string | null
           created_at: string
           created_by: string | null
           created_by_email: string | null
           id: string
           name: string
           phone: string | null
+          sales_channel: string | null
+          sales_event_id: string | null
+          source_notes: string | null
           updated_at: string
           updated_by: string | null
           updated_by_email: string | null
@@ -622,12 +628,18 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          category?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
           id?: string
           name: string
           phone?: string | null
+          sales_channel?: string | null
+          sales_event_id?: string | null
+          source_notes?: string | null
           updated_at?: string
           updated_by?: string | null
           updated_by_email?: string | null
@@ -635,18 +647,32 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          category?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
           id?: string
           name?: string
           phone?: string | null
+          sales_channel?: string | null
+          sales_event_id?: string | null
+          source_notes?: string | null
           updated_at?: string
           updated_by?: string | null
           updated_by_email?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_sales_event_id_fkey"
+            columns: ["sales_event_id"]
+            isOneToOne: false
+            referencedRelation: "sales_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       defective_item_returns: {
         Row: {
@@ -1405,6 +1431,7 @@ export type Database = {
           created_by: string | null
           created_by_email: string | null
           customer_address: string | null
+          customer_category: string | null
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
@@ -1419,6 +1446,8 @@ export type Database = {
           receipt_number: number | null
           rejected_at: string | null
           rejected_by: string | null
+          sales_channel: string | null
+          sales_event_id: string | null
           source: string
           status: string
           subtotal: number
@@ -1439,6 +1468,7 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           customer_address?: string | null
+          customer_category?: string | null
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -1453,6 +1483,8 @@ export type Database = {
           receipt_number?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
+          sales_channel?: string | null
+          sales_event_id?: string | null
           source?: string
           status?: string
           subtotal?: number
@@ -1473,6 +1505,7 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           customer_address?: string | null
+          customer_category?: string | null
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -1487,6 +1520,8 @@ export type Database = {
           receipt_number?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
+          sales_channel?: string | null
+          sales_event_id?: string | null
           source?: string
           status?: string
           subtotal?: number
@@ -1510,6 +1545,13 @@ export type Database = {
             columns: ["distributor_id"]
             isOneToOne: false
             referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_sales_event_id_fkey"
+            columns: ["sales_event_id"]
+            isOneToOne: false
+            referencedRelation: "sales_events"
             referencedColumns: ["id"]
           },
         ]
@@ -2326,6 +2368,51 @@ export type Database = {
           p256dh?: string
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      sales_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          event_type: string
+          id: string
+          is_active: boolean
+          location: string | null
+          name: string
+          notes: string | null
+          starts_at: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name: string
+          notes?: string | null
+          starts_at?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name?: string
+          notes?: string | null
+          starts_at?: string | null
+          updated_at?: string
+          year?: number | null
         }
         Relationships: []
       }
@@ -3490,6 +3577,7 @@ export type Database = {
           created_by: string | null
           created_by_email: string | null
           customer_address: string | null
+          customer_category: string | null
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
@@ -3504,6 +3592,8 @@ export type Database = {
           receipt_number: number | null
           rejected_at: string | null
           rejected_by: string | null
+          sales_channel: string | null
+          sales_event_id: string | null
           source: string
           status: string
           subtotal: number
@@ -3598,18 +3688,34 @@ export type Database = {
             }
             Returns: string
           }
-      create_invoice: {
-        Args: {
-          _customer_id: string
-          _discount: number
-          _items: Json
-          _language: string
-          _notes: string
-          _paid_amount?: number
-          _system_notes?: string
-        }
-        Returns: string
-      }
+      create_invoice:
+        | {
+            Args: {
+              _customer_id: string
+              _discount: number
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+              _system_notes?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _customer_category?: string
+              _customer_id: string
+              _discount: number
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+              _sales_channel?: string
+              _sales_event_id?: string
+              _system_notes?: string
+            }
+            Returns: string
+          }
       current_user_email: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
@@ -3843,6 +3949,7 @@ export type Database = {
           created_by: string | null
           created_by_email: string | null
           customer_address: string | null
+          customer_category: string | null
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
@@ -3857,6 +3964,8 @@ export type Database = {
           receipt_number: number | null
           rejected_at: string | null
           rejected_by: string | null
+          sales_channel: string | null
+          sales_event_id: string | null
           source: string
           status: string
           subtotal: number
@@ -3970,6 +4079,22 @@ export type Database = {
               _language: string
               _notes: string
               _paid_amount?: number
+              _system_notes?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _customer_category?: string
+              _customer_id: string
+              _discount: number
+              _invoice_id: string
+              _items: Json
+              _language: string
+              _notes: string
+              _paid_amount?: number
+              _sales_channel?: string
+              _sales_event_id?: string
               _system_notes?: string
             }
             Returns: string
