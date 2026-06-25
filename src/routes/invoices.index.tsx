@@ -364,6 +364,18 @@ function InvoicesList() {
           <option value="total_desc">{t("sort_total_desc")}</option>
           <option value="total_asc">{t("sort_total_asc")}</option>
         </select>
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "كل Catgry العملاء" : "All customer categories"}</option>
+          {CUSTOMER_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+        </select>
+        <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "كل Catgry الفواتير" : "All invoice channels"}</option>
+          {SALES_CHANNELS.map((c) => <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>)}
+        </select>
+        <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "كل المعارض والأحداث" : "All events"}</option>
+          {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+        </select>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">
             <input
@@ -483,6 +495,19 @@ function InvoicesList() {
                               </>
                             );
                           })()}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(i.customer_category)}`}>
+                            {labelForCustomerCategory(i.customer_category, lang as any)}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(i.sales_channel)}`}>
+                            {labelForSalesChannel(i.sales_channel, lang as any)}
+                          </span>
+                          {eventLabel(i.sales_event_id) && (
+                            <span className="rounded-full border border-fuchsia-500/35 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-300">
+                              {eventLabel(i.sales_event_id)}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
