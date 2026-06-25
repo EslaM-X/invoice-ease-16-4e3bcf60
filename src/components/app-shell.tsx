@@ -280,11 +280,23 @@ export function AppShell({ children }: { children: ReactNode }) {
           label={t("reports")}
           icon={BarChart3}
           defaultOpen={
+            location.pathname.startsWith("/sales-analysis") ||
             location.pathname.startsWith("/sales-range") ||
             location.pathname.startsWith("/shipping-order") ||
             location.pathname.startsWith("/profits")
           }
         >
+          <Link
+            to="/sales-analysis"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/sales-analysis")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Sparkles className="h-4 w-4" /> {lang === "ar" ? "تحليل المبيعات" : "Sales Analysis"}
+          </Link>
           <Link
             to="/sales-range"
             onClick={() => setOpen(false)}
