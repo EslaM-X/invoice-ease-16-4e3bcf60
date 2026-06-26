@@ -162,14 +162,23 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
     return Array.from(s).sort();
   }, [products]);
 
+  const colors = useMemo(() => {
+    const s = new Set<string>();
+    products.forEach((p) => { if (p.color) s.add(p.color); });
+    return Array.from(s).sort();
+  }, [products]);
+
+  const [color, setColor] = useState<string>("all");
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return products.filter((p) => {
       if (collection !== "all" && (p.collection || "") !== collection) return false;
+      if (color !== "all" && (p.color || "") !== color) return false;
       if (!qq) return true;
       return (p.name + " " + (p.serial_number || "") + " " + (p.color || "")).toLowerCase().includes(qq);
     });
-  }, [products, q, collection]);
+  }, [products, q, collection, color]);
 
   return (
     <div className="space-y-4">
