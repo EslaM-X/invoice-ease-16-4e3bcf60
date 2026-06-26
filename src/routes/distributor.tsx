@@ -201,6 +201,20 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
           ))}
         </div>
       </div>
+      {colors.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[10px] uppercase tracking-wider text-white/40 me-1">{isAr ? "اللون:" : "Color:"}</span>
+          <button onClick={() => setColor("all")} className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === "all" ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
+            {isAr ? "الكل" : "All"}
+          </button>
+          {colors.map((c) => (
+            <button key={c} onClick={() => setColor(c)}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === c ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="py-16 text-center text-white/50"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>
