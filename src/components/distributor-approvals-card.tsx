@@ -178,7 +178,16 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" onClick={async () => {
+                if (!id) return;
+                if (!confirm(isAr ? "حذف الفاتورة نهائياً وإشعار الموزّع؟" : "Delete invoice permanently and notify distributor?")) return;
+                const { error } = await (supabase.rpc as any)("delete_distributor_invoice", { _invoice_id: id, _notes: notes || null });
+                if (error) { toast.error(error.message); return; }
+                toast.success(isAr ? "تم الحذف" : "Deleted"); onDone(); onClose();
+              }} className="text-red-600 hover:bg-red-500/10">
+                <Trash2 className="me-2 h-4 w-4" /> {isAr ? "حذف" : "Delete"}
+              </Button>
               <Button variant="outline" onClick={reject} disabled={!!working} className="border-red-400/40 text-red-600 hover:bg-red-500/10">
                 {working === "reject" ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <XCircle className="me-2 h-4 w-4" />}
                 {isAr ? "رفض" : "Reject"}
