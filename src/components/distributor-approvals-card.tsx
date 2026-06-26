@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Loader2, Clock, Eye, Percent, FileText } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Clock, Eye, Percent, FileText, Trash2 } from "lucide-react";
 
 type Pending = {
   id: string; invoice_number: string; created_at: string; subtotal: number;
@@ -161,13 +161,16 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 flex items-center gap-1 text-xs font-medium"><Percent className="h-3 w-3" /> {isAr ? "نسبة الخصم %" : "Discount %"}</label>
+                <label className="mb-1 flex items-center gap-1 text-xs font-medium"><Percent className="h-3 w-3" /> {isAr ? "عمولة الموزّع %" : "Distributor commission %"}</label>
                 <Input type="number" min="0" max="100" step="0.5" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {isAr ? "العميل بيدفع السعر الكامل — النسبة دي عمولة بتتجمعلك للموزّع كرصيد مستحق." : "Customer pays full price — this % accrues as commission owed to the distributor."}
+                </p>
               </div>
               <div className="rounded-xl border bg-muted/30 p-3">
-                <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "قبل الخصم" : "Subtotal"}</span><span className="tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span></div>
-                <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "الخصم" : "Discount"}</span><span className="tabular-nums">-{fmtMoney(subtotal - finalTotal, "EGP", lang)}</span></div>
-                <div className="mt-1 flex justify-between border-t pt-1 text-sm font-bold"><span>{isAr ? "الإجمالي النهائي" : "Final total"}</span><span className="tabular-nums">{fmtMoney(finalTotal, "EGP", lang)}</span></div>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "الإجمالي للعميل" : "Customer total"}</span><span className="tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span></div>
+                <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400"><span>{isAr ? "عمولة للموزّع" : "Distributor commission"}</span><span className="tabular-nums">+{fmtMoney(subtotal - finalTotal, "EGP", lang)}</span></div>
+                <div className="mt-1 flex justify-between border-t pt-1 text-sm font-bold"><span>{isAr ? "صافي للشركة" : "Net to company"}</span><span className="tabular-nums">{fmtMoney(finalTotal, "EGP", lang)}</span></div>
               </div>
             </div>
             <div>
@@ -175,7 +178,16 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" onClick={async () => {
+                if (!id) return;
+                if (!confirm(isAr ? "حذف الفاتورة نهائياً وإشعار الموزّع؟" : "Delete invoice permanently and notify distributor?")) return;
+                const { error } = await (supabase.rpc as any)("delete_distributor_invoice", { _invoice_id: id, _notes: notes || null });
+                if (error) { toast.error(error.message); return; }
+                toast.success(isAr ? "تم الحذف" : "Deleted"); onDone(); onClose();
+              }} className="text-red-600 hover:bg-red-500/10">
+                <Trash2 className="me-2 h-4 w-4" /> {isAr ? "حذف" : "Delete"}
+              </Button>
               <Button variant="outline" onClick={reject} disabled={!!working} className="border-red-400/40 text-red-600 hover:bg-red-500/10">
                 {working === "reject" ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <XCircle className="me-2 h-4 w-4" />}
                 {isAr ? "رفض" : "Reject"}

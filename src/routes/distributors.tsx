@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Plus, Store, MapPin, Phone, Mail, Building2, Loader2, Search, ToggleRight, Pencil } from "lucide-react";
 import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
+import { DistributorBalancesCard } from "@/components/distributor-balances-card";
+import { CreateDistributorAccountButton, ResetDistributorPasswordButton } from "@/components/create-distributor-account-dialog";
 
 export const Route = createFileRoute("/distributors")({ component: DistributorsPage });
 
@@ -61,13 +63,17 @@ function DistributorsInner() {
           </h1>
           <p className="text-sm text-muted-foreground">{isAr ? "إدارة شبكة الموزّعين والمعارض والفروع" : "Manage distributor network"}</p>
         </div>
-        <Button onClick={() => { setEditing(null); setOpenForm(true); }} className="gap-1">
-          <Plus className="h-4 w-4" /> {isAr ? "إضافة موزّع" : "Add distributor"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <CreateDistributorAccountButton />
+          <Button onClick={() => { setEditing(null); setOpenForm(true); }} className="gap-1">
+            <Plus className="h-4 w-4" /> {isAr ? "ربط موزّع موجود" : "Link existing"}
+          </Button>
+        </div>
       </div>
 
       <PendingAccountsCard />
       <DistributorApprovalsCard />
+      <DistributorBalancesCard />
 
       <div className="relative">
         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -102,10 +108,13 @@ function DistributorsInner() {
                 {r.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> {r.email}</div>}
                 <div className="flex items-center gap-1.5"><Building2 className="h-3 w-3" /> {r.branches_count} {isAr ? "فرع" : "branches"}</div>
               </div>
-              <div className="mt-1 flex items-center justify-between border-t pt-3">
-                <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setOpenForm(true); }}>
-                  <Pencil className="me-1 h-3 w-3" /> {isAr ? "تعديل" : "Edit"}
-                </Button>
+              <div className="mt-1 flex items-center justify-between gap-2 border-t pt-3">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setOpenForm(true); }}>
+                    <Pencil className="me-1 h-3 w-3" /> {isAr ? "تعديل" : "Edit"}
+                  </Button>
+                  <ResetDistributorPasswordButton userId={r.user_id} email={r.email} />
+                </div>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-muted-foreground">{isAr ? "تفعيل" : "Active"}</span>
                   <Switch checked={r.is_active} onCheckedChange={async (v) => {

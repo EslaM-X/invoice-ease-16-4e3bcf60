@@ -162,14 +162,23 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
     return Array.from(s).sort();
   }, [products]);
 
+  const colors = useMemo(() => {
+    const s = new Set<string>();
+    products.forEach((p) => { if (p.color) s.add(p.color); });
+    return Array.from(s).sort();
+  }, [products]);
+
+  const [color, setColor] = useState<string>("all");
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return products.filter((p) => {
       if (collection !== "all" && (p.collection || "") !== collection) return false;
+      if (color !== "all" && (p.color || "") !== color) return false;
       if (!qq) return true;
       return (p.name + " " + (p.serial_number || "") + " " + (p.color || "")).toLowerCase().includes(qq);
     });
-  }, [products, q, collection]);
+  }, [products, q, collection, color]);
 
   return (
     <div className="space-y-4">
@@ -192,6 +201,20 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
           ))}
         </div>
       </div>
+      {colors.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[10px] uppercase tracking-wider text-white/40 me-1">{isAr ? "اللون:" : "Color:"}</span>
+          <button onClick={() => setColor("all")} className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === "all" ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
+            {isAr ? "الكل" : "All"}
+          </button>
+          {colors.map((c) => (
+            <button key={c} onClick={() => setColor(c)}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === c ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="py-16 text-center text-white/50"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>
@@ -371,21 +394,53 @@ function HistoryTab() {
   const load = async () => {
     if (!user) return;
     const { data } = await (supabase.from as any)("invoices")
-      .select("id,invoice_number,created_at,subtotal,discount,total,status,approval_status,approval_discount_pct,approval_notes,customer_name")
+      .select("id,invoice_number,created_at,subtotal,discount,total,status,approval_status,approval_discount_pct,approval_notes,customer_name,distributor_commission_amount,distributor_id")
       .eq("user_id", user.id).eq("source", "distributor")
-      .order("created_at", { ascending: false }).limit(100);
-    setInvoices((data as DistInvoice[]) ?? []);
+      .order("created_at", { ascending: false }).limit(200);
+    setInvoices((data as any) ?? []);
     setLoading(false);
   };
   useEffect(() => { load(); }, [user?.id]);
   useRealtimeTable("invoices", () => load());
 
+  // Pull live balance (commissions earned, paid out, owed)
+  const [balance, setBalance] = useState<any>(null);
+  useEffect(() => {
+    if (!user) return;
+    let cancel = false;
+    (async () => {
+      const { data: dist } = await (supabase.from as any)("distributors").select("id").eq("user_id", user.id).maybeSingle();
+      if (!dist?.id) return;
+      const { data } = await (supabase.from as any)("distributor_balances").select("*").eq("distributor_id", dist.id).maybeSingle();
+      if (!cancel) setBalance(data);
+    })();
+    return () => { cancel = true; };
+  }, [user?.id, invoices.length]);
+
   if (loading) return <div className="py-16 text-center text-white/50"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>;
-  if (invoices.length === 0) return <div className="rounded-xl border border-white/10 bg-white/5 py-16 text-center text-white/50">{isAr ? "لا توجد فواتير بعد" : "No invoices yet"}</div>;
 
   return (
-    <div className="space-y-2">
-      {invoices.map((inv) => {
+    <div className="space-y-3">
+      {balance && (
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-3">
+          <div>
+            <div className="text-[10px] uppercase text-white/40">{isAr ? "إجمالي العمولات" : "Earned"}</div>
+            <div className="text-base font-bold text-emerald-300 tabular-nums">{fmtMoney(balance.commission_earned, "EGP", lang)}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-white/40">{isAr ? "تم استلامه" : "Paid out"}</div>
+            <div className="text-base font-bold text-white/80 tabular-nums">{fmtMoney(balance.payouts_total, "EGP", lang)}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-white/40">{isAr ? "مستحق لك" : "Owed to you"}</div>
+            <div className="text-base font-bold text-amber-300 tabular-nums">{fmtMoney(balance.balance_owed, "EGP", lang)}</div>
+          </div>
+        </div>
+      )}
+
+      {invoices.length === 0 ? (
+        <div className="rounded-xl border border-white/10 bg-white/5 py-16 text-center text-white/50">{isAr ? "لا توجد فواتير بعد" : "No invoices yet"}</div>
+      ) : invoices.map((inv: any) => {
         const st = inv.approval_status;
         const map: any = {
           pending: { ar: "بانتظار الموافقة", en: "Pending", c: "bg-amber-500/15 text-amber-300 border-amber-400/40", I: Clock },
@@ -393,6 +448,7 @@ function HistoryTab() {
           rejected: { ar: "مرفوضة", en: "Rejected", c: "bg-red-500/15 text-red-300 border-red-400/40", I: XCircle },
         };
         const s = map[st] || map.pending; const I = s.I;
+        const commission = Number(inv.distributor_commission_amount || 0);
         return (
           <div key={inv.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
             <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${s.c}`}><I className="h-4 w-4" /></div>
@@ -401,8 +457,10 @@ function HistoryTab() {
                 {inv.invoice_number} <span className="text-white/40">•</span> <span className="text-white/60 font-normal truncate">{inv.customer_name}</span>
               </div>
               <div className="text-[11px] text-white/40">{fmtDate(inv.created_at, lang)}</div>
-              {st === "approved" && inv.approval_discount_pct > 0 && (
-                <div className="mt-1 text-[11px] text-emerald-300">{isAr ? `خصم: ${inv.approval_discount_pct}%` : `Discount: ${inv.approval_discount_pct}%`}</div>
+              {st === "approved" && commission > 0 && (
+                <div className="mt-1 text-[11px] text-emerald-300">
+                  {isAr ? `عمولتك: ${fmtMoney(commission, "EGP", lang)} (${inv.approval_discount_pct}%)` : `Your commission: ${fmtMoney(commission, "EGP", lang)} (${inv.approval_discount_pct}%)`}
+                </div>
               )}
               {st === "rejected" && inv.approval_notes && <div className="mt-1 text-[11px] text-red-300">{inv.approval_notes}</div>}
             </div>
