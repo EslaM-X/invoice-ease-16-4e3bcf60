@@ -965,6 +965,57 @@ export type Database = {
           },
         ]
       }
+      distributor_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          distributor_id: string
+          id: string
+          notes: string | null
+          paid_at: string
+          paid_by: string | null
+          paid_by_email: string | null
+          payout_method: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          distributor_id: string
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          paid_by?: string | null
+          paid_by_email?: string | null
+          payout_method?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          distributor_id?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          paid_by?: string | null
+          paid_by_email?: string | null
+          payout_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_payouts_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributor_balances"
+            referencedColumns: ["distributor_id"]
+          },
+          {
+            foreignKeyName: "distributor_payouts_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributors: {
         Row: {
           address: string | null
@@ -1437,6 +1488,7 @@ export type Database = {
           customer_phone: string | null
           delivery_status: string
           discount: number
+          distributor_commission_amount: number
           distributor_id: string | null
           id: string
           invoice_number: string
@@ -1474,6 +1526,7 @@ export type Database = {
           customer_phone?: string | null
           delivery_status?: string
           discount?: number
+          distributor_commission_amount?: number
           distributor_id?: string | null
           id?: string
           invoice_number: string
@@ -1511,6 +1564,7 @@ export type Database = {
           customer_phone?: string | null
           delivery_status?: string
           discount?: number
+          distributor_commission_amount?: number
           distributor_id?: string | null
           id?: string
           invoice_number?: string
@@ -1539,6 +1593,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributor_balances"
+            referencedColumns: ["distributor_id"]
           },
           {
             foreignKeyName: "invoices_distributor_id_fkey"
@@ -3521,7 +3582,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      distributor_balances: {
+        Row: {
+          approved_invoice_count: number | null
+          balance_owed: number | null
+          commission_earned: number | null
+          distributor_id: string | null
+          distributor_name: string | null
+          payouts_total: number | null
+          total_sales: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_payment: {
@@ -3583,6 +3655,7 @@ export type Database = {
           customer_phone: string | null
           delivery_status: string
           discount: number
+          distributor_commission_amount: number
           distributor_id: string | null
           id: string
           invoice_number: string
@@ -3717,6 +3790,10 @@ export type Database = {
             Returns: string
           }
       current_user_email: { Args: never; Returns: string }
+      delete_distributor_invoice: {
+        Args: { _invoice_id: string; _notes?: string }
+        Returns: undefined
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -3955,6 +4032,7 @@ export type Database = {
           customer_phone: string | null
           delivery_status: string
           discount: number
+          distributor_commission_amount: number
           distributor_id: string | null
           id: string
           invoice_number: string
