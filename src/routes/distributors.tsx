@@ -108,10 +108,13 @@ function DistributorsInner() {
                 {r.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> {r.email}</div>}
                 <div className="flex items-center gap-1.5"><Building2 className="h-3 w-3" /> {r.branches_count} {isAr ? "فرع" : "branches"}</div>
               </div>
-              <div className="mt-1 flex items-center justify-between border-t pt-3">
-                <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setOpenForm(true); }}>
-                  <Pencil className="me-1 h-3 w-3" /> {isAr ? "تعديل" : "Edit"}
-                </Button>
+              <div className="mt-1 flex items-center justify-between gap-2 border-t pt-3">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setOpenForm(true); }}>
+                    <Pencil className="me-1 h-3 w-3" /> {isAr ? "تعديل" : "Edit"}
+                  </Button>
+                  <ResetDistributorPasswordButton userId={r.user_id} email={r.email} />
+                </div>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-muted-foreground">{isAr ? "تفعيل" : "Active"}</span>
                   <Switch checked={r.is_active} onCheckedChange={async (v) => {
