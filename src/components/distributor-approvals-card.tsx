@@ -161,13 +161,16 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 flex items-center gap-1 text-xs font-medium"><Percent className="h-3 w-3" /> {isAr ? "نسبة الخصم %" : "Discount %"}</label>
+                <label className="mb-1 flex items-center gap-1 text-xs font-medium"><Percent className="h-3 w-3" /> {isAr ? "عمولة الموزّع %" : "Distributor commission %"}</label>
                 <Input type="number" min="0" max="100" step="0.5" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {isAr ? "العميل بيدفع السعر الكامل — النسبة دي عمولة بتتجمعلك للموزّع كرصيد مستحق." : "Customer pays full price — this % accrues as commission owed to the distributor."}
+                </p>
               </div>
               <div className="rounded-xl border bg-muted/30 p-3">
-                <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "قبل الخصم" : "Subtotal"}</span><span className="tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span></div>
-                <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "الخصم" : "Discount"}</span><span className="tabular-nums">-{fmtMoney(subtotal - finalTotal, "EGP", lang)}</span></div>
-                <div className="mt-1 flex justify-between border-t pt-1 text-sm font-bold"><span>{isAr ? "الإجمالي النهائي" : "Final total"}</span><span className="tabular-nums">{fmtMoney(finalTotal, "EGP", lang)}</span></div>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "الإجمالي للعميل" : "Customer total"}</span><span className="tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span></div>
+                <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400"><span>{isAr ? "عمولة للموزّع" : "Distributor commission"}</span><span className="tabular-nums">+{fmtMoney(subtotal - finalTotal, "EGP", lang)}</span></div>
+                <div className="mt-1 flex justify-between border-t pt-1 text-sm font-bold"><span>{isAr ? "صافي للشركة" : "Net to company"}</span><span className="tabular-nums">{fmtMoney(finalTotal, "EGP", lang)}</span></div>
               </div>
             </div>
             <div>
