@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Plus, Store, MapPin, Phone, Mail, Building2, Loader2, Search, ToggleRight, Pencil } from "lucide-react";
 import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
+import { DistributorBalancesCard } from "@/components/distributor-balances-card";
+import { CreateDistributorAccountButton, ResetDistributorPasswordButton } from "@/components/create-distributor-account-dialog";
 
 export const Route = createFileRoute("/distributors")({ component: DistributorsPage });
 
