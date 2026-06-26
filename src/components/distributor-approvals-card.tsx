@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Loader2, Clock, Eye, Percent, FileText } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Clock, Eye, Percent, FileText, Trash2 } from "lucide-react";
 
 type Pending = {
   id: string; invoice_number: string; created_at: string; subtotal: number;
