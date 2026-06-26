@@ -63,13 +63,17 @@ function DistributorsInner() {
           </h1>
           <p className="text-sm text-muted-foreground">{isAr ? "إدارة شبكة الموزّعين والمعارض والفروع" : "Manage distributor network"}</p>
         </div>
-        <Button onClick={() => { setEditing(null); setOpenForm(true); }} className="gap-1">
-          <Plus className="h-4 w-4" /> {isAr ? "إضافة موزّع" : "Add distributor"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <CreateDistributorAccountButton />
+          <Button onClick={() => { setEditing(null); setOpenForm(true); }} className="gap-1">
+            <Plus className="h-4 w-4" /> {isAr ? "ربط موزّع موجود" : "Link existing"}
+          </Button>
+        </div>
       </div>
 
       <PendingAccountsCard />
       <DistributorApprovalsCard />
+      <DistributorBalancesCard />
 
       <div className="relative">
         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
