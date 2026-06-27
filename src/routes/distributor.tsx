@@ -328,7 +328,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
       const { error: itemsErr } = await (supabase.from as any)("invoice_items").insert(items);
       if (itemsErr) throw itemsErr;
       setCart([]);
-      setCustomerName(""); setCustomerPhone(""); setNotes("");
+      setCustomerName(""); setCustomerPhone(""); setShippingAddress(""); setNotes("");
       toast.success(isAr ? "تم إرسال الفاتورة للمراجعة" : "Invoice sent for approval");
       onSubmitted();
     } catch (e: any) {
@@ -375,8 +375,10 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
           placeholder={isAr ? "اسم العميل *" : "Customer name *"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
         <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)}
           placeholder={isAr ? "رقم التليفون" : "Phone"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+        <Textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)}
+          placeholder={isAr ? "عنوان الشحن (المحافظة، المدينة، العنوان بالتفصيل)" : "Shipping address"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={2} />
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-          placeholder={isAr ? "ملاحظات (اختياري)" : "Notes (optional)"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={3} />
+          placeholder={isAr ? "ملاحظات (اختياري)" : "Notes (optional)"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={2} />
         <div className="flex items-center justify-between border-t border-white/10 pt-3">
           <span className="text-sm text-white/60">{isAr ? "الإجمالي" : "Total"}</span>
           <span className="text-xl font-bold tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span>
