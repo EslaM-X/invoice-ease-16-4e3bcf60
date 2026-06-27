@@ -281,6 +281,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           icon={BarChart3}
           defaultOpen={
             location.pathname.startsWith("/sales-analysis") ||
+            location.pathname.startsWith("/engineers-analysis") ||
             location.pathname.startsWith("/sales-range") ||
             location.pathname.startsWith("/shipping-order") ||
             location.pathname.startsWith("/profits")
