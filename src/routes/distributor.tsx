@@ -277,6 +277,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
   const { cart, setCart } = useCart();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -301,6 +302,8 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
         invoice_number: invoiceNumber,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim() || null,
+        customer_address: shippingAddress.trim() || null,
+        shipping_address: shippingAddress.trim() || null,
         subtotal, discount: 0, total: subtotal,
         notes: notes.trim() || null,
         status: "draft",
@@ -308,6 +311,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
         distributor_id: distributor.id,
         approval_status: "pending",
         language: lang,
+
       }).select().single();
       if (error) throw error;
       const items = cart.map((l) => ({
