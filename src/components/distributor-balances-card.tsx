@@ -203,7 +203,7 @@ function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose:
           ) : (
             <table className="w-full text-xs">
               <thead className="bg-muted/60 text-[10px] uppercase text-muted-foreground">
-                <tr><th className="p-2 text-start">{isAr ? "التاريخ" : "Date"}</th><th className="p-2 text-end">{isAr ? "المبلغ" : "Amount"}</th><th className="p-2 text-start">{isAr ? "ملاحظات" : "Notes"}</th></tr>
+                <tr><th className="p-2 text-start">{isAr ? "التاريخ" : "Date"}</th><th className="p-2 text-end">{isAr ? "المبلغ" : "Amount"}</th><th className="p-2 text-start">{isAr ? "ملاحظات" : "Notes"}</th><th className="p-2"></th></tr>
               </thead>
               <tbody>
                 {payouts.map((p) => (
@@ -211,6 +211,16 @@ function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose:
                     <td className="p-2">{fmtDate(p.paid_at, lang)}</td>
                     <td className="p-2 text-end font-bold tabular-nums">{fmtMoney(p.amount, "EGP", lang)}</td>
                     <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
+                    <td className="p-2 text-end">
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" title={isAr ? "حذف الدفعة" : "Delete payout"}
+                        onClick={async () => {
+                          if (!confirm(isAr ? "حذف هذه الدفعة؟ هيتم إشعار الموزّع وتحديث رصيده فوراً" : "Delete this payout?")) return;
+                          const { error } = await (supabase.rpc as any)("delete_distributor_payout", { _payout_id: p.id });
+                          if (error) toast.error(error.message); else { toast.success(isAr ? "تم الحذف" : "Deleted"); load(); }
+                        }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

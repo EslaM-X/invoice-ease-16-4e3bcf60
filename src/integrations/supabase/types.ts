@@ -1500,6 +1500,7 @@ export type Database = {
           rejected_by: string | null
           sales_channel: string | null
           sales_event_id: string | null
+          shipping_address: string | null
           source: string
           status: string
           subtotal: number
@@ -1538,6 +1539,7 @@ export type Database = {
           rejected_by?: string | null
           sales_channel?: string | null
           sales_event_id?: string | null
+          shipping_address?: string | null
           source?: string
           status?: string
           subtotal?: number
@@ -1576,6 +1578,7 @@ export type Database = {
           rejected_by?: string | null
           sales_channel?: string | null
           sales_event_id?: string | null
+          shipping_address?: string | null
           source?: string
           status?: string
           subtotal?: number
@@ -3667,6 +3670,7 @@ export type Database = {
           rejected_by: string | null
           sales_channel: string | null
           sales_event_id: string | null
+          shipping_address: string | null
           source: string
           status: string
           subtotal: number
@@ -3792,6 +3796,10 @@ export type Database = {
       current_user_email: { Args: never; Returns: string }
       delete_distributor_invoice: {
         Args: { _invoice_id: string; _notes?: string }
+        Returns: undefined
+      }
+      delete_distributor_payout: {
+        Args: { _payout_id: string }
         Returns: undefined
       }
       delete_email: {
@@ -4044,6 +4052,7 @@ export type Database = {
           rejected_by: string | null
           sales_channel: string | null
           sales_event_id: string | null
+          shipping_address: string | null
           source: string
           status: string
           subtotal: number

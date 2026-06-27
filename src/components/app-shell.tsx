@@ -281,6 +281,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           icon={BarChart3}
           defaultOpen={
             location.pathname.startsWith("/sales-analysis") ||
+            location.pathname.startsWith("/engineers-analysis") ||
             location.pathname.startsWith("/sales-range") ||
             location.pathname.startsWith("/shipping-order") ||
             location.pathname.startsWith("/profits")
@@ -297,6 +298,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Sparkles className="h-4 w-4" /> {lang === "ar" ? "تحليل المبيعات" : "Sales Analysis"}
           </Link>
+          <Link
+            to="/engineers-analysis"
+            onClick={() => setOpen(false)}
+            className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+              location.pathname.startsWith("/engineers-analysis")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            }`}
+          >
+            <Users className="h-4 w-4" /> {lang === "ar" ? "تحليل المهندسين" : "Engineers Analysis"}
+          </Link>
+
           <Link
             to="/sales-range"
             onClick={() => setOpen(false)}

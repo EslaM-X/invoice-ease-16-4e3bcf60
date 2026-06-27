@@ -93,12 +93,14 @@ function DistributorPortal() {
               { k: "history", icon: FileText, ar: "فواتيري", en: "My invoices" },
             ] as const).map((t) => (
               <button key={t.k} onClick={() => setTab(t.k)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${tab === t.k ? "bg-white text-[#0a0a0c]" : "text-white/70 hover:bg-white/10"}`}>
+                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${tab === t.k ? "bg-white text-[#0a0a0c]" : "text-white/70 hover:bg-white/10"}`}>
                 <t.icon className="h-4 w-4" /> {isAr ? t.ar : t.en}
+                {t.k === "cart" && <CartCountBadge active={tab === t.k} />}
               </button>
             ))}
           </div>
         </div>
+
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6">
@@ -209,12 +211,15 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
           </button>
           {colors.map((c) => (
             <button key={c} onClick={() => setColor(c)}
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === c ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
-              {c}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === c ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
+              <ColorSwatch value={c} size="xs" />
+              <span>{c}</span>
             </button>
           ))}
         </div>
       )}
+      <CartPreview />
+
 
       {loading ? (
         <div className="py-16 text-center text-white/50"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>
@@ -272,6 +277,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
   const { cart, setCart } = useCart();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -296,6 +302,8 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
         invoice_number: invoiceNumber,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim() || null,
+        customer_address: shippingAddress.trim() || null,
+        shipping_address: shippingAddress.trim() || null,
         subtotal, discount: 0, total: subtotal,
         notes: notes.trim() || null,
         status: "draft",
@@ -303,6 +311,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
         distributor_id: distributor.id,
         approval_status: "pending",
         language: lang,
+
       }).select().single();
       if (error) throw error;
       const items = cart.map((l) => ({
@@ -319,7 +328,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
       const { error: itemsErr } = await (supabase.from as any)("invoice_items").insert(items);
       if (itemsErr) throw itemsErr;
       setCart([]);
-      setCustomerName(""); setCustomerPhone(""); setNotes("");
+      setCustomerName(""); setCustomerPhone(""); setShippingAddress(""); setNotes("");
       toast.success(isAr ? "تم إرسال الفاتورة للمراجعة" : "Invoice sent for approval");
       onSubmitted();
     } catch (e: any) {
@@ -366,8 +375,10 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
           placeholder={isAr ? "اسم العميل *" : "Customer name *"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
         <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)}
           placeholder={isAr ? "رقم التليفون" : "Phone"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" />
+        <Textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)}
+          placeholder={isAr ? "عنوان الشحن (المحافظة، المدينة، العنوان بالتفصيل)" : "Shipping address"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={2} />
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-          placeholder={isAr ? "ملاحظات (اختياري)" : "Notes (optional)"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={3} />
+          placeholder={isAr ? "ملاحظات (اختياري)" : "Notes (optional)"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={2} />
         <div className="flex items-center justify-between border-t border-white/10 pt-3">
           <span className="text-sm text-white/60">{isAr ? "الإجمالي" : "Total"}</span>
           <span className="text-xl font-bold tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span>
@@ -471,6 +482,67 @@ function HistoryTab() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ---------------- Cart helpers (used by header tabs + catalog preview) ----------------
+function CartCountBadge({ active }: { active: boolean }) {
+  const { cart } = useCart();
+  const count = cart.reduce((s, l) => s + l.qty, 0);
+  if (count === 0) return null;
+  return (
+    <span className={`ms-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums ${active ? "bg-[#0a0a0c] text-white" : "bg-amber-400 text-[#0a0a0c]"}`}>
+      {count}
+    </span>
+  );
+}
+
+function CartPreview() {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const { cart, setCart } = useCart();
+  if (cart.length === 0) return null;
+  const subtotal = cart.reduce((s, l) => s + l.product.price * l.qty, 0);
+  return (
+    <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-semibold text-amber-200">
+          <ShoppingBag className="h-3.5 w-3.5" />
+          {isAr ? `سلتك (${cart.length} منتج)` : `Your cart (${cart.length} items)`}
+        </div>
+        <div className="text-sm font-bold tabular-nums text-white">{fmtMoney(subtotal, "EGP", lang)}</div>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {cart.map((l) => (
+          <div key={l.product.id} className="group relative flex w-32 shrink-0 flex-col rounded-xl border border-white/10 bg-white/5 p-2">
+            <div className="mb-1 aspect-square overflow-hidden rounded-lg bg-white/5">
+              {l.product.image_url ? <img src={l.product.image_url} alt="" className="h-full w-full object-cover" />
+                : <div className="flex h-full items-center justify-center text-white/30"><Package className="h-5 w-5" /></div>}
+            </div>
+            <div className="truncate text-[10px] font-medium text-white" title={l.product.name}>{l.product.name}</div>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-white/60">
+              <span className="font-mono">{l.product.serial_number}</span>
+              <span className="font-bold text-white">×{l.qty}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between">
+              <div className="flex items-center gap-0.5">
+                <button className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white hover:bg-white/20" onClick={() => {
+                  const c = cart.map((x) => x.product.id === l.product.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x);
+                  setCart(c);
+                }}>−</button>
+                <button className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white hover:bg-white/20" onClick={() => {
+                  const c = cart.map((x) => x.product.id === l.product.id ? { ...x, qty: Math.min(x.product.available_stock, x.qty + 1) } : x);
+                  setCart(c);
+                }}>+</button>
+              </div>
+              <button className="text-red-300 hover:text-red-200" onClick={() => setCart(cart.filter((x) => x.product.id !== l.product.id))}>
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

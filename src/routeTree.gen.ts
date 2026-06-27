@@ -40,6 +40,7 @@ import { Route as FulfillmentTestsRouteImport } from './routes/fulfillment-tests
 import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit'
 import { Route as FulfillmentRouteImport } from './routes/fulfillment'
 import { Route as FinanceAuditRouteImport } from './routes/finance-audit'
+import { Route as EngineersAnalysisRouteImport } from './routes/engineers-analysis'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DistributorsRouteImport } from './routes/distributors'
 import { Route as DistributorRouteImport } from './routes/distributor'
@@ -229,6 +230,11 @@ const FulfillmentRoute = FulfillmentRouteImport.update({
 const FinanceAuditRoute = FinanceAuditRouteImport.update({
   id: '/finance-audit',
   path: '/finance-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EngineersAnalysisRoute = EngineersAnalysisRouteImport.update({
+  id: '/engineers-analysis',
+  path: '/engineers-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
   '/download': typeof DownloadRoute
+  '/engineers-analysis': typeof EngineersAnalysisRoute
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
@@ -496,6 +503,7 @@ export interface FileRoutesByTo {
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
   '/download': typeof DownloadRoute
+  '/engineers-analysis': typeof EngineersAnalysisRoute
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
@@ -565,6 +573,7 @@ export interface FileRoutesById {
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
   '/download': typeof DownloadRoute
+  '/engineers-analysis': typeof EngineersAnalysisRoute
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
@@ -635,6 +644,7 @@ export interface FileRouteTypes {
     | '/distributor'
     | '/distributors'
     | '/download'
+    | '/engineers-analysis'
     | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
@@ -703,6 +713,7 @@ export interface FileRouteTypes {
     | '/distributor'
     | '/distributors'
     | '/download'
+    | '/engineers-analysis'
     | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
@@ -771,6 +782,7 @@ export interface FileRouteTypes {
     | '/distributor'
     | '/distributors'
     | '/download'
+    | '/engineers-analysis'
     | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
@@ -840,6 +852,7 @@ export interface RootRouteChildren {
   DistributorRoute: typeof DistributorRoute
   DistributorsRoute: typeof DistributorsRoute
   DownloadRoute: typeof DownloadRoute
+  EngineersAnalysisRoute: typeof EngineersAnalysisRoute
   FinanceAuditRoute: typeof FinanceAuditRoute
   FulfillmentRoute: typeof FulfillmentRoute
   FulfillmentAuditRoute: typeof FulfillmentAuditRoute
@@ -1112,6 +1125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/engineers-analysis': {
+      id: '/engineers-analysis'
+      path: '/engineers-analysis'
+      fullPath: '/engineers-analysis'
+      preLoaderRoute: typeof EngineersAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/download': {
       id: '/download'
       path: '/download'
@@ -1376,6 +1396,7 @@ const rootRouteChildren: RootRouteChildren = {
   DistributorRoute: DistributorRoute,
   DistributorsRoute: DistributorsRoute,
   DownloadRoute: DownloadRoute,
+  EngineersAnalysisRoute: EngineersAnalysisRoute,
   FinanceAuditRoute: FinanceAuditRoute,
   FulfillmentRoute: FulfillmentRoute,
   FulfillmentAuditRoute: FulfillmentAuditRoute,
