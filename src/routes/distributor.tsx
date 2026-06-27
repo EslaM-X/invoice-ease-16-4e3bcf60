@@ -209,12 +209,15 @@ function CatalogTab({ onAddToCart }: { onAddToCart: (p: Product) => void }) {
           </button>
           {colors.map((c) => (
             <button key={c} onClick={() => setColor(c)}
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === c ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
-              {c}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${color === c ? "bg-white text-[#0a0a0c]" : "border border-white/15 text-white/70 hover:bg-white/10"}`}>
+              <ColorSwatch value={c} size="xs" />
+              <span>{c}</span>
             </button>
           ))}
         </div>
       )}
+      <CartPreview />
+
 
       {loading ? (
         <div className="py-16 text-center text-white/50"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>
