@@ -93,12 +93,14 @@ function DistributorPortal() {
               { k: "history", icon: FileText, ar: "فواتيري", en: "My invoices" },
             ] as const).map((t) => (
               <button key={t.k} onClick={() => setTab(t.k)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${tab === t.k ? "bg-white text-[#0a0a0c]" : "text-white/70 hover:bg-white/10"}`}>
+                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${tab === t.k ? "bg-white text-[#0a0a0c]" : "text-white/70 hover:bg-white/10"}`}>
                 <t.icon className="h-4 w-4" /> {isAr ? t.ar : t.en}
+                {t.k === "cart" && <CartCountBadge active={tab === t.k} />}
               </button>
             ))}
           </div>
         </div>
+
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6">
