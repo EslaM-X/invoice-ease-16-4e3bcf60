@@ -186,6 +186,25 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
                 <div className="mt-1 flex justify-between border-t pt-1 text-sm font-bold"><span>{isAr ? "صافي للشركة" : "Net to company"}</span><span className="tabular-nums">{fmtMoney(finalTotal, "EGP", lang)}</span></div>
               </div>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium">{isAr ? "تصنيف العميل" : "Customer category"}</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{isAr ? "غير مصنف" : "Uncategorized"}</option>
+                  <option value="engineer">{isAr ? "مهندس" : "Engineer"}</option>
+                  <option value="finishing_company">{isAr ? "شركة تشطيب" : "Finishing company"}</option>
+                  <option value="company">{isAr ? "شركة / مؤسسة" : "Company"}</option>
+                  <option value="end_user">{isAr ? "عميل نهائي / مستخدم" : "End user"}</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">{isAr ? "المعرض / الحدث" : "Sales event"}</label>
+                <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{isAr ? "بدون" : "None"}</option>
+                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+                </select>
+              </div>
+            </div>
             <div>
               <label className="mb-1 block text-xs font-medium">{isAr ? "ملاحظة (اختياري)" : "Note (optional)"}</label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
