@@ -92,6 +92,9 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
   const [items, setItems] = useState<Item[]>([]);
   const [discount, setDiscount] = useState("0");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState<string>("");
+  const [eventId, setEventId] = useState<string>("");
+  const [events, setEvents] = useState<Array<{ id: string; name: string; year: number | null }>>([]);
   const [working, setWorking] = useState<"approve" | "reject" | null>(null);
 
   useEffect(() => {
@@ -103,7 +106,11 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
       setInv(i);
       const { data: it } = await (supabase.from as any)("invoice_items").select("*").eq("invoice_id", id);
       setItems((it as Item[]) ?? []);
+      const { data: ev } = await (supabase.from as any)("sales_events").select("id,name,year").order("year", { ascending: false }).order("name");
+      setEvents((ev as any[]) ?? []);
       setDiscount("0"); setNotes("");
+      setCategory((i as any)?.customer_category ?? "");
+      setEventId((i as any)?.sales_event_id ?? "");
     })();
   }, [id]);
 
@@ -115,7 +122,13 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
 
   const approve = async () => {
     setWorking("approve");
-    const { error } = await (supabase.rpc as any)("approve_distributor_invoice", { _invoice_id: id, _discount_pct: pct, _notes: notes || null });
+    const { error } = await (supabase.rpc as any)("approve_distributor_invoice", {
+      _invoice_id: id,
+      _discount_pct: pct,
+      _notes: notes || null,
+      _customer_category: category || null,
+      _sales_event_id: eventId || null,
+    });
     setWorking(null);
     if (error) { toast.error(error.message); return; }
     toast.success(isAr ? "تمت الموافقة" : "Approved"); onDone(); onClose();
