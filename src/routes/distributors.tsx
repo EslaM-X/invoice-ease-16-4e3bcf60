@@ -17,6 +17,7 @@ import { DistributorApprovalsCard } from "@/components/distributor-approvals-car
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
 import { DistributorBalancesCard } from "@/components/distributor-balances-card";
 import { CreateDistributorAccountButton, ResetDistributorPasswordButton } from "@/components/create-distributor-account-dialog";
+import { StockOverridesButton } from "@/components/distributor-stock-overrides-dialog";
 
 export const Route = createFileRoute("/distributors")({ component: DistributorsPage });
 
