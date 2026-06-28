@@ -92,6 +92,9 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
   const [items, setItems] = useState<Item[]>([]);
   const [discount, setDiscount] = useState("0");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState<string>("");
+  const [eventId, setEventId] = useState<string>("");
+  const [events, setEvents] = useState<Array<{ id: string; name: string; year: number | null }>>([]);
   const [working, setWorking] = useState<"approve" | "reject" | null>(null);
 
   useEffect(() => {
@@ -103,7 +106,11 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
       setInv(i);
       const { data: it } = await (supabase.from as any)("invoice_items").select("*").eq("invoice_id", id);
       setItems((it as Item[]) ?? []);
+      const { data: ev } = await (supabase.from as any)("sales_events").select("id,name,year").order("year", { ascending: false }).order("name");
+      setEvents((ev as any[]) ?? []);
       setDiscount("0"); setNotes("");
+      setCategory((i as any)?.customer_category ?? "");
+      setEventId((i as any)?.sales_event_id ?? "");
     })();
   }, [id]);
 
@@ -115,7 +122,13 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
 
   const approve = async () => {
     setWorking("approve");
-    const { error } = await (supabase.rpc as any)("approve_distributor_invoice", { _invoice_id: id, _discount_pct: pct, _notes: notes || null });
+    const { error } = await (supabase.rpc as any)("approve_distributor_invoice", {
+      _invoice_id: id,
+      _discount_pct: pct,
+      _notes: notes || null,
+      _customer_category: category || null,
+      _sales_event_id: eventId || null,
+    });
     setWorking(null);
     if (error) { toast.error(error.message); return; }
     toast.success(isAr ? "تمت الموافقة" : "Approved"); onDone(); onClose();
@@ -171,6 +184,25 @@ function ApproveDialog({ id, onClose, onDone }: { id: string | null; onClose: ()
                 <div className="flex justify-between text-xs text-muted-foreground"><span>{isAr ? "الإجمالي للعميل" : "Customer total"}</span><span className="tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span></div>
                 <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400"><span>{isAr ? "عمولة للموزّع" : "Distributor commission"}</span><span className="tabular-nums">+{fmtMoney(subtotal - finalTotal, "EGP", lang)}</span></div>
                 <div className="mt-1 flex justify-between border-t pt-1 text-sm font-bold"><span>{isAr ? "صافي للشركة" : "Net to company"}</span><span className="tabular-nums">{fmtMoney(finalTotal, "EGP", lang)}</span></div>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium">{isAr ? "تصنيف العميل" : "Customer category"}</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{isAr ? "غير مصنف" : "Uncategorized"}</option>
+                  <option value="engineer">{isAr ? "مهندس" : "Engineer"}</option>
+                  <option value="finishing_company">{isAr ? "شركة تشطيب" : "Finishing company"}</option>
+                  <option value="company">{isAr ? "شركة / مؤسسة" : "Company"}</option>
+                  <option value="end_user">{isAr ? "عميل نهائي / مستخدم" : "End user"}</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">{isAr ? "المعرض / الحدث" : "Sales event"}</label>
+                <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                  <option value="">{isAr ? "بدون" : "None"}</option>
+                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+                </select>
               </div>
             </div>
             <div>

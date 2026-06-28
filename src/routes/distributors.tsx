@@ -17,6 +17,7 @@ import { DistributorApprovalsCard } from "@/components/distributor-approvals-car
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
 import { DistributorBalancesCard } from "@/components/distributor-balances-card";
 import { CreateDistributorAccountButton, ResetDistributorPasswordButton } from "@/components/create-distributor-account-dialog";
+import { StockOverridesButton } from "@/components/distributor-stock-overrides-dialog";
 
 export const Route = createFileRoute("/distributors")({ component: DistributorsPage });
 
@@ -113,6 +114,7 @@ function DistributorsInner() {
                   <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setOpenForm(true); }}>
                     <Pencil className="me-1 h-3 w-3" /> {isAr ? "تعديل" : "Edit"}
                   </Button>
+                  <StockOverridesButton distributorId={r.id} distributorName={r.name} />
                   <ResetDistributorPasswordButton userId={r.user_id} email={r.email} />
                 </div>
                 <div className="flex items-center gap-2 text-xs">

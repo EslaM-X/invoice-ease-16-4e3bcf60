@@ -1016,6 +1016,64 @@ export type Database = {
           },
         ]
       }
+      distributor_stock_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          distributor_id: string
+          id: string
+          notes: string | null
+          product_id: string | null
+          updated_at: string
+          visible_pct: number | null
+          visible_qty: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          distributor_id: string
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          updated_at?: string
+          visible_pct?: number | null
+          visible_qty?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          distributor_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          updated_at?: string
+          visible_pct?: number | null
+          visible_qty?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_stock_overrides_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributor_balances"
+            referencedColumns: ["distributor_id"]
+          },
+          {
+            foreignKeyName: "distributor_stock_overrides_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distributor_stock_overrides_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributors: {
         Row: {
           address: string | null
@@ -3641,7 +3699,13 @@ export type Database = {
         Returns: Json
       }
       approve_distributor_invoice: {
-        Args: { _discount_pct?: number; _invoice_id: string; _notes?: string }
+        Args: {
+          _customer_category?: string
+          _discount_pct?: number
+          _invoice_id: string
+          _notes?: string
+          _sales_event_id?: string
+        }
         Returns: {
           approval_discount_pct: number
           approval_notes: string | null
