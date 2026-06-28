@@ -78,22 +78,34 @@ function Customers() {
   const save = async () => {
     if (!user) return;
     if (!form.name.trim()) return toast.error(t("required"));
+    // Normalize: empty strings → null so UUID/optional columns don't reject the insert
+    const cleaned = {
+      name: form.name.trim(),
+      phone: form.phone.trim() || null,
+      address: form.address.trim() || null,
+      category: form.category || null,
+      company_name: form.company_name.trim() || null,
+      contact_person: form.contact_person.trim() || null,
+      sales_channel: form.sales_channel || null,
+      sales_event_id: form.sales_event_id || null,
+      source_notes: form.source_notes.trim() || null,
+    };
     try {
       if (editing) {
         const r = await enqueueOrRun({
           table: "customers",
           op: "update",
           row_id: editing.id,
-          payload: form,
+          payload: cleaned,
           run: async () => {
-            const { error } = await supabase.from("customers").update(form).eq("id", editing.id);
+            const { error } = await supabase.from("customers").update(cleaned).eq("id", editing.id);
             if (error) throw error;
           },
         });
         toast.success(r.queued ? "تم الحفظ محلياً (سيُرفع عند رجوع الإنترنت)" : t("customer_saved"));
       } else {
         const newId = (typeof crypto !== "undefined" && "randomUUID" in crypto) ? crypto.randomUUID() : `${Date.now()}`;
-        const payload = { id: newId, ...form, user_id: user.id };
+        const payload = { id: newId, ...cleaned, user_id: user.id };
         const r = await enqueueOrRun({
           table: "customers",
           op: "insert",
