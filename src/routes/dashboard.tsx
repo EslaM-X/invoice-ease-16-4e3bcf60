@@ -80,13 +80,38 @@ function Dashboard() {
     const salesValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.price) || 0), 0);
     const sampleStock = ((sampleRows as any[]) ?? []).reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
     
+    // Compute true partial-delivery count from receipt items (not just delivery_status)
+    const invIds = (invs ?? []).map((i: any) => i.id);
+    const itemQtyByInv = new Map<string, number>();
+    const deliveredQtyByInv = new Map<string, number>();
+    if (invIds.length > 0) {
+      const [{ data: itemsRows }, { data: receiptRows }] = await Promise.all([
+        supabase.from("invoice_items").select("invoice_id, id, quantity").in("invoice_id", invIds),
+        (supabase as any).from("delivery_receipt_items").select("invoice_item_id, quantity"),
+      ]);
+      const itemToInv = new Map<string, string>();
+      for (const it of (itemsRows ?? []) as any[]) {
+        itemToInv.set(it.id, it.invoice_id);
+        itemQtyByInv.set(it.invoice_id, (itemQtyByInv.get(it.invoice_id) || 0) + Number(it.quantity || 0));
+      }
+      for (const dr of (receiptRows ?? []) as any[]) {
+        const invId = itemToInv.get(dr.invoice_item_id);
+        if (!invId) continue;
+        deliveredQtyByInv.set(invId, (deliveredQtyByInv.get(invId) || 0) + Number(dr.quantity || 0));
+      }
+    }
+
     let closed = 0, partial = 0, open = 0;
     (invs ?? []).forEach((i: any) => {
       const total = Number(i.total ?? 0);
       const paid = Number(i.paid_amount ?? 0);
       const fullyPaid = total > 0 && paid >= total - 0.001;
-      if (fullyPaid && i.delivery_status === "delivered") closed++;
-      else if (i.delivery_status === "partial") partial++;
+      const totalQty = itemQtyByInv.get(i.id) || 0;
+      const deliveredQty = deliveredQtyByInv.get(i.id) || 0;
+      const isFullyDelivered = i.delivery_status === "delivered" || (totalQty > 0 && deliveredQty >= totalQty);
+      const isPartial = i.delivery_status === "partial" || (totalQty > 0 && deliveredQty > 0 && deliveredQty < totalQty);
+      if (fullyPaid && isFullyDelivered) closed++;
+      else if (isPartial) partial++;
       else open++;
     });
 
