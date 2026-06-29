@@ -396,6 +396,25 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
           placeholder={isAr ? "عنوان الشحن (المحافظة، المدينة، العنوان بالتفصيل)" : "Shipping address"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={2} />
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
           placeholder={isAr ? "ملاحظات (اختياري)" : "Notes (optional)"} className="border-white/15 bg-white/5 text-white placeholder:text-white/40" rows={2} />
+        <div className="grid gap-2 border-t border-white/10 pt-3">
+          <label className="text-[10px] uppercase tracking-wider text-white/40">{isAr ? "تصنيف العميل" : "Customer category"}</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}
+            className="h-10 rounded-md border border-white/15 bg-white/5 px-3 text-sm text-white">
+            <option value="" className="bg-[#0a0a0c]">{isAr ? "غير مصنف" : "Uncategorized"}</option>
+            <option value="engineer" className="bg-[#0a0a0c]">{isAr ? "مهندس" : "Engineer"}</option>
+            <option value="finishing_company" className="bg-[#0a0a0c]">{isAr ? "شركة تشطيب" : "Finishing company"}</option>
+            <option value="company" className="bg-[#0a0a0c]">{isAr ? "شركة / مؤسسة" : "Company"}</option>
+            <option value="end_user" className="bg-[#0a0a0c]">{isAr ? "عميل نهائي" : "End user"}</option>
+          </select>
+          <label className="text-[10px] uppercase tracking-wider text-white/40">{isAr ? "المعرض / الحدث" : "Sales event"}</label>
+          <select value={eventId} onChange={(e) => setEventId(e.target.value)}
+            className="h-10 rounded-md border border-white/15 bg-white/5 px-3 text-sm text-white">
+            <option value="" className="bg-[#0a0a0c]">{isAr ? "بدون" : "None"}</option>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id} className="bg-[#0a0a0c]">{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center justify-between border-t border-white/10 pt-3">
           <span className="text-sm text-white/60">{isAr ? "الإجمالي" : "Total"}</span>
           <span className="text-xl font-bold tabular-nums">{fmtMoney(subtotal, "EGP", lang)}</span>
@@ -407,6 +426,7 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
           {submitting ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Send className="me-2 h-4 w-4" />}
           {isAr ? "إرسال للمراجعة" : "Send for approval"}
         </Button>
+
       </div>
     </div>
   );
