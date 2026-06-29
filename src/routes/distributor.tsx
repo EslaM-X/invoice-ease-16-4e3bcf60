@@ -279,7 +279,19 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
   const [customerPhone, setCustomerPhone] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState("");
+  const [eventId, setEventId] = useState("");
+  const [events, setEvents] = useState<Array<{ id: string; name: string; year: number | null }>>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase.from as any)("sales_events")
+        .select("id,name,year").eq("is_active", true)
+        .order("year", { ascending: false }).order("name");
+      setEvents((data as any[]) ?? []);
+    })();
+  }, []);
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.product.price * l.qty, 0), [cart]);
 
@@ -304,6 +316,9 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
         customer_phone: customerPhone.trim() || null,
         customer_address: shippingAddress.trim() || null,
         shipping_address: shippingAddress.trim() || null,
+        customer_category: category || null,
+        sales_channel: "distributor",
+        sales_event_id: eventId || null,
         subtotal, discount: 0, total: subtotal,
         notes: notes.trim() || null,
         status: "draft",
@@ -329,12 +344,14 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
       if (itemsErr) throw itemsErr;
       setCart([]);
       setCustomerName(""); setCustomerPhone(""); setShippingAddress(""); setNotes("");
+      setCategory(""); setEventId("");
       toast.success(isAr ? "تم إرسال الفاتورة للمراجعة" : "Invoice sent for approval");
       onSubmitted();
     } catch (e: any) {
       toast.error(e.message || "Failed");
     } finally { setSubmitting(false); }
   };
+
 
   if (cart.length === 0) {
     return (
