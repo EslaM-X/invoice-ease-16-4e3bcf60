@@ -451,19 +451,22 @@ function HistoryTab() {
   useEffect(() => { load(); }, [user?.id]);
   useRealtimeTable("invoices", () => load());
 
-  // Pull live balance (commissions earned, paid out, owed)
+  // Pull live balance (commissions earned, paid out, owed) with realtime payouts sync
   const [balance, setBalance] = useState<any>(null);
+  const [distId, setDistId] = useState<string | null>(null);
   useEffect(() => {
     if (!user) return;
-    let cancel = false;
-    (async () => {
-      const { data: dist } = await (supabase.from as any)("distributors").select("id").eq("user_id", user.id).maybeSingle();
-      if (!dist?.id) return;
-      const { data } = await (supabase.from as any)("distributor_balances").select("*").eq("distributor_id", dist.id).maybeSingle();
-      if (!cancel) setBalance(data);
-    })();
-    return () => { cancel = true; };
-  }, [user?.id, invoices.length]);
+    (supabase.from as any)("distributors").select("id").eq("user_id", user.id).maybeSingle()
+      .then(({ data }: any) => setDistId(data?.id ?? null));
+  }, [user?.id]);
+  const reloadBalance = async () => {
+    if (!distId) return;
+    const { data } = await (supabase.from as any)("distributor_balances").select("*").eq("distributor_id", distId).maybeSingle();
+    setBalance(data);
+  };
+  useEffect(() => { reloadBalance(); /* eslint-disable-next-line */ }, [distId, invoices.length]);
+  useRealtimeTable("distributor_payouts", () => reloadBalance());
+
 
   if (loading) return <div className="py-16 text-center text-white/50"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>;
 
