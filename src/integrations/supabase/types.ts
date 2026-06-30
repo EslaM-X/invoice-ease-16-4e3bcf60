@@ -3904,6 +3904,13 @@ export type Database = {
           reserved_qty: number
         }[]
       }
+      get_delivered_qty_by_product: {
+        Args: never
+        Returns: {
+          delivered_qty: number
+          product_id: string
+        }[]
+      }
       get_my_role: { Args: never; Returns: string }
       get_public_price_list: {
         Args: never

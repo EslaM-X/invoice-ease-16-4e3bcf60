@@ -84,12 +84,13 @@ function InTransitPage() {
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at,shipment_code,shipment_type").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.rpc("get_active_invoice_reservations" as any),
       supabase.rpc("get_sold_qty_by_product" as any),
       supabase.rpc("get_reserved_qty_by_product" as any),
+      supabase.rpc("get_delivered_qty_by_product" as any),
     ]);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
@@ -102,19 +103,11 @@ function InTransitPage() {
     const reservedMap: Record<string, number> = {};
     ((reservedRpc as any) ?? []).forEach((row: any) => { reservedMap[row.product_id] = Number(row.reserved_qty || 0); });
     setReservedByProductMap(reservedMap);
-
-    // Compute "delivered" per product from delivery_receipt_items, excluding cancelled receipts.
-    // This is the authoritative number of units physically handed over via signed receipts.
-    const { data: driRows } = await supabase
-      .from("delivery_receipt_items" as any)
-      .select("quantity, delivery_receipts!inner(status), invoice_items!inner(product_id)")
-      .neq("delivery_receipts.status", "cancelled");
+    // "Delivered" per product: authoritative RPC that handles historical
+    // delivery_receipt_items where invoice_item_id is NULL, by falling back
+    // to the (delivery_receipts.invoice_id, product_name) match.
     const delivMap: Record<string, number> = {};
-    ((driRows as any) ?? []).forEach((row: any) => {
-      const pid = row.invoice_items?.product_id;
-      if (!pid) return;
-      delivMap[pid] = (delivMap[pid] ?? 0) + Number(row.quantity || 0);
-    });
+    ((delivered as any) ?? []).forEach((row: any) => { delivMap[row.product_id] = Number(row.delivered_qty || 0); });
     setDeliveredByProduct(delivMap);
 
     const ids = Object.keys(posMap);
