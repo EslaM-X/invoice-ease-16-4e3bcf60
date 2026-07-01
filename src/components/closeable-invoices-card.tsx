@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Sparkles, ArrowLeft, Ship, Plane, Truck, Clock } from "lucide-react";
+import { CheckCircle2, Sparkles, ArrowLeft, Ship, Plane, Truck, Clock, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -9,6 +9,9 @@ import {
   computeSuggestions, DEFAULT_DELIVERY_MODE, INCOMING_PO_STATUSES,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
+
+type ReservedInv = { invoice_id: string; invoice_number: string; customer_name: string | null; reserved_units: number; reserved_lines: number };
+
 
 type IncomingSlot = {
   po_number: string;
