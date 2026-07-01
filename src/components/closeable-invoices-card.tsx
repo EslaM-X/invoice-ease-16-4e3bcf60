@@ -223,6 +223,5 @@ export function CloseableInvoicesCard() {
       )}
     </div>
   );
-
-  );
 }
+
