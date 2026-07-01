@@ -10,6 +10,8 @@ const ar: Dict = {
   customers: "العملاء",
   products: "المنتجات",
   in_transit: "متتبع المخزون",
+  tasks: "المهام",
+
   fulfillment: "اقتراحات الإقفال الذكية",
   inventory: "تحليل المخزون",
   stock_intake: "المخزون",
