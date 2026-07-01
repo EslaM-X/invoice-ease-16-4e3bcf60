@@ -28,6 +28,8 @@ export function CloseableInvoicesCard() {
 
   const [counts, setCounts] = useState<{ nowFull: number; incomingFull: number; total: number } | null>(null);
   const [incomingSlots, setIncomingSlots] = useState<IncomingSlot[]>([]);
+  const [reserved, setReserved] = useState<ReservedInv[]>([]);
+  const [reservedOpen, setReservedOpen] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const reloadRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   void reloadRef;
@@ -56,6 +58,14 @@ export function CloseableInvoicesCard() {
           .or("delivery_status.is.null,delivery_status.neq.delivered")
           .range(from, to),
       );
+
+      // Reserved invoices summary (authoritative, live count)
+      const { data: reservedRows } = await supabase.rpc("get_reserved_invoices_summary" as any);
+      const rr = ((reservedRows as any) ?? []).map((r: any) => ({
+        invoice_id: r.invoice_id, invoice_number: r.invoice_number, customer_name: r.customer_name,
+        reserved_units: Number(r.reserved_units || 0), reserved_lines: Number(r.reserved_lines || 0),
+      })) as ReservedInv[];
+      setReserved(rr);
 
       if (invs.length === 0) {
         setCounts({ nowFull: 0, incomingFull: 0, total: 0 });
@@ -122,7 +132,8 @@ export function CloseableInvoicesCard() {
   };
 
   useEffect(() => { if (user) void load(); }, [user?.id]);
-  useBatchedRealtimeTables(["invoices", "invoice_items", "purchase_orders"], () => load(), [user?.id]);
+  useBatchedRealtimeTables(["invoices", "invoice_items", "purchase_orders", "delivery_receipts", "delivery_receipt_items"], () => load(), [user?.id]);
+
 
   const shipIcon = (t: string | null) => t === "air" ? Plane : t === "door_to_door" ? Truck : Ship;
   const shipTone = (t: string | null) => t === "air" ? "bg-sky-500/10 text-sky-700 border-sky-500/20" : t === "door_to_door" ? "bg-violet-500/10 text-violet-700 border-violet-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20";
