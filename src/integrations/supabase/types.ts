@@ -3036,6 +3036,83 @@ export type Database = {
         }
         Relationships: []
       }
+      task_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_by: string
+          assignee_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          started_at: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by: string
+          assignee_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string
+          assignee_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_counters: {
         Row: {
           receipt_seq: number
@@ -3928,6 +4005,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_reserved_invoices_summary: {
+        Args: never
+        Returns: {
+          created_at: string
+          customer_name: string
+          invoice_id: string
+          invoice_number: string
+          reserved_lines: number
+          reserved_units: number
+        }[]
+      }
       get_reserved_qty_by_product: {
         Args: never
         Returns: {
@@ -3959,6 +4047,7 @@ export type Database = {
       is_distributor: { Args: { _user_id?: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
+      is_task_manager: { Args: never; Returns: boolean }
       list_distributor_products: {
         Args: never
         Returns: {
@@ -4282,6 +4371,8 @@ export type Database = {
         | "call_center"
         | "purchasing"
         | "cfo"
+      task_priority: "low" | "normal" | "high" | "urgent"
+      task_status: "pending" | "in_progress" | "done" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4419,6 +4510,8 @@ export const Constants = {
         "purchasing",
         "cfo",
       ],
+      task_priority: ["low", "normal", "high", "urgent"],
+      task_status: ["pending", "in_progress", "done", "cancelled"],
     },
   },
 } as const

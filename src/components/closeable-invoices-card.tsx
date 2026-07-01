@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Sparkles, ArrowLeft, Ship, Plane, Truck, Clock } from "lucide-react";
+import { CheckCircle2, Sparkles, ArrowLeft, Ship, Plane, Truck, Clock, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -9,6 +9,9 @@ import {
   computeSuggestions, DEFAULT_DELIVERY_MODE, INCOMING_PO_STATUSES,
   type FInvoice, type FInvItem, type FDeliveredRow, type FProductRow, type FPOItemRow, type FPORow,
 } from "@/lib/fulfillment-engine";
+
+type ReservedInv = { invoice_id: string; invoice_number: string; customer_name: string | null; reserved_units: number; reserved_lines: number };
+
 
 type IncomingSlot = {
   po_number: string;
@@ -25,6 +28,8 @@ export function CloseableInvoicesCard() {
 
   const [counts, setCounts] = useState<{ nowFull: number; incomingFull: number; total: number } | null>(null);
   const [incomingSlots, setIncomingSlots] = useState<IncomingSlot[]>([]);
+  const [reserved, setReserved] = useState<ReservedInv[]>([]);
+  const [reservedOpen, setReservedOpen] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const reloadRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   void reloadRef;
@@ -53,6 +58,14 @@ export function CloseableInvoicesCard() {
           .or("delivery_status.is.null,delivery_status.neq.delivered")
           .range(from, to),
       );
+
+      // Reserved invoices summary (authoritative, live count)
+      const { data: reservedRows } = await supabase.rpc("get_reserved_invoices_summary" as any);
+      const rr = ((reservedRows as any) ?? []).map((r: any) => ({
+        invoice_id: r.invoice_id, invoice_number: r.invoice_number, customer_name: r.customer_name,
+        reserved_units: Number(r.reserved_units || 0), reserved_lines: Number(r.reserved_lines || 0),
+      })) as ReservedInv[];
+      setReserved(rr);
 
       if (invs.length === 0) {
         setCounts({ nowFull: 0, incomingFull: 0, total: 0 });
@@ -119,7 +132,8 @@ export function CloseableInvoicesCard() {
   };
 
   useEffect(() => { if (user) void load(); }, [user?.id]);
-  useBatchedRealtimeTables(["invoices", "invoice_items", "purchase_orders"], () => load(), [user?.id]);
+  useBatchedRealtimeTables(["invoices", "invoice_items", "purchase_orders", "delivery_receipts", "delivery_receipt_items"], () => load(), [user?.id]);
+
 
   const shipIcon = (t: string | null) => t === "air" ? Plane : t === "door_to_door" ? Truck : Ship;
   const shipTone = (t: string | null) => t === "air" ? "bg-sky-500/10 text-sky-700 border-sky-500/20" : t === "door_to_door" ? "bg-violet-500/10 text-violet-700 border-violet-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20";
@@ -136,7 +150,7 @@ export function CloseableInvoicesCard() {
               <Sparkles className="h-3 w-3" />
               {isAr ? "اقتراحات الإقفال الذكية" : "Smart closure suggestions"}
             </div>
-            <div className="mt-2 flex gap-6">
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
               <div className="flex flex-col">
                 <span className="text-2xl font-bold tabular-nums transition-all">{isFirstLoad && !counts ? "—" : counts?.nowFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "جاهزة للإقفال الآن" : "Ready now"}</span>
@@ -145,7 +159,20 @@ export function CloseableInvoicesCard() {
                 <span className="text-2xl font-bold tabular-nums text-blue-600 transition-all">{isFirstLoad && !counts ? "—" : counts?.incomingFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "إقفال بعد الوصول" : "After arrival"}</span>
               </div>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReservedOpen(v => !v); }}
+                className="flex flex-col text-start hover:opacity-80 transition"
+              >
+                <span className="text-2xl font-bold tabular-nums text-amber-600 tabular-nums inline-flex items-center gap-1">
+                  <Lock className="h-4 w-4" />
+                  {isFirstLoad && reserved.length === 0 ? "—" : reserved.length}
+                  {reservedOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </span>
+                <span className="text-xs text-muted-foreground">{isAr ? "فواتير محجوزة" : "Reserved invoices"}</span>
+              </button>
             </div>
+
           </div>
         </div>
       </Link>
@@ -165,6 +192,36 @@ export function CloseableInvoicesCard() {
           })}
         </div>
       )}
+
+      {reservedOpen && reserved.length > 0 && (
+        <div className="rounded-xl border bg-card p-3 text-xs">
+          <div className="mb-2 flex items-center justify-between text-muted-foreground">
+            <span>{isAr ? "الفواتير المحجوزة (لحظياً)" : "Reserved invoices (live)"}</span>
+            <span className="font-bold text-amber-600">
+              {reserved.reduce((s, r) => s + r.reserved_units, 0)} {isAr ? "قطعة" : "units"}
+            </span>
+          </div>
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {reserved.map(r => (
+              <Link
+                key={r.invoice_id}
+                to="/invoices/$id"
+                params={{ id: r.invoice_id }}
+                className="flex items-center justify-between rounded-lg border bg-background px-3 py-2 hover:bg-muted transition"
+              >
+                <div className="min-w-0 truncate">
+                  <span className="font-bold">{r.invoice_number}</span>
+                  {r.customer_name && <span className="ms-2 text-muted-foreground">· {r.customer_name}</span>}
+                </div>
+                <div className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 font-bold text-amber-700">
+                  {r.reserved_units}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -30,6 +30,8 @@ type NavEntry = NavItem | NavGroup;
 
 const items: NavEntry[] = [
   { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
+  { to: "/tasks", icon: ClipboardList, key: "tasks" as const },
+
   {
     group: true,
     key: "inventory_group" as const,
