@@ -150,7 +150,7 @@ export function CloseableInvoicesCard() {
               <Sparkles className="h-3 w-3" />
               {isAr ? "اقتراحات الإقفال الذكية" : "Smart closure suggestions"}
             </div>
-            <div className="mt-2 flex gap-6">
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
               <div className="flex flex-col">
                 <span className="text-2xl font-bold tabular-nums transition-all">{isFirstLoad && !counts ? "—" : counts?.nowFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "جاهزة للإقفال الآن" : "Ready now"}</span>
@@ -159,7 +159,20 @@ export function CloseableInvoicesCard() {
                 <span className="text-2xl font-bold tabular-nums text-blue-600 transition-all">{isFirstLoad && !counts ? "—" : counts?.incomingFull ?? 0}</span>
                 <span className="text-xs text-muted-foreground">{isAr ? "إقفال بعد الوصول" : "After arrival"}</span>
               </div>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReservedOpen(v => !v); }}
+                className="flex flex-col text-start hover:opacity-80 transition"
+              >
+                <span className="text-2xl font-bold tabular-nums text-amber-600 tabular-nums inline-flex items-center gap-1">
+                  <Lock className="h-4 w-4" />
+                  {isFirstLoad && reserved.length === 0 ? "—" : reserved.length}
+                  {reservedOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </span>
+                <span className="text-xs text-muted-foreground">{isAr ? "فواتير محجوزة" : "Reserved invoices"}</span>
+              </button>
             </div>
+
           </div>
         </div>
       </Link>
