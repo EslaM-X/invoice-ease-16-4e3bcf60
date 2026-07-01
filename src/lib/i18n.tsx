@@ -324,6 +324,8 @@ const en: Dict = {
   customers: "Customers",
   products: "Products",
   in_transit: "Inventory Tracker",
+  tasks: "Tasks",
+
   fulfillment: "Smart Fulfillment",
   inventory: "Inventory Analysis",
   stock_intake: "Inventory",
