@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhatsappRouteImport } from './routes/whatsapp'
 import { Route as TrustRouteImport } from './routes/trust'
 import { Route as TeamChatRouteImport } from './routes/team-chat'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StockIntakeRouteImport } from './routes/stock-intake'
 import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -90,6 +91,11 @@ const TrustRoute = TrustRouteImport.update({
 const TeamChatRoute = TeamChatRouteImport.update({
   id: '/team-chat',
   path: '/team-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StockIntakeRoute = StockIntakeRouteImport.update({
@@ -463,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/tasks': typeof TasksRoute
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
   '/whatsapp': typeof WhatsappRoute
@@ -532,6 +539,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/tasks': typeof TasksRoute
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
   '/whatsapp': typeof WhatsappRoute
@@ -602,6 +610,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/tasks': typeof TasksRoute
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
   '/whatsapp': typeof WhatsappRoute
@@ -673,6 +682,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/tasks'
     | '/team-chat'
     | '/trust'
     | '/whatsapp'
@@ -742,6 +752,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/tasks'
     | '/team-chat'
     | '/trust'
     | '/whatsapp'
@@ -811,6 +822,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/tasks'
     | '/team-chat'
     | '/trust'
     | '/whatsapp'
@@ -881,6 +893,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
   StockIntakeRoute: typeof StockIntakeRoute
+  TasksRoute: typeof TasksRoute
   TeamChatRoute: typeof TeamChatRoute
   TrustRoute: typeof TrustRoute
   WhatsappRoute: typeof WhatsappRoute
@@ -927,6 +940,13 @@ declare module '@tanstack/react-router' {
       path: '/team-chat'
       fullPath: '/team-chat'
       preLoaderRoute: typeof TeamChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stock-intake': {
@@ -1425,6 +1445,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
   StockIntakeRoute: StockIntakeRoute,
+  TasksRoute: TasksRoute,
   TeamChatRoute: TeamChatRoute,
   TrustRoute: TrustRoute,
   WhatsappRoute: WhatsappRoute,
