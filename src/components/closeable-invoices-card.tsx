@@ -192,6 +192,37 @@ export function CloseableInvoicesCard() {
           })}
         </div>
       )}
+
+      {reservedOpen && reserved.length > 0 && (
+        <div className="rounded-xl border bg-card p-3 text-xs">
+          <div className="mb-2 flex items-center justify-between text-muted-foreground">
+            <span>{isAr ? "الفواتير المحجوزة (لحظياً)" : "Reserved invoices (live)"}</span>
+            <span className="font-bold text-amber-600">
+              {reserved.reduce((s, r) => s + r.reserved_units, 0)} {isAr ? "قطعة" : "units"}
+            </span>
+          </div>
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {reserved.map(r => (
+              <Link
+                key={r.invoice_id}
+                to="/invoices/$id"
+                params={{ id: r.invoice_id }}
+                className="flex items-center justify-between rounded-lg border bg-background px-3 py-2 hover:bg-muted transition"
+              >
+                <div className="min-w-0 truncate">
+                  <span className="font-bold">{r.invoice_number}</span>
+                  {r.customer_name && <span className="ms-2 text-muted-foreground">· {r.customer_name}</span>}
+                </div>
+                <div className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 font-bold text-amber-700">
+                  {r.reserved_units}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
+  );
+
   );
 }
