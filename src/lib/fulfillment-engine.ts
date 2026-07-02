@@ -287,6 +287,20 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
 
   const out: Suggestion[] = [];
 
+  // Mutable per-product free-stock pool. We allocate greedily so the same physical
+  // unit is never counted twice across invoices. Order: oldest → newest, then by
+  // higher invoice value, so older commitments consume free stock first — the same
+  // order used in the final sort below.
+  const freeStock = new Map<string, number>();
+  for (const [pid, p] of products) freeStock.set(pid, Math.max(0, p.stock_quantity || 0));
+
+  const rawsOrdered = [...raws].sort((a, b) => {
+    const ta = a.invoice.created_at || "9999";
+    const tb = b.invoice.created_at || "9999";
+    if (ta !== tb) return ta.localeCompare(tb);
+    return (Number(b.invoice.total) || 0) - (Number(a.invoice.total) || 0);
+  });
+
   function summarize(raw: RawNeed): Suggestion {
     const needs: Need[] = [];
     let totalStock = 0, totalIncoming = 0, totalShortfall = 0;
@@ -301,8 +315,10 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
         });
         continue;
       }
-      const stockAvail = Math.max(0, products.get(pid)?.stock_quantity || 0);
+      const stockAvail = Math.max(0, freeStock.get(pid) ?? 0);
       const fromStock = Math.min(stockAvail, n.needed);
+      // Reserve consumed stock so subsequent invoices see the reduced free pool.
+      freeStock.set(pid, stockAvail - fromStock);
       let remaining = n.needed - fromStock;
       let fromIncoming = 0;
       const incomingPOs: Need["incomingPOs"] = [];
@@ -340,7 +356,7 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     const totalCovered = totalStock + totalIncoming;
     const confidence = totalNeeded === 0 ? 100 : Math.round((totalCovered / totalNeeded) * 100);
     let tier: Tier = "blocked";
-    if (raw.fullyDelivered || totalNeeded === 0 || totalShortfall === 0 && totalIncoming === 0) tier = "now_full";
+    if (raw.fullyDelivered || totalNeeded === 0 || (totalShortfall === 0 && totalIncoming === 0)) tier = "now_full";
     else if (totalShortfall === 0) tier = "incoming_full";
     else if (totalFromStockOnly(totalStock, totalIncoming)) tier = "now_partial";
     else if (totalCovered > 0) tier = "incoming_partial";
@@ -363,7 +379,7 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
     return totalStock > 0 && totalIncoming === 0;
   }
 
-  for (const raw of raws) out.push(summarize(raw));
+  for (const raw of rawsOrdered) out.push(summarize(raw));
 
   const tierOrder: Record<Tier, number> = { now_full: 0, now_partial: 1, incoming_full: 2, incoming_partial: 3, blocked: 4 };
   out.sort((a, b) => {
@@ -375,6 +391,7 @@ export function computeSuggestions(input: EngineInput): Suggestion[] {
   });
   return out;
 }
+
 
 export function reasonLabel(code: ReasonCode, isAr: boolean): string {
   const map: Record<ReasonCode, { ar: string; en: string }> = {
