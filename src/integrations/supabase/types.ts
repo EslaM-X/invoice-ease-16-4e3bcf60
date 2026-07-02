@@ -4371,6 +4371,8 @@ export type Database = {
         | "call_center"
         | "purchasing"
         | "cfo"
+        | "task_manager"
+        | "po_deleter"
       task_priority: "low" | "normal" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "done" | "cancelled"
     }
@@ -4509,6 +4511,8 @@ export const Constants = {
         "call_center",
         "purchasing",
         "cfo",
+        "task_manager",
+        "po_deleter",
       ],
       task_priority: ["low", "normal", "high", "urgent"],
       task_status: ["pending", "in_progress", "done", "cancelled"],
