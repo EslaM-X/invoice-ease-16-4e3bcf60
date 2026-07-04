@@ -80,6 +80,10 @@ function TasksPage() {
   const [search, setSearch] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkAssignee, setBulkAssignee] = useState<string>("");
   const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string }>({
     title: "", description: "", assignee_id: "", priority: "normal", due_date: "",
   });
