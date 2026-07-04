@@ -38,6 +38,7 @@ import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as InTransitRouteImport } from './routes/in-transit'
 import { Route as FulfillmentTestsRouteImport } from './routes/fulfillment-tests'
+import { Route as FulfillmentDecisionsRouteImport } from './routes/fulfillment-decisions'
 import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit'
 import { Route as FulfillmentRouteImport } from './routes/fulfillment'
 import { Route as FinanceAuditRouteImport } from './routes/finance-audit'
@@ -222,6 +223,11 @@ const InTransitRoute = InTransitRouteImport.update({
 const FulfillmentTestsRoute = FulfillmentTestsRouteImport.update({
   id: '/fulfillment-tests',
   path: '/fulfillment-tests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FulfillmentDecisionsRoute = FulfillmentDecisionsRouteImport.update({
+  id: '/fulfillment-decisions',
+  path: '/fulfillment-decisions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FulfillmentAuditRoute = FulfillmentAuditRouteImport.update({
@@ -451,6 +457,7 @@ export interface FileRoutesByFullPath {
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
+  '/fulfillment-decisions': typeof FulfillmentDecisionsRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
@@ -522,6 +529,7 @@ export interface FileRoutesByTo {
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
+  '/fulfillment-decisions': typeof FulfillmentDecisionsRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
@@ -594,6 +602,7 @@ export interface FileRoutesById {
   '/finance-audit': typeof FinanceAuditRoute
   '/fulfillment': typeof FulfillmentRoute
   '/fulfillment-audit': typeof FulfillmentAuditRoute
+  '/fulfillment-decisions': typeof FulfillmentDecisionsRoute
   '/fulfillment-tests': typeof FulfillmentTestsRoute
   '/in-transit': typeof InTransitRoute
   '/inventory': typeof InventoryRoute
@@ -667,6 +676,7 @@ export interface FileRouteTypes {
     | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
+    | '/fulfillment-decisions'
     | '/fulfillment-tests'
     | '/in-transit'
     | '/inventory'
@@ -738,6 +748,7 @@ export interface FileRouteTypes {
     | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
+    | '/fulfillment-decisions'
     | '/fulfillment-tests'
     | '/in-transit'
     | '/inventory'
@@ -809,6 +820,7 @@ export interface FileRouteTypes {
     | '/finance-audit'
     | '/fulfillment'
     | '/fulfillment-audit'
+    | '/fulfillment-decisions'
     | '/fulfillment-tests'
     | '/in-transit'
     | '/inventory'
@@ -881,6 +893,7 @@ export interface RootRouteChildren {
   FinanceAuditRoute: typeof FinanceAuditRoute
   FulfillmentRoute: typeof FulfillmentRoute
   FulfillmentAuditRoute: typeof FulfillmentAuditRoute
+  FulfillmentDecisionsRoute: typeof FulfillmentDecisionsRoute
   FulfillmentTestsRoute: typeof FulfillmentTestsRoute
   InTransitRoute: typeof InTransitRoute
   InventoryRoute: typeof InventoryRoute
@@ -1136,6 +1149,13 @@ declare module '@tanstack/react-router' {
       path: '/fulfillment-tests'
       fullPath: '/fulfillment-tests'
       preLoaderRoute: typeof FulfillmentTestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fulfillment-decisions': {
+      id: '/fulfillment-decisions'
+      path: '/fulfillment-decisions'
+      fullPath: '/fulfillment-decisions'
+      preLoaderRoute: typeof FulfillmentDecisionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fulfillment-audit': {
@@ -1441,6 +1461,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceAuditRoute: FinanceAuditRoute,
   FulfillmentRoute: FulfillmentRoute,
   FulfillmentAuditRoute: FulfillmentAuditRoute,
+  FulfillmentDecisionsRoute: FulfillmentDecisionsRoute,
   FulfillmentTestsRoute: FulfillmentTestsRoute,
   InTransitRoute: InTransitRoute,
   InventoryRoute: InventoryRoute,

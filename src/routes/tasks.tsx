@@ -13,10 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardList, Plus, Clock, CheckCircle2, XCircle, Play, Flag, MessageSquare,
-  User as UserIcon, Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
-  X, ChevronRight, Circle, CircleDot, Timer,
+  ClipboardList, Plus, CheckCircle2, XCircle, Play, Flag, MessageSquare,
+  Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
+  X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,6 +80,10 @@ function TasksPage() {
   const [search, setSearch] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkAssignee, setBulkAssignee] = useState<string>("");
   const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string }>({
     title: "", description: "", assignee_id: "", priority: "normal", due_date: "",
   });
@@ -193,16 +198,53 @@ function TasksPage() {
     setNewComment("");
   };
 
-  // Keyboard shortcuts: j/k to move selection, o/enter to open, c to create, / to focus search, esc to close
+  // ----- Bulk actions -----
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const clearSelection = () => setSelected(new Set());
+  const selectAllVisible = () => setSelected(new Set(visible.map(t => t.id)));
+
+  const bulkUpdate = async (patch: Partial<Pick<Task, "status" | "priority" | "assignee_id">>) => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("tasks" as any).update(patch).in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? `تم تحديث ${ids.length} مهمة` : `Updated ${ids.length} tasks`);
+    clearSelection();
+  };
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(isAr ? `حذف ${selected.size} مهمة نهائياً؟` : `Delete ${selected.size} tasks?`)) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("tasks" as any).delete().in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? "تم الحذف" : "Deleted");
+    clearSelection();
+  };
+  const bulkReassign = async () => {
+    if (!bulkAssignee) return;
+    await bulkUpdate({ assignee_id: bulkAssignee });
+    setBulkAssignOpen(false);
+    setBulkAssignee("");
+  };
+
+  // Keyboard shortcuts: j/k select-nav, o open, x toggle-select, c create, / focus search, ? help, esc close
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       const inField = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable;
-      if (e.key === "Escape") { setOpenId(null); return; }
+      if (e.key === "Escape") { if (selected.size > 0) clearSelection(); else setOpenId(null); return; }
       if (inField) return;
+      if (e.key === "?") { e.preventDefault(); setHelpOpen(true); return; }
       if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); return; }
       if (e.key === "c" && isManager) { e.preventDefault(); setCreateOpen(true); return; }
+      if (e.key === "x" && openId) { e.preventDefault(); toggleSelect(openId); return; }
       if (visible.length === 0) return;
       const idx = openId ? visible.findIndex(t => t.id === openId) : -1;
       if (e.key === "j" || e.key === "ArrowDown") {
@@ -217,7 +259,7 @@ function TasksPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, openId, isManager]);
+  }, [visible, openId, isManager, selected.size]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -238,13 +280,60 @@ function TasksPage() {
             </p>
           )}
         </div>
-        {isManager && (
-          <Button onClick={() => setCreateOpen(true)} size="sm" className="shrink-0">
-            <Plus className="h-4 w-4 me-1" />
-            {isAr ? "مهمة جديدة" : "New task"}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)} title={isAr ? "الاختصارات (?)" : "Shortcuts (?)"}>
+            <Keyboard className="h-4 w-4" />
           </Button>
-        )}
+          {isManager && (
+            <Button onClick={() => setCreateOpen(true)} size="sm">
+              <Plus className="h-4 w-4 me-1" />
+              {isAr ? "مهمة جديدة" : "New task"}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card/95 backdrop-blur p-2 shadow-md">
+          <span className="text-sm font-bold px-2">
+            {isAr ? `${selected.size} مهمة محددة` : `${selected.size} selected`}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Select onValueChange={(v: TaskStatus) => bulkUpdate({ status: v })}>
+            <SelectTrigger className="h-8 w-auto min-w-[120px]"><SelectValue placeholder={isAr ? "تغيير الحالة" : "Set status"} /></SelectTrigger>
+            <SelectContent>
+              {(["pending","in_progress","done","cancelled"] as TaskStatus[]).map(s => (
+                <SelectItem key={s} value={s}>{isAr ? STATUS_META[s].ar : STATUS_META[s].en}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select onValueChange={(v: TaskPriority) => bulkUpdate({ priority: v })}>
+            <SelectTrigger className="h-8 w-auto min-w-[120px]"><SelectValue placeholder={isAr ? "تغيير الأولوية" : "Set priority"} /></SelectTrigger>
+            <SelectContent>
+              {(["urgent","high","normal","low"] as TaskPriority[]).map(p => (
+                <SelectItem key={p} value={p}>{isAr ? PRIO_META[p].ar : PRIO_META[p].en}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {isManager && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setBulkAssignOpen(true)}>
+                <UserPlus className="h-4 w-4 me-1" />
+                {isAr ? "إعادة إسناد" : "Reassign"}
+              </Button>
+              <Button size="sm" variant="destructive" onClick={bulkDelete}>
+                <Trash2 className="h-4 w-4 me-1" />
+                {isAr ? "حذف" : "Delete"}
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="ghost" onClick={clearSelection} className="ms-auto">
+            <X className="h-4 w-4 me-1" />
+            {isAr ? "إلغاء التحديد" : "Clear"}
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Sidebar */}
@@ -310,24 +399,40 @@ function TasksPage() {
 
           {/* Dense list */}
           <div className="rounded-lg border bg-card overflow-hidden">
+            {visible.length > 0 && (
+              <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-1.5 text-xs">
+                <Checkbox
+                  checked={selected.size > 0 && visible.every(t => selected.has(t.id))}
+                  onCheckedChange={(c) => c ? selectAllVisible() : clearSelection()}
+                />
+                <span className="text-muted-foreground">
+                  {isAr ? `${visible.length} مهمة` : `${visible.length} tasks`}
+                  {selected.size > 0 && <span className="ms-2 font-bold text-primary">· {selected.size} {isAr ? "محددة" : "selected"}</span>}
+                </span>
+              </div>
+            )}
             {loading ? (
               <div className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جاري التحميل..." : "Loading..."}</div>
             ) : visible.length === 0 ? (
-              <div className="p-12 text-center text-sm text-muted-foreground">
-                <ClipboardList className="mx-auto mb-2 h-8 w-8 opacity-40" />
-                {isAr ? "لا توجد مهام" : "No tasks"}
-              </div>
+              <EmptyState view={view} isAr={isAr} isManager={isManager} onCreate={() => setCreateOpen(true)} hasFilters={!!search || prioFilter !== "all" || statusFilter !== "all"} onClearFilters={() => { setSearch(""); setPrioFilter("all"); setStatusFilter("all"); }} />
             ) : (
               <ul className="divide-y">
                 {visible.map(t => {
                   const overdue = t.due_date && t.status !== "done" && t.status !== "cancelled" && new Date(t.due_date) < new Date();
                   const assignee = profiles.byId(t.assignee_id);
                   const Icon = STATUS_META[t.status].icon;
+                  const isSelected = selected.has(t.id);
                   return (
-                    <li key={t.id}>
+                    <li key={t.id} className={`flex items-center gap-2 px-3 py-2.5 transition hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(t.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0"
+                      />
                       <button
                         onClick={() => setOpenId(t.id)}
-                        className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""}`}
+                        className="min-w-0 flex-1 flex items-center gap-3 text-start"
                       >
                         <span className={`h-2 w-2 rounded-full ${PRIO_META[t.priority].dot} shrink-0`} title={isAr ? PRIO_META[t.priority].ar : PRIO_META[t.priority].en} />
                         <Icon className={`h-4 w-4 shrink-0 ${STATUS_META[t.status].tone}`} />
@@ -496,6 +601,89 @@ function TasksPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk reassign dialog */}
+      <Dialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isAr ? `إعادة إسناد ${selected.size} مهمة` : `Reassign ${selected.size} tasks`}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">{isAr ? "المكلَّف الجديد" : "New assignee"}</label>
+            <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
+              <SelectTrigger><SelectValue placeholder={isAr ? "اختر" : "Select"} /></SelectTrigger>
+              <SelectContent>
+                {allTeam.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkAssignOpen(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
+            <Button onClick={bulkReassign} disabled={!bulkAssignee}>{isAr ? "إسناد" : "Assign"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard shortcuts help */}
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Keyboard className="h-5 w-5" />{isAr ? "اختصارات لوحة المفاتيح" : "Keyboard shortcuts"}</DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm">
+            {[
+              { k: "j / ↓", ar: "المهمة التالية", en: "Next task" },
+              { k: "k / ↑", ar: "المهمة السابقة", en: "Previous task" },
+              { k: "x", ar: "تحديد/إلغاء المهمة المفتوحة", en: "Toggle selection" },
+              { k: "/", ar: "التركيز على البحث", en: "Focus search" },
+              { k: "?", ar: "عرض هذه القائمة", en: "Show this help" },
+              { k: "Esc", ar: "إغلاق / إلغاء التحديد", en: "Close / clear selection" },
+              ...(isManager ? [{ k: "c", ar: "إنشاء مهمة", en: "Create task" }] : []),
+              { k: "⌘/Ctrl + Enter", ar: "إرسال التعليق", en: "Send comment" },
+            ].map((s, i) => (
+              <li key={i} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2">
+                <span>{isAr ? s.ar : s.en}</span>
+                <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">{s.k}</kbd>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function EmptyState({ view, isAr, isManager, onCreate, hasFilters, onClearFilters }: {
+  view: "inbox" | "done" | "sent" | "all"; isAr: boolean; isManager: boolean;
+  onCreate: () => void; hasFilters: boolean; onClearFilters: () => void;
+}) {
+  const meta: Record<string, { ar: string; en: string; sub_ar: string; sub_en: string; icon: any }> = {
+    inbox: { ar: "صندوق الوارد فارغ", en: "Inbox is empty", sub_ar: "لا توجد مهام مسندة إليك حالياً. استمتع باستراحة! ☕", sub_en: "No tasks assigned to you. Enjoy the break! ☕", icon: Inbox },
+    done:  { ar: "لا توجد مهام منجزة بعد", en: "No completed tasks yet", sub_ar: "المهام المنجزة ستظهر هنا.", sub_en: "Completed tasks will appear here.", icon: CheckCircle2 },
+    sent:  { ar: "لم تُسند أي مهمة بعد", en: "No tasks sent", sub_ar: "أنشئ مهمة جديدة لتوزيعها على الفريق.", sub_en: "Create a new task to assign to the team.", icon: SendIcon },
+    all:   { ar: "لا توجد مهام", en: "No tasks", sub_ar: "ابدأ بإنشاء أول مهمة.", sub_en: "Start by creating the first task.", icon: ClipboardList },
+  };
+  const m = meta[view];
+  const Icon = m.icon;
+  if (hasFilters) {
+    return (
+      <div className="p-12 text-center">
+        <Search className="mx-auto mb-3 h-10 w-10 opacity-40" />
+        <div className="text-sm font-medium">{isAr ? "لا توجد نتائج للفلاتر الحالية" : "No results for current filters"}</div>
+        <Button size="sm" variant="outline" className="mt-3" onClick={onClearFilters}>{isAr ? "مسح الفلاتر" : "Clear filters"}</Button>
+      </div>
+    );
+  }
+  return (
+    <div className="p-12 text-center">
+      <Icon className="mx-auto mb-3 h-12 w-12 opacity-40" />
+      <div className="text-base font-semibold">{isAr ? m.ar : m.en}</div>
+      <div className="mt-1 text-sm text-muted-foreground">{isAr ? m.sub_ar : m.sub_en}</div>
+      {isManager && (view === "sent" || view === "all") && (
+        <Button size="sm" className="mt-4" onClick={onCreate}>
+          <Plus className="h-4 w-4 me-1" />{isAr ? "مهمة جديدة" : "New task"}
+        </Button>
+      )}
     </div>
   );
 }
