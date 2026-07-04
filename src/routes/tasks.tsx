@@ -239,10 +239,12 @@ function TasksPage() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       const inField = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable;
-      if (e.key === "Escape") { setOpenId(null); return; }
+      if (e.key === "Escape") { if (selected.size > 0) clearSelection(); else setOpenId(null); return; }
       if (inField) return;
+      if (e.key === "?") { e.preventDefault(); setHelpOpen(true); return; }
       if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); return; }
       if (e.key === "c" && isManager) { e.preventDefault(); setCreateOpen(true); return; }
+      if (e.key === "x" && openId) { e.preventDefault(); toggleSelect(openId); return; }
       if (visible.length === 0) return;
       const idx = openId ? visible.findIndex(t => t.id === openId) : -1;
       if (e.key === "j" || e.key === "ArrowDown") {
