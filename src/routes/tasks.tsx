@@ -13,10 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardList, Plus, Clock, CheckCircle2, XCircle, Play, Flag, MessageSquare,
-  User as UserIcon, Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
-  X, ChevronRight, Circle, CircleDot, Timer,
+  ClipboardList, Plus, CheckCircle2, XCircle, Play, Flag, MessageSquare,
+  Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
+  X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
