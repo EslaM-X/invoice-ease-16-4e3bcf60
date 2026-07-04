@@ -601,6 +601,89 @@ function TasksPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk reassign dialog */}
+      <Dialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isAr ? `إعادة إسناد ${selected.size} مهمة` : `Reassign ${selected.size} tasks`}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">{isAr ? "المكلَّف الجديد" : "New assignee"}</label>
+            <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
+              <SelectTrigger><SelectValue placeholder={isAr ? "اختر" : "Select"} /></SelectTrigger>
+              <SelectContent>
+                {allTeam.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkAssignOpen(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
+            <Button onClick={bulkReassign} disabled={!bulkAssignee}>{isAr ? "إسناد" : "Assign"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard shortcuts help */}
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Keyboard className="h-5 w-5" />{isAr ? "اختصارات لوحة المفاتيح" : "Keyboard shortcuts"}</DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm">
+            {[
+              { k: "j / ↓", ar: "المهمة التالية", en: "Next task" },
+              { k: "k / ↑", ar: "المهمة السابقة", en: "Previous task" },
+              { k: "x", ar: "تحديد/إلغاء المهمة المفتوحة", en: "Toggle selection" },
+              { k: "/", ar: "التركيز على البحث", en: "Focus search" },
+              { k: "?", ar: "عرض هذه القائمة", en: "Show this help" },
+              { k: "Esc", ar: "إغلاق / إلغاء التحديد", en: "Close / clear selection" },
+              ...(isManager ? [{ k: "c", ar: "إنشاء مهمة", en: "Create task" }] : []),
+              { k: "⌘/Ctrl + Enter", ar: "إرسال التعليق", en: "Send comment" },
+            ].map((s, i) => (
+              <li key={i} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2">
+                <span>{isAr ? s.ar : s.en}</span>
+                <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">{s.k}</kbd>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function EmptyState({ view, isAr, isManager, onCreate, hasFilters, onClearFilters }: {
+  view: "inbox" | "done" | "sent" | "all"; isAr: boolean; isManager: boolean;
+  onCreate: () => void; hasFilters: boolean; onClearFilters: () => void;
+}) {
+  const meta: Record<string, { ar: string; en: string; sub_ar: string; sub_en: string; icon: any }> = {
+    inbox: { ar: "صندوق الوارد فارغ", en: "Inbox is empty", sub_ar: "لا توجد مهام مسندة إليك حالياً. استمتع باستراحة! ☕", sub_en: "No tasks assigned to you. Enjoy the break! ☕", icon: Inbox },
+    done:  { ar: "لا توجد مهام منجزة بعد", en: "No completed tasks yet", sub_ar: "المهام المنجزة ستظهر هنا.", sub_en: "Completed tasks will appear here.", icon: CheckCircle2 },
+    sent:  { ar: "لم تُسند أي مهمة بعد", en: "No tasks sent", sub_ar: "أنشئ مهمة جديدة لتوزيعها على الفريق.", sub_en: "Create a new task to assign to the team.", icon: SendIcon },
+    all:   { ar: "لا توجد مهام", en: "No tasks", sub_ar: "ابدأ بإنشاء أول مهمة.", sub_en: "Start by creating the first task.", icon: ClipboardList },
+  };
+  const m = meta[view];
+  const Icon = m.icon;
+  if (hasFilters) {
+    return (
+      <div className="p-12 text-center">
+        <Search className="mx-auto mb-3 h-10 w-10 opacity-40" />
+        <div className="text-sm font-medium">{isAr ? "لا توجد نتائج للفلاتر الحالية" : "No results for current filters"}</div>
+        <Button size="sm" variant="outline" className="mt-3" onClick={onClearFilters}>{isAr ? "مسح الفلاتر" : "Clear filters"}</Button>
+      </div>
+    );
+  }
+  return (
+    <div className="p-12 text-center">
+      <Icon className="mx-auto mb-3 h-12 w-12 opacity-40" />
+      <div className="text-base font-semibold">{isAr ? m.ar : m.en}</div>
+      <div className="mt-1 text-sm text-muted-foreground">{isAr ? m.sub_ar : m.sub_en}</div>
+      {isManager && (view === "sent" || view === "all") && (
+        <Button size="sm" className="mt-4" onClick={onCreate}>
+          <Plus className="h-4 w-4 me-1" />{isAr ? "مهمة جديدة" : "New task"}
+        </Button>
+      )}
     </div>
   );
 }
