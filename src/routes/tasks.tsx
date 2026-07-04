@@ -198,7 +198,42 @@ function TasksPage() {
     setNewComment("");
   };
 
-  // Keyboard shortcuts: j/k to move selection, o/enter to open, c to create, / to focus search, esc to close
+  // ----- Bulk actions -----
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const clearSelection = () => setSelected(new Set());
+  const selectAllVisible = () => setSelected(new Set(visible.map(t => t.id)));
+
+  const bulkUpdate = async (patch: Partial<Pick<Task, "status" | "priority" | "assignee_id">>) => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("tasks" as any).update(patch).in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? `تم تحديث ${ids.length} مهمة` : `Updated ${ids.length} tasks`);
+    clearSelection();
+  };
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(isAr ? `حذف ${selected.size} مهمة نهائياً؟` : `Delete ${selected.size} tasks?`)) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("tasks" as any).delete().in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? "تم الحذف" : "Deleted");
+    clearSelection();
+  };
+  const bulkReassign = async () => {
+    if (!bulkAssignee) return;
+    await bulkUpdate({ assignee_id: bulkAssignee });
+    setBulkAssignOpen(false);
+    setBulkAssignee("");
+  };
+
+  // Keyboard shortcuts: j/k select-nav, o open, x toggle-select, c create, / focus search, ? help, esc close
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
