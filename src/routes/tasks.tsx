@@ -399,24 +399,40 @@ function TasksPage() {
 
           {/* Dense list */}
           <div className="rounded-lg border bg-card overflow-hidden">
+            {visible.length > 0 && (
+              <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-1.5 text-xs">
+                <Checkbox
+                  checked={selected.size > 0 && visible.every(t => selected.has(t.id))}
+                  onCheckedChange={(c) => c ? selectAllVisible() : clearSelection()}
+                />
+                <span className="text-muted-foreground">
+                  {isAr ? `${visible.length} مهمة` : `${visible.length} tasks`}
+                  {selected.size > 0 && <span className="ms-2 font-bold text-primary">· {selected.size} {isAr ? "محددة" : "selected"}</span>}
+                </span>
+              </div>
+            )}
             {loading ? (
               <div className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جاري التحميل..." : "Loading..."}</div>
             ) : visible.length === 0 ? (
-              <div className="p-12 text-center text-sm text-muted-foreground">
-                <ClipboardList className="mx-auto mb-2 h-8 w-8 opacity-40" />
-                {isAr ? "لا توجد مهام" : "No tasks"}
-              </div>
+              <EmptyState view={view} isAr={isAr} isManager={isManager} onCreate={() => setCreateOpen(true)} hasFilters={!!search || prioFilter !== "all" || statusFilter !== "all"} onClearFilters={() => { setSearch(""); setPrioFilter("all"); setStatusFilter("all"); }} />
             ) : (
               <ul className="divide-y">
                 {visible.map(t => {
                   const overdue = t.due_date && t.status !== "done" && t.status !== "cancelled" && new Date(t.due_date) < new Date();
                   const assignee = profiles.byId(t.assignee_id);
                   const Icon = STATUS_META[t.status].icon;
+                  const isSelected = selected.has(t.id);
                   return (
-                    <li key={t.id}>
+                    <li key={t.id} className={`flex items-center gap-2 px-3 py-2.5 transition hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(t.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0"
+                      />
                       <button
                         onClick={() => setOpenId(t.id)}
-                        className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""}`}
+                        className="min-w-0 flex-1 flex items-center gap-3 text-start"
                       >
                         <span className={`h-2 w-2 rounded-full ${PRIO_META[t.priority].dot} shrink-0`} title={isAr ? PRIO_META[t.priority].ar : PRIO_META[t.priority].en} />
                         <Icon className={`h-4 w-4 shrink-0 ${STATUS_META[t.status].tone}`} />
