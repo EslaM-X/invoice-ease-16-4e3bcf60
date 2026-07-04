@@ -259,7 +259,7 @@ function TasksPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, openId, isManager]);
+  }, [visible, openId, isManager, selected.size]);
 
   return (
     <div className="flex flex-col gap-4">
