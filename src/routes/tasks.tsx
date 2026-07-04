@@ -280,13 +280,60 @@ function TasksPage() {
             </p>
           )}
         </div>
-        {isManager && (
-          <Button onClick={() => setCreateOpen(true)} size="sm" className="shrink-0">
-            <Plus className="h-4 w-4 me-1" />
-            {isAr ? "مهمة جديدة" : "New task"}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)} title={isAr ? "الاختصارات (?)" : "Shortcuts (?)"}>
+            <Keyboard className="h-4 w-4" />
           </Button>
-        )}
+          {isManager && (
+            <Button onClick={() => setCreateOpen(true)} size="sm">
+              <Plus className="h-4 w-4 me-1" />
+              {isAr ? "مهمة جديدة" : "New task"}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card/95 backdrop-blur p-2 shadow-md">
+          <span className="text-sm font-bold px-2">
+            {isAr ? `${selected.size} مهمة محددة` : `${selected.size} selected`}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Select onValueChange={(v: TaskStatus) => bulkUpdate({ status: v })}>
+            <SelectTrigger className="h-8 w-auto min-w-[120px]"><SelectValue placeholder={isAr ? "تغيير الحالة" : "Set status"} /></SelectTrigger>
+            <SelectContent>
+              {(["pending","in_progress","done","cancelled"] as TaskStatus[]).map(s => (
+                <SelectItem key={s} value={s}>{isAr ? STATUS_META[s].ar : STATUS_META[s].en}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select onValueChange={(v: TaskPriority) => bulkUpdate({ priority: v })}>
+            <SelectTrigger className="h-8 w-auto min-w-[120px]"><SelectValue placeholder={isAr ? "تغيير الأولوية" : "Set priority"} /></SelectTrigger>
+            <SelectContent>
+              {(["urgent","high","normal","low"] as TaskPriority[]).map(p => (
+                <SelectItem key={p} value={p}>{isAr ? PRIO_META[p].ar : PRIO_META[p].en}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {isManager && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setBulkAssignOpen(true)}>
+                <UserPlus className="h-4 w-4 me-1" />
+                {isAr ? "إعادة إسناد" : "Reassign"}
+              </Button>
+              <Button size="sm" variant="destructive" onClick={bulkDelete}>
+                <Trash2 className="h-4 w-4 me-1" />
+                {isAr ? "حذف" : "Delete"}
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="ghost" onClick={clearSelection} className="ms-auto">
+            <X className="h-4 w-4 me-1" />
+            {isAr ? "إلغاء التحديد" : "Clear"}
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Sidebar */}
