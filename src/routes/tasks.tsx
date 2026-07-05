@@ -285,12 +285,22 @@ function TasksPage() {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)} title={isAr ? "الاختصارات (?)" : "Shortcuts (?)"}>
-            <Keyboard className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHelpOpen(true)}
+            aria-label={isAr ? "عرض اختصارات لوحة المفاتيح" : "Show keyboard shortcuts"}
+            title={isAr ? "الاختصارات (?)" : "Shortcuts (?)"}
+          >
+            <Keyboard className="h-4 w-4" aria-hidden="true" />
           </Button>
           {isManager && (
-            <Button onClick={() => setCreateOpen(true)} size="sm">
-              <Plus className="h-4 w-4 me-1" />
+            <Button
+              onClick={() => setCreateOpen(true)}
+              size="sm"
+              aria-label={isAr ? "إنشاء مهمة جديدة" : "Create new task"}
+            >
+              <Plus className="h-4 w-4 me-1" aria-hidden="true" />
               {isAr ? "مهمة جديدة" : "New task"}
             </Button>
           )}
