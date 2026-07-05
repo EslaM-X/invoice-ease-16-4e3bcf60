@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "steinheim-suite-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Steinheim Suite"
     },
     "tools": [
@@ -62,6 +62,108 @@
               "maximum": 100
             }
           }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_task_status",
+        "title": "Update task status",
+        "description": "Update the status of a task the signed-in user can modify (assignee or task manager). Sets started_at/completed_at automatically when moving into in_progress or done/cancelled.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Task id (uuid)."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "in_progress",
+                "done",
+                "cancelled"
+              ],
+              "description": "New status."
+            }
+          },
+          "required": [
+            "task_id",
+            "status"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_task_comment",
+        "title": "Add task comment",
+        "description": "Post a comment on a task the signed-in user can access (assignee, creator, or task manager). The comment appears immediately in the Tasks UI via realtime updates.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Task id (uuid)."
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "Comment text (1-4000 chars)."
+            }
+          },
+          "required": [
+            "task_id",
+            "body"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "close_task",
+        "title": "Close task",
+        "description": "Close (mark as done) a task the signed-in user can modify. Stamps completed_at with the current time. Idempotent: closing an already-closed task just returns it. Does not modify inventory or reservations.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Task id (uuid)."
+            },
+            "resolution_note": {
+              "description": "Optional closing note. When provided, also posted as a task comment.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "task_id"
+          ]
         },
         "outputSchema": null
       }
