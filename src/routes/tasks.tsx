@@ -280,7 +280,7 @@ function TasksPage() {
           {!isManager && (
             <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
-              {isAr ? `فقط ${MANAGER_EMAIL} يمكنه إنشاء مهام جديدة` : `Only ${MANAGER_EMAIL} can create tasks`}
+              {isAr ? `منشئو المهام المصرّح لهم: ${MANAGER_EMAILS.join("، ")}` : `Task creators: ${MANAGER_EMAILS.join(", ")}`}
             </p>
           )}
         </div>
