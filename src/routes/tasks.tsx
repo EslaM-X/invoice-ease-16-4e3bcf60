@@ -25,7 +25,11 @@ export const Route = createFileRoute("/tasks")({
   component: () => <AppShell><TasksPage /></AppShell>,
 });
 
-const MANAGER_EMAIL = "k.elsharbatly@steinheim-eg.com";
+const MANAGER_EMAILS = [
+  "k.elsharbatly@steinheim-eg.com",
+  "e.hesham@steinheim-eg.com",
+  "f.hesham@steinheim-eg.com",
+] as const;
 
 type TaskStatus = "pending" | "in_progress" | "done" | "cancelled";
 type TaskPriority = "low" | "normal" | "high" | "urgent";
