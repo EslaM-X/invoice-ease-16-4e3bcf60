@@ -31,6 +31,7 @@ import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PoTrackingRouteImport } from './routes/po-tracking'
 import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
 import { Route as InventoryTraceabilityRouteImport } from './routes/inventory-traceability'
 import { Route as InventoryReconcileRouteImport } from './routes/inventory-reconcile'
@@ -69,10 +70,14 @@ import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-recei
 import { Route as DeliveryReceiptsArchiveRouteImport } from './routes/delivery-receipts.archive'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
 import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -188,6 +193,11 @@ const PoTrackingRoute = PoTrackingRouteImport.update({
 const PendingOperationsRoute = PendingOperationsRouteImport.update({
   id: '/pending-operations',
   path: '/pending-operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
@@ -380,6 +390,18 @@ const ApiXChatRoute = ApiXChatRouteImport.update({
   path: '/api/x-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -398,6 +420,17 @@ const DeliveryReceiptsIdEditRoute = DeliveryReceiptsIdEditRouteImport.update({
 const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
   id: '/api/public/push-dispatch',
   path: '/api/public/push-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LovableEmailTransactionalSendRoute =
@@ -465,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/inventory-reconcile': typeof InventoryReconcileRoute
   '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
+  '/mcp': typeof McpRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
@@ -487,6 +521,8 @@ export interface FileRoutesByFullPath {
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
   '/whatsapp': typeof WhatsappRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -498,6 +534,8 @@ export interface FileRoutesByFullPath {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
@@ -537,6 +575,7 @@ export interface FileRoutesByTo {
   '/inventory-reconcile': typeof InventoryReconcileRoute
   '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
+  '/mcp': typeof McpRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
@@ -559,6 +598,8 @@ export interface FileRoutesByTo {
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
   '/whatsapp': typeof WhatsappRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -570,6 +611,8 @@ export interface FileRoutesByTo {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts': typeof DeliveryReceiptsIndexRoute
   '/invoices': typeof InvoicesIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
@@ -610,6 +653,7 @@ export interface FileRoutesById {
   '/inventory-reconcile': typeof InventoryReconcileRoute
   '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
+  '/mcp': typeof McpRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
@@ -632,6 +676,8 @@ export interface FileRoutesById {
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
   '/whatsapp': typeof WhatsappRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -643,6 +689,8 @@ export interface FileRoutesById {
   '/invoices/new': typeof InvoicesNewRoute
   '/delivery-receipts/': typeof DeliveryReceiptsIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/delivery-receipts_/$id/edit': typeof DeliveryReceiptsIdEditRoute
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
@@ -684,6 +732,7 @@ export interface FileRouteTypes {
     | '/inventory-reconcile'
     | '/inventory-traceability'
     | '/invoices-system-notes'
+    | '/mcp'
     | '/pending-operations'
     | '/po-tracking'
     | '/products'
@@ -706,6 +755,8 @@ export interface FileRouteTypes {
     | '/team-chat'
     | '/trust'
     | '/whatsapp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -717,6 +768,8 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/public/push-dispatch'
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
@@ -756,6 +809,7 @@ export interface FileRouteTypes {
     | '/inventory-reconcile'
     | '/inventory-traceability'
     | '/invoices-system-notes'
+    | '/mcp'
     | '/pending-operations'
     | '/po-tracking'
     | '/products'
@@ -778,6 +832,8 @@ export interface FileRouteTypes {
     | '/team-chat'
     | '/trust'
     | '/whatsapp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -789,6 +845,8 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts'
     | '/invoices'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/public/push-dispatch'
     | '/delivery-receipts/$id/edit'
     | '/invoices/$id/edit'
@@ -828,6 +886,7 @@ export interface FileRouteTypes {
     | '/inventory-reconcile'
     | '/inventory-traceability'
     | '/invoices-system-notes'
+    | '/mcp'
     | '/pending-operations'
     | '/po-tracking'
     | '/products'
@@ -850,6 +909,8 @@ export interface FileRouteTypes {
     | '/team-chat'
     | '/trust'
     | '/whatsapp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -861,6 +922,8 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/delivery-receipts/'
     | '/invoices/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/public/push-dispatch'
     | '/delivery-receipts_/$id/edit'
     | '/invoices_/$id/edit'
@@ -901,6 +964,7 @@ export interface RootRouteChildren {
   InventoryReconcileRoute: typeof InventoryReconcileRoute
   InventoryTraceabilityRoute: typeof InventoryTraceabilityRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
+  McpRoute: typeof McpRoute
   PendingOperationsRoute: typeof PendingOperationsRoute
   PoTrackingRoute: typeof PoTrackingRoute
   ProductsRoute: typeof ProductsRoute
@@ -923,6 +987,8 @@ export interface RootRouteChildren {
   TeamChatRoute: typeof TeamChatRoute
   TrustRoute: typeof TrustRoute
   WhatsappRoute: typeof WhatsappRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiXChatRoute: typeof ApiXChatRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsArchiveRoute: typeof DeliveryReceiptsArchiveRoute
@@ -934,6 +1000,8 @@ export interface RootRouteChildren {
   InvoicesNewRoute: typeof InvoicesNewRoute
   DeliveryReceiptsIndexRoute: typeof DeliveryReceiptsIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
   DeliveryReceiptsIdEditRoute: typeof DeliveryReceiptsIdEditRoute
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
@@ -1100,6 +1168,13 @@ declare module '@tanstack/react-router' {
       path: '/pending-operations'
       fullPath: '/pending-operations'
       preLoaderRoute: typeof PendingOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices-system-notes': {
@@ -1368,6 +1443,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiXChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -1394,6 +1483,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/push-dispatch'
       fullPath: '/api/public/push-dispatch'
       preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/transactional/send': {
@@ -1469,6 +1572,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryReconcileRoute: InventoryReconcileRoute,
   InventoryTraceabilityRoute: InventoryTraceabilityRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
+  McpRoute: McpRoute,
   PendingOperationsRoute: PendingOperationsRoute,
   PoTrackingRoute: PoTrackingRoute,
   ProductsRoute: ProductsRoute,
@@ -1491,6 +1595,9 @@ const rootRouteChildren: RootRouteChildren = {
   TeamChatRoute: TeamChatRoute,
   TrustRoute: TrustRoute,
   WhatsappRoute: WhatsappRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiXChatRoute: ApiXChatRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsArchiveRoute: DeliveryReceiptsArchiveRoute,
@@ -1502,6 +1609,8 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesNewRoute: InvoicesNewRoute,
   DeliveryReceiptsIndexRoute: DeliveryReceiptsIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
   DeliveryReceiptsIdEditRoute: DeliveryReceiptsIdEditRoute,
   InvoicesIdEditRoute: InvoicesIdEditRoute,
