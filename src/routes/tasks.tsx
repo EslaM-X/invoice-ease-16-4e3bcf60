@@ -25,7 +25,11 @@ export const Route = createFileRoute("/tasks")({
   component: () => <AppShell><TasksPage /></AppShell>,
 });
 
-const MANAGER_EMAIL = "k.elsharbatly@steinheim-eg.com";
+const MANAGER_EMAILS = [
+  "k.elsharbatly@steinheim-eg.com",
+  "e.hesham@steinheim-eg.com",
+  "f.hesham@steinheim-eg.com",
+] as const;
 
 type TaskStatus = "pending" | "in_progress" | "done" | "cancelled";
 type TaskPriority = "low" | "normal" | "high" | "urgent";
@@ -65,7 +69,7 @@ function TasksPage() {
   const isAr = lang === "ar";
   const profiles = useTeamProfiles();
 
-  const isManager = (user?.email || "").toLowerCase() === MANAGER_EMAIL;
+  const isManager = MANAGER_EMAILS.includes((user?.email || "").toLowerCase() as typeof MANAGER_EMAILS[number]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -276,17 +280,27 @@ function TasksPage() {
           {!isManager && (
             <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
-              {isAr ? `فقط ${MANAGER_EMAIL} يمكنه إنشاء مهام جديدة` : `Only ${MANAGER_EMAIL} can create tasks`}
+              {isAr ? `منشئو المهام المصرّح لهم: ${MANAGER_EMAILS.join("، ")}` : `Task creators: ${MANAGER_EMAILS.join(", ")}`}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)} title={isAr ? "الاختصارات (?)" : "Shortcuts (?)"}>
-            <Keyboard className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHelpOpen(true)}
+            aria-label={isAr ? "عرض اختصارات لوحة المفاتيح" : "Show keyboard shortcuts"}
+            title={isAr ? "الاختصارات (?)" : "Shortcuts (?)"}
+          >
+            <Keyboard className="h-4 w-4" aria-hidden="true" />
           </Button>
           {isManager && (
-            <Button onClick={() => setCreateOpen(true)} size="sm">
-              <Plus className="h-4 w-4 me-1" />
+            <Button
+              onClick={() => setCreateOpen(true)}
+              size="sm"
+              aria-label={isAr ? "إنشاء مهمة جديدة" : "Create new task"}
+            >
+              <Plus className="h-4 w-4 me-1" aria-hidden="true" />
               {isAr ? "مهمة جديدة" : "New task"}
             </Button>
           )}
@@ -295,11 +309,16 @@ function TasksPage() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card/95 backdrop-blur p-2 shadow-md">
+        <div
+          role="region"
+          aria-label={isAr ? "شريط الإجراءات الجماعية" : "Bulk actions"}
+          aria-live="polite"
+          className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card/95 backdrop-blur p-2 shadow-md"
+        >
           <span className="text-sm font-bold px-2">
             {isAr ? `${selected.size} مهمة محددة` : `${selected.size} selected`}
           </span>
-          <div className="h-4 w-px bg-border" />
+          <div className="h-4 w-px bg-border" aria-hidden="true" />
           <Select onValueChange={(v: TaskStatus) => bulkUpdate({ status: v })}>
             <SelectTrigger className="h-8 w-auto min-w-[120px]"><SelectValue placeholder={isAr ? "تغيير الحالة" : "Set status"} /></SelectTrigger>
             <SelectContent>

@@ -31,6 +31,7 @@ import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PoTrackingRouteImport } from './routes/po-tracking'
 import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
+import { Route as McpDocsRouteImport } from './routes/mcp-docs'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
 import { Route as InventoryTraceabilityRouteImport } from './routes/inventory-traceability'
@@ -193,6 +194,11 @@ const PoTrackingRoute = PoTrackingRouteImport.update({
 const PendingOperationsRoute = PendingOperationsRouteImport.update({
   id: '/pending-operations',
   path: '/pending-operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpDocsRoute = McpDocsRouteImport.update({
+  id: '/mcp-docs',
+  path: '/mcp-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -499,6 +505,7 @@ export interface FileRoutesByFullPath {
   '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/mcp': typeof McpRoute
+  '/mcp-docs': typeof McpDocsRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
@@ -576,6 +583,7 @@ export interface FileRoutesByTo {
   '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/mcp': typeof McpRoute
+  '/mcp-docs': typeof McpDocsRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
@@ -654,6 +662,7 @@ export interface FileRoutesById {
   '/inventory-traceability': typeof InventoryTraceabilityRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/mcp': typeof McpRoute
+  '/mcp-docs': typeof McpDocsRoute
   '/pending-operations': typeof PendingOperationsRoute
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
@@ -733,6 +742,7 @@ export interface FileRouteTypes {
     | '/inventory-traceability'
     | '/invoices-system-notes'
     | '/mcp'
+    | '/mcp-docs'
     | '/pending-operations'
     | '/po-tracking'
     | '/products'
@@ -810,6 +820,7 @@ export interface FileRouteTypes {
     | '/inventory-traceability'
     | '/invoices-system-notes'
     | '/mcp'
+    | '/mcp-docs'
     | '/pending-operations'
     | '/po-tracking'
     | '/products'
@@ -887,6 +898,7 @@ export interface FileRouteTypes {
     | '/inventory-traceability'
     | '/invoices-system-notes'
     | '/mcp'
+    | '/mcp-docs'
     | '/pending-operations'
     | '/po-tracking'
     | '/products'
@@ -965,6 +977,7 @@ export interface RootRouteChildren {
   InventoryTraceabilityRoute: typeof InventoryTraceabilityRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   McpRoute: typeof McpRoute
+  McpDocsRoute: typeof McpDocsRoute
   PendingOperationsRoute: typeof PendingOperationsRoute
   PoTrackingRoute: typeof PoTrackingRoute
   ProductsRoute: typeof ProductsRoute
@@ -1168,6 +1181,13 @@ declare module '@tanstack/react-router' {
       path: '/pending-operations'
       fullPath: '/pending-operations'
       preLoaderRoute: typeof PendingOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp-docs': {
+      id: '/mcp-docs'
+      path: '/mcp-docs'
+      fullPath: '/mcp-docs'
+      preLoaderRoute: typeof McpDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -1573,6 +1593,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryTraceabilityRoute: InventoryTraceabilityRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   McpRoute: McpRoute,
+  McpDocsRoute: McpDocsRoute,
   PendingOperationsRoute: PendingOperationsRoute,
   PoTrackingRoute: PoTrackingRoute,
   ProductsRoute: ProductsRoute,
