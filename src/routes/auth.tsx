@@ -136,7 +136,20 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    if (user && !enrollPromptOpen && !pauseAuthRedirect) navigate({ to: mode === "distributor" ? "/distributor" : "/dashboard" });
+    if (user && !enrollPromptOpen && !pauseAuthRedirect) {
+      // Honor ?next=/relative-path so OAuth consent (and other flows) can return the user
+      // to the page that sent them to sign in. Only allow same-origin relative paths.
+      let next: string | null = null;
+      if (typeof window !== "undefined") {
+        const raw = new URLSearchParams(window.location.search).get("next");
+        if (raw && raw.startsWith("/") && !raw.startsWith("//")) next = raw;
+      }
+      if (next) {
+        window.location.replace(next);
+        return;
+      }
+      navigate({ to: mode === "distributor" ? "/distributor" : "/dashboard" });
+    }
   }, [user, navigate, enrollPromptOpen, pauseAuthRedirect, mode]);
 
   const handleSubmit = async (e: FormEvent) => {
