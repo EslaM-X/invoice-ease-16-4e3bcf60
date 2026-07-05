@@ -69,7 +69,7 @@ function TasksPage() {
   const isAr = lang === "ar";
   const profiles = useTeamProfiles();
 
-  const isManager = (user?.email || "").toLowerCase() === MANAGER_EMAIL;
+  const isManager = MANAGER_EMAILS.includes((user?.email || "").toLowerCase() as typeof MANAGER_EMAILS[number]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
