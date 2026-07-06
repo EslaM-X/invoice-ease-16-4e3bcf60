@@ -73,14 +73,14 @@
   --border: oklch(0.9 0.008 80);
   --input: oklch(0.92 0.006 80);
   --ring: oklch(0.72 0.13 82);
-  --sidebar: oklch(0.075 0.005 60);
-  --sidebar-foreground: oklch(0.94 0.02 85);
-  --sidebar-primary: oklch(0.72 0.13 82);
+  --sidebar: oklch(0.055 0.008 60);
+  --sidebar-foreground: oklch(0.96 0.02 85);
+  --sidebar-primary: oklch(0.75 0.14 82);
   --sidebar-primary-foreground: oklch(0.075 0.005 60);
-  --sidebar-accent: oklch(0.14 0.005 60);
-  --sidebar-accent-foreground: oklch(0.94 0.02 85);
-  --sidebar-border: oklch(1 0 0 / 0.08);
-  --sidebar-ring: oklch(0.72 0.13 82);
+  --sidebar-accent: oklch(0.15 0.008 65);
+  --sidebar-accent-foreground: oklch(0.98 0.03 85);
+  --sidebar-border: oklch(1 0 0 / 0.06);
+  --sidebar-ring: oklch(0.75 0.14 82);
   /* Brand — Noir & Gold */
   --brand-ink: oklch(0.075 0.005 60);
   --brand-ink-2: oklch(0.14 0.005 60);
@@ -156,6 +156,63 @@
   --shadow-glow: 0 12px 40px -8px oklch(0.72 0.13 82 / 0.35);
   --gradient-platinum-text: linear-gradient(135deg, oklch(0.88 0.09 84) 0%, oklch(0.78 0.13 82) 50%, oklch(0.95 0.05 85) 100%);
   --gradient-hero-light: radial-gradient(ellipse 80% 60% at 50% 0%, oklch(0.18 0.02 60 / 0.9), transparent 70%), radial-gradient(circle at 20% 80%, oklch(0.72 0.13 82 / 0.12), transparent 60%);
+}
+
+/* === Sidebar noir luxury polish === */
+aside[class*="bg-sidebar"] {
+  background:
+    radial-gradient(ellipse 120% 60% at 50% 0%, oklch(0.75 0.14 82 / 0.06), transparent 60%),
+    radial-gradient(ellipse 100% 40% at 50% 100%, oklch(0.75 0.14 82 / 0.04), transparent 65%),
+    linear-gradient(180deg, oklch(0.065 0.008 60) 0%, oklch(0.045 0.008 60) 100%);
+  position: relative;
+}
+aside[class*="bg-sidebar"]::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  inset-inline-end: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, oklch(0.75 0.14 82 / 0.35), transparent);
+  pointer-events: none;
+}
+aside[class*="bg-sidebar"] a,
+aside[class*="bg-sidebar"] button {
+  transition: background-color 220ms cubic-bezier(0.32, 0.72, 0, 1),
+              color 220ms ease,
+              transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+              box-shadow 220ms ease;
+}
+aside[class*="bg-sidebar"] a:hover svg,
+aside[class*="bg-sidebar"] button:hover svg {
+  color: var(--brand-gold);
+  filter: drop-shadow(0 0 6px oklch(0.75 0.14 82 / 0.45));
+}
+aside[class*="bg-sidebar"] .bg-sidebar-accent {
+  background: linear-gradient(90deg,
+    oklch(0.75 0.14 82 / 0.12) 0%,
+    oklch(0.14 0.008 65) 30%,
+    oklch(0.14 0.008 65) 100%);
+  box-shadow: inset 0 0 0 1px oklch(0.75 0.14 82 / 0.18),
+              0 0 24px -8px oklch(0.75 0.14 82 / 0.25);
+}
+[dir="rtl"] aside[class*="bg-sidebar"] .bg-sidebar-accent {
+  background: linear-gradient(-90deg,
+    oklch(0.75 0.14 82 / 0.12) 0%,
+    oklch(0.14 0.008 65) 30%,
+    oklch(0.14 0.008 65) 100%);
+}
+aside[class*="bg-sidebar"] .bg-sidebar-primary {
+  background: linear-gradient(135deg,
+    oklch(0.85 0.11 84) 0%,
+    oklch(0.75 0.14 82) 50%,
+    oklch(0.6 0.13 78) 100%);
+  box-shadow: 0 8px 24px -8px oklch(0.75 0.14 82 / 0.5),
+              inset 0 1px 0 oklch(1 0 0 / 0.25);
+}
+aside[class*="bg-sidebar"] .bg-sidebar-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px -8px oklch(0.75 0.14 82 / 0.6),
+              inset 0 1px 0 oklch(1 0 0 / 0.3);
 }
 
 @layer base {
