@@ -3182,6 +3182,45 @@ export type Database = {
         }
         Relationships: []
       }
+      warranty_outbox_events: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivered_at: string | null
+          event: string
+          id: string
+          last_error: string | null
+          last_status: number | null
+          next_retry_at: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          event: string
+          id?: string
+          last_error?: string | null
+          last_status?: number | null
+          next_retry_at?: string
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          event?: string
+          id?: string
+          last_error?: string | null
+          last_status?: number | null
+          next_retry_at?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_conversations: {
         Row: {
           assigned_to: string | null
@@ -4360,6 +4399,10 @@ export type Database = {
         Returns: Json
       }
       void_invoice: { Args: { _invoice_id: string }; Returns: string }
+      warranty_enqueue: {
+        Args: { _event: string; _payload: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       app_platform: "android" | "ios" | "windows" | "macos" | "web"
