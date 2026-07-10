@@ -214,11 +214,45 @@ function ProfitsPage() {
     setLoading(false);
   };
 
+  const fyBounds = useMemo(() => {
+    if (fyYear === "all") return { start: null as string | null, end: null as string | null };
+    const y = Number(fyYear);
+    if (!Number.isFinite(y)) return { start: null, end: null };
+    return {
+      start: new Date(y, 0, 1).toISOString(),
+      end: new Date(y + 1, 0, 1).toISOString(),
+    };
+  }, [fyYear]);
+
+  const loadCostBook = async () => {
+    const { data, error } = await supabase.rpc("get_product_cost_book" as any, {
+      p_fy_start: fyBounds.start,
+      p_fy_end: fyBounds.end,
+    });
+    if (error) { console.warn("cost_book", error.message); return; }
+    setCostBook((data ?? { default_rate: 50, products: {} }) as CostBook);
+  };
+
+  const loadOverrides = async () => {
+    const { data } = await supabase.from("profit_cost_overrides" as any).select("product_id, cost_egp, note");
+    const map: Record<string, { cost_egp: number; note: string | null }> = {};
+    for (const r of (data ?? []) as any[]) {
+      map[r.product_id] = { cost_egp: Number(r.cost_egp) || 0, note: r.note ?? null };
+    }
+    setOverrides(map);
+  };
+
   useEffect(() => {
     if (!user) return;
     loadProducts();
     loadCustomers();
+    loadOverrides();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    loadCostBook();
+  }, [user, fyBounds.start, fyBounds.end]);
 
   useEffect(() => {
     if (!user) return;
@@ -229,6 +263,9 @@ function ProfitsPage() {
   useRealtimeTable("invoice_items", () => loadItems());
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
+  useRealtimeTable("purchase_order_items" as any, () => loadCostBook());
+  useRealtimeTable("purchase_orders" as any, () => loadCostBook());
+  useRealtimeTable("profit_cost_overrides" as any, () => loadOverrides());
 
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
