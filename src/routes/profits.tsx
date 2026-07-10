@@ -14,11 +14,40 @@ import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter } from "lucide-react";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Product } from "@/lib/data";
+import { useRole } from "@/lib/use-role";
+
+type CostSource = "wac" | "latest_po" | "current" | "override";
+
+type CostBookLot = {
+  po_id: string;
+  shipment_code: string | null;
+  shipment_date: string | null;
+  status: string;
+  qty: number;
+  unit_usd: number;
+  usd_rate: number;
+  unit_egp: number;
+  line_total_egp: number;
+};
+type CostBookEntry = {
+  total_qty: number;
+  wac_usd: number;
+  wac_egp: number;
+  min_usd: number;
+  max_usd: number;
+  latest_usd: number;
+  latest_egp: number;
+  lots: CostBookLot[];
+};
+type CostBook = {
+  default_rate: number;
+  products: Record<string, CostBookEntry>;
+};
 
 type Range = "day" | "month" | "year" | "all" | "custom";
 
