@@ -27,6 +27,7 @@ function EditInvoice() {
     discount: number;
     notes: string;
     system_notes?: string;
+    subject?: string | null;
     paid_amount?: number | null;
     delivery_status?: string | null;
     status?: string | null;
