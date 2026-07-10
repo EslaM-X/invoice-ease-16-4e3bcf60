@@ -1664,6 +1664,22 @@ function KpiCard({ icon, label, value, className }: { icon: React.ReactNode; lab
   );
 }
 
+function RowLine({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-2 ${muted ? "text-muted-foreground" : ""}`}>
+      <span>{label}</span>
+      <span className="tabular-nums font-medium">{value}</span>
+    </div>
+  );
+}
+
+function costSourceLabel(s: CostSource, t: (ar: string, en: string) => string): string {
+  if (s === "wac") return t("متوسط مرجّح", "Weighted avg");
+  if (s === "latest_po") return t("آخر PO", "Latest PO");
+  if (s === "current") return t("سعر المنتج الحالي", "Current product cost");
+  return t("تعديل يدوي", "Manual override");
+}
+
 import { ExecutiveGate } from "@/components/executive-gate";
 
 export const Route = createFileRoute("/profits")({
