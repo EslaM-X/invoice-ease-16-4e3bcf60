@@ -36,7 +36,7 @@ type Reservation = {
 };
 type InvItem = { id: string; invoice_id: string; product_id: string | null; product_name: string; quantity: number };
 type Invoice = { id: string; invoice_number: string; status: string; created_at: string; customer_name: string | null };
-type Product = { id: string; name: string };
+type Product = { id: string; name: string; serial_number?: string | null; color?: string | null; collection?: string | null; stock_quantity?: number; low_stock_threshold?: number; image_url?: string | null };
 type PO = { id: string; po_number: string; status: string };
 type DRItem = {
   id: string; receipt_id: string; invoice_item_id: string; product_name: string; quantity: number;
