@@ -112,7 +112,6 @@ export function useRealtimeTable(
       ch.subscribe((status: string) => {
         if (cancelled) return;
         if (status === "SUBSCRIBED") {
-        if (status === "SUBSCRIBED") {
           attempt = 0;
           if (backoffTimer) { clearTimeout(backoffTimer); backoffTimer = null; }
           if (hadFailure) { emit("reconnected"); hadFailure = false; }
