@@ -273,6 +273,28 @@ function ProfitsPage() {
     return m;
   }, [products]);
 
+  // Weighted-average / configurable per-product cost (EGP).
+  // Falls back gracefully so KPIs never show NaN when a source is missing.
+  const costOf = useMemo(() => {
+    return (productId: string | null | undefined): number => {
+      if (!productId) return 0;
+      // Manual override always wins if present (even in "wac" mode) — matches
+      // the "correction lane" that stakeholders control.
+      const ov = overrides[productId];
+      if (costSource === "override") return ov ? ov.cost_egp : Number(productById.get(productId)?.cost_price ?? 0);
+      if (ov) return ov.cost_egp;
+      const entry = costBook.products[productId];
+      const p = productById.get(productId);
+      const current = Number(p?.cost_price ?? 0);
+      if (!entry) return current;
+      if (costSource === "wac") return Number(entry.wac_egp) || current;
+      if (costSource === "latest_po") return Number(entry.latest_egp) || current;
+      return current; // "current"
+    };
+  }, [costBook, overrides, productById, costSource]);
+
+
+
   // Per-invoice discount-proration factor: line_total -> net revenue after
   // applying invoice-level discount, distributed proportionally across non-shipping lines.
   // factor = (invoice.total - shippingTotal) / (invoice.subtotal - shippingTotal)
