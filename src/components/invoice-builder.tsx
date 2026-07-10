@@ -1020,7 +1020,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             size="sm"
             onClick={() => {
               if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
-              setItems([]); setCustomerId(""); setDiscount(0); setNotes("");
+              setItems([]); setCustomerId(""); setDiscount(0); setNotes(""); setSubject("");
               setDraftRecovered(null);
             }}
           >
