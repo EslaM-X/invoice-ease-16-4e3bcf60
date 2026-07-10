@@ -1101,6 +1101,15 @@ function ProfitsPage() {
                                   >
                                     <Save className="h-3.5 w-3.5" />
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => openOvHistory(p)}
+                                    title={t("سجل التعديلات اليدوية", "Override history")}
+                                  >
+                                    <Clock className="h-3.5 w-3.5" />
+                                  </Button>
                                 </div>
                               ) : ov ? (
                                 <span className="tabular-nums">{fmtMoney(ov.cost_egp, "EGP", lang)}</span>
