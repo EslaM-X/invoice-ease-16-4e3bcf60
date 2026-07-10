@@ -87,7 +87,7 @@ function Traceability() {
         supabase.from("invoices").select("id,invoice_number,status,created_at,customer_name").order("created_at", { ascending: false }).limit(500),
         supabase.from("invoice_items").select("id,invoice_id,product_id,product_name,quantity"),
         supabase.from("invoice_po_reservations" as any).select("*"),
-        supabase.from("products").select("id,name"),
+        supabase.from("products").select("id,name,serial_number,color,collection,stock_quantity,low_stock_threshold,image_url"),
         supabase.from("purchase_orders").select("id,po_number,status"),
         supabase.from("delivery_receipt_items" as any).select("id,receipt_id,invoice_item_id,product_name,quantity,back_deducted_at,back_deducted_from_po"),
         supabase.from("delivery_receipts" as any).select("id,receipt_number,invoice_id,status,created_at,archived_at"),
