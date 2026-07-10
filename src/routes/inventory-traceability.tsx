@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { fmtDateTime } from "@/lib/utils-money";
 import {
   AlertTriangle, CheckCircle2, PackageCheck, Search, History, ShieldCheck,
-  BarChart3, ArrowRight, X,
+  BarChart3, ArrowRight, X, Package, ArrowDownWideNarrow, ArrowUpWideNarrow,
 } from "lucide-react";
+import { useRealtimeTable } from "@/lib/realtime";
 
 export const Route = createFileRoute("/inventory-traceability")({
   component: () => (
