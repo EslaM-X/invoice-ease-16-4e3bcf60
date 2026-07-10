@@ -265,13 +265,45 @@ function ProfitsPage() {
     loadItems();
   }, [user, range, day, month, year, from, to, customerId]);
 
-  useRealtimeTable("invoices", () => loadItems());
-  useRealtimeTable("invoice_items", () => loadItems());
+  // Batched realtime — a burst across invoices/items or across PO tables
+  // coalesces into ONE refetch instead of one per table (already 500ms debounced
+  // inside the hook). Products/customers stay separate: they change rarely.
+  useBatchedRealtimeTables(
+    ["invoices", "invoice_items"],
+    () => loadItems(),
+  );
+  useBatchedRealtimeTables(
+    ["purchase_orders", "purchase_order_items", "profit_cost_overrides"],
+    (table) => {
+      if (table === "profit_cost_overrides") loadOverrides();
+      else loadCostBook();
+    },
+  );
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
-  useRealtimeTable("purchase_order_items" as any, () => loadCostBook());
-  useRealtimeTable("purchase_orders" as any, () => loadCostBook());
-  useRealtimeTable("profit_cost_overrides" as any, () => loadOverrides());
+
+  const openOvHistory = async (p: Product) => {
+    setOvHistoryOpen(p);
+    setOvHistoryLoading(true);
+    const { data } = await supabase
+      .from("profit_cost_overrides_history" as any)
+      .select("*")
+      .eq("product_id", p.id)
+      .order("changed_at", { ascending: false })
+      .limit(100);
+    setOvHistory((data ?? []) as any[]);
+    setOvHistoryLoading(false);
+  };
+
+  const revertOvHistory = async (h: any) => {
+    setOvRevertingId(h.id);
+    const { error } = await supabase.rpc("revert_profit_cost_override" as any, { p_history_id: h.id });
+    setOvRevertingId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(lang === "ar" ? "تم الرجوع للقيمة السابقة" : "Reverted");
+    await loadOverrides();
+    if (ovHistoryOpen) await openOvHistory(ovHistoryOpen);
+  };
 
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
