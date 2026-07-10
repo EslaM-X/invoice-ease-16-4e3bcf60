@@ -672,6 +672,99 @@ function Traceability() {
             </table>
           </div>
         </TabsContent>
+
+        {/* === Stock levels tab === */}
+        <TabsContent value="stock" className="space-y-3">
+          <div className="rounded-2xl border bg-card p-3 sm:p-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={stockSearch}
+                  onChange={(e) => setStockSearch(e.target.value)}
+                  placeholder={isAr ? "بحث بالاسم أو الكود أو اللون…" : "Search by name, code or color…"}
+                  className="ps-9"
+                />
+              </div>
+              <Select value={stockOnly} onValueChange={(v) => setStockOnly(v as any)}>
+                <SelectTrigger className="w-full md:w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{isAr ? "كل المنتجات" : "All products"}</SelectItem>
+                  <SelectItem value="in">{isAr ? "متوفر" : "In stock"}</SelectItem>
+                  <SelectItem value="low">{isAr ? "منخفض" : "Low stock"}</SelectItem>
+                  <SelectItem value="out">{isAr ? "نافد" : "Out of stock"}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setStockSort(stockSort === "desc" ? "asc" : "desc")}
+                className="gap-2"
+              >
+                {stockSort === "desc" ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpWideNarrow className="h-4 w-4" />}
+                {stockSort === "desc"
+                  ? (isAr ? "أعلى كمية أولاً" : "Highest first")
+                  : (isAr ? "أقل كمية أولاً" : "Lowest first")}
+              </Button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <div className="rounded-lg border p-2"><div className="text-muted-foreground">{isAr ? "إجمالي المنتجات" : "Products"}</div><div className="text-lg font-semibold">{products.length}</div></div>
+              <div className="rounded-lg border p-2 bg-emerald-500/5"><div className="text-emerald-700">{isAr ? "متوفر" : "In stock"}</div><div className="text-lg font-semibold">{products.filter((p) => Number(p.stock_quantity ?? 0) > Number(p.low_stock_threshold ?? 0)).length}</div></div>
+              <div className="rounded-lg border p-2 bg-amber-500/5"><div className="text-amber-700">{isAr ? "منخفض" : "Low"}</div><div className="text-lg font-semibold">{products.filter((p) => { const q = Number(p.stock_quantity ?? 0); const t = Number(p.low_stock_threshold ?? 0); return q > 0 && t > 0 && q <= t; }).length}</div></div>
+              <div className="rounded-lg border p-2 bg-rose-500/5"><div className="text-rose-700">{isAr ? "نافد" : "Out"}</div><div className="text-lg font-semibold">{products.filter((p) => Number(p.stock_quantity ?? 0) <= 0).length}</div></div>
+            </div>
+
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="text-start py-2 px-2">{isAr ? "المنتج" : "Product"}</th>
+                    <th className="text-start py-2 px-2">{isAr ? "الكود" : "Code"}</th>
+                    <th className="text-end py-2 px-2">{isAr ? "الكمية" : "Qty"}</th>
+                    <th className="text-end py-2 px-2">{isAr ? "حد التنبيه" : "Threshold"}</th>
+                    <th className="text-end py-2 px-2">{isAr ? "حركة 30 يوم" : "30-day movement"}</th>
+                    <th className="text-start py-2 px-2">{isAr ? "آخر حركة" : "Last movement"}</th>
+                    <th className="text-start py-2 px-2">{isAr ? "الحالة" : "Status"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockRows.length === 0 ? (
+                    <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</td></tr>
+                  ) : stockRows.map((r) => (
+                    <tr key={r.product.id} className="border-b hover:bg-muted/40">
+                      <td className="py-2 px-2">
+                        <div className="font-medium">{r.product.name}</div>
+                        {r.product.color && <div className="text-xs text-muted-foreground">{r.product.color}</div>}
+                      </td>
+                      <td className="py-2 px-2 font-mono text-xs">{r.product.serial_number ?? "—"}</td>
+                      <td className="py-2 px-2 text-end tabular-nums font-semibold">{r.qty}</td>
+                      <td className="py-2 px-2 text-end tabular-nums text-muted-foreground">{r.threshold || "—"}</td>
+                      <td className="py-2 px-2 text-end tabular-nums">
+                        {r.moved30d > 0 ? (
+                          <span className="text-emerald-700">{r.moved30d}</span>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-xs text-muted-foreground">{r.lastMoveAt ? fmtDateTime(r.lastMoveAt, lang) : "—"}</td>
+                      <td className="py-2 px-2">
+                        {r.bucket === "out" ? (
+                          <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/30">{isAr ? "نافد" : "Out"}</Badge>
+                        ) : r.bucket === "low" ? (
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">{isAr ? "منخفض" : "Low"}</Badge>
+                        ) : r.moved30d === 0 ? (
+                          <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/30">{isAr ? "راكد" : "Stagnant"}</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">{isAr ? "متحرك" : "Moving"}</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Line details Dialog */}
