@@ -7,13 +7,19 @@ import { createClient } from "@supabase/supabase-js";
 export const Route = createFileRoute("/api/public/hooks/task-overdue-reminders")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const secret = process.env.BACKUP_WEBHOOK_SECRET;
+        const provided = request.headers.get("x-backup-secret");
+        if (!secret || !provided || provided !== secret) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
         const url = process.env.SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (!url || !key) {
           return new Response(JSON.stringify({ error: "server_env_missing" }), { status: 500 });
         }
         const admin = createClient(url, key, { auth: { persistSession: false } });
+
 
         const now = new Date();
         const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
