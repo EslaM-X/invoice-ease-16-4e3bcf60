@@ -242,6 +242,12 @@ function InvoiceView() {
           </div>
 
           <div className="mt-6 text-[13px] text-black space-y-0.5" dir={isAr ? "rtl" : "ltr"}>
+            {(inv as any).subject && (
+              <div className="mb-2 border border-gray-400 px-3 py-2 bg-gray-50">
+                <span className="font-semibold">{isAr ? "الموضوع: " : "Subject: "}</span>
+                <span>{(inv as any).subject}</span>
+              </div>
+            )}
             <div>
               {isAr ? "العميل: " : "Customer: "}
               <span className="font-semibold">{inv.customer_name || "—"}</span>
