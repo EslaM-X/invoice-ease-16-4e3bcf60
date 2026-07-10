@@ -7,14 +7,14 @@ import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useRealtimeTable, useBatchedRealtimeTables } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers } from "lucide-react";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers, ShieldCheck, Receipt, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -146,6 +146,12 @@ function ProfitsPage() {
   const [expandedCB, setExpandedCB] = useState<Record<string, boolean>>({});
   const [ovDraft, setOvDraft] = useState<Record<string, string>>({});
   const [savingOv, setSavingOv] = useState<string | null>(null);
+  const [ovHistoryOpen, setOvHistoryOpen] = useState<Product | null>(null);
+  const [ovHistory, setOvHistory] = useState<any[]>([]);
+  const [ovHistoryLoading, setOvHistoryLoading] = useState(false);
+  const [ovRevertingId, setOvRevertingId] = useState<string | null>(null);
+  const [invoiceDetailOpen, setInvoiceDetailOpen] = useState<string | null>(null);
+  const [verifyOpen, setVerifyOpen] = useState(false);
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
@@ -259,13 +265,45 @@ function ProfitsPage() {
     loadItems();
   }, [user, range, day, month, year, from, to, customerId]);
 
-  useRealtimeTable("invoices", () => loadItems());
-  useRealtimeTable("invoice_items", () => loadItems());
+  // Batched realtime — a burst across invoices/items or across PO tables
+  // coalesces into ONE refetch instead of one per table (already 500ms debounced
+  // inside the hook). Products/customers stay separate: they change rarely.
+  useBatchedRealtimeTables(
+    ["invoices", "invoice_items"],
+    () => loadItems(),
+  );
+  useBatchedRealtimeTables(
+    ["purchase_orders", "purchase_order_items", "profit_cost_overrides"],
+    (table) => {
+      if (table === "profit_cost_overrides") loadOverrides();
+      else loadCostBook();
+    },
+  );
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
-  useRealtimeTable("purchase_order_items" as any, () => loadCostBook());
-  useRealtimeTable("purchase_orders" as any, () => loadCostBook());
-  useRealtimeTable("profit_cost_overrides" as any, () => loadOverrides());
+
+  const openOvHistory = async (p: Product) => {
+    setOvHistoryOpen(p);
+    setOvHistoryLoading(true);
+    const { data } = await supabase
+      .from("profit_cost_overrides_history" as any)
+      .select("*")
+      .eq("product_id", p.id)
+      .order("changed_at", { ascending: false })
+      .limit(100);
+    setOvHistory((data ?? []) as any[]);
+    setOvHistoryLoading(false);
+  };
+
+  const revertOvHistory = async (h: any) => {
+    setOvRevertingId(h.id);
+    const { error } = await supabase.rpc("revert_profit_cost_override" as any, { p_history_id: h.id });
+    setOvRevertingId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(lang === "ar" ? "تم الرجوع للقيمة السابقة" : "Reverted");
+    await loadOverrides();
+    if (ovHistoryOpen) await openOvHistory(ovHistoryOpen);
+  };
 
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
@@ -1063,6 +1101,15 @@ function ProfitsPage() {
                                   >
                                     <Save className="h-3.5 w-3.5" />
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => openOvHistory(p)}
+                                    title={t("سجل التعديلات اليدوية", "Override history")}
+                                  >
+                                    <Clock className="h-3.5 w-3.5" />
+                                  </Button>
                                 </div>
                               ) : ov ? (
                                 <span className="tabular-nums">{fmtMoney(ov.cost_egp, "EGP", lang)}</span>
@@ -1158,6 +1205,66 @@ function ProfitsPage() {
           `Shipping/service fees (${shippingTotals.lines} line(s) across ${shippingTotals.invoices} invoice(s)) are fully excluded from Revenue and Net Profit. Voided/deleted invoices are also excluded.`
         )}
       </p>
+
+      {/* Verification / Reconciliation panel */}
+      <div className="rounded-2xl border bg-card shadow-sm">
+        <button
+          type="button"
+          onClick={() => setVerifyOpen((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 border-b hover:bg-muted/30 transition"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldCheck className={`h-4 w-4 shrink-0 ${totalsMatch?.ok ? "text-emerald-500" : "text-amber-500"}`} />
+            <h3 className="font-semibold text-sm truncate">{t("التحقق والمطابقة", "Verification & Reconciliation")}</h3>
+            <span className={`text-[10px] rounded-full border px-2 py-0.5 ${totalsMatch?.ok ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/8" : "border-amber-500/40 text-amber-700 bg-amber-500/8"}`}>
+              {totalsMatch?.ok ? t("متطابق", "In sync") : t("مراجعة", "Review")}
+            </span>
+          </div>
+          {verifyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {verifyOpen && (
+          <div className="p-3 sm:p-4 grid gap-3 md:grid-cols-2 text-xs">
+            <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+              <div className="font-semibold text-sm mb-1">{t("مطابقة إجمالي البيع", "Revenue reconciliation")}</div>
+              <RowLine label={t("إجمالي الفواتير (قبل الاستبعادات)", "Sum of invoice totals (before exclusions)")} value={fmtMoney(totalsMatch?.reportsTotal ?? 0, "EGP", lang)} />
+              <RowLine label={t("− شحن/خدمة مستبعد", "− Shipping/fees excluded")} value={`− ${fmtMoney(shippingTotals.amount, "EGP", lang)}`} muted />
+              <div className="pt-1.5 border-t flex items-center justify-between font-semibold">
+                <span>{t("= إجمالي البيع المعتمد", "= Recognised revenue")}</span>
+                <span className="tabular-nums">{fmtMoney(rows.totals.revenue, "EGP", lang)}</span>
+              </div>
+              {totalsMatch && (
+                <div className={`text-[11px] ${totalsMatch.ok ? "text-emerald-600" : "text-amber-700"}`}>
+                  {totalsMatch.ok
+                    ? t("✓ الفرق صفر — المطابقة كاملة.", "✓ Zero variance — fully reconciled.")
+                    : `${t("الفرق", "Variance")}: ${fmtMoney(totalsMatch.diff, "EGP", lang)}`}
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+              <div className="font-semibold text-sm mb-1">{t("مطابقة صافي الربح", "Net profit reconciliation")}</div>
+              <RowLine label={t("إجمالي البيع المعتمد", "Recognised revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} />
+              <RowLine label={`− ${t(`إجمالي التكلفة (مصدر: ${costSourceLabel(costSource, t)})`, `− Total cost (source: ${costSourceLabel(costSource, t)})`)}`} value={`− ${fmtMoney(rows.totals.cost, "EGP", lang)}`} muted />
+              <div className="pt-1.5 border-t flex items-center justify-between font-semibold text-emerald-600">
+                <span>= {t("صافي الربح", "Net profit")}</span>
+                <span className="tabular-nums">{fmtMoney(rows.totals.profit, "EGP", lang)}</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {t("هامش الربح", "Margin")}: {rows.totals.margin.toFixed(2)}%
+              </div>
+            </div>
+            <div className="md:col-span-2 rounded-lg border bg-muted/10 p-3 text-[11px] leading-relaxed">
+              <div className="font-semibold text-sm mb-1">{t("سبب الاستبعادات", "Why the difference")}</div>
+              <ul className="list-disc ps-4 space-y-1 text-muted-foreground">
+                <li>{t(`الفواتير الملغاة أو المسودّة لا تُحسب — يظهر في الفلتر التلقائي في استعلام البيانات.`, "Voided/draft invoices are excluded at query time.")}</li>
+                <li>{t(`رسوم الشحن/الخدمة: ${shippingTotals.lines} بند على ${shippingTotals.invoices} فاتورة (${fmtMoney(shippingTotals.amount, "EGP", lang)}).`, `Shipping/service fees: ${shippingTotals.lines} line(s) across ${shippingTotals.invoices} invoice(s) (${fmtMoney(shippingTotals.amount, "EGP", lang)}).`)}</li>
+                <li>{t("الخصم على مستوى الفاتورة يُوزَّع بالتناسب على البنود غير الشحن.", "Invoice-level discount is prorated across non-shipping lines.")}</li>
+                <li>{t(`مصدر التكلفة الفعّال: ${costSourceLabel(costSource, t)} — أي تغيير في PO أو التعديل اليدوي ينعكس لحظياً.`, `Effective cost source: ${costSourceLabel(costSource, t)} — PO or manual-override changes reflect live.`)}</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
 
       {/* Daily trend chart */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
@@ -1454,8 +1561,13 @@ function ProfitsPage() {
               {invoiceRows.length === 0 ? (
                 <tr><td colSpan={8} className="px-3 py-12 text-center text-muted-foreground text-sm">{t("لا توجد فواتير", "No invoices")}</td></tr>
               ) : invoiceRows.map((r) => (
-                <tr key={r.invoice_id} className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
-                  <td className="px-3 py-2 font-mono text-xs">{r.invoice_number}</td>
+                <tr
+                  key={r.invoice_id}
+                  onClick={() => setInvoiceDetailOpen(r.invoice_id)}
+                  className={`${r.profit >= 0 ? "" : "bg-rose-500/5"} cursor-pointer hover:bg-muted/30 transition`}
+                  title={t("عرض تفاصيل الحساب", "Show calculation details")}
+                >
+                  <td className="px-3 py-2 font-mono text-xs text-primary underline-offset-2 hover:underline">{r.invoice_number}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
                   <td className="px-3 py-2">{r.customer_name ?? "—"}</td>
                   <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.items, lang)}</td>
@@ -1536,6 +1648,168 @@ function ProfitsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Override history dialog */}
+      <Dialog open={!!ovHistoryOpen} onOpenChange={(o) => { if (!o) { setOvHistoryOpen(null); setOvHistory([]); } }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {t("سجل التعديلات اليدوية للتكلفة", "Manual cost override history")}
+              {ovHistoryOpen && <span className="block text-xs text-muted-foreground font-normal mt-1">{ovHistoryOpen.name}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {ovHistoryLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("...جاري التحميل", "Loading...")}</div>
+            ) : ovHistory.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("لا توجد تعديلات", "No changes yet")}</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 text-start">{t("الإجراء", "Action")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("من", "From")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إلى", "To")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("بواسطة", "By")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("التاريخ", "When")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إجراء", "")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {ovHistory.map((h) => (
+                    <tr key={h.id}>
+                      <td className="px-2 py-1.5">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.action === "delete" ? "bg-rose-500/15 text-rose-700" : h.action === "insert" ? "bg-emerald-500/15 text-emerald-700" : "bg-sky-500/15 text-sky-700"}`}>
+                          {h.action}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 text-end tabular-nums">{h.old_cost_egp != null ? fmtMoney(Number(h.old_cost_egp), "EGP", lang) : "—"}</td>
+                      <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{h.new_cost_egp != null ? fmtMoney(Number(h.new_cost_egp), "EGP", lang) : "—"}</td>
+                      <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
+                      <td className="px-2 py-1.5 text-end">
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={ovRevertingId === h.id}
+                            onClick={() => revertOvHistory(h)}
+                            className="h-7 px-2 text-[10px] gap-1"
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            {t("رجوع", "Revert")}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice detail dialog */}
+      <Dialog open={!!invoiceDetailOpen} onOpenChange={(o) => { if (!o) setInvoiceDetailOpen(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-primary" />
+              {t("تفاصيل حساب الفاتورة", "Invoice profit breakdown")}
+              {invoiceDetailOpen && (() => {
+                const first = items.find((it) => it.invoice_id === invoiceDetailOpen);
+                return first?.invoices ? <span className="text-xs text-muted-foreground font-mono">· {first.invoices.invoice_number}</span> : null;
+              })()}
+            </DialogTitle>
+          </DialogHeader>
+          {invoiceDetailOpen && (() => {
+            const invItems = items.filter((it) => it.invoice_id === invoiceDetailOpen);
+            const inv = invItems[0]?.invoices ?? null;
+            const factor = invoiceFactor.get(invoiceDetailOpen) ?? 1;
+            const shipLines = invItems.filter(isShippingLine);
+            const shipTotal = shipLines.reduce((s, it) => s + Number(it.line_total ?? 0), 0);
+            const prodLines = invItems.filter((it) => !isShippingLine(it));
+            let totalRev = 0, totalCost = 0;
+            const rowsX = prodLines.map((it) => {
+              const rev = netRev(it);
+              const c = costOf(it.product_id) * it.quantity;
+              totalRev += rev; totalCost += c;
+              return { it, rev, cost: c };
+            });
+            const profit = totalRev - totalCost;
+            return (
+              <div className="max-h-[70vh] overflow-y-auto space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("العميل", "Customer")}</div><div className="font-medium truncate">{inv?.customer_name ?? "—"}</div></div>
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("التاريخ", "Date")}</div><div className="font-medium">{inv?.created_at ? fmtDate(inv.created_at, lang) : "—"}</div></div>
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("الحالة", "Status")}</div><div className="font-medium">{inv?.status ?? "—"}</div></div>
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("مصدر التكلفة", "Cost source")}</div><div className="font-medium">{costSourceLabel(costSource, t)}</div></div>
+                </div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full min-w-[720px] text-xs">
+                    <thead className="bg-muted/40 text-[10px] uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-2 py-1.5 text-start">{t("المنتج", "Product")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("الكمية", "Qty")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("سعر البيع", "Sale")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("خط البيع", "Line")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("بعد الخصم", "After disc.")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("تكلفة الوحدة", "Unit cost")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("إجمالي التكلفة", "Total cost")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("الربح", "Profit")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {rowsX.map((r, i) => {
+                        const uc = costOf(r.it.product_id);
+                        const p = r.it.product_id ? productById.get(r.it.product_id) : null;
+                        return (
+                          <tr key={i} className={r.rev - r.cost >= 0 ? "" : "bg-rose-500/5"}>
+                            <td className="px-2 py-1.5">
+                              <div className="font-medium">{r.it.product_name}</div>
+                              {p && <div className="text-[10px] text-muted-foreground">{p.serial_number} · {p.color}</div>}
+                            </td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{r.it.quantity}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(r.it.unit_price), "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(r.it.line_total), "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(r.rev, "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(uc, "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</td>
+                            <td className={`px-2 py-1.5 text-end tabular-nums font-semibold ${r.rev - r.cost >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.rev - r.cost, "EGP", lang)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-muted/30 text-xs font-semibold">
+                      <tr>
+                        <td colSpan={4} className="px-2 py-1.5 text-end">{t("الإجماليات", "Totals")}</td>
+                        <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(totalRev, "EGP", lang)}</td>
+                        <td colSpan={2} className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(totalCost, "EGP", lang)}</td>
+                        <td className={`px-2 py-1.5 text-end tabular-nums ${profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(profit, "EGP", lang)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="rounded-lg border bg-muted/10 p-3 text-[11px] space-y-1">
+                  <div className="font-semibold text-xs">{t("خطوات الحساب", "Calculation steps")}</div>
+                  <RowLine label={t("مجموع الفاتورة الخام", "Raw invoice total")} value={fmtMoney(Number(inv?.total ?? 0), "EGP", lang)} />
+                  <RowLine label={t(`− شحن/خدمة (${shipLines.length} بند)`, `− Shipping/fees (${shipLines.length} line(s))`)} value={`− ${fmtMoney(shipTotal, "EGP", lang)}`} muted />
+                  <RowLine label={t(`معامل الخصم المُوَزَّع`, `Discount proration factor`)} value={factor.toFixed(4)} muted />
+                  <div className="pt-1.5 border-t"></div>
+                  <RowLine label={t("= إجمالي البيع المعتمد", "= Recognised revenue")} value={fmtMoney(totalRev, "EGP", lang)} />
+                  <RowLine label={t(`− إجمالي التكلفة (${costSourceLabel(costSource, t)})`, `− Total cost (${costSourceLabel(costSource, t)})`)} value={`− ${fmtMoney(totalCost, "EGP", lang)}`} muted />
+                  <div className={`pt-1 border-t font-semibold flex items-center justify-between ${profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    <span>= {t("صافي الربح", "Net profit")}</span>
+                    <span className="tabular-nums">{fmtMoney(profit, "EGP", lang)}</span>
+                  </div>
+                  <div className="text-muted-foreground">{t("الفواتير الملغاة/المسودّة مستبعدة كلياً من هذه الشاشة.", "Voided/draft invoices are fully excluded from this view.")}</div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1550,6 +1824,22 @@ function KpiCard({ icon, label, value, className }: { icon: React.ReactNode; lab
       <div className="mt-1.5 text-lg sm:text-xl font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );
+}
+
+function RowLine({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-2 ${muted ? "text-muted-foreground" : ""}`}>
+      <span>{label}</span>
+      <span className="tabular-nums font-medium">{value}</span>
+    </div>
+  );
+}
+
+function costSourceLabel(s: CostSource, t: (ar: string, en: string) => string): string {
+  if (s === "wac") return t("متوسط مرجّح", "Weighted avg");
+  if (s === "latest_po") return t("آخر PO", "Latest PO");
+  if (s === "current") return t("سعر المنتج الحالي", "Current product cost");
+  return t("تعديل يدوي", "Manual override");
 }
 
 import { ExecutiveGate } from "@/components/executive-gate";
