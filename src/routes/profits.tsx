@@ -1648,6 +1648,168 @@ function ProfitsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Override history dialog */}
+      <Dialog open={!!ovHistoryOpen} onOpenChange={(o) => { if (!o) { setOvHistoryOpen(null); setOvHistory([]); } }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {t("سجل التعديلات اليدوية للتكلفة", "Manual cost override history")}
+              {ovHistoryOpen && <span className="block text-xs text-muted-foreground font-normal mt-1">{ovHistoryOpen.name}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {ovHistoryLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("...جاري التحميل", "Loading...")}</div>
+            ) : ovHistory.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("لا توجد تعديلات", "No changes yet")}</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 text-start">{t("الإجراء", "Action")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("من", "From")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إلى", "To")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("بواسطة", "By")}</th>
+                    <th className="px-2 py-1.5 text-start">{t("التاريخ", "When")}</th>
+                    <th className="px-2 py-1.5 text-end">{t("إجراء", "")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {ovHistory.map((h) => (
+                    <tr key={h.id}>
+                      <td className="px-2 py-1.5">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${h.action === "delete" ? "bg-rose-500/15 text-rose-700" : h.action === "insert" ? "bg-emerald-500/15 text-emerald-700" : "bg-sky-500/15 text-sky-700"}`}>
+                          {h.action}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 text-end tabular-nums">{h.old_cost_egp != null ? fmtMoney(Number(h.old_cost_egp), "EGP", lang) : "—"}</td>
+                      <td className="px-2 py-1.5 text-end tabular-nums font-semibold">{h.new_cost_egp != null ? fmtMoney(Number(h.new_cost_egp), "EGP", lang) : "—"}</td>
+                      <td className="px-2 py-1.5 text-[11px] truncate max-w-[140px]" title={h.changed_by_email ?? ""}>{h.changed_by_email ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{new Date(h.changed_at).toLocaleString(lang === "ar" ? "ar-EG" : "en-GB")}</td>
+                      <td className="px-2 py-1.5 text-end">
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={ovRevertingId === h.id}
+                            onClick={() => revertOvHistory(h)}
+                            className="h-7 px-2 text-[10px] gap-1"
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            {t("رجوع", "Revert")}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice detail dialog */}
+      <Dialog open={!!invoiceDetailOpen} onOpenChange={(o) => { if (!o) setInvoiceDetailOpen(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-primary" />
+              {t("تفاصيل حساب الفاتورة", "Invoice profit breakdown")}
+              {invoiceDetailOpen && (() => {
+                const first = items.find((it) => it.invoice_id === invoiceDetailOpen);
+                return first?.invoices ? <span className="text-xs text-muted-foreground font-mono">· {first.invoices.invoice_number}</span> : null;
+              })()}
+            </DialogTitle>
+          </DialogHeader>
+          {invoiceDetailOpen && (() => {
+            const invItems = items.filter((it) => it.invoice_id === invoiceDetailOpen);
+            const inv = invItems[0]?.invoices ?? null;
+            const factor = invoiceFactor.get(invoiceDetailOpen) ?? 1;
+            const shipLines = invItems.filter(isShippingLine);
+            const shipTotal = shipLines.reduce((s, it) => s + Number(it.line_total ?? 0), 0);
+            const prodLines = invItems.filter((it) => !isShippingLine(it));
+            let totalRev = 0, totalCost = 0;
+            const rowsX = prodLines.map((it) => {
+              const rev = netRev(it);
+              const c = costOf(it.product_id) * it.quantity;
+              totalRev += rev; totalCost += c;
+              return { it, rev, cost: c };
+            });
+            const profit = totalRev - totalCost;
+            return (
+              <div className="max-h-[70vh] overflow-y-auto space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("العميل", "Customer")}</div><div className="font-medium truncate">{inv?.customer_name ?? "—"}</div></div>
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("التاريخ", "Date")}</div><div className="font-medium">{inv?.created_at ? fmtDate(inv.created_at, lang) : "—"}</div></div>
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("الحالة", "Status")}</div><div className="font-medium">{inv?.status ?? "—"}</div></div>
+                  <div className="rounded border p-2 bg-muted/20"><div className="text-[10px] text-muted-foreground">{t("مصدر التكلفة", "Cost source")}</div><div className="font-medium">{costSourceLabel(costSource, t)}</div></div>
+                </div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full min-w-[720px] text-xs">
+                    <thead className="bg-muted/40 text-[10px] uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-2 py-1.5 text-start">{t("المنتج", "Product")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("الكمية", "Qty")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("سعر البيع", "Sale")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("خط البيع", "Line")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("بعد الخصم", "After disc.")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("تكلفة الوحدة", "Unit cost")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("إجمالي التكلفة", "Total cost")}</th>
+                        <th className="px-2 py-1.5 text-end">{t("الربح", "Profit")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {rowsX.map((r, i) => {
+                        const uc = costOf(r.it.product_id);
+                        const p = r.it.product_id ? productById.get(r.it.product_id) : null;
+                        return (
+                          <tr key={i} className={r.rev - r.cost >= 0 ? "" : "bg-rose-500/5"}>
+                            <td className="px-2 py-1.5">
+                              <div className="font-medium">{r.it.product_name}</div>
+                              {p && <div className="text-[10px] text-muted-foreground">{p.serial_number} · {p.color}</div>}
+                            </td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{r.it.quantity}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(r.it.unit_price), "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(Number(r.it.line_total), "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(r.rev, "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(uc, "EGP", lang)}</td>
+                            <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</td>
+                            <td className={`px-2 py-1.5 text-end tabular-nums font-semibold ${r.rev - r.cost >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.rev - r.cost, "EGP", lang)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-muted/30 text-xs font-semibold">
+                      <tr>
+                        <td colSpan={4} className="px-2 py-1.5 text-end">{t("الإجماليات", "Totals")}</td>
+                        <td className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(totalRev, "EGP", lang)}</td>
+                        <td colSpan={2} className="px-2 py-1.5 text-end tabular-nums">{fmtMoney(totalCost, "EGP", lang)}</td>
+                        <td className={`px-2 py-1.5 text-end tabular-nums ${profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(profit, "EGP", lang)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="rounded-lg border bg-muted/10 p-3 text-[11px] space-y-1">
+                  <div className="font-semibold text-xs">{t("خطوات الحساب", "Calculation steps")}</div>
+                  <RowLine label={t("مجموع الفاتورة الخام", "Raw invoice total")} value={fmtMoney(Number(inv?.total ?? 0), "EGP", lang)} />
+                  <RowLine label={t(`− شحن/خدمة (${shipLines.length} بند)`, `− Shipping/fees (${shipLines.length} line(s))`)} value={`− ${fmtMoney(shipTotal, "EGP", lang)}`} muted />
+                  <RowLine label={t(`معامل الخصم المُوَزَّع`, `Discount proration factor`)} value={factor.toFixed(4)} muted />
+                  <div className="pt-1.5 border-t"></div>
+                  <RowLine label={t("= إجمالي البيع المعتمد", "= Recognised revenue")} value={fmtMoney(totalRev, "EGP", lang)} />
+                  <RowLine label={t(`− إجمالي التكلفة (${costSourceLabel(costSource, t)})`, `− Total cost (${costSourceLabel(costSource, t)})`)} value={`− ${fmtMoney(totalCost, "EGP", lang)}`} muted />
+                  <div className={`pt-1 border-t font-semibold flex items-center justify-between ${profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    <span>= {t("صافي الربح", "Net profit")}</span>
+                    <span className="tabular-nums">{fmtMoney(profit, "EGP", lang)}</span>
+                  </div>
+                  <div className="text-muted-foreground">{t("الفواتير الملغاة/المسودّة مستبعدة كلياً من هذه الشاشة.", "Voided/draft invoices are fully excluded from this view.")}</div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
