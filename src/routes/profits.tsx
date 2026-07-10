@@ -146,6 +146,12 @@ function ProfitsPage() {
   const [expandedCB, setExpandedCB] = useState<Record<string, boolean>>({});
   const [ovDraft, setOvDraft] = useState<Record<string, string>>({});
   const [savingOv, setSavingOv] = useState<string | null>(null);
+  const [ovHistoryOpen, setOvHistoryOpen] = useState<Product | null>(null);
+  const [ovHistory, setOvHistory] = useState<any[]>([]);
+  const [ovHistoryLoading, setOvHistoryLoading] = useState(false);
+  const [ovRevertingId, setOvRevertingId] = useState<string | null>(null);
+  const [invoiceDetailOpen, setInvoiceDetailOpen] = useState<string | null>(null);
+  const [verifyOpen, setVerifyOpen] = useState(false);
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
