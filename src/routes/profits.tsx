@@ -369,7 +369,7 @@ function ProfitsPage() {
     }
     for (const it of filtered) {
       const p = productById.get(it.product_id!) ?? null;
-      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const cost = costOf(it.product_id) * it.quantity;
       const rev = netRev(it);
       const cur = byProduct.get(it.product_id!) ?? { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 };
       cur.qty += it.quantity;
@@ -483,7 +483,7 @@ function ProfitsPage() {
       if (!it.product_id) continue;
       if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
       const p = productById.get(it.product_id);
-      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const cost = costOf(it.product_id) * it.quantity;
       const rev = netRev(it);
       const cur = map.get(it.invoice_id) ?? {
         invoice_id: it.invoice_id,
@@ -513,7 +513,7 @@ function ProfitsPage() {
       const day = (it.invoices?.created_at ?? "").slice(0, 10);
       if (!day) continue;
       const p = productById.get(it.product_id);
-      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const cost = costOf(it.product_id) * it.quantity;
       const rev = netRev(it);
       const cur = map.get(day) ?? { date: day, revenue: 0, cost: 0, profit: 0 };
       cur.revenue += rev; cur.cost += cost; cur.profit = cur.revenue - cur.cost;
