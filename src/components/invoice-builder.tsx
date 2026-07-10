@@ -847,7 +847,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         }
         await supabase
           .from("invoices")
-          .update({ delivery_status: delivered ? "delivered" : "pending" } as any)
+          .update({
+            delivery_status: delivered ? "delivered" : "pending",
+            subject: subject.trim() || null,
+          } as any)
           .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceId } });
