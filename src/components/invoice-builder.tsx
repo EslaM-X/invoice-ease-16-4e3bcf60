@@ -47,6 +47,7 @@ type Props = {
     discount: number;
     notes: string;
     system_notes?: string;
+    subject?: string | null;
     paid_amount?: number | null;
     delivery_status?: string | null;
     status?: string | null;
@@ -95,6 +96,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   );
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
+  const [subject, setSubject] = useState<string>(initial?.subject ?? "");
   const [systemNotes, setSystemNotes] = useState<string>(initial?.system_notes ?? "");
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
@@ -669,6 +671,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           total: totalCalc,
           notes: notes || null,
           system_notes: systemNotes || null,
+          subject: subject.trim() || null,
           paid_amount: paidMode === "custom" ? paidAmount : null,
           language: lang,
           customer_category: invoiceCategory || customer?.category || null,
@@ -710,6 +713,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         total: totalCalc,
         notes: notes || null,
         system_notes: systemNotes || null,
+        subject: subject.trim() || null,
         paid_amount: paidMode === "custom" ? paidAmount : null,
         language: lang,
         customer_category: invoiceCategory || customer?.category || null,
@@ -813,6 +817,11 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             .update({ delivery_status: "delivered" } as any)
             .eq("id", newId as string);
         }
+        // Save subject (not part of RPC signature).
+        await supabase
+          .from("invoices")
+          .update({ subject: subject.trim() || null } as any)
+          .eq("id", newId as string);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: newId as string } });
         return;
@@ -838,7 +847,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         }
         await supabase
           .from("invoices")
-          .update({ delivery_status: delivered ? "delivered" : "pending" } as any)
+          .update({
+            delivery_status: delivered ? "delivered" : "pending",
+            subject: subject.trim() || null,
+          } as any)
           .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceId } });
@@ -863,6 +875,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           await supabase
             .from("invoices")
             .update({ delivery_status: "delivered" } as any)
+            .eq("id", invoiceIdRet as string);
+        }
+        if (subject.trim()) {
+          await supabase
+            .from("invoices")
+            .update({ subject: subject.trim() } as any)
             .eq("id", invoiceIdRet as string);
         }
         if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
@@ -1002,7 +1020,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             size="sm"
             onClick={() => {
               if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
-              setItems([]); setCustomerId(""); setDiscount(0); setNotes("");
+              setItems([]); setCustomerId(""); setDiscount(0); setNotes(""); setSubject("");
               setDraftRecovered(null);
             }}
           >
@@ -1238,6 +1256,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
+            <Label>{lang === "ar" ? "موضوع الفاتورة" : "Invoice subject"}</Label>
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={lang === "ar" ? "مثال: توريد أدوات ديكور — عقد رقم 12" : "e.g. Supply of decor items — Contract #12"}
+              className="mt-1.5"
+              maxLength={200}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {lang === "ar" ? "يظهر في المعاينة والـ PDF أعلى بيانات العميل." : "Shown in the preview and PDF above the customer info."}
+            </p>
           </div>
 
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">

@@ -242,6 +242,12 @@ function InvoiceView() {
           </div>
 
           <div className="mt-6 text-[13px] text-black space-y-0.5" dir={isAr ? "rtl" : "ltr"}>
+            {(inv as any).subject && (
+              <div className="mb-2 border border-gray-400 px-3 py-2 bg-gray-50">
+                <span className="font-semibold">{isAr ? "الموضوع: " : "Subject: "}</span>
+                <span>{(inv as any).subject}</span>
+              </div>
+            )}
             <div>
               {isAr ? "العميل: " : "Customer: "}
               <span className="font-semibold">{inv.customer_name || "—"}</span>
@@ -299,14 +305,24 @@ function InvoiceView() {
                   <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "إجمالي السعر" : "Subtotal"}</td>
                   <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {Number(inv.subtotal).toFixed(2)}</td>
                 </tr>
-                <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي بعد الخصم" : "Total after Discount"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
-                </tr>
+                {Number(inv.discount) > 0 && (
+                  <>
+                    <tr>
+                      <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
+                      <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي بعد الخصم" : "Total after Discount"}</td>
+                      <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
+                    </tr>
+                  </>
+                )}
+                {Number(inv.discount) <= 0 && (
+                  <tr>
+                    <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
+                    <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
+                  </tr>
+                )}
                 {(() => {
                   const totalNum = Number(inv.total);
                   const paidNum = Number(inv.paid_amount ?? 0);
@@ -474,7 +490,9 @@ function InvoiceView() {
             </table>
             <div className="mt-4 ms-auto w-56 space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
+              {Number(inv.discount) > 0 && (
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
+              )}
               <div className="mt-1 flex justify-between border-t pt-2 text-base font-semibold">
                 <span>{t("total")}</span>
                 <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "EGP", lang)}</span>
