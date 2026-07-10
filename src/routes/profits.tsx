@@ -441,7 +441,7 @@ function ProfitsPage() {
         margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products, selectedIds, invoiceFactor]);
+  }, [items, productById, search, products, selectedIds, invoiceFactor, costOf]);
 
   const totalsMatch = useMemo(() => {
     if (selectedIds.size > 0 || search.trim()) return null;
@@ -502,7 +502,7 @@ function ProfitsPage() {
     return Array.from(map.values())
       .map((r) => ({ ...r, profit: r.revenue - r.cost, margin: r.revenue > 0 ? ((r.revenue - r.cost) / r.revenue) * 100 : 0 }))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
-  }, [items, productById, selectedIds, invoiceFactor]);
+  }, [items, productById, selectedIds, invoiceFactor, costOf]);
 
   // Daily trend (net profit per day) within selected range and product filter
   const dailyTrend = useMemo(() => {
@@ -520,7 +520,7 @@ function ProfitsPage() {
       map.set(day, cur);
     }
     return Array.from(map.values()).sort((a, b) => (a.date > b.date ? 1 : -1));
-  }, [items, productById, selectedIds, invoiceFactor]);
+  }, [items, productById, selectedIds, invoiceFactor, costOf]);
 
   const startEdit = (p: Product) => {
     setEditing((cur) => ({
