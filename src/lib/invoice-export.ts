@@ -184,9 +184,11 @@ export async function exportInvoicesBatchPDF(rows: InvoiceRow[], lang: Lang, cur
     pdf.text("Subtotal", margin + 300, y);
     pdf.text(fmtMoney(Number(inv.subtotal), currency, "en"), pageW - margin, y, { align: "right" });
     y += 16;
-    pdf.text("Discount", margin + 300, y);
-    pdf.text(`-${fmtMoney(Number(inv.discount), currency, "en")}`, pageW - margin, y, { align: "right" });
-    y += 8;
+    if (Number(inv.discount) > 0) {
+      pdf.text("Discount", margin + 300, y);
+      pdf.text(`-${fmtMoney(Number(inv.discount), currency, "en")}`, pageW - margin, y, { align: "right" });
+      y += 8;
+    }
     pdf.line(margin + 300, y, pageW - margin, y);
     y += 18;
     pdf.setFont("helvetica", "bold");
