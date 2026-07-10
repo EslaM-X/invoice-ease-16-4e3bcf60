@@ -2251,6 +2251,41 @@ export type Database = {
         }
         Relationships: []
       }
+      profit_cost_overrides: {
+        Row: {
+          cost_egp: number
+          created_at: string
+          note: string | null
+          product_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cost_egp?: number
+          created_at?: string
+          note?: string | null
+          product_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cost_egp?: number
+          created_at?: string
+          note?: string | null
+          product_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profit_cost_overrides_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           color: string | null
@@ -4028,6 +4063,10 @@ export type Database = {
         }[]
       }
       get_my_role: { Args: never; Returns: string }
+      get_product_cost_book: {
+        Args: { p_fy_end?: string; p_fy_start?: string }
+        Returns: Json
+      }
       get_public_price_list: {
         Args: never
         Returns: {
