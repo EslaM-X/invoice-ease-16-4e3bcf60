@@ -135,6 +135,18 @@ function ProfitsPage() {
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
 
+  // ---- Weighted-Average Cost engine ----
+  const { isAdmin } = useRole();
+  const [costSource, setCostSource] = useState<CostSource>("wac");
+  const [fyYear, setFyYear] = useState<string>("all"); // "all" or year like "2026"
+  const [costBook, setCostBook] = useState<CostBook>({ default_rate: 50, products: {} });
+  const [overrides, setOverrides] = useState<Record<string, { cost_egp: number; note: string | null }>>({});
+  const [costBookOpen, setCostBookOpen] = useState(false);
+  const [costBookSearch, setCostBookSearch] = useState("");
+  const [expandedCB, setExpandedCB] = useState<Record<string, boolean>>({});
+  const [ovDraft, setOvDraft] = useState<Record<string, string>>({});
+  const [savingOv, setSavingOv] = useState<string | null>(null);
+
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
       const n = new Set(cur);
