@@ -714,7 +714,9 @@ function ProfitsPage() {
               <div className="font-semibold mb-1">{t("معادلة حساب الربح", "Profit formula")}</div>
               <ul className="space-y-1 list-disc ps-4">
                 <li>{t("إجمالي البيع للمنتج = Σ (سعر الوحدة × الكمية − الخصم) لكل بند فاتورة غير ملغية.", "Revenue = Σ (unit_price × qty − discount) across non-voided invoice items.")}</li>
-                <li>{t("إجمالي التكلفة = سعر التكلفة × الكمية المباعة.", "Cost = cost_price × sold qty.")}</li>
+                <li>{t("إجمالي التكلفة = التكلفة الفعالة × الكمية المباعة. التكلفة الفعالة تُحسب حسب مصدر التكلفة المختار (WAC / آخر PO / الحالي / تعديل يدوي).", "Cost = effective_cost × sold qty. Effective cost follows the selected source (WAC / Latest PO / Current / Manual override).")}</li>
+                <li>{t("WAC = Σ(كمية × سعر EGP)/Σ(كمية) عبر كل أوامر الشراء، بتحويل USD→EGP باستخدام سعر كل PO المسجّل.", "WAC = Σ(qty × EGP)/Σ(qty) across all POs, converting USD→EGP with each PO's own recorded rate.")}</li>
+                <li>{t("التعديل اليدوي (للمشرفين) يُطبَّق فوريًا على هذه الصفحة فقط ولا يمس أسعار المنتجات ولا الفواتير ولا PO.", "Manual override (admin only) applies to this page only — never touches product prices, invoices, or POs.")}</li>
                 <li>{t("صافي الربح = إجمالي البيع − إجمالي التكلفة.", "Profit = Revenue − Cost.")}</li>
                 <li>{t("هامش % = (الربح ÷ إجمالي البيع) × 100.", "Margin % = (Profit ÷ Revenue) × 100.")}</li>
                 <li>{t("بنود مخصصة (بدون منتج) تُحتسب ضمن إجمالي البيع بتكلفة 0.", "Custom (non-product) lines are added to Revenue with zero cost.")}</li>
