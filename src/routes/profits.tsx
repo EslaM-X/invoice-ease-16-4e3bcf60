@@ -1501,8 +1501,13 @@ function ProfitsPage() {
               {invoiceRows.length === 0 ? (
                 <tr><td colSpan={8} className="px-3 py-12 text-center text-muted-foreground text-sm">{t("لا توجد فواتير", "No invoices")}</td></tr>
               ) : invoiceRows.map((r) => (
-                <tr key={r.invoice_id} className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
-                  <td className="px-3 py-2 font-mono text-xs">{r.invoice_number}</td>
+                <tr
+                  key={r.invoice_id}
+                  onClick={() => setInvoiceDetailOpen(r.invoice_id)}
+                  className={`${r.profit >= 0 ? "" : "bg-rose-500/5"} cursor-pointer hover:bg-muted/30 transition`}
+                  title={t("عرض تفاصيل الحساب", "Show calculation details")}
+                >
+                  <td className="px-3 py-2 font-mono text-xs text-primary underline-offset-2 hover:underline">{r.invoice_number}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
                   <td className="px-3 py-2">{r.customer_name ?? "—"}</td>
                   <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.items, lang)}</td>
