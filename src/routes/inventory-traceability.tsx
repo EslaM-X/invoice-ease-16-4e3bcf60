@@ -110,6 +110,23 @@ function Traceability() {
     })();
   }, []);
 
+  // Real-time stock updates for the Stock levels tab (products table).
+  useRealtimeTable("products", async () => {
+    const { data } = await supabase
+      .from("products")
+      .select("id,name,serial_number,color,collection,stock_quantity,low_stock_threshold,image_url");
+    if (data) setProducts(data as any);
+  });
+  // Realtime inventory logs keep the timeline tab live too.
+  useRealtimeTable("inventory_logs", async () => {
+    const { data } = await supabase
+      .from("inventory_logs")
+      .select("id,product_id,change,reason,invoice_id,created_at,actor_email")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (data) setLogs(data as any);
+  });
+
   const invById = useMemo(() => new Map(invoices.map((i) => [i.id, i])), [invoices]);
   const prodById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const poById = useMemo(() => new Map(pos.map((p) => [p.id, p])), [pos]);
