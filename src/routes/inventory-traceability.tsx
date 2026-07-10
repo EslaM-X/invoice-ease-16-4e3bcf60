@@ -80,6 +80,10 @@ function Traceability() {
   const [productFilter, setProductFilter] = useState("");
   const [perProdFilter, setPerProdFilter] = useState("");
   const [selected, setSelected] = useState<LineRow | null>(null);
+  // Stock levels tab
+  const [stockSearch, setStockSearch] = useState("");
+  const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
+  const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
 
   useEffect(() => {
     (async () => {
