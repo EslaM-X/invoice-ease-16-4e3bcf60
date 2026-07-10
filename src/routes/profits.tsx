@@ -14,11 +14,40 @@ import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter } from "lucide-react";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Product } from "@/lib/data";
+import { useRole } from "@/lib/use-role";
+
+type CostSource = "wac" | "latest_po" | "current" | "override";
+
+type CostBookLot = {
+  po_id: string;
+  shipment_code: string | null;
+  shipment_date: string | null;
+  status: string;
+  qty: number;
+  unit_usd: number;
+  usd_rate: number;
+  unit_egp: number;
+  line_total_egp: number;
+};
+type CostBookEntry = {
+  total_qty: number;
+  wac_usd: number;
+  wac_egp: number;
+  min_usd: number;
+  max_usd: number;
+  latest_usd: number;
+  latest_egp: number;
+  lots: CostBookLot[];
+};
+type CostBook = {
+  default_rate: number;
+  products: Record<string, CostBookEntry>;
+};
 
 type Range = "day" | "month" | "year" | "all" | "custom";
 
@@ -106,6 +135,18 @@ function ProfitsPage() {
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
 
+  // ---- Weighted-Average Cost engine ----
+  const { isAdmin } = useRole();
+  const [costSource, setCostSource] = useState<CostSource>("wac");
+  const [fyYear, setFyYear] = useState<string>("all"); // "all" or year like "2026"
+  const [costBook, setCostBook] = useState<CostBook>({ default_rate: 50, products: {} });
+  const [overrides, setOverrides] = useState<Record<string, { cost_egp: number; note: string | null }>>({});
+  const [costBookOpen, setCostBookOpen] = useState(false);
+  const [costBookSearch, setCostBookSearch] = useState("");
+  const [expandedCB, setExpandedCB] = useState<Record<string, boolean>>({});
+  const [ovDraft, setOvDraft] = useState<Record<string, string>>({});
+  const [savingOv, setSavingOv] = useState<string | null>(null);
+
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
       const n = new Set(cur);
@@ -173,11 +214,45 @@ function ProfitsPage() {
     setLoading(false);
   };
 
+  const fyBounds = useMemo(() => {
+    if (fyYear === "all") return { start: null as string | null, end: null as string | null };
+    const y = Number(fyYear);
+    if (!Number.isFinite(y)) return { start: null, end: null };
+    return {
+      start: new Date(y, 0, 1).toISOString(),
+      end: new Date(y + 1, 0, 1).toISOString(),
+    };
+  }, [fyYear]);
+
+  const loadCostBook = async () => {
+    const { data, error } = await supabase.rpc("get_product_cost_book" as any, {
+      p_fy_start: fyBounds.start,
+      p_fy_end: fyBounds.end,
+    });
+    if (error) { console.warn("cost_book", error.message); return; }
+    setCostBook((data ?? { default_rate: 50, products: {} }) as CostBook);
+  };
+
+  const loadOverrides = async () => {
+    const { data } = await supabase.from("profit_cost_overrides" as any).select("product_id, cost_egp, note");
+    const map: Record<string, { cost_egp: number; note: string | null }> = {};
+    for (const r of (data ?? []) as any[]) {
+      map[r.product_id] = { cost_egp: Number(r.cost_egp) || 0, note: r.note ?? null };
+    }
+    setOverrides(map);
+  };
+
   useEffect(() => {
     if (!user) return;
     loadProducts();
     loadCustomers();
+    loadOverrides();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    loadCostBook();
+  }, [user, fyBounds.start, fyBounds.end]);
 
   useEffect(() => {
     if (!user) return;
@@ -188,12 +263,37 @@ function ProfitsPage() {
   useRealtimeTable("invoice_items", () => loadItems());
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
+  useRealtimeTable("purchase_order_items" as any, () => loadCostBook());
+  useRealtimeTable("purchase_orders" as any, () => loadCostBook());
+  useRealtimeTable("profit_cost_overrides" as any, () => loadOverrides());
 
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
     for (const p of products) m.set(p.id, p);
     return m;
   }, [products]);
+
+  // Weighted-average / configurable per-product cost (EGP).
+  // Falls back gracefully so KPIs never show NaN when a source is missing.
+  const costOf = useMemo(() => {
+    return (productId: string | null | undefined): number => {
+      if (!productId) return 0;
+      // Manual override always wins if present (even in "wac" mode) — matches
+      // the "correction lane" that stakeholders control.
+      const ov = overrides[productId];
+      if (costSource === "override") return ov ? ov.cost_egp : Number(productById.get(productId)?.cost_price ?? 0);
+      if (ov) return ov.cost_egp;
+      const entry = costBook.products[productId];
+      const p = productById.get(productId);
+      const current = Number(p?.cost_price ?? 0);
+      if (!entry) return current;
+      if (costSource === "wac") return Number(entry.wac_egp) || current;
+      if (costSource === "latest_po") return Number(entry.latest_egp) || current;
+      return current; // "current"
+    };
+  }, [costBook, overrides, productById, costSource]);
+
+
 
   // Per-invoice discount-proration factor: line_total -> net revenue after
   // applying invoice-level discount, distributed proportionally across non-shipping lines.
@@ -269,7 +369,7 @@ function ProfitsPage() {
     }
     for (const it of filtered) {
       const p = productById.get(it.product_id!) ?? null;
-      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const cost = costOf(it.product_id) * it.quantity;
       const rev = netRev(it);
       const cur = byProduct.get(it.product_id!) ?? { product: p, qty: 0, revenue: 0, cost: 0, lines: 0 };
       cur.qty += it.quantity;
@@ -341,7 +441,7 @@ function ProfitsPage() {
         margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products, selectedIds, invoiceFactor]);
+  }, [items, productById, search, products, selectedIds, invoiceFactor, costOf]);
 
   const totalsMatch = useMemo(() => {
     if (selectedIds.size > 0 || search.trim()) return null;
@@ -383,7 +483,7 @@ function ProfitsPage() {
       if (!it.product_id) continue;
       if (selectedIds.size > 0 && !selectedIds.has(it.product_id)) continue;
       const p = productById.get(it.product_id);
-      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const cost = costOf(it.product_id) * it.quantity;
       const rev = netRev(it);
       const cur = map.get(it.invoice_id) ?? {
         invoice_id: it.invoice_id,
@@ -402,7 +502,7 @@ function ProfitsPage() {
     return Array.from(map.values())
       .map((r) => ({ ...r, profit: r.revenue - r.cost, margin: r.revenue > 0 ? ((r.revenue - r.cost) / r.revenue) * 100 : 0 }))
       .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
-  }, [items, productById, selectedIds, invoiceFactor]);
+  }, [items, productById, selectedIds, invoiceFactor, costOf]);
 
   // Daily trend (net profit per day) within selected range and product filter
   const dailyTrend = useMemo(() => {
@@ -413,14 +513,14 @@ function ProfitsPage() {
       const day = (it.invoices?.created_at ?? "").slice(0, 10);
       if (!day) continue;
       const p = productById.get(it.product_id);
-      const cost = Number(p?.cost_price ?? 0) * it.quantity;
+      const cost = costOf(it.product_id) * it.quantity;
       const rev = netRev(it);
       const cur = map.get(day) ?? { date: day, revenue: 0, cost: 0, profit: 0 };
       cur.revenue += rev; cur.cost += cost; cur.profit = cur.revenue - cur.cost;
       map.set(day, cur);
     }
     return Array.from(map.values()).sort((a, b) => (a.date > b.date ? 1 : -1));
-  }, [items, productById, selectedIds, invoiceFactor]);
+  }, [items, productById, selectedIds, invoiceFactor, costOf]);
 
   const startEdit = (p: Product) => {
     setEditing((cur) => ({
@@ -614,7 +714,9 @@ function ProfitsPage() {
               <div className="font-semibold mb-1">{t("معادلة حساب الربح", "Profit formula")}</div>
               <ul className="space-y-1 list-disc ps-4">
                 <li>{t("إجمالي البيع للمنتج = Σ (سعر الوحدة × الكمية − الخصم) لكل بند فاتورة غير ملغية.", "Revenue = Σ (unit_price × qty − discount) across non-voided invoice items.")}</li>
-                <li>{t("إجمالي التكلفة = سعر التكلفة × الكمية المباعة.", "Cost = cost_price × sold qty.")}</li>
+                <li>{t("إجمالي التكلفة = التكلفة الفعالة × الكمية المباعة. التكلفة الفعالة تُحسب حسب مصدر التكلفة المختار (WAC / آخر PO / الحالي / تعديل يدوي).", "Cost = effective_cost × sold qty. Effective cost follows the selected source (WAC / Latest PO / Current / Manual override).")}</li>
+                <li>{t("WAC = Σ(كمية × سعر EGP)/Σ(كمية) عبر كل أوامر الشراء، بتحويل USD→EGP باستخدام سعر كل PO المسجّل.", "WAC = Σ(qty × EGP)/Σ(qty) across all POs, converting USD→EGP with each PO's own recorded rate.")}</li>
+                <li>{t("التعديل اليدوي (للمشرفين) يُطبَّق فوريًا على هذه الصفحة فقط ولا يمس أسعار المنتجات ولا الفواتير ولا PO.", "Manual override (admin only) applies to this page only — never touches product prices, invoices, or POs.")}</li>
                 <li>{t("صافي الربح = إجمالي البيع − إجمالي التكلفة.", "Profit = Revenue − Cost.")}</li>
                 <li>{t("هامش % = (الربح ÷ إجمالي البيع) × 100.", "Margin % = (Profit ÷ Revenue) × 100.")}</li>
                 <li>{t("بنود مخصصة (بدون منتج) تُحتسب ضمن إجمالي البيع بتكلفة 0.", "Custom (non-product) lines are added to Revenue with zero cost.")}</li>
@@ -784,6 +886,238 @@ function ProfitsPage() {
           <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("العميل", "Customer")}: {filterSummary.customerName}</span>
         </div>
       </div>
+
+      {/* Cost Source & Cost Book */}
+      <div className="rounded-2xl border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 sm:px-4 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+            <h3 className="font-semibold text-sm truncate">{t("دفتر التكاليف (المتوسط المرجح)", "Cost Book (Weighted Average)")}</h3>
+            <span className="hidden sm:inline text-[10px] rounded-full border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+              {t("USD → EGP بسعر كل PO", "USD → EGP at each PO rate")}
+            </span>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => setCostBookOpen((v) => !v)}>
+            {costBookOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {costBookOpen ? t("إخفاء", "Hide") : t("عرض التفاصيل", "Show details")}
+          </Button>
+        </div>
+
+        <div className="grid gap-3 p-3 sm:p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="min-w-0">
+            <Label className="text-[11px] text-muted-foreground">{t("مصدر التكلفة المستخدم في حساب الأرباح", "Cost source used for profit")}</Label>
+            <div className="mt-1 inline-flex flex-wrap rounded-full border bg-muted/40 p-0.5 text-[11px]">
+              {([
+                ["wac", t("متوسط مرجح (WAC)", "Weighted avg (WAC)")],
+                ["latest_po", t("آخر PO", "Latest PO")],
+                ["current", t("سعر المنتج الحالي", "Current product cost")],
+                ["override", t("تعديل يدوي فقط", "Manual override only")],
+              ] as [CostSource, string][]).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setCostSource(k)}
+                  className={`rounded-full px-3 py-1 font-semibold transition ${costSource === k ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">{t("السنة المالية (لدفتر التكاليف)", "Fiscal year (Cost Book)")}</Label>
+            <select
+              value={fyYear}
+              onChange={(e) => setFyYear(e.target.value)}
+              className="mt-1 h-9 w-full sm:w-[160px] rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="all">{t("كل السنوات", "All years")}</option>
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col justify-end text-[11px] text-muted-foreground">
+            <div>{t("سعر افتراضي", "Fallback rate")}: <span className="tabular-nums font-semibold text-foreground">{costBook.default_rate?.toFixed?.(2) ?? "50.00"}</span></div>
+            <div>{t("منتجات في الدفتر", "Products in book")}: <span className="tabular-nums font-semibold text-foreground">{Object.keys(costBook.products).length}</span></div>
+          </div>
+        </div>
+
+        {costBookOpen && (
+          <div className="border-t">
+            <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-muted/20">
+              <Input
+                value={costBookSearch}
+                onChange={(e) => setCostBookSearch(e.target.value)}
+                placeholder={t("بحث اسم / كولكشن / لون / سيريال", "Search name / collection / color / serial")}
+                className="h-8 max-w-xs text-xs"
+              />
+              <span className="text-[10px] text-muted-foreground ms-auto">
+                {t("انقر على منتج لعرض دفعات PO", "Click a product to expand PO lots")}
+              </span>
+            </div>
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table className="w-full min-w-[820px] text-xs">
+                <thead className="sticky top-0 bg-card border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-start">{t("المنتج", "Product")}</th>
+                    <th className="px-3 py-2 text-end">{t("كمية PO", "PO Qty")}</th>
+                    <th className="px-3 py-2 text-end">WAC USD</th>
+                    <th className="px-3 py-2 text-end">WAC EGP</th>
+                    <th className="px-3 py-2 text-end">{t("أحدث PO", "Latest PO")}</th>
+                    <th className="px-3 py-2 text-end">{t("Min / Max USD", "Min / Max USD")}</th>
+                    <th className="px-3 py-2 text-end">{t("التكلفة الفعالة", "Effective")}</th>
+                    <th className="px-3 py-2 text-end">{t("تعديل يدوي (EGP)", "Manual (EGP)")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {products
+                    .filter((p) => {
+                      const s = costBookSearch.trim().toLowerCase();
+                      if (!s) return true;
+                      return (
+                        p.name.toLowerCase().includes(s) ||
+                        (p.serial_number ?? "").toLowerCase().includes(s) ||
+                        (p.color ?? "").toLowerCase().includes(s) ||
+                        (p.collection ?? "").toLowerCase().includes(s)
+                      );
+                    })
+                    .sort((a, b) => {
+                      const ea = costBook.products[a.id]?.total_qty ?? 0;
+                      const eb = costBook.products[b.id]?.total_qty ?? 0;
+                      return eb - ea;
+                    })
+                    .slice(0, 300)
+                    .map((p) => {
+                      const entry = costBook.products[p.id];
+                      const eff = costOf(p.id);
+                      const ov = overrides[p.id];
+                      const isOpen = !!expandedCB[p.id];
+                      return (
+                        <Fragment key={p.id}>
+                          <tr className="hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedCB((c) => ({ ...c, [p.id]: !c[p.id] }))}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isOpen ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
+                                <div className="min-w-0">
+                                  <div className="font-medium truncate flex items-center gap-1.5">
+                                    {p.name}
+                                    {p.collection && (
+                                      <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                                        <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                                        {p.collection}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground flex gap-2 flex-wrap">
+                                    {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
+                                    {p.color && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <ColorSwatch value={p.color} size="sm" />{p.color}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-end tabular-nums">{entry ? fmtNumber(entry.total_qty, lang) : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums">{entry ? `$${entry.wac_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums font-semibold">{entry ? fmtMoney(entry.wac_egp, "EGP", lang) : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums">{entry ? `$${entry.latest_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums text-[10px]">{entry ? `$${entry.min_usd.toFixed(2)} / $${entry.max_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums font-bold text-primary">{fmtMoney(eff, "EGP", lang)}</td>
+                            <td className="px-3 py-2 text-end" onClick={(e) => e.stopPropagation()}>
+                              {isAdmin ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={ovDraft[p.id] ?? (ov ? String(ov.cost_egp) : "")}
+                                    onChange={(e) => setOvDraft((c) => ({ ...c, [p.id]: e.target.value }))}
+                                    placeholder={ov ? "" : t("لا يوجد", "none")}
+                                    className="h-7 w-24 text-end text-xs"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                    disabled={savingOv === p.id}
+                                    onClick={async () => {
+                                      const raw = ovDraft[p.id];
+                                      setSavingOv(p.id);
+                                      if (raw === "" || raw === undefined) {
+                                        const { error } = await supabase.from("profit_cost_overrides" as any).delete().eq("product_id", p.id);
+                                        setSavingOv(null);
+                                        if (error) return toast.error(error.message);
+                                        toast.success(t("تم حذف التعديل اليدوي", "Manual override removed"));
+                                      } else {
+                                        const val = Number(raw);
+                                        if (!Number.isFinite(val) || val < 0) { setSavingOv(null); return toast.error(t("قيمة غير صالحة", "Invalid value")); }
+                                        const { error } = await supabase.from("profit_cost_overrides" as any).upsert({ product_id: p.id, cost_egp: val, updated_by: user?.id }, { onConflict: "product_id" });
+                                        setSavingOv(null);
+                                        if (error) return toast.error(error.message);
+                                        toast.success(t("تم الحفظ", "Saved"));
+                                      }
+                                      await loadOverrides();
+                                      setOvDraft((c) => { const n = { ...c }; delete n[p.id]; return n; });
+                                    }}
+                                  >
+                                    <Save className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : ov ? (
+                                <span className="tabular-nums">{fmtMoney(ov.cost_egp, "EGP", lang)}</span>
+                              ) : (
+                                <span className="text-muted-foreground text-[10px]">—</span>
+                              )}
+                            </td>
+                          </tr>
+                          {isOpen && entry && entry.lots.length > 0 && (
+                            <tr className="bg-muted/20">
+                              <td colSpan={8} className="px-3 py-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full min-w-[640px] text-[11px]">
+                                    <thead className="text-[10px] uppercase text-muted-foreground">
+                                      <tr>
+                                        <th className="px-2 py-1 text-start">PO</th>
+                                        <th className="px-2 py-1 text-start">{t("التاريخ", "Date")}</th>
+                                        <th className="px-2 py-1 text-start">{t("الحالة", "Status")}</th>
+                                        <th className="px-2 py-1 text-end">{t("الكمية", "Qty")}</th>
+                                        <th className="px-2 py-1 text-end">USD</th>
+                                        <th className="px-2 py-1 text-end">{t("سعر USD", "USD Rate")}</th>
+                                        <th className="px-2 py-1 text-end">EGP</th>
+                                        <th className="px-2 py-1 text-end">{t("إجمالي EGP", "Total EGP")}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {entry.lots.map((l, i) => (
+                                        <tr key={i} className="border-t border-border/40">
+                                          <td className="px-2 py-1 font-mono">{l.shipment_code ?? l.po_id.slice(0, 8)}</td>
+                                          <td className="px-2 py-1">{l.shipment_date ? fmtDate(l.shipment_date, lang) : "—"}</td>
+                                          <td className="px-2 py-1"><span className="text-[9px] rounded border px-1 bg-muted">{l.status}</span></td>
+                                          <td className="px-2 py-1 text-end tabular-nums">{fmtNumber(l.qty, lang)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums">${Number(l.unit_usd).toFixed(2)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums">{Number(l.usd_rate).toFixed(2)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums">{fmtMoney(l.unit_egp, "EGP", lang)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums font-semibold">{fmtMoney(l.line_total_egp, "EGP", lang)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
