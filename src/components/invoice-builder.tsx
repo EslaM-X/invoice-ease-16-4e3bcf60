@@ -1259,6 +1259,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           </div>
 
           <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
+            <Label>{lang === "ar" ? "موضوع الفاتورة" : "Invoice subject"}</Label>
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={lang === "ar" ? "مثال: توريد أدوات ديكور — عقد رقم 12" : "e.g. Supply of decor items — Contract #12"}
+              className="mt-1.5"
+              maxLength={200}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {lang === "ar" ? "يظهر في المعاينة والـ PDF أعلى بيانات العميل." : "Shown in the preview and PDF above the customer info."}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
             <Label>{t("notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1.5" />
           </div>
