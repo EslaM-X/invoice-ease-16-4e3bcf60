@@ -61,6 +61,17 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           if (authError || !user) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 })
           }
+          // Restrict to company members — prevent low-privilege accounts (e.g. distributors)
+          // from sending arbitrary templated emails via the company sending domain.
+          const publishable = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
+          const userClient = createClient(supabaseUrl, publishable || supabaseServiceKey, {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { persistSession: false, autoRefreshToken: false },
+          })
+          const { data: isMember, error: memberError } = await userClient.rpc('is_company_member')
+          if (memberError || isMember !== true) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 })
+          }
         }
 
         // Parse request body

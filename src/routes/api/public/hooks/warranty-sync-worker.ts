@@ -91,11 +91,25 @@ async function runWorker() {
   return { ok: true, processed: rows.length, delivered, failed };
 }
 
+function authorized(request: Request): boolean {
+  const secret = process.env.WARRANTY_SYNC_SECRET || process.env.BACKUP_WEBHOOK_SECRET;
+  const provided =
+    request.headers.get("x-backup-secret") ||
+    request.headers.get("x-warranty-secret");
+  return !!secret && !!provided && provided === secret;
+}
+
 export const Route = createFileRoute("/api/public/hooks/warranty-sync-worker")({
   server: {
     handlers: {
-      GET: async () => Response.json(await runWorker()),
-      POST: async () => Response.json(await runWorker()),
+      GET: async ({ request }) => {
+        if (!authorized(request)) return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+        return Response.json(await runWorker());
+      },
+      POST: async ({ request }) => {
+        if (!authorized(request)) return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+        return Response.json(await runWorker());
+      },
     },
   },
 });
