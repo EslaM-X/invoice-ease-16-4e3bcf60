@@ -274,6 +274,48 @@ function Traceability() {
       .sort((a, b) => b.totalNeeded - a.totalNeeded);
   }, [allLineRows, perProdFilter]);
 
+  // === Stock levels rows (real-time high/low quantity ranking) ===
+  const stockRows = useMemo(() => {
+    // Movement in the last 30 days = sum of |change| across logs.
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const moveMap = new Map<string, number>();
+    const lastMoveMap = new Map<string, string>();
+    for (const l of logs) {
+      const t = new Date(l.created_at).getTime();
+      if (!Number.isNaN(t) && t >= cutoff) {
+        moveMap.set(l.product_id, (moveMap.get(l.product_id) ?? 0) + Math.abs(Number(l.change) || 0));
+      }
+      if (!lastMoveMap.has(l.product_id)) lastMoveMap.set(l.product_id, l.created_at);
+    }
+    const q = stockSearch.trim().toLowerCase();
+    const rows = products.map((p) => {
+      const qty = Number(p.stock_quantity ?? 0);
+      const threshold = Number(p.low_stock_threshold ?? 0);
+      let bucket: "in" | "low" | "out" = "in";
+      if (qty <= 0) bucket = "out";
+      else if (threshold > 0 && qty <= threshold) bucket = "low";
+      return {
+        product: p,
+        qty,
+        threshold,
+        bucket,
+        moved30d: moveMap.get(p.id) ?? 0,
+        lastMoveAt: lastMoveMap.get(p.id) ?? null,
+      };
+    });
+    const filtered = rows
+      .filter((r) => stockOnly === "all" || r.bucket === stockOnly)
+      .filter((r) =>
+        !q ||
+        r.product.name?.toLowerCase().includes(q) ||
+        (r.product.serial_number ?? "").toLowerCase().includes(q) ||
+        (r.product.color ?? "").toLowerCase().includes(q),
+      );
+    filtered.sort((a, b) => (stockSort === "desc" ? b.qty - a.qty : a.qty - b.qty));
+    return filtered;
+  }, [products, logs, stockSearch, stockSort, stockOnly]);
+
+
   // === Audit timeline per product ===
   const timelineRows = useMemo(() => {
     return logs
