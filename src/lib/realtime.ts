@@ -37,6 +37,19 @@ export function useRealtimeTable(
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
+    let hadFailure = false;
+
+    // Emit a lightweight status event so a top-level toaster can surface
+    // realtime health without every subscription writing its own toasts.
+    // status: "reconnecting" | "reconnected" | "failed"
+    const emit = (status: "reconnecting" | "reconnected" | "failed", detail: Record<string, unknown> = {}) => {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("app:realtime-status", { detail: { table, status, ...detail } }),
+        );
+      } catch { /* noop for SSR */ }
+    };
+
     const flush = () => {
       if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
       if (maxWaitTimer) { clearTimeout(maxWaitTimer); maxWaitTimer = null; }
@@ -71,9 +84,12 @@ export function useRealtimeTable(
       if (cancelled) return;
       attempt = Math.min(attempt + 1, 6);
       const delay = Math.min(1000 * 2 ** (attempt - 1), 30000);
+      hadFailure = true;
+      emit("reconnecting", { attempt, delayMs: delay });
       if (backoffTimer) clearTimeout(backoffTimer);
       backoffTimer = setTimeout(connect, delay);
     };
+
 
     const connect = () => {
       if (cancelled) return;
