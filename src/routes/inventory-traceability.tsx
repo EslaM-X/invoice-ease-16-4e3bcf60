@@ -407,6 +407,10 @@ function Traceability() {
             <History className="h-4 w-4 me-2" />
             {isAr ? "الجدول الزمني للمخزون" : "Inventory timeline"}
           </TabsTrigger>
+          <TabsTrigger value="stock">
+            <Package className="h-4 w-4 me-2" />
+            {isAr ? "مستويات المخزون" : "Stock levels"}
+          </TabsTrigger>
         </TabsList>
 
         {/* === Lines tab === */}
