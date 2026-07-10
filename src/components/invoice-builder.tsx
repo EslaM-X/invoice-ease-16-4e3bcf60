@@ -877,6 +877,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             .update({ delivery_status: "delivered" } as any)
             .eq("id", invoiceIdRet as string);
         }
+        if (subject.trim()) {
+          await supabase
+            .from("invoices")
+            .update({ subject: subject.trim() } as any)
+            .eq("id", invoiceIdRet as string);
+        }
         if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: invoiceIdRet as string } });
