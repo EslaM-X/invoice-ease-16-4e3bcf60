@@ -1206,6 +1206,66 @@ function ProfitsPage() {
         )}
       </p>
 
+      {/* Verification / Reconciliation panel */}
+      <div className="rounded-2xl border bg-card shadow-sm">
+        <button
+          type="button"
+          onClick={() => setVerifyOpen((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 border-b hover:bg-muted/30 transition"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldCheck className={`h-4 w-4 shrink-0 ${totalsMatch?.ok ? "text-emerald-500" : "text-amber-500"}`} />
+            <h3 className="font-semibold text-sm truncate">{t("التحقق والمطابقة", "Verification & Reconciliation")}</h3>
+            <span className={`text-[10px] rounded-full border px-2 py-0.5 ${totalsMatch?.ok ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/8" : "border-amber-500/40 text-amber-700 bg-amber-500/8"}`}>
+              {totalsMatch?.ok ? t("متطابق", "In sync") : t("مراجعة", "Review")}
+            </span>
+          </div>
+          {verifyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {verifyOpen && (
+          <div className="p-3 sm:p-4 grid gap-3 md:grid-cols-2 text-xs">
+            <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+              <div className="font-semibold text-sm mb-1">{t("مطابقة إجمالي البيع", "Revenue reconciliation")}</div>
+              <RowLine label={t("إجمالي الفواتير (قبل الاستبعادات)", "Sum of invoice totals (before exclusions)")} value={fmtMoney(totalsMatch?.reportsTotal ?? 0, "EGP", lang)} />
+              <RowLine label={t("− شحن/خدمة مستبعد", "− Shipping/fees excluded")} value={`− ${fmtMoney(shippingTotals.amount, "EGP", lang)}`} muted />
+              <div className="pt-1.5 border-t flex items-center justify-between font-semibold">
+                <span>{t("= إجمالي البيع المعتمد", "= Recognised revenue")}</span>
+                <span className="tabular-nums">{fmtMoney(rows.totals.revenue, "EGP", lang)}</span>
+              </div>
+              {totalsMatch && (
+                <div className={`text-[11px] ${totalsMatch.ok ? "text-emerald-600" : "text-amber-700"}`}>
+                  {totalsMatch.ok
+                    ? t("✓ الفرق صفر — المطابقة كاملة.", "✓ Zero variance — fully reconciled.")
+                    : `${t("الفرق", "Variance")}: ${fmtMoney(totalsMatch.diff, "EGP", lang)}`}
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+              <div className="font-semibold text-sm mb-1">{t("مطابقة صافي الربح", "Net profit reconciliation")}</div>
+              <RowLine label={t("إجمالي البيع المعتمد", "Recognised revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} />
+              <RowLine label={`− ${t(`إجمالي التكلفة (مصدر: ${costSourceLabel(costSource, t)})`, `− Total cost (source: ${costSourceLabel(costSource, t)})`)}`} value={`− ${fmtMoney(rows.totals.cost, "EGP", lang)}`} muted />
+              <div className="pt-1.5 border-t flex items-center justify-between font-semibold text-emerald-600">
+                <span>= {t("صافي الربح", "Net profit")}</span>
+                <span className="tabular-nums">{fmtMoney(rows.totals.profit, "EGP", lang)}</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {t("هامش الربح", "Margin")}: {rows.totals.margin.toFixed(2)}%
+              </div>
+            </div>
+            <div className="md:col-span-2 rounded-lg border bg-muted/10 p-3 text-[11px] leading-relaxed">
+              <div className="font-semibold text-sm mb-1">{t("سبب الاستبعادات", "Why the difference")}</div>
+              <ul className="list-disc ps-4 space-y-1 text-muted-foreground">
+                <li>{t(`الفواتير الملغاة أو المسودّة لا تُحسب — يظهر في الفلتر التلقائي في استعلام البيانات.`, "Voided/draft invoices are excluded at query time.")}</li>
+                <li>{t(`رسوم الشحن/الخدمة: ${shippingTotals.lines} بند على ${shippingTotals.invoices} فاتورة (${fmtMoney(shippingTotals.amount, "EGP", lang)}).`, `Shipping/service fees: ${shippingTotals.lines} line(s) across ${shippingTotals.invoices} invoice(s) (${fmtMoney(shippingTotals.amount, "EGP", lang)}).`)}</li>
+                <li>{t("الخصم على مستوى الفاتورة يُوزَّع بالتناسب على البنود غير الشحن.", "Invoice-level discount is prorated across non-shipping lines.")}</li>
+                <li>{t(`مصدر التكلفة الفعّال: ${costSourceLabel(costSource, t)} — أي تغيير في PO أو التعديل اليدوي ينعكس لحظياً.`, `Effective cost source: ${costSourceLabel(costSource, t)} — PO or manual-override changes reflect live.`)}</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+
       {/* Daily trend chart */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
