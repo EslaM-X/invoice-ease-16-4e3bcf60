@@ -2286,6 +2286,45 @@ export type Database = {
           },
         ]
       }
+      profit_cost_overrides_history: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          id: string
+          new_cost_egp: number | null
+          new_note: string | null
+          old_cost_egp: number | null
+          old_note: string | null
+          product_id: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          new_cost_egp?: number | null
+          new_note?: string | null
+          old_cost_egp?: number | null
+          old_note?: string | null
+          product_id: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          new_cost_egp?: number | null
+          new_note?: string | null
+          old_cost_egp?: number | null
+          old_note?: string | null
+          product_id?: string
+        }
+        Relationships: []
+      }
       purchase_order_items: {
         Row: {
           color: string | null
@@ -4324,6 +4363,10 @@ export type Database = {
       }
       revert_po_inventory: {
         Args: { p_actor_email: string; p_po_id: string }
+        Returns: undefined
+      }
+      revert_profit_cost_override: {
+        Args: { p_history_id: string }
         Returns: undefined
       }
       stock_reconciliation_report: {
