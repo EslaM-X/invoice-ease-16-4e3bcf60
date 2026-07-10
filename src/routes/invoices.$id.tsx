@@ -490,7 +490,9 @@ function InvoiceView() {
             </table>
             <div className="mt-4 ms-auto w-56 space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
+              {Number(inv.discount) > 0 && (
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
+              )}
               <div className="mt-1 flex justify-between border-t pt-2 text-base font-semibold">
                 <span>{t("total")}</span>
                 <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "EGP", lang)}</span>
