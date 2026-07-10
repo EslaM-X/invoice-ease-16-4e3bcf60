@@ -38,8 +38,7 @@ type ProductLite = { id: string; name: string; serial_number: string | null; col
 function ProfitCostHistoryPage() {
   const { lang } = useI18n();
   const t = (ar: string, en: string) => (lang === "ar" ? ar : en);
-  const { role } = useRole();
-  const isAdmin = role === "admin";
+  const { isAdmin } = useRole();
 
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [products, setProducts] = useState<Record<string, ProductLite>>({});
