@@ -27,6 +27,7 @@ import { Route as QrPriceListRouteImport } from './routes/qr-price-list'
 import { Route as PurchaseOrdersRouteImport } from './routes/purchase-orders'
 import { Route as ProfitsRouteImport } from './routes/profits'
 import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
+import { Route as ProfitCostHistoryRouteImport } from './routes/profit-cost-history'
 import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PoTrackingRouteImport } from './routes/po-tracking'
@@ -175,6 +176,11 @@ const ProfitsRoute = ProfitsRouteImport.update({
 const ProfitScenariosRoute = ProfitScenariosRouteImport.update({
   id: '/profit-scenarios',
   path: '/profit-scenarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitCostHistoryRoute = ProfitCostHistoryRouteImport.update({
+  id: '/profit-cost-history',
+  path: '/profit-cost-history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfitCalculatorRoute = ProfitCalculatorRouteImport.update({
@@ -517,6 +523,7 @@ export interface FileRoutesByFullPath {
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
+  '/profit-cost-history': typeof ProfitCostHistoryRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
@@ -596,6 +603,7 @@ export interface FileRoutesByTo {
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
+  '/profit-cost-history': typeof ProfitCostHistoryRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
@@ -676,6 +684,7 @@ export interface FileRoutesById {
   '/po-tracking': typeof PoTrackingRoute
   '/products': typeof ProductsRoute
   '/profit-calculator': typeof ProfitCalculatorRoute
+  '/profit-cost-history': typeof ProfitCostHistoryRoute
   '/profit-scenarios': typeof ProfitScenariosRoute
   '/profits': typeof ProfitsRoute
   '/purchase-orders': typeof PurchaseOrdersRoute
@@ -757,6 +766,7 @@ export interface FileRouteTypes {
     | '/po-tracking'
     | '/products'
     | '/profit-calculator'
+    | '/profit-cost-history'
     | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
@@ -836,6 +846,7 @@ export interface FileRouteTypes {
     | '/po-tracking'
     | '/products'
     | '/profit-calculator'
+    | '/profit-cost-history'
     | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
@@ -915,6 +926,7 @@ export interface FileRouteTypes {
     | '/po-tracking'
     | '/products'
     | '/profit-calculator'
+    | '/profit-cost-history'
     | '/profit-scenarios'
     | '/profits'
     | '/purchase-orders'
@@ -995,6 +1007,7 @@ export interface RootRouteChildren {
   PoTrackingRoute: typeof PoTrackingRoute
   ProductsRoute: typeof ProductsRoute
   ProfitCalculatorRoute: typeof ProfitCalculatorRoute
+  ProfitCostHistoryRoute: typeof ProfitCostHistoryRoute
   ProfitScenariosRoute: typeof ProfitScenariosRoute
   ProfitsRoute: typeof ProfitsRoute
   PurchaseOrdersRoute: typeof PurchaseOrdersRoute
@@ -1167,6 +1180,13 @@ declare module '@tanstack/react-router' {
       path: '/profit-scenarios'
       fullPath: '/profit-scenarios'
       preLoaderRoute: typeof ProfitScenariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profit-cost-history': {
+      id: '/profit-cost-history'
+      path: '/profit-cost-history'
+      fullPath: '/profit-cost-history'
+      preLoaderRoute: typeof ProfitCostHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profit-calculator': {
@@ -1619,6 +1639,7 @@ const rootRouteChildren: RootRouteChildren = {
   PoTrackingRoute: PoTrackingRoute,
   ProductsRoute: ProductsRoute,
   ProfitCalculatorRoute: ProfitCalculatorRoute,
+  ProfitCostHistoryRoute: ProfitCostHistoryRoute,
   ProfitScenariosRoute: ProfitScenariosRoute,
   ProfitsRoute: ProfitsRoute,
   PurchaseOrdersRoute: PurchaseOrdersRoute,
