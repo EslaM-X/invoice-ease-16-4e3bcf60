@@ -90,6 +90,7 @@ function EditInvoice() {
       discount: Number(inv.discount ?? 0),
       notes: inv.notes ?? "",
       system_notes: invAny.system_notes ?? "",
+      subject: invAny.subject ?? "",
       paid_amount: invAny.paid_amount != null ? Number(invAny.paid_amount) : null,
       delivery_status: invAny.delivery_status ?? null,
       status: invAny.status ?? null,
