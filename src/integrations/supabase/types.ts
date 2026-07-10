@@ -1561,6 +1561,7 @@ export type Database = {
           shipping_address: string | null
           source: string
           status: string
+          subject: string | null
           subtotal: number
           system_notes: string | null
           total: number
@@ -1600,6 +1601,7 @@ export type Database = {
           shipping_address?: string | null
           source?: string
           status?: string
+          subject?: string | null
           subtotal?: number
           system_notes?: string | null
           total?: number
@@ -1639,6 +1641,7 @@ export type Database = {
           shipping_address?: string | null
           source?: string
           status?: string
+          subject?: string | null
           subtotal?: number
           system_notes?: string | null
           total?: number
@@ -3927,6 +3930,7 @@ export type Database = {
           shipping_address: string | null
           source: string
           status: string
+          subject: string | null
           subtotal: number
           system_notes: string | null
           total: number
@@ -4332,6 +4336,7 @@ export type Database = {
           shipping_address: string | null
           source: string
           status: string
+          subject: string | null
           subtotal: number
           system_notes: string | null
           total: number
