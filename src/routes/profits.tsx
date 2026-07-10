@@ -885,6 +885,238 @@ function ProfitsPage() {
         </div>
       </div>
 
+      {/* Cost Source & Cost Book */}
+      <div className="rounded-2xl border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 sm:px-4 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+            <h3 className="font-semibold text-sm truncate">{t("دفتر التكاليف (المتوسط المرجح)", "Cost Book (Weighted Average)")}</h3>
+            <span className="hidden sm:inline text-[10px] rounded-full border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+              {t("USD → EGP بسعر كل PO", "USD → EGP at each PO rate")}
+            </span>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => setCostBookOpen((v) => !v)}>
+            {costBookOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {costBookOpen ? t("إخفاء", "Hide") : t("عرض التفاصيل", "Show details")}
+          </Button>
+        </div>
+
+        <div className="grid gap-3 p-3 sm:p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="min-w-0">
+            <Label className="text-[11px] text-muted-foreground">{t("مصدر التكلفة المستخدم في حساب الأرباح", "Cost source used for profit")}</Label>
+            <div className="mt-1 inline-flex flex-wrap rounded-full border bg-muted/40 p-0.5 text-[11px]">
+              {([
+                ["wac", t("متوسط مرجح (WAC)", "Weighted avg (WAC)")],
+                ["latest_po", t("آخر PO", "Latest PO")],
+                ["current", t("سعر المنتج الحالي", "Current product cost")],
+                ["override", t("تعديل يدوي فقط", "Manual override only")],
+              ] as [CostSource, string][]).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setCostSource(k)}
+                  className={`rounded-full px-3 py-1 font-semibold transition ${costSource === k ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">{t("السنة المالية (لدفتر التكاليف)", "Fiscal year (Cost Book)")}</Label>
+            <select
+              value={fyYear}
+              onChange={(e) => setFyYear(e.target.value)}
+              className="mt-1 h-9 w-full sm:w-[160px] rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="all">{t("كل السنوات", "All years")}</option>
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col justify-end text-[11px] text-muted-foreground">
+            <div>{t("سعر افتراضي", "Fallback rate")}: <span className="tabular-nums font-semibold text-foreground">{costBook.default_rate?.toFixed?.(2) ?? "50.00"}</span></div>
+            <div>{t("منتجات في الدفتر", "Products in book")}: <span className="tabular-nums font-semibold text-foreground">{Object.keys(costBook.products).length}</span></div>
+          </div>
+        </div>
+
+        {costBookOpen && (
+          <div className="border-t">
+            <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-muted/20">
+              <Input
+                value={costBookSearch}
+                onChange={(e) => setCostBookSearch(e.target.value)}
+                placeholder={t("بحث اسم / كولكشن / لون / سيريال", "Search name / collection / color / serial")}
+                className="h-8 max-w-xs text-xs"
+              />
+              <span className="text-[10px] text-muted-foreground ms-auto">
+                {t("انقر على منتج لعرض دفعات PO", "Click a product to expand PO lots")}
+              </span>
+            </div>
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table className="w-full min-w-[820px] text-xs">
+                <thead className="sticky top-0 bg-card border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-start">{t("المنتج", "Product")}</th>
+                    <th className="px-3 py-2 text-end">{t("كمية PO", "PO Qty")}</th>
+                    <th className="px-3 py-2 text-end">WAC USD</th>
+                    <th className="px-3 py-2 text-end">WAC EGP</th>
+                    <th className="px-3 py-2 text-end">{t("أحدث PO", "Latest PO")}</th>
+                    <th className="px-3 py-2 text-end">{t("Min / Max USD", "Min / Max USD")}</th>
+                    <th className="px-3 py-2 text-end">{t("التكلفة الفعالة", "Effective")}</th>
+                    <th className="px-3 py-2 text-end">{t("تعديل يدوي (EGP)", "Manual (EGP)")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {products
+                    .filter((p) => {
+                      const s = costBookSearch.trim().toLowerCase();
+                      if (!s) return true;
+                      return (
+                        p.name.toLowerCase().includes(s) ||
+                        (p.serial_number ?? "").toLowerCase().includes(s) ||
+                        (p.color ?? "").toLowerCase().includes(s) ||
+                        (p.collection ?? "").toLowerCase().includes(s)
+                      );
+                    })
+                    .sort((a, b) => {
+                      const ea = costBook.products[a.id]?.total_qty ?? 0;
+                      const eb = costBook.products[b.id]?.total_qty ?? 0;
+                      return eb - ea;
+                    })
+                    .slice(0, 300)
+                    .map((p) => {
+                      const entry = costBook.products[p.id];
+                      const eff = costOf(p.id);
+                      const ov = overrides[p.id];
+                      const isOpen = !!expandedCB[p.id];
+                      return (
+                        <Fragment key={p.id}>
+                          <tr className="hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedCB((c) => ({ ...c, [p.id]: !c[p.id] }))}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isOpen ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
+                                <div className="min-w-0">
+                                  <div className="font-medium truncate flex items-center gap-1.5">
+                                    {p.name}
+                                    {p.collection && (
+                                      <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                                        <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                                        {p.collection}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground flex gap-2 flex-wrap">
+                                    {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
+                                    {p.color && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <ColorSwatch value={p.color} size="sm" />{p.color}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-end tabular-nums">{entry ? fmtNumber(entry.total_qty, lang) : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums">{entry ? `$${entry.wac_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums font-semibold">{entry ? fmtMoney(entry.wac_egp, "EGP", lang) : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums">{entry ? `$${entry.latest_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums text-[10px]">{entry ? `$${entry.min_usd.toFixed(2)} / $${entry.max_usd.toFixed(2)}` : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums font-bold text-primary">{fmtMoney(eff, "EGP", lang)}</td>
+                            <td className="px-3 py-2 text-end" onClick={(e) => e.stopPropagation()}>
+                              {isAdmin ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={ovDraft[p.id] ?? (ov ? String(ov.cost_egp) : "")}
+                                    onChange={(e) => setOvDraft((c) => ({ ...c, [p.id]: e.target.value }))}
+                                    placeholder={ov ? "" : t("لا يوجد", "none")}
+                                    className="h-7 w-24 text-end text-xs"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                    disabled={savingOv === p.id}
+                                    onClick={async () => {
+                                      const raw = ovDraft[p.id];
+                                      setSavingOv(p.id);
+                                      if (raw === "" || raw === undefined) {
+                                        const { error } = await supabase.from("profit_cost_overrides" as any).delete().eq("product_id", p.id);
+                                        setSavingOv(null);
+                                        if (error) return toast.error(error.message);
+                                        toast.success(t("تم حذف التعديل اليدوي", "Manual override removed"));
+                                      } else {
+                                        const val = Number(raw);
+                                        if (!Number.isFinite(val) || val < 0) { setSavingOv(null); return toast.error(t("قيمة غير صالحة", "Invalid value")); }
+                                        const { error } = await supabase.from("profit_cost_overrides" as any).upsert({ product_id: p.id, cost_egp: val, updated_by: user?.id }, { onConflict: "product_id" });
+                                        setSavingOv(null);
+                                        if (error) return toast.error(error.message);
+                                        toast.success(t("تم الحفظ", "Saved"));
+                                      }
+                                      await loadOverrides();
+                                      setOvDraft((c) => { const n = { ...c }; delete n[p.id]; return n; });
+                                    }}
+                                  >
+                                    <Save className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : ov ? (
+                                <span className="tabular-nums">{fmtMoney(ov.cost_egp, "EGP", lang)}</span>
+                              ) : (
+                                <span className="text-muted-foreground text-[10px]">—</span>
+                              )}
+                            </td>
+                          </tr>
+                          {isOpen && entry && entry.lots.length > 0 && (
+                            <tr className="bg-muted/20">
+                              <td colSpan={8} className="px-3 py-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full min-w-[640px] text-[11px]">
+                                    <thead className="text-[10px] uppercase text-muted-foreground">
+                                      <tr>
+                                        <th className="px-2 py-1 text-start">PO</th>
+                                        <th className="px-2 py-1 text-start">{t("التاريخ", "Date")}</th>
+                                        <th className="px-2 py-1 text-start">{t("الحالة", "Status")}</th>
+                                        <th className="px-2 py-1 text-end">{t("الكمية", "Qty")}</th>
+                                        <th className="px-2 py-1 text-end">USD</th>
+                                        <th className="px-2 py-1 text-end">{t("سعر USD", "USD Rate")}</th>
+                                        <th className="px-2 py-1 text-end">EGP</th>
+                                        <th className="px-2 py-1 text-end">{t("إجمالي EGP", "Total EGP")}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {entry.lots.map((l, i) => (
+                                        <tr key={i} className="border-t border-border/40">
+                                          <td className="px-2 py-1 font-mono">{l.shipment_code ?? l.po_id.slice(0, 8)}</td>
+                                          <td className="px-2 py-1">{l.shipment_date ? fmtDate(l.shipment_date, lang) : "—"}</td>
+                                          <td className="px-2 py-1"><span className="text-[9px] rounded border px-1 bg-muted">{l.status}</span></td>
+                                          <td className="px-2 py-1 text-end tabular-nums">{fmtNumber(l.qty, lang)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums">${Number(l.unit_usd).toFixed(2)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums">{Number(l.usd_rate).toFixed(2)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums">{fmtMoney(l.unit_egp, "EGP", lang)}</td>
+                                          <td className="px-2 py-1 text-end tabular-nums font-semibold">{fmtMoney(l.line_total_egp, "EGP", lang)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Wallet className="h-5 w-5" />} label={t("إجمالي البيع", "Revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} className="from-sky-500/15 to-sky-500/5 text-sky-600" />
