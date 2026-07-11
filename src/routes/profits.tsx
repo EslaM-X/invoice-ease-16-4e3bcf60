@@ -2322,7 +2322,7 @@ function ProfitsPage() {
                       <td className="px-3 py-3 text-end">
                         {r.qty > 0 ? (
                           <div className="inline-flex flex-col items-end gap-1 min-w-[110px]">
-                            <span className={`tabular-nums font-bold text-sm ${r.margin >= 30 ? "text-emerald-600 dark:text-emerald-400" : r.margin >= 10 ? "text-primary" : r.margin >= 0 ? "text-amber-600 dark:text-amber-400" : "text-rose-600"}`}>{r.margin.toFixed(1)}%</span>
+                            <MarginPill margin={r.margin} size="sm" />
                             <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
                               <div className={`h-full rounded-full ${r.margin >= 30 ? "bg-gradient-to-r from-emerald-500 to-emerald-300" : r.margin >= 10 ? "bg-gradient-to-r from-primary to-amber-300" : r.margin >= 0 ? "bg-gradient-to-r from-amber-500 to-amber-300" : "bg-gradient-to-r from-rose-500 to-rose-300"}`} style={{ width: `${marginPct}%` }} />
                             </div>
