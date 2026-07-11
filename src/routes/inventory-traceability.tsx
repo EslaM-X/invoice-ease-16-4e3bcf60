@@ -810,7 +810,7 @@ function Traceability() {
                   {stockRows.length === 0 ? (
                     <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</td></tr>
                   ) : stockRows.map((r) => (
-                    <tr key={r.product.id} className="border-b hover:bg-muted/40">
+                    <tr key={r.product.id} className="border-b hover:bg-muted/40 cursor-pointer" onClick={() => setSelectedProduct(r.product)}>
                       <td className="py-2 px-2">
                         <div className="font-medium">{r.product.name}</div>
                         {r.product.color && <div className="text-xs text-muted-foreground">{r.product.color}</div>}
