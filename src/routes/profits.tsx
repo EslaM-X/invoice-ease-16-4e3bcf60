@@ -411,34 +411,49 @@ function ProfitsPage() {
     const isFirst = items.length === 0;
     if (isFirst) setLoading(true);
     const loadingToast = isFirst
-      ? toast.loading(lang === "ar" ? "جارٍ حساب الأرباح…" : "Computing profits…", { duration: 12000 })
+      ? toast.loading(lang === "ar" ? "جارٍ حساب الأرباح…" : "Computing profits…", { duration: Infinity })
       : null;
+    // Safety net: never let the query hang forever.
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), 45000);
 
-    const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
-    let q = supabase
-      .from("invoice_items")
-      .select(
-        "invoice_id, product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(invoice_number, status, created_at, customer_name, subtotal, discount, total)"
-      )
-      .not("invoices.status", "in", "(voided,draft)");
-    if (startISO) q = q.gte("invoices.created_at", startISO);
-    if (endISO) q = q.lt("invoices.created_at", endISO);
-    if (customerId) q = q.eq("invoices.customer_id", customerId);
-    const { data, error } = await q.limit(10000);
-    if (loadingToast != null) toast.dismiss(loadingToast);
-    if (error) {
-      toast.error(error.message);
-    } else if (isFirst && data) {
-      toast.success(
-        lang === "ar"
-          ? `تم تحميل ${fmtNumber(data.length, lang)} بند بنجاح`
-          : `Loaded ${fmtNumber(data.length, lang)} line item(s)`,
-        { duration: 2400 }
+    try {
+      const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
+      let q = supabase
+        .from("invoice_items")
+        .select(
+          "invoice_id, product_id, product_name, serial_number, color, quantity, unit_price, discount, line_total, invoices!inner(invoice_number, status, created_at, customer_name, subtotal, discount, total)"
+        )
+        .not("invoices.status", "in", "(voided,draft)");
+      if (startISO) q = q.gte("invoices.created_at", startISO);
+      if (endISO) q = q.lt("invoices.created_at", endISO);
+      if (customerId) q = q.eq("invoices.customer_id", customerId);
+      const { data, error } = await q.abortSignal(ac.signal).limit(10000);
+      if (error) {
+        toast.error(error.message);
+      } else if (isFirst && data) {
+        toast.success(
+          lang === "ar"
+            ? `تم تحميل ${fmtNumber(data.length, lang)} بند بنجاح`
+            : `Loaded ${fmtNumber(data.length, lang)} line item(s)`,
+          { duration: 2400 }
+        );
+      }
+      setItems((data ?? []) as any);
+    } catch (e: any) {
+      const aborted = e?.name === "AbortError" || ac.signal.aborted;
+      toast.error(
+        aborted
+          ? (lang === "ar" ? "استغرق الحساب وقتًا طويلًا. جرّب فترة أضيق." : "Computation timed out. Try a narrower range.")
+          : (e?.message ?? String(e))
       );
+    } finally {
+      clearTimeout(timeoutId);
+      if (loadingToast != null) toast.dismiss(loadingToast);
+      setLoading(false);
     }
-    setItems((data ?? []) as any);
-    setLoading(false);
   };
+
 
   const fyBounds = useMemo(() => {
     if (fyYear === "all") return { start: null as string | null, end: null as string | null };
