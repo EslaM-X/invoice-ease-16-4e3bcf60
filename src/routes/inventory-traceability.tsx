@@ -325,8 +325,31 @@ function Traceability() {
 
   // === Audit timeline per product ===
   const timelineRows = useMemo(() => {
+    const fromT = tlFrom ? new Date(tlFrom).getTime() : null;
+    const toT = tlTo ? new Date(tlTo).getTime() + 86_400_000 : null;
     return logs
       .filter((l) => !productFilter || prodById.get(l.product_id)?.name?.toLowerCase().includes(productFilter.toLowerCase()))
+      .filter((l) => {
+        const t = new Date(l.created_at).getTime();
+        if (fromT && t < fromT) return false;
+        if (toT && t > toT) return false;
+        if (tlDirection === "in" && !(Number(l.change) > 0)) return false;
+        if (tlDirection === "out" && !(Number(l.change) < 0)) return false;
+        if (tlKind !== "all") {
+          const r = l.reason ?? "";
+          const isPO = /^PO /i.test(r);
+          const isDR = /خصم محضر|delivery receipt|DR /i.test(r);
+          const isInv = /^sale |^void /i.test(r) || !!l.invoice_id;
+          const isManual = /^manual/i.test(r) || /يدوي/.test(r);
+          const isResv = /reservation-fulfilled/i.test(r);
+          if (tlKind === "po" && !isPO) return false;
+          if (tlKind === "dr" && !isDR) return false;
+          if (tlKind === "invoice" && !isInv) return false;
+          if (tlKind === "manual" && !isManual) return false;
+          if (tlKind === "reservation" && !isResv) return false;
+        }
+        return true;
+      })
       .slice(0, 500)
       .map((l) => {
         const reason = l.reason ?? "";
@@ -341,7 +364,26 @@ function Traceability() {
         const inv = l.invoice_id ? invById.get(l.invoice_id) : undefined;
         return { log: l, product: prodById.get(l.product_id), kind, link, invoice: inv };
       });
-  }, [logs, prodById, invById, productFilter, isAr]);
+  }, [logs, prodById, invById, productFilter, isAr, tlDirection, tlKind, tlFrom, tlTo]);
+
+  // Logs for the selected product (stock detail dialog)
+  const selectedProductLogs = useMemo(() => {
+    if (!selectedProduct) return [] as { log: Log; invoice: Invoice | undefined; poRef: string | null; drRef: string | null }[];
+    return logs
+      .filter((l) => l.product_id === selectedProduct.id)
+      .slice(0, 500)
+      .map((l) => {
+        const reason = l.reason ?? "";
+        const poMatch = reason.match(/PO-\d{4}-\d{4}/);
+        const drMatch = reason.match(/DR[-# ]?(\d+)/i);
+        return {
+          log: l,
+          invoice: l.invoice_id ? invById.get(l.invoice_id) : undefined,
+          poRef: poMatch ? poMatch[0] : null,
+          drRef: drMatch ? drMatch[1] : null,
+        };
+      });
+  }, [logs, selectedProduct, invById]);
 
   return (
     <div className="space-y-6">
