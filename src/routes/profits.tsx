@@ -2538,15 +2538,19 @@ function ProfitsPage() {
           const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
           return mon.toISOString().slice(0, 10);
         };
-        const trendMap = new Map<string, number>();
+        const trendMap = new Map<string, { profit: number; revenue: number; qty: number }>();
         for (const r of filteredInvoices) {
           const k = bucketKey(r.created_at);
           if (!k) continue;
-          trendMap.set(k, (trendMap.get(k) ?? 0) + r.profit);
+          const cur = trendMap.get(k) ?? { profit: 0, revenue: 0, qty: 0 };
+          cur.profit += r.profit;
+          cur.revenue += r.revenue;
+          cur.qty += r.items;
+          trendMap.set(k, cur);
         }
         const invTrend = Array.from(trendMap.entries())
           .sort((a, b) => (a[0] > b[0] ? 1 : -1))
-          .map(([date, profit]) => ({ date, profit }));
+          .map(([date, v]) => ({ date, profit: v.profit, revenue: v.revenue, qty: v.qty, avg: v.qty > 0 ? v.revenue / v.qty : 0 }));
         const marginTone = (m: number) =>
           m >= 40 ? { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-gradient-to-r from-emerald-500 to-emerald-400" }
           : m >= 20 ? { text: "text-amber-600 dark:text-amber-300", bar: "bg-gradient-to-r from-amber-500 to-yellow-400" }
