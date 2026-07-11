@@ -15,15 +15,19 @@ import {
   BarChart3, ArrowRight, X, Package, ArrowDownWideNarrow, ArrowUpWideNarrow,
 } from "lucide-react";
 import { useRealtimeTable } from "@/lib/realtime";
+import { RouteErrorBoundary } from "@/components/error-boundary";
 
 
 export const Route = createFileRoute("/inventory-traceability")({
   component: () => (
     <AppShell>
-      <Traceability />
+      <RouteErrorBoundary label="متتبع المخزون">
+        <Traceability />
+      </RouteErrorBoundary>
     </AppShell>
   ),
 });
+
 
 type Reservation = {
   id: string;
