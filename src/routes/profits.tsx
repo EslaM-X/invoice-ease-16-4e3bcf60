@@ -246,13 +246,19 @@ function ProfitsPage() {
     setUpdateCount((n) => n + 1);
     setLastUpdateAt(Date.now());
   }, []);
+  const lastPerfFlushRef = React.useRef(0);
   useEffect(() => {
     if (typeof performance === "undefined") return;
     const ms = performance.now() - renderStartRef.current;
-    setLastRenderMs(ms);
     renderSumRef.current += ms;
+    if (!showPerf) return;
+    const now = performance.now();
+    if (now - lastPerfFlushRef.current < 1000) return;
+    lastPerfFlushRef.current = now;
+    setLastRenderMs(ms);
     setAvgRenderMs(renderSumRef.current / Math.max(1, renderCountRef.current));
   });
+
 
   const [range, setRange] = useState<Range>("all");
   const today = new Date().toISOString().slice(0, 10);
