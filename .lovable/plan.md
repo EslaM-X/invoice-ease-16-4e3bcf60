@@ -1,32 +1,23 @@
-# تطبيق تصميم Prestige Glass Noir على شارة الشحنة القادمة
+## Goal
+Display the signed-in user's profile avatar (`profiles.avatar_url`) inside the Noir & Gold dashboard hero header, positioned above the "فاتورة جديدة" button, without removing or shrinking any existing content.
 
-## المكان
-`src/components/closeable-invoices-card.tsx` — السطر 153-167 (الشارة اللي بتظهر تحت بطاقة "اقتراحات الإقفال الذكية" وبتعرض: `qty · ETA · PO code 🚚`).
+## Design
+- Luxury circular avatar (56–64px) with:
+  - Double gold ring: outer `#c9a84c/60` hairline + inner black separator + soft ambient gold glow.
+  - Subtle rotating conic-gradient gold aura on hover.
+  - Live green status dot (bottom-right) matching the existing "مباشر" indicator.
+  - Fallback: gold-tinted initials on noir surface when no `avatar_url`.
+- Placement: inside the actions column of the hero (`src/routes/dashboard.tsx`), stacked ABOVE the button row — right-aligned in RTL so it sits directly over "فاتورة جديدة". A tiny gold hairline separator between avatar and buttons.
+- Reuses existing shadcn `Avatar` primitive; wrapped in `noir-press` + `focus-gold` and links to `/settings` (profile edit) with `aria-label`.
+- Fully respects `prefers-reduced-motion` (aura disabled).
 
-## التنفيذ (Frontend فقط)
+## Data
+- Fetch once on mount in `dashboard.tsx`: `supabase.from("profiles").select("avatar_url, display_name").eq("user_id", user.id).maybeSingle()`.
+- Store in local state; no schema change needed.
 
-### 1. إعادة تصميم الشارة (Prestige Glass Noir)
-- سطح `noir-surface` أسود زجاجي مع `backdrop-blur` وحواف `gold-hairline`.
-- **فقاعة كمية ذهبية** يسار الشارة: دائرة صغيرة `bg-gradient-to-br from-[#e8c76a] to-[#c9a84c]` بأرقام سوداء عريضة `font-display`.
-- **فاصل ذهبي رفيع** (`w-px h-4 bg-[#c9a84c]/30`) بين الأقسام لتقسيم بصري راقي.
-- **قسم التاريخ**: أيقونة `Calendar` رمادية صغيرة + التاريخ بخط `tabular-nums` أبيض ناعم مع label صغير "ETA" بلون ذهبي متلاشي فوقه.
-- **قسم كود PO**: كود بخط `font-mono` ذهبي (`text-[#c9a84c]`) داخل شريط `bg-[#c9a84c]/10` مع hairline.
-- **أيقونة الشحن** (Truck/Plane/Ship) في دائرة ذهبية شفافة على اليمين مع micro-glow.
-- استبدال ألوان `violet/sky/amber` القديمة بنظام Noir & Gold موحّد، مع الحفاظ على تمييز نوع الشحنة بلون accent صغير على أيقونة الشحن فقط (ذهبي/فيروزي/كهرماني).
+## Files
+- `src/routes/dashboard.tsx` — add avatar fetch + render block above the buttons row inside the hero card. No other markup touched; greeting, name, title, live badge, buttons, and low-stock alert remain identical.
 
-### 2. حركات وتفاعل
-- `noir-press` + `noir-ripple` + `focus-gold` على كل شارة.
-- Hover: gold glow ناعم `hover:shadow-[0_0_20px_-4px_#c9a84c]/40` + رفعة `-translate-y-0.5`.
-- انتقالات `motion-reduce:transition-none` لاحترام تفضيلات النظام.
-- `tabIndex={0}` و `aria-label` وصفي للقارئ (مثلاً: "PO D2, ETA 4/27/2026, 2 invoices").
-
-### 3. تحسينات مصاحبة
-- زيادة gap بين الشارات (`gap-2.5`) وpadding داخلي أوسع (`px-3.5 py-2.5`).
-- إضافة عنوان صغير فوق الشريط: "الشحنات المرتبطة" / "Linked shipments" بخط ذهبي uppercase tracking-wider.
-- Scroll horizontally مع gradient fade على الأطراف للإشارة لوجود المزيد.
-
-## تفاصيل تقنية
-- ملف واحد فقط: `src/components/closeable-invoices-card.tsx`.
-- بدون تغيير في بيانات `incomingSlots` أو منطق `shipIcon`/`shipTone` (يتم استبدال `shipTone` بنظام Noir موحّد).
-- بدون تغييرات backend أو database.
-- التزام كامل بـ `prefers-reduced-motion` و RTL.
+## Non-goals
+- No change to buttons, greeting, low-stock alert, KPI cards, or any numbers/data.
+- No new tables, policies, or routes.
