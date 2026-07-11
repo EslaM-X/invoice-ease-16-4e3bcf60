@@ -131,7 +131,7 @@ type InvVProps = {
   onOpen: (id: string) => void;
   medalOf: (i: number) => { label: string; cls: string } | null;
   toneOf: (m: number) => { text: string; bar: string };
-  MarginPillCmp: (p: { margin: number; size?: "xs" | "sm" | "md" }) => JSX.Element;
+  MarginPillCmp: (p: { margin: number; size?: "xs" | "sm" | "md" }) => React.ReactNode;
 };
 const INV_GRID_COLS = "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)";
 function VirtualInvoiceRow({
