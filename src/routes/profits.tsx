@@ -365,6 +365,23 @@ function ProfitsPage() {
     };
   }, [costBook, overrides, productById, costSource]);
 
+  // Which source actually produced the number costOf() returned for a product.
+  // Mirrors costOf() precedence so the UI can label/tooltip it accurately.
+  const costSourceOf = useMemo(() => {
+    return (productId: string | null | undefined): CostSource => {
+      if (!productId) return costSource;
+      const ov = overrides[productId];
+      if (costSource === "override") return "override";
+      if (ov) return "override";
+      const entry = costBook.products[productId];
+      if (!entry) return "current";
+      if (costSource === "wac") return Number(entry.wac_egp) > 0 ? "wac" : "current";
+      if (costSource === "latest_po") return Number(entry.latest_egp) > 0 ? "latest_po" : "current";
+      return "current";
+    };
+  }, [costBook, overrides, costSource]);
+
+
 
 
   // Per-invoice discount-proration factor: line_total -> net revenue after
