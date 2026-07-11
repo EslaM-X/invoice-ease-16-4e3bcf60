@@ -580,7 +580,7 @@ function ProfitsPage() {
     if (rtPending.size === 0) return;
     const pend = rtPending;
     setRtPending(new Set());
-    if (pend.has("items")) { bumpUpdate(); loadItems(); }
+    if (pend.has("items")) { bumpUpdate(); loadItems({ force: true }); }
     if (pend.has("costbook")) { bumpUpdate(); loadCostBook(); }
     if (pend.has("overrides")) { bumpUpdate(); loadOverrides(); }
     if (pend.has("products")) { bumpUpdate(); loadProducts(); }
