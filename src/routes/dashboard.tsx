@@ -280,6 +280,7 @@ function Dashboard() {
               <span className="pointer-events-none absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none" />
             </button>
           </div>
+          </div>
         </div>
       </header>
 
