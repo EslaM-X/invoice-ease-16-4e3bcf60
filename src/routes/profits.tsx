@@ -2162,7 +2162,7 @@ function ProfitsPage() {
                       <div>
                         <div className="flex items-center justify-between text-[10px] mb-1">
                           <span className="text-muted-foreground/70 font-semibold uppercase tracking-widest">{t("الهامش", "Margin")}</span>
-                          <span className={`tabular-nums font-bold ${marginColor}`}>{r.margin.toFixed(1)}%</span>
+                          <MarginPill margin={r.margin} size="xs" />
                         </div>
                         <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
                           <div className={`h-full ${marginBar}`} style={{ width: `${marginPct}%` }} />
