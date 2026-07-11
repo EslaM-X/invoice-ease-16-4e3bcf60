@@ -73,9 +73,10 @@ export function CloseableInvoicesCard() {
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-2xl border border-[#c9a84c]/25 bg-gradient-to-br from-[#161616] to-[#0d0d0d] shadow-2xl shadow-black/50">
-        {/* Top decorative gold bar */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#c9a84c] to-transparent opacity-70" />
+      <div className="ribbon-sheen relative overflow-hidden rounded-2xl border border-[#c9a84c]/25 bg-gradient-to-br from-[#161616] to-[#0d0d0d] shadow-2xl shadow-black/50 transition-all duration-500 hover:-translate-y-0.5 hover:border-[#c9a84c]/45 hover:shadow-[0_25px_60px_-15px_rgba(201,168,76,0.35)]">
+        {/* Animated top decorative gold bar */}
+        <div className="gold-hairline absolute inset-x-0 top-0" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#c9a84c]/40 to-transparent" />
 
         <div className="relative p-5 sm:p-6">
           {/* Header */}
