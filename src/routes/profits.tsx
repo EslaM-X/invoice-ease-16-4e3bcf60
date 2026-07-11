@@ -3896,6 +3896,8 @@ function costSourceLabel(s: CostSource, t: (ar: string, en: string) => string): 
 }
 
 import { ExecutiveGate } from "@/components/executive-gate";
+import { RouteErrorBoundary } from "@/components/error-boundary";
+
 
 export const Route = createFileRoute("/profits")({
   component: () => (
