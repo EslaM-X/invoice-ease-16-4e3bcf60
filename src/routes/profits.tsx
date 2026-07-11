@@ -364,6 +364,37 @@ function ProfitsPage() {
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
 
+  // Live toast when an invoice's status changes (paid, cancelled, …). Chart
+  // and tables refresh via the batched hook above; this only surfaces the
+  // event to the user so they know why numbers just moved.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("profits-invoice-status")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "invoices" },
+        (payload: any) => {
+          const prev = payload.old?.status;
+          const next = payload.new?.status;
+          if (!prev || !next || prev === next) return;
+          const num = payload.new?.invoice_number ?? "—";
+          const tone =
+            next === "cancelled" || next === "void" ? "error" :
+            next === "paid" ? "success" : "info";
+          const msg = lang === "ar"
+            ? `فاتورة ${num}: ${prev} → ${next}`
+            : `Invoice ${num}: ${prev} → ${next}`;
+          const opts = { description: lang === "ar" ? "تم تحديث المخطط والجدول تلقائيًا." : "Chart and table auto-updated." };
+          if (tone === "success") toast.success(msg, opts);
+          else if (tone === "error") toast.error(msg, opts);
+          else toast.info(msg, opts);
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, lang]);
+
   const openOvHistory = async (p: Product) => {
     setOvHistoryOpen(p);
     setOvHistoryLoading(true);
