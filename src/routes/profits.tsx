@@ -2501,6 +2501,26 @@ function ProfitsPage() {
           return true;
         });
         const rankedInvoices = [...filteredInvoices].sort((a, b) => b.profit - a.profit);
+        // Pagination (page size grows via Load More)
+        const visibleInvoices = rankedInvoices.slice(0, invPageSize);
+        const invHasMore = rankedInvoices.length > visibleInvoices.length;
+        // Customer autocomplete suggestions: unique names from invoices + customers list
+        const invCustomerSuggestions: string[] = (() => {
+          const q = invSearch.trim().toLowerCase();
+          if (!q) return [];
+          const set = new Set<string>();
+          for (const r of invoiceRows) if (r.customer_name) set.add(r.customer_name);
+          for (const c of customers) if (c.name) set.add(c.name);
+          const all = Array.from(set);
+          const match = all.filter((n) => n.toLowerCase().includes(q));
+          match.sort((a, b) => {
+            const ai = a.toLowerCase().indexOf(q);
+            const bi = b.toLowerCase().indexOf(q);
+            if (ai !== bi) return ai - bi;
+            return a.localeCompare(b);
+          });
+          return match.slice(0, 8);
+        })();
         const invMaxAbsProfit = Math.max(1, ...rankedInvoices.map((r) => Math.abs(r.profit)));
         const invTotalProfit = rankedInvoices.reduce((s, r) => s + r.profit, 0);
         const invTotalRevenue = rankedInvoices.reduce((s, r) => s + r.revenue, 0);
