@@ -161,9 +161,7 @@ export function CloseableInvoicesCard() {
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#c9a84c]/25 to-transparent" />
           </div>
           <div className="relative">
-            <div aria-hidden className="pointer-events-none absolute inset-y-0 start-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
-            <div aria-hidden className="pointer-events-none absolute inset-y-0 end-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
-            <div className="flex gap-2.5 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1 px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {incomingSlots.map((s) => {
                 const Icon = shipIcon(s.shipment_type);
                 const qty = s.invoiceIds.size;
