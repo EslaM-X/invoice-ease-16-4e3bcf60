@@ -88,7 +88,7 @@ function Traceability() {
   // Filters
   const tab: TabValue = searchParams.tab ?? "lines";
   const setTab = (next: string) => {
-    navigate({ search: (prev) => ({ ...prev, tab: next as TabValue }), replace: true });
+    navigate({ search: (prev: { tab?: TabValue }) => ({ ...prev, tab: next as TabValue }), replace: true });
   };
   const [search, setSearch] = useState("");
   const [poFilter, setPoFilter] = useState("");
