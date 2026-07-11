@@ -2202,49 +2202,181 @@ function ProfitsPage() {
         );
       })()}
 
-      {/* Per-invoice profit */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between border-b px-4 py-2.5">
-          <h3 className="font-semibold text-sm">{t("ربح كل فاتورة", "Per-Invoice Profit")} ({fmtNumber(invoiceRows.length, lang)})</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 text-start">{t("الفاتورة", "Invoice")}</th>
-                <th className="px-3 py-2 text-start">{t("التاريخ", "Date")}</th>
-                <th className="px-3 py-2 text-start">{t("العميل", "Customer")}</th>
-                <th className="px-3 py-2 text-end">{t("القطع", "Items")}</th>
-                <th className="px-3 py-2 text-end">{t("البيع", "Revenue")}</th>
-                <th className="px-3 py-2 text-end">{t("التكلفة", "Cost")}</th>
-                <th className="px-3 py-2 text-end">{t("الربح", "Profit")}</th>
-                <th className="px-3 py-2 text-end">{t("هامش", "Margin")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {invoiceRows.length === 0 ? (
-                <tr><td colSpan={8} className="px-3 py-12 text-center text-muted-foreground text-sm">{t("لا توجد فواتير", "No invoices")}</td></tr>
-              ) : invoiceRows.map((r) => (
-                <tr
-                  key={r.invoice_id}
-                  onClick={() => setInvoiceDetailOpen(r.invoice_id)}
-                  className={`${r.profit >= 0 ? "" : "bg-rose-500/5"} cursor-pointer hover:bg-muted/30 transition`}
-                  title={t("عرض تفاصيل الحساب", "Show calculation details")}
-                >
-                  <td className="px-3 py-2 font-mono text-xs text-primary underline-offset-2 hover:underline">{r.invoice_number}</td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(r.created_at, lang)}</td>
-                  <td className="px-3 py-2">{r.customer_name ?? "—"}</td>
-                  <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.items, lang)}</td>
-                  <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</td>
-                  <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</td>
-                  <td className={`px-3 py-2 text-end tabular-nums font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</td>
-                  <td className="px-3 py-2 text-end tabular-nums">{r.margin.toFixed(1)}%</td>
+      {/* Per-invoice profit — Noir & Gold */}
+      {(() => {
+        const invRankMedal = (i: number) => {
+          if (i === 0) return { label: "1", cls: "bg-gradient-to-br from-amber-300 to-yellow-600 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)] ring-1 ring-amber-200/60" };
+          if (i === 1) return { label: "2", cls: "bg-gradient-to-br from-slate-200 to-slate-400 text-black ring-1 ring-slate-100/60" };
+          if (i === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
+          return null;
+        };
+        const rankedInvoices = [...invoiceRows].sort((a, b) => b.profit - a.profit);
+        const invMaxAbsProfit = Math.max(1, ...rankedInvoices.map((r) => Math.abs(r.profit)));
+        const invTotalProfit = rankedInvoices.reduce((s, r) => s + r.profit, 0);
+        const invTotalRevenue = rankedInvoices.reduce((s, r) => s + r.revenue, 0);
+        const invAvgMargin = rankedInvoices.length > 0
+          ? rankedInvoices.reduce((s, r) => s + r.margin, 0) / rankedInvoices.length
+          : 0;
+        const invTop = rankedInvoices[0];
+        const marginTone = (m: number) =>
+          m >= 40 ? { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-gradient-to-r from-emerald-500 to-emerald-400" }
+          : m >= 20 ? { text: "text-amber-600 dark:text-amber-300", bar: "bg-gradient-to-r from-amber-500 to-yellow-400" }
+          : m >= 0 ? { text: "text-orange-600 dark:text-orange-300", bar: "bg-gradient-to-r from-orange-500 to-amber-400" }
+          : { text: "text-rose-600 dark:text-rose-400", bar: "bg-gradient-to-r from-rose-600 to-rose-400" };
+        return (
+        <div className="relative rounded-2xl overflow-hidden noir-surface border border-primary/20 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+          {/* Luxury header */}
+          <div className="relative px-5 py-4 border-b border-primary/15 bg-gradient-to-br from-background via-background to-primary/5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/25 to-primary/5 border border-primary/30 flex items-center justify-center shrink-0">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  <span className="absolute -inset-0.5 rounded-xl bg-primary/10 blur-md -z-10" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base tracking-tight bg-gradient-to-r from-foreground to-primary/80 bg-clip-text text-transparent">
+                    {t("ربح كل فاتورة", "Per-Invoice Profit")}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {t("ترتيب حسب الربح • انقر الصف لعرض التفاصيل", "Ranked by profit • click any row for details")}
+                    {loading && <span className="ms-2 inline-flex items-center gap-1 text-primary/70"><RefreshCw className="h-3 w-3 animate-spin" />{t("تحديث…", "syncing…")}</span>}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent px-3 py-1.5">
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الفواتير", "Invoices")}</div>
+                  <div className="text-sm font-bold tabular-nums">{fmtNumber(rankedInvoices.length, lang)}</div>
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent px-3 py-1.5">
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("إجمالي البيع", "Revenue")}</div>
+                  <div className="text-sm font-bold tabular-nums text-primary">{fmtMoney(invTotalRevenue, "EGP", lang)}</div>
+                </div>
+                <div className={`rounded-lg border px-3 py-1.5 ${invTotalProfit >= 0 ? "border-emerald-500/30 bg-emerald-500/5" : "border-rose-500/30 bg-rose-500/5"}`}>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("صافي الربح", "Net Profit")}</div>
+                  <div className={`text-sm font-bold tabular-nums ${invTotalProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(invTotalProfit, "EGP", lang)}</div>
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent px-3 py-1.5">
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("متوسط الهامش", "Avg Margin")}</div>
+                  <div className="text-sm font-bold tabular-nums text-primary">{invAvgMargin.toFixed(1)}%</div>
+                </div>
+                {invTop && (
+                  <div className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent px-3 py-1.5 max-w-[240px]">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1">
+                      <span className="text-amber-500">★</span>{t("الأعلى ربحًا", "Top invoice")}
+                    </div>
+                    <div className="text-sm font-bold truncate text-amber-700 dark:text-amber-300">
+                      {invTop.invoice_number}
+                      <span className="ms-1 font-normal text-muted-foreground/80">· {fmtMoney(invTop.profit, "EGP", lang)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] text-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/90 font-bold">
+                  <th className="px-3 py-3 text-center w-12">#</th>
+                  <th className="px-3 py-3 text-start">{t("الفاتورة", "Invoice")}</th>
+                  <th className="px-3 py-3 text-start">{t("التاريخ", "Date")}</th>
+                  <th className="px-3 py-3 text-start">{t("العميل", "Customer")}</th>
+                  <th className="px-3 py-3 text-end">{t("القطع", "Items")}</th>
+                  <th className="px-3 py-3 text-end">{t("البيع", "Revenue")}</th>
+                  <th className="px-3 py-3 text-end">{t("التكلفة", "Cost")}</th>
+                  <th className="px-3 py-3 text-end min-w-[180px]">{t("صافي الربح", "Profit")}</th>
+                  <th className="px-3 py-3 text-end min-w-[130px]">{t("هامش %", "Margin")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {rankedInvoices.length === 0 ? (
+                  <tr><td colSpan={9} className="px-3 py-16 text-center">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <div className="h-12 w-12 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center">
+                        <Receipt className="h-5 w-5 text-primary/60" />
+                      </div>
+                      <div className="text-sm font-medium">{t("لا توجد فواتير في هذا النطاق", "No invoices in this range")}</div>
+                      <div className="text-[11px]">{t("جرّب تعديل الفلاتر أو النطاق الزمني", "Try adjusting filters or the date range")}</div>
+                    </div>
+                  </td></tr>
+                ) : rankedInvoices.map((r, idx) => {
+                  const medal = invRankMedal(idx);
+                  const isTop = medal !== null;
+                  const profitBarPct = Math.min(100, (Math.abs(r.profit) / invMaxAbsProfit) * 100);
+                  const marginPct = Math.max(0, Math.min(100, r.margin));
+                  const mt = marginTone(r.margin);
+                  return (
+                    <tr
+                      key={r.invoice_id}
+                      onClick={() => setInvoiceDetailOpen(r.invoice_id)}
+                      className={`group cursor-pointer transition-colors duration-200 hover:bg-primary/[0.04] ${r.profit < 0 ? "bg-rose-500/[0.03]" : ""} ${isTop ? "bg-gradient-to-r from-amber-500/[0.04] via-transparent to-transparent" : ""}`}
+                      title={t("عرض تفاصيل الحساب", "Show calculation details")}
+                    >
+                      <td className="px-3 py-3 text-center">
+                        {medal ? (
+                          <div className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${medal.cls}`}>{medal.label}</div>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground/60 tabular-nums font-mono">{idx + 1}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-primary group-hover:underline underline-offset-2">
+                          <Receipt className="h-3.5 w-3.5 opacity-70" />
+                          {r.invoice_number}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span className="tabular-nums">{fmtDate(r.created_at, lang)}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                            {(r.customer_name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                          </div>
+                          <span className="truncate text-sm">{r.customer_name ?? "—"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-end tabular-nums">
+                        <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-xs font-semibold">{fmtNumber(r.items, lang)}</span>
+                      </td>
+                      <td className="px-3 py-3 text-end tabular-nums font-medium">{fmtMoney(r.revenue, "EGP", lang)}</td>
+                      <td className="px-3 py-3 text-end tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</td>
+                      <td className="px-3 py-3 text-end">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums border ${r.profit >= 0 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"}`}>
+                            {r.profit >= 0 ? <TrendingUp className="h-3 w-3" /> : <ArrowRight className="h-3 w-3 rotate-90" />}
+                            {fmtMoney(r.profit, "EGP", lang)}
+                          </span>
+                          <div className="w-24 h-1 rounded-full bg-muted/50 overflow-hidden">
+                            <div className={`h-full ${r.profit >= 0 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" : "bg-gradient-to-r from-rose-600 to-rose-400"}`} style={{ width: `${profitBarPct}%` }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-end">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-sm font-bold tabular-nums ${mt.text}`}>{r.margin.toFixed(1)}%</span>
+                          <div className="w-20 h-1 rounded-full bg-muted/50 overflow-hidden">
+                            <div className={`h-full ${mt.bar}`} style={{ width: `${marginPct}%` }} />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+        );
+      })()}
 
       {/* Price history dialog */}
       <Dialog open={!!historyOpen} onOpenChange={(o) => { if (!o) { setHistoryOpen(null); setHistory([]); } }}>
