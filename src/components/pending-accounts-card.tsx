@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import {
   CheckCircle2, XCircle, Loader2, Clock, UserPlus, Store, Briefcase,
-  Phone, MapPin, Building2,
+  Phone, MapPin, Building2, BadgeCheck,
 } from "lucide-react";
 
 type Pending = {
@@ -62,13 +62,30 @@ export function PendingAccountsCard() {
   if (loading) return null;
   if (rows.length === 0) {
     return (
-      <div className="ios-card flex items-center gap-3 p-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 className="h-4 w-4" />
-        </div>
-        <div>
-          <div className="text-sm font-semibold">{isAr ? "لا توجد طلبات حسابات بانتظار الموافقة" : "No pending account requests"}</div>
-          <div className="text-[11px] text-muted-foreground">{isAr ? "أي طلب جديد هيظهر هنا فوراً" : "New requests appear here in realtime"}</div>
+      <div className="relative group">
+        <div className="pointer-events-none absolute -inset-0.5 rounded-2xl bg-[color:var(--brand-gold)]/10 opacity-25 blur transition-opacity duration-500 group-hover:opacity-50" />
+        <div className="noir-surface relative flex items-center justify-between overflow-hidden rounded-xl border border-[color:var(--brand-gold)]/20 p-5 shadow-2xl transition-colors duration-500 group-hover:border-[color:var(--brand-gold)]/40">
+          <div className="pointer-events-none absolute inset-y-0 end-0 w-32 bg-gradient-to-l from-[color:var(--brand-gold)]/[0.06] to-transparent" />
+          <div className="relative flex min-w-0 items-center gap-4 sm:gap-5">
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 rounded-full bg-[color:var(--brand-gold)]/20 blur-lg" />
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[color:var(--brand-gold)]/40 bg-background/60 shadow-[inset_0_0_12px_rgba(201,168,76,0.12)]">
+                <BadgeCheck className="h-6 w-6 text-gold" strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <h3 className="truncate text-base font-medium leading-tight tracking-wide text-foreground sm:text-lg">
+                {isAr ? "لا توجد طلبات حسابات بانتظار الموافقة" : "No pending account requests"}
+              </h3>
+              <p className="flex items-center gap-2 text-xs font-light text-muted-foreground sm:text-sm">
+                <span className="inline-block h-1 w-1 shrink-0 animate-pulse rounded-full bg-[color:var(--brand-gold)]/70" />
+                <span className="truncate">{isAr ? "أي طلب جديد هيظهر هنا فوراً" : "New requests appear here in realtime"}</span>
+              </p>
+            </div>
+          </div>
+          <span className="hidden shrink-0 rounded-full border border-[color:var(--brand-gold)]/20 bg-[color:var(--brand-gold)]/[0.06] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-gold/80 md:inline-block">
+            {isAr ? "مزامنة فورية" : "Realtime Sync"}
+          </span>
         </div>
       </div>
     );
