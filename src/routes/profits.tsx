@@ -353,6 +353,8 @@ function ProfitsPage() {
   useBatchedRealtimeTables(
     ["invoices", "invoice_items"],
     () => loadItems(),
+    [],
+    { debounceMs: 2500, maxWaitMs: 6000 },
   );
   useBatchedRealtimeTables(
     ["purchase_orders", "purchase_order_items", "profit_cost_overrides"],
@@ -360,6 +362,8 @@ function ProfitsPage() {
       if (table === "profit_cost_overrides") loadOverrides();
       else loadCostBook();
     },
+    [],
+    { debounceMs: 2500, maxWaitMs: 6000 },
   );
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
