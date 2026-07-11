@@ -1912,7 +1912,7 @@ function ProfitsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.qty, lang)}</td>
-                    <td className="px-3 py-2 text-end">
+                    <td className={`px-3 py-2 text-end ${r.missingCost ? "ring-1 ring-inset ring-amber-500/40 bg-amber-500/5" : ""}`}>
                       {p && e ? (
                         <Input
                           type="number"
@@ -1921,10 +1921,22 @@ function ProfitsPage() {
                           onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], cost: ev.target.value } }))}
                           className="h-8 w-24 text-end"
                         />
+                      ) : r.qty === 0 && r.unitCost === 0 ? (
+                        <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="tabular-nums">{fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)}</span>
+                        <div
+                          className="inline-flex items-center gap-1.5 justify-end"
+                          title={r.missingCost
+                            ? t("لا توجد بيانات تكلفة لهذا المنتج — الربح مبالغ فيه", "No cost data for this product — profit is overstated")
+                            : `${t("المصدر", "Source")}: ${srcLabel}`}
+                        >
+                          {r.missingCost && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+                          <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span>
+                          <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span>
+                        </div>
                       )}
                     </td>
+
                     <td className="px-3 py-2 text-end">
                       {p && e ? (
                         <Input
