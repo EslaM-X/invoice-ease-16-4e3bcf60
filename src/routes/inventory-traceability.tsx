@@ -85,6 +85,12 @@ function Traceability() {
   const [stockSearch, setStockSearch] = useState("");
   const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
   const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  // Timeline filters
+  const [tlDirection, setTlDirection] = useState<"all" | "in" | "out">("all");
+  const [tlKind, setTlKind] = useState<"all" | "po" | "dr" | "invoice" | "manual" | "reservation">("all");
+  const [tlFrom, setTlFrom] = useState("");
+  const [tlTo, setTlTo] = useState("");
 
   useEffect(() => {
     (async () => {
