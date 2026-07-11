@@ -333,7 +333,8 @@ function InvoiceView() {
                   );
                 })()}
                 {(() => {
-                  const totalNum = Number(inv.total);
+                  const discNum = Number(inv.discount ?? 0);
+                  const totalNum = discNum > 0 ? +(Number(inv.subtotal ?? 0) - discNum).toFixed(2) : Number(inv.subtotal ?? 0);
                   const paidNum = Number(inv.paid_amount ?? 0);
                   const remainingNum = +(totalNum - paidNum).toFixed(2);
                   const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;
