@@ -16,6 +16,7 @@ import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-style
 import { toast } from "sonner";
 import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers, ShieldCheck, Receipt, Clock, AlertTriangle, Sparkles, ArrowRight, Truck, Ban, Divide, Calculator, LineChart as LineChartIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
@@ -156,6 +157,10 @@ function ProfitsPage() {
   const [ovRevertingId, setOvRevertingId] = useState<string | null>(null);
   const [invoiceDetailOpen, setInvoiceDetailOpen] = useState<string | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  // Product table filters
+  const [ptSearch, setPtSearch] = useState("");
+  const [ptSort, setPtSort] = useState<{ field: "profit" | "qty" | "margin" | "name"; dir: "asc" | "desc" }>({ field: "profit", dir: "desc" });
+  const [productDetailId, setProductDetailId] = useState<string | null>(null);
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
@@ -1892,11 +1897,51 @@ function ProfitsPage() {
           : 0;
         const totalProfit = activeRows.reduce((s, r) => s + r.profit, 0);
         const maxAbsProfit = Math.max(1, ...activeRows.map((r) => Math.abs(r.profit)));
-        const rankMedal = (i: number) => {
-          if (i === 0) return { label: "1", cls: "bg-gradient-to-br from-amber-300 to-yellow-600 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)] ring-1 ring-amber-200/60" };
-          if (i === 1) return { label: "2", cls: "bg-gradient-to-br from-slate-200 to-slate-400 text-black ring-1 ring-slate-100/60" };
-          if (i === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
+        // Rank by profit (for medals) — independent of user sort
+        const profitRankIndex = new Map<string, number>();
+        [...rows.list]
+          .filter((r) => r.qty > 0)
+          .sort((a, b) => b.profit - a.profit)
+          .forEach((r, i) => profitRankIndex.set(r.product_id, i));
+        // Local search + sort for product table
+        const s = ptSearch.trim().toLowerCase();
+        const searched = s
+          ? rows.list.filter((r) =>
+              r.name.toLowerCase().includes(s) ||
+              (r.product?.serial_number ?? "").toLowerCase().includes(s) ||
+              (r.product?.color ?? "").toLowerCase().includes(s) ||
+              (r.product?.collection ?? "").toLowerCase().includes(s)
+            )
+          : rows.list;
+        const dir = ptSort.dir === "asc" ? 1 : -1;
+        const displayRows = [...searched].sort((a, b) => {
+          if (a.qty === 0 && b.qty === 0) return a.name.localeCompare(b.name);
+          if (a.qty === 0) return 1;
+          if (b.qty === 0) return -1;
+          if (ptSort.field === "name") return a.name.localeCompare(b.name) * dir;
+          if (ptSort.field === "qty") return (a.qty - b.qty) * dir;
+          if (ptSort.field === "margin") return (a.margin - b.margin) * dir;
+          return (a.profit - b.profit) * dir;
+        });
+        const rankMedal = (rank: number | undefined) => {
+          if (rank === 0) return { label: "1", cls: "bg-gradient-to-br from-amber-300 to-yellow-600 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)] ring-1 ring-amber-200/60" };
+          if (rank === 1) return { label: "2", cls: "bg-gradient-to-br from-slate-200 to-slate-400 text-black ring-1 ring-slate-100/60" };
+          if (rank === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
           return null;
+        };
+        const SortBtn = ({ field, label }: { field: typeof ptSort.field; label: string }) => {
+          const active = ptSort.field === field;
+          return (
+            <button
+              type="button"
+              onClick={() => setPtSort((cur) => cur.field === field ? { field, dir: cur.dir === "asc" ? "desc" : "asc" } : { field, dir: "desc" })}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${active ? "border-primary/50 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
+              title={t("ترتيب", "Sort")}
+            >
+              {label}
+              {active && (ptSort.dir === "desc" ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
+            </button>
+          );
         };
         return (
         <div className="relative rounded-2xl overflow-hidden noir-surface border border-primary/20 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
@@ -1946,7 +1991,135 @@ function ProfitsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Toolbar: search + sort */}
+          <div className="border-b border-primary/10 bg-background/40 px-4 py-2.5 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px] max-w-md">
+              <Filter className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
+              <Input
+                value={ptSearch}
+                onChange={(e) => setPtSearch(e.target.value)}
+                placeholder={t("ابحث باسم المنتج أو الكود أو اللون…", "Search product name, code, color…")}
+                className="h-8 ps-8 text-xs"
+              />
+              {ptSearch && (
+                <button type="button" onClick={() => setPtSearch("")} className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground" title={t("مسح", "Clear")}>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold me-1">{t("ترتيب", "Sort")}</span>
+              <SortBtn field="profit" label={t("الربح", "Profit")} />
+              <SortBtn field="qty" label={t("الكمية", "Qty")} />
+              <SortBtn field="margin" label={t("الهامش", "Margin")} />
+              <SortBtn field="name" label={t("الاسم", "Name")} />
+            </div>
+            <div className="ms-auto text-[11px] text-muted-foreground tabular-nums">
+              {t("النتائج", "Results")}: <span className="font-bold text-foreground">{fmtNumber(displayRows.length, lang)}</span>
+              {ptSearch && <span> / {fmtNumber(rows.list.length, lang)}</span>}
+            </div>
+          </div>
+
+          {/* Mobile card view */}
+          <div className="md:hidden divide-y divide-border/40">
+            {displayRows.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <div className="h-12 w-12 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-primary/60" />
+                  </div>
+                  <div className="text-sm font-medium">{t("لا توجد نتائج", "No results")}</div>
+                </div>
+              </div>
+            ) : displayRows.map((r) => {
+              const p = r.product;
+              const rank = profitRankIndex.get(r.product_id);
+              const medal = r.qty > 0 ? rankMedal(rank) : null;
+              const isTop = medal !== null;
+              const profitBarPct = Math.min(100, (Math.abs(r.profit) / maxAbsProfit) * 100);
+              const marginPct = Math.max(0, Math.min(100, r.margin));
+              const marginColor = r.margin >= 30 ? "text-emerald-600 dark:text-emerald-400"
+                : r.margin >= 10 ? "text-primary"
+                : r.margin >= 0 ? "text-amber-600 dark:text-amber-400"
+                : "text-rose-600";
+              const marginBar = r.margin >= 30 ? "bg-gradient-to-r from-emerald-500 to-emerald-300"
+                : r.margin >= 10 ? "bg-gradient-to-r from-primary to-amber-300"
+                : r.margin >= 0 ? "bg-gradient-to-r from-amber-500 to-amber-300"
+                : "bg-gradient-to-r from-rose-500 to-rose-300";
+              return (
+                <button
+                  key={r.product_id}
+                  type="button"
+                  onClick={() => setProductDetailId(r.product_id)}
+                  className={`w-full text-start px-4 py-3 hover:bg-primary/[0.04] transition-colors ${isTop ? "bg-gradient-to-r from-amber-500/[0.05] via-transparent to-transparent" : ""} ${r.profit < 0 ? "bg-rose-500/[0.03]" : ""}`}
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-muted ${isTop ? "ring-2 ring-amber-400/50 border-amber-400/40" : "border-border/60"}`}>
+                        {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {medal && <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black shrink-0 ${medal.cls}`}>{medal.label}</span>}
+                          <span className="truncate font-semibold text-sm">{r.name}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground flex gap-2 flex-wrap mt-0.5">
+                          {p?.collection && (
+                            <span className={`inline-flex items-center gap-1 rounded border px-1 py-px text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                              <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                              {p.collection}
+                            </span>
+                          )}
+                          {p?.color && (
+                            <span className="inline-flex items-center gap-1"><ColorSwatch value={p.color} size="sm" />{p.color}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground/50 -rotate-90 rtl:rotate-90" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">{t("الكمية", "Qty")}</div>
+                      <div className="tabular-nums font-bold text-sm">{fmtNumber(r.qty, lang)}</div>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">{t("البيع", "Revenue")}</div>
+                      <div className="tabular-nums font-semibold">{fmtMoney(r.revenue, "EGP", lang)}</div>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">{t("التكلفة", "Cost")}</div>
+                      <div className="tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</div>
+                    </div>
+                  </div>
+                  {r.qty > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <span className="text-muted-foreground/70 font-semibold uppercase tracking-widest">{t("الربح", "Profit")}</span>
+                          <span className={`tabular-nums font-bold ${r.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</span>
+                        </div>
+                        <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+                          <div className={`h-full ${r.profit >= 0 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" : "bg-gradient-to-r from-rose-600 to-rose-400"}`} style={{ width: `${profitBarPct}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <span className="text-muted-foreground/70 font-semibold uppercase tracking-widest">{t("الهامش", "Margin")}</span>
+                          <span className={`tabular-nums font-bold ${marginColor}`}>{r.margin.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+                          <div className={`h-full ${marginBar}`} style={{ width: `${marginPct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/90 font-bold">
@@ -1963,17 +2136,17 @@ function ProfitsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {rows.list.length === 0 ? (
+                {displayRows.length === 0 ? (
                   <tr><td colSpan={10} className="px-3 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <div className="h-12 w-12 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center">
                         <BookOpen className="h-5 w-5 text-primary/60" />
                       </div>
-                      <div className="text-sm font-medium">{t("لا توجد بيانات في هذا النطاق", "No data in this range")}</div>
+                      <div className="text-sm font-medium">{ptSearch ? t("لا نتائج مطابقة للبحث", "No matching results") : t("لا توجد بيانات في هذا النطاق", "No data in this range")}</div>
                       <div className="text-[11px]">{t("جرّب تعديل الفلاتر أو النطاق الزمني", "Try adjusting filters or the date range")}</div>
                     </div>
                   </td></tr>
-                ) : rows.list.map((r, idx) => {
+                ) : displayRows.map((r, idx) => {
                   const p = r.product;
                   const e = p ? editing[p.id] : undefined;
                   const srcLabel = r.costSourceUsed === "override" ? t("تعديل يدوي", "Manual override")
@@ -1991,7 +2164,8 @@ function ProfitsPage() {
                     : r.costSourceUsed === "latest_po"
                     ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25"
                     : "bg-muted text-muted-foreground border-border";
-                  const medal = r.qty > 0 ? rankMedal(idx) : null;
+                  const rank = profitRankIndex.get(r.product_id);
+                  const medal = r.qty > 0 ? rankMedal(rank) : null;
                   const isTop = medal !== null;
                   const profitBarPct = Math.min(100, (Math.abs(r.profit) / maxAbsProfit) * 100);
                   const marginPct = Math.max(0, Math.min(100, r.margin));
@@ -2007,7 +2181,7 @@ function ProfitsPage() {
                       </td>
 
                       <td className="px-3 py-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                        <button type="button" onClick={() => setProductDetailId(r.product_id)} className="flex items-center gap-3 min-w-0 text-start hover:text-primary transition-colors" title={t("عرض تفاصيل المنتج", "View product details")}>
                           <div className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-muted transition-transform duration-200 group-hover:scale-105 ${isTop ? "ring-2 ring-amber-400/50 border-amber-400/40 shadow-[0_0_12px_-2px_rgba(234,179,8,0.4)]" : "border-border/60"}`}>
                             {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full flex items-center justify-center text-muted-foreground/40 text-[10px]">—</div>}
                           </div>
@@ -2031,7 +2205,7 @@ function ProfitsPage() {
                               )}
                             </div>
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-3 py-3 text-end tabular-nums font-medium">{fmtNumber(r.qty, lang)}</td>
                       <td className={`px-3 py-3 text-end ${r.missingCost ? "ring-1 ring-inset ring-amber-500/40 bg-amber-500/5" : ""}`}>
@@ -2606,6 +2780,158 @@ function ProfitsPage() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Product detail sheet */}
+      <Sheet open={!!productDetailId} onOpenChange={(o) => { if (!o) setProductDetailId(null); }}>
+        <SheetContent side={lang === "ar" ? "left" : "right"} className="w-full sm:max-w-lg overflow-y-auto">
+          {(() => {
+            const r = productDetailId ? rows.list.find((x) => x.product_id === productDetailId) : null;
+            if (!r) return null;
+            const p = r.product;
+            const stock = Number(p?.stock_quantity ?? 0);
+            const productLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
+            // Build timeline (daily aggregation of revenue)
+            const byDay = new Map<string, { date: string; revenue: number; qty: number }>();
+            for (const it of productLines) {
+              const d = (it.invoices?.created_at ?? "").slice(0, 10);
+              if (!d) continue;
+              const cur = byDay.get(d) ?? { date: d, revenue: 0, qty: 0 };
+              cur.revenue += netRev(it);
+              cur.qty += it.quantity;
+              byDay.set(d, cur);
+            }
+            const timeline = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+            const maxDay = Math.max(1, ...timeline.map((d) => d.revenue));
+            // Invoices grouped
+            const byInvoice = new Map<string, { invoice_id: string; invoice_number: string; created_at: string; qty: number; revenue: number }>();
+            for (const it of productLines) {
+              const inv = it.invoices;
+              if (!inv) continue;
+              const cur = byInvoice.get(it.invoice_id) ?? {
+                invoice_id: it.invoice_id,
+                invoice_number: inv.invoice_number ?? "—",
+                created_at: inv.created_at ?? "",
+                qty: 0, revenue: 0,
+              };
+              cur.qty += it.quantity;
+              cur.revenue += netRev(it);
+              byInvoice.set(it.invoice_id, cur);
+            }
+            const invList = Array.from(byInvoice.values()).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+            return (
+              <>
+                <SheetHeader className="text-start">
+                  <div className="flex items-start gap-3">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/30 bg-muted ring-2 ring-primary/20">
+                      {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <SheetTitle className="text-base truncate">{r.name}</SheetTitle>
+                      <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+                        {p?.collection && (
+                          <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}>
+                            <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                            {p.collection}
+                          </span>
+                        )}
+                        {p?.serial_number && <span className="font-mono rounded bg-muted px-1.5 py-0.5">{p.serial_number}</span>}
+                        {p?.color && <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5"><ColorSwatch value={p.color} size="sm" />{p.color}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                {/* KPI grid */}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("المخزون الحالي", "Current stock")}</div>
+                    <div className={`mt-1 text-lg font-extrabold tabular-nums ${stock <= 0 ? "text-rose-600" : stock < 5 ? "text-amber-600" : "text-foreground"}`}>{fmtNumber(stock, lang)}</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الكمية المباعة", "Sold qty")}</div>
+                    <div className="mt-1 text-lg font-extrabold tabular-nums">{fmtNumber(r.qty, lang)}</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("إجمالي التكلفة", "Total cost")}</div>
+                    <div className="mt-1 text-sm font-bold tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("إجمالي البيع", "Revenue")}</div>
+                    <div className="mt-1 text-sm font-bold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</div>
+                  </div>
+                  <div className={`rounded-xl border p-3 col-span-2 ${r.profit >= 0 ? "border-emerald-500/30 bg-emerald-500/5" : "border-rose-500/30 bg-rose-500/5"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("صافي الربح", "Net profit")}</div>
+                        <div className={`mt-1 text-xl font-extrabold tabular-nums ${r.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</div>
+                      </div>
+                      <div className="text-end">
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الهامش", "Margin")}</div>
+                        <div className="mt-1 text-lg font-bold tabular-nums text-primary">{r.margin.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mini timeline */}
+                {timeline.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-primary/15 bg-card/70 p-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
+                      <LineChartIcon className="h-3.5 w-3.5" />
+                      {t("المخطط الزمني للمبيعات", "Sales timeline")}
+                    </div>
+                    <div className="flex items-end gap-1 h-20">
+                      {timeline.map((d) => (
+                        <div key={d.date} className="flex-1 min-w-0 group/bar relative">
+                          <div
+                            className="w-full rounded-t bg-gradient-to-t from-primary/70 to-primary/30 hover:from-primary hover:to-primary/60 transition-colors"
+                            style={{ height: `${(d.revenue / maxDay) * 100}%` }}
+                            title={`${d.date} • ${fmtNumber(d.qty, lang)} × • ${fmtMoney(d.revenue, "EGP", lang)}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground tabular-nums">
+                      <span>{timeline[0].date}</span>
+                      <span>{timeline[timeline.length - 1].date}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Invoices list */}
+                <div className="mt-4 rounded-xl border border-primary/15 bg-card/70 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
+                    <Receipt className="h-3.5 w-3.5" />
+                    {t("الفواتير المرتبطة", "Linked invoices")} ({fmtNumber(invList.length, lang)})
+                  </div>
+                  {invList.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">{t("لا توجد فواتير في النطاق", "No invoices in range")}</div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+                      {invList.map((inv) => (
+                        <button
+                          key={inv.invoice_id}
+                          type="button"
+                          onClick={() => { setProductDetailId(null); setInvoiceDetailOpen(inv.invoice_id); }}
+                          className="w-full text-start py-2 px-1 flex items-center justify-between gap-2 text-xs hover:bg-primary/5 rounded transition-colors"
+                        >
+                          <span className="font-mono font-semibold text-primary">{inv.invoice_number}</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{fmtDate(inv.created_at, lang)}</span>
+                          <span className="tabular-nums text-muted-foreground">×{fmtNumber(inv.qty, lang)}</span>
+                          <span className="tabular-nums font-semibold">{fmtMoney(inv.revenue, "EGP", lang)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-2 text-[10px] text-muted-foreground italic">
+                    {t("الفواتير الملغية والمحذوفة ورسوم الشحن مستبعدة.", "Voided/deleted invoices and shipping fees are excluded.")}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
