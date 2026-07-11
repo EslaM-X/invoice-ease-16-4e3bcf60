@@ -1,7 +1,7 @@
 import { swatchStyle } from "@/lib/color-swatch";
 import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
