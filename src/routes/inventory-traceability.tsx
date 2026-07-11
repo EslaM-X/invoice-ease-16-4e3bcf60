@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import {
   BarChart3, ArrowRight, X, Package, ArrowDownWideNarrow, ArrowUpWideNarrow,
 } from "lucide-react";
 import { useRealtimeTable } from "@/lib/realtime";
+
 
 export const Route = createFileRoute("/inventory-traceability")({
   component: () => (
