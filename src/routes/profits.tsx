@@ -14,10 +14,11 @@ import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers, ShieldCheck, Receipt, Clock } from "lucide-react";
+import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers, ShieldCheck, Receipt, Clock, AlertTriangle, Sparkles, ArrowRight, Truck, Ban, Divide, Calculator, LineChart as LineChartIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+
 import type { Product } from "@/lib/data";
 import { useRole } from "@/lib/use-role";
 
