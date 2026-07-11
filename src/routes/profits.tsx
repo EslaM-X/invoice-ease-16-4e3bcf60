@@ -206,7 +206,11 @@ function ProfitsPage() {
   };
 
   const loadItems = async () => {
-    if (items.length === 0) setLoading(true);
+    const isFirst = items.length === 0;
+    if (isFirst) setLoading(true);
+    const loadingToast = isFirst
+      ? toast.loading(lang === "ar" ? "جارٍ حساب الأرباح…" : "Computing profits…", { duration: 12000 })
+      : null;
 
     const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
     let q = supabase
@@ -219,7 +223,17 @@ function ProfitsPage() {
     if (endISO) q = q.lt("invoices.created_at", endISO);
     if (customerId) q = q.eq("invoices.customer_id", customerId);
     const { data, error } = await q.limit(10000);
-    if (error) toast.error(error.message);
+    if (loadingToast != null) toast.dismiss(loadingToast);
+    if (error) {
+      toast.error(error.message);
+    } else if (isFirst && data) {
+      toast.success(
+        lang === "ar"
+          ? `تم تحميل ${fmtNumber(data.length, lang)} بند بنجاح`
+          : `Loaded ${fmtNumber(data.length, lang)} line item(s)`,
+        { duration: 2400 }
+      );
+    }
     setItems((data ?? []) as any);
     setLoading(false);
   };
@@ -1369,6 +1383,22 @@ function ProfitsPage() {
 
 
       {/* KPIs */}
+      {loading && items.length === 0 ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-busy="true" aria-live="polite">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="relative overflow-hidden rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="skeleton-noir h-2.5 w-20" />
+                  <div className="skeleton-noir h-6 w-28" style={{ animationDelay: `${i * 90}ms` }} />
+                  <div className="skeleton-noir h-2 w-16 opacity-70" />
+                </div>
+                <div className="skeleton-noir h-9 w-9 rounded-full" style={{ animationDelay: `${i * 90 + 60}ms` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={<Wallet className="h-4 w-4 text-sky-600" />}
@@ -1403,6 +1433,7 @@ function ProfitsPage() {
           className="from-primary/10 to-primary/[0.03] text-primary"
         />
       </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 -mt-1">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[11px] text-slate-700 dark:text-slate-300">
           <Coins className="h-3 w-3" />
@@ -1419,7 +1450,7 @@ function ProfitsPage() {
         return (
           <div
             className={[
-              "relative overflow-hidden rounded-2xl border shadow-sm ring-1",
+              "relative overflow-hidden rounded-2xl border shadow-sm ring-1 ribbon-sheen transition-shadow duration-500 hover:shadow-[0_18px_40px_-18px_color-mix(in_oklab,var(--brand-ink)_45%,transparent)]",
               ok
                 ? "border-emerald-500/25 ring-emerald-500/10 bg-gradient-to-l from-emerald-500/[0.08] via-transparent to-emerald-500/[0.02]"
                 : "border-rose-500/30 ring-rose-500/10 bg-gradient-to-l from-rose-500/[0.09] via-transparent to-rose-500/[0.02]",
@@ -2239,17 +2270,18 @@ function ProfitsPage() {
 
 function KpiCard({ icon, label, value, className, hint, iconRing }: { icon: React.ReactNode; label: string; value: string; className?: string; hint?: string; iconRing?: string }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition hover:shadow-md ${className ?? ""}`}>
-      <div className="flex items-start justify-between gap-2">
+    <div className={`kpi-luxe group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${className ?? ""}`}>
+      <div className="relative z-[2] flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-wider opacity-70">{label}</div>
-          <div className="mt-1.5 text-lg sm:text-2xl font-extrabold tabular-nums text-foreground leading-tight">{value}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">{label}</div>
+          <div className="mt-1.5 text-lg sm:text-2xl font-extrabold tabular-nums text-foreground leading-tight transition-transform duration-500 group-hover:-translate-y-0.5">{value}</div>
           {hint && <div className="mt-1 text-[10px] opacity-70">{hint}</div>}
         </div>
-        <div className={`grid place-items-center h-9 w-9 rounded-full shrink-0 ${iconRing ?? "bg-background/60 border"}`}>
+        <div className={`grid place-items-center h-9 w-9 rounded-full shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[6deg] ${iconRing ?? "bg-background/60 border"}`}>
           {icon}
         </div>
       </div>
+      <div className="pointer-events-none absolute -bottom-8 -end-8 h-24 w-24 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--brand-gold)_35%,transparent),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
     </div>
   );
 }
