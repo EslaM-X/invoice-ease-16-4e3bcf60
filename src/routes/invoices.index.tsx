@@ -164,7 +164,7 @@ function InvoicesList() {
         if (paymentFilter === "unpaid" && paid > 0.001) return false;
         if (paymentFilter === "partial" && (paid <= 0.001 || ratio >= 0.999)) return false;
       }
-      const s = q.trim().toLowerCase();
+      const s = qDeferred.trim().toLowerCase();
       if (!s) return true;
       const sSerial = s.replace(/[\s_\-./]+/g, "");
       return (
