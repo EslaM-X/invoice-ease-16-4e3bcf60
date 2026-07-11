@@ -1412,186 +1412,376 @@ function ProfitsPage() {
         </span>
       </div>
 
-      {totalsMatch && (
-        <div className={`rounded-2xl border px-4 py-3 text-sm ${totalsMatch.ok ? "border-emerald-500/30 bg-emerald-500/8 text-emerald-700" : "border-destructive/30 bg-destructive/8 text-destructive"}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold">
-              {totalsMatch.ok
-                ? t("التحقق الآلي نجح: إجمالي البيع مطابق للتقارير", "Auto-check passed: revenue matches reports")
-                : t("تنبيه: يوجد فرق بين إجمالي البيع والتقارير", "Alert: revenue differs from reports") }
-            </div>
-            <div className="text-xs opacity-80">
-              {t("التقارير", "Reports")}: {fmtMoney(totalsMatch.reportsTotal, "EGP", lang)} · {t("الأرباح", "Profits")}: {fmtMoney(totalsMatch.profitsTotal, "EGP", lang)}
-              {!totalsMatch.ok && ` · ${t("الفرق", "Diff")}: ${fmtMoney(totalsMatch.diff, "EGP", lang)}`}
+      {/* 1. Reconciliation status ribbon */}
+      {totalsMatch && (() => {
+        const ok = totalsMatch.ok;
+        const accent = ok ? "emerald" : "rose";
+        return (
+          <div
+            className={[
+              "relative overflow-hidden rounded-2xl border shadow-sm ring-1",
+              ok
+                ? "border-emerald-500/25 ring-emerald-500/10 bg-gradient-to-l from-emerald-500/[0.08] via-transparent to-emerald-500/[0.02]"
+                : "border-rose-500/30 ring-rose-500/10 bg-gradient-to-l from-rose-500/[0.09] via-transparent to-rose-500/[0.02]",
+            ].join(" ")}
+          >
+            <div
+              className="pointer-events-none absolute -top-16 -end-16 h-40 w-40 rounded-full opacity-40 blur-3xl"
+              style={{ background: ok ? "radial-gradient(circle, rgba(16,185,129,0.35), transparent 70%)" : "radial-gradient(circle, rgba(244,63,94,0.35), transparent 70%)" }}
+            />
+            <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-${accent}-500/40 to-transparent`} />
+            <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ring-1 ${ok ? "bg-emerald-500/15 ring-emerald-500/30 text-emerald-600" : "bg-rose-500/15 ring-rose-500/30 text-rose-600"}`}>
+                  {ok ? <ShieldCheck className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0">
+                  <div className={`text-[10px] uppercase tracking-[0.2em] font-semibold ${ok ? "text-emerald-700/70" : "text-rose-700/70"}`}>
+                    {t("مطابقة تلقائية", "Auto reconciliation")}
+                  </div>
+                  <div className={`mt-0.5 text-base sm:text-lg font-bold ${ok ? "text-emerald-800 dark:text-emerald-300" : "text-rose-800 dark:text-rose-300"}`}>
+                    {ok
+                      ? t("إجمالي البيع مطابق تمامًا للتقارير", "Revenue perfectly matches reports")
+                      : t("يوجد فرق بين إجمالي البيع والتقارير", "Revenue differs from reports")}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-0 divide-x rtl:divide-x-reverse divide-border/60 rounded-xl border bg-background/60 backdrop-blur-sm shadow-inner">
+                {[
+                  { label: t("التقارير", "Reports"), value: totalsMatch.reportsTotal, tone: "text-foreground" },
+                  { label: t("الأرباح", "Profits"), value: totalsMatch.profitsTotal, tone: "text-foreground" },
+                  { label: t("الفرق", "Variance"), value: totalsMatch.diff, tone: ok ? "text-emerald-600" : "text-rose-600" },
+                ].map((m) => (
+                  <div key={m.label} className="px-3 sm:px-4 py-2 text-center min-w-[92px]">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{m.label}</div>
+                    <div className={`mt-0.5 text-xs sm:text-sm font-bold tabular-nums ${m.tone}`}>
+                      {fmtMoney(m.value, "EGP", lang)}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {(selectedIds.size > 0 || search.trim()) && (
-        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-          {t("مطابقة التقارير التلقائية تُعرض عند عدم تقييد النتائج بفلتر منتج محدد أو بحث نصّي، لأن صفحة التقارير الحالية لا تطبق فلترة على مستوى المنتج.", "Automatic report matching is shown when no product-specific filter or text search is applied, because the reports page currently compares invoice totals rather than product-level subsets.")}
-        </div>
-      )}
-      <p className="text-[11px] text-muted-foreground -mt-1">
-        {t(
-          `رسوم الشحن/الخدمة (${shippingTotals.lines} بند على ${shippingTotals.invoices} فاتورة) مستبعدة تمامًا من إجمالي البيع وصافي الأرباح. الفواتير الملغاة والمحذوفة كذلك.`,
-          `Shipping/service fees (${shippingTotals.lines} line(s) across ${shippingTotals.invoices} invoice(s)) are fully excluded from Revenue and Net Profit. Voided/deleted invoices are also excluded.`
-        )}
-      </p>
+        );
+      })()}
 
-      {/* Verification / Reconciliation panel */}
-      <div className="rounded-2xl border bg-card shadow-sm">
+      {(selectedIds.size > 0 || search.trim()) && (
+        <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/[0.04] px-3.5 py-2.5 text-[11px] text-muted-foreground">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary/70" />
+          <span className="leading-relaxed">
+            {t("مطابقة التقارير التلقائية تُعرض عند عدم تقييد النتائج بفلتر منتج محدد أو بحث نصّي، لأن صفحة التقارير الحالية لا تطبق فلترة على مستوى المنتج.", "Automatic report matching is shown when no product-specific filter or text search is applied, because the reports page currently compares invoice totals rather than product-level subsets.")}
+          </span>
+        </div>
+      )}
+
+      {/* 2. Shipping / exclusions meta strip */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-3.5 py-2.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 font-semibold text-foreground/70">
+          <div className="grid h-5 w-5 place-items-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+            <Truck className="h-3 w-3 text-primary" />
+          </div>
+          <span>{t("مستبعد من الأرباح", "Excluded from profits")}</span>
+        </div>
+        <span className="opacity-60">·</span>
+        <span className="inline-flex items-center gap-1 font-mono">
+          <span className="tabular-nums font-bold text-foreground">{shippingTotals.lines}</span>
+          <span>{t("بند شحن/خدمة", "shipping/service line(s)")}</span>
+        </span>
+        <span className="opacity-60">·</span>
+        <span className="inline-flex items-center gap-1 font-mono">
+          <span className="tabular-nums font-bold text-foreground">{shippingTotals.invoices}</span>
+          <span>{t("فاتورة", "invoice(s)")}</span>
+        </span>
+        <span className="opacity-60">·</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span>{t("قيمتها", "totalling")}</span>
+          <span className="rounded-md bg-background border px-1.5 py-0.5 tabular-nums font-bold text-foreground shadow-sm">{fmtMoney(shippingTotals.amount, "EGP", lang)}</span>
+        </span>
+        <span className="opacity-60">·</span>
+        <span className="flex items-center gap-1">
+          <Ban className="h-3 w-3" />
+          {t("الملغاة والمحذوفة مستبعدة كذلك", "voided/deleted also excluded")}
+        </span>
+      </div>
+
+      {/* 3. Verification / Reconciliation ledger card */}
+      <div className="relative overflow-hidden rounded-2xl border bg-card shadow-sm ring-1 ring-primary/10">
+        <div className="pointer-events-none absolute -top-20 -end-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
         <button
           type="button"
           onClick={() => setVerifyOpen((v) => !v)}
-          className="w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 border-b hover:bg-muted/30 transition"
+          className="relative w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/20 transition"
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <ShieldCheck className={`h-4 w-4 shrink-0 ${totalsMatch?.ok ? "text-emerald-500" : "text-amber-500"}`} />
-            <h3 className="font-semibold text-sm truncate">{t("التحقق والمطابقة", "Verification & Reconciliation")}</h3>
-            <span className={`text-[10px] rounded-full border px-2 py-0.5 ${totalsMatch?.ok ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/8" : "border-amber-500/40 text-amber-700 bg-amber-500/8"}`}>
-              {totalsMatch?.ok ? t("متطابق", "In sync") : t("مراجعة", "Review")}
-            </span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ring-1 ${totalsMatch?.ok ? "bg-emerald-500/12 ring-emerald-500/25 text-emerald-600" : "bg-amber-500/12 ring-amber-500/25 text-amber-600"}`}>
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 text-start">
+              <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted-foreground">{t("محاسبة شفافة", "Transparent accounting")}</div>
+              <h3 className="font-bold text-sm sm:text-base truncate flex items-center gap-2">
+                {t("التحقق والمطابقة", "Verification & Reconciliation")}
+                <span className={`text-[10px] rounded-full border px-2 py-0.5 font-semibold ${totalsMatch?.ok ? "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" : "border-amber-500/40 text-amber-700 bg-amber-500/10"}`}>
+                  {totalsMatch?.ok ? t("متطابق", "In sync") : t("مراجعة", "Review")}
+                </span>
+              </h3>
+            </div>
           </div>
-          {verifyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border bg-background text-muted-foreground shadow-sm">
+            {verifyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
         </button>
+        <div className="absolute inset-x-4 top-[68px] h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
         {verifyOpen && (
-          <div className="p-3 sm:p-4 grid gap-3 md:grid-cols-2 text-xs">
-            <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
-              <div className="font-semibold text-sm mb-1">{t("مطابقة إجمالي البيع", "Revenue reconciliation")}</div>
-              <RowLine label={t("إجمالي الفواتير (قبل الاستبعادات)", "Sum of invoice totals (before exclusions)")} value={fmtMoney(totalsMatch?.reportsTotal ?? 0, "EGP", lang)} />
-              <RowLine label={t("− شحن/خدمة مستبعد", "− Shipping/fees excluded")} value={`− ${fmtMoney(shippingTotals.amount, "EGP", lang)}`} muted />
-              <div className="pt-1.5 border-t flex items-center justify-between font-semibold">
-                <span>{t("= إجمالي البيع المعتمد", "= Recognised revenue")}</span>
-                <span className="tabular-nums">{fmtMoney(rows.totals.revenue, "EGP", lang)}</span>
-              </div>
-              {totalsMatch && (
-                <div className={`text-[11px] ${totalsMatch.ok ? "text-emerald-600" : "text-amber-700"}`}>
-                  {totalsMatch.ok
-                    ? t("✓ الفرق صفر — المطابقة كاملة.", "✓ Zero variance — fully reconciled.")
-                    : `${t("الفرق", "Variance")}: ${fmtMoney(totalsMatch.diff, "EGP", lang)}`}
+          <div className="relative border-t p-4 sm:p-5 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 md:divide-x md:rtl:divide-x-reverse md:divide-primary/15">
+              {/* Revenue reconciliation */}
+              <div className="md:pe-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-3.5 w-3.5 text-sky-600" />
+                  <div className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">{t("مطابقة إجمالي البيع", "Revenue reconciliation")}</div>
                 </div>
-              )}
-            </div>
-            <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
-              <div className="font-semibold text-sm mb-1">{t("مطابقة صافي الربح", "Net profit reconciliation")}</div>
-              <RowLine label={t("إجمالي البيع المعتمد", "Recognised revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} />
-              <RowLine label={`− ${t(`إجمالي التكلفة (مصدر: ${costSourceLabel(costSource, t)})`, `− Total cost (source: ${costSourceLabel(costSource, t)})`)}`} value={`− ${fmtMoney(rows.totals.cost, "EGP", lang)}`} muted />
-              <div className="pt-1.5 border-t flex items-center justify-between font-semibold text-emerald-600">
-                <span>= {t("صافي الربح", "Net profit")}</span>
-                <span className="tabular-nums">{fmtMoney(rows.totals.profit, "EGP", lang)}</span>
+                <div className="space-y-2 text-sm">
+                  <LedgerRow label={t("إجمالي الفواتير (قبل الاستبعادات)", "Sum of invoice totals (before exclusions)")} value={fmtMoney(totalsMatch?.reportsTotal ?? 0, "EGP", lang)} />
+                  <LedgerRow label={t("− شحن/خدمة مستبعد", "− Shipping/fees excluded")} value={`− ${fmtMoney(shippingTotals.amount, "EGP", lang)}`} muted />
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-primary/25 font-bold">
+                    <span className="text-xs sm:text-sm">{t("= إجمالي البيع المعتمد", "= Recognised revenue")}</span>
+                    <span className="tabular-nums text-sm sm:text-base text-foreground">{fmtMoney(rows.totals.revenue, "EGP", lang)}</span>
+                  </div>
+                  {totalsMatch && (
+                    <div className={`text-[11px] flex items-center gap-1.5 ${totalsMatch.ok ? "text-emerald-600" : "text-amber-700"}`}>
+                      {totalsMatch.ok ? <ShieldCheck className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                      {totalsMatch.ok
+                        ? t("الفرق صفر — مطابقة كاملة.", "Zero variance — fully reconciled.")
+                        : `${t("الفرق", "Variance")}: ${fmtMoney(totalsMatch.diff, "EGP", lang)}`}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="text-[11px] text-muted-foreground">
-                {t("هامش الربح", "Margin")}: {rows.totals.margin.toFixed(2)}%
+
+              {/* Net profit reconciliation */}
+              <div className="md:ps-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+                  <div className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">{t("مطابقة صافي الربح", "Net profit reconciliation")}</div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <LedgerRow label={t("إجمالي البيع المعتمد", "Recognised revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} />
+                  <LedgerRow label={t(`− إجمالي التكلفة (مصدر: ${costSourceLabel(costSource, t)})`, `− Total cost (source: ${costSourceLabel(costSource, t)})`)} value={`− ${fmtMoney(rows.totals.cost, "EGP", lang)}`} muted />
+                  <div className="relative flex items-center justify-between gap-2 pt-2 border-t border-emerald-500/30 font-bold">
+                    <span className="absolute inset-y-2 -start-1 w-0.5 rounded bg-emerald-500" />
+                    <span className="text-xs sm:text-sm text-emerald-700 ps-2">= {t("صافي الربح", "Net profit")}</span>
+                    <span className="tabular-nums text-sm sm:text-base text-emerald-700">{fmtMoney(rows.totals.profit, "EGP", lang)}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <Percent className="h-3 w-3" />
+                    {t("هامش الربح", "Margin")}: <span className="font-bold tabular-nums text-foreground">{rows.totals.margin.toFixed(2)}%</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="md:col-span-2 rounded-lg border bg-muted/10 p-3 text-[11px] leading-relaxed">
-              <div className="font-semibold text-sm mb-1">{t("سبب الاستبعادات", "Why the difference")}</div>
-              <ul className="list-disc ps-4 space-y-1 text-muted-foreground">
-                <li>{t(`الفواتير الملغاة أو المسودّة لا تُحسب — يظهر في الفلتر التلقائي في استعلام البيانات.`, "Voided/draft invoices are excluded at query time.")}</li>
-                <li>{t(`رسوم الشحن/الخدمة: ${shippingTotals.lines} بند على ${shippingTotals.invoices} فاتورة (${fmtMoney(shippingTotals.amount, "EGP", lang)}).`, `Shipping/service fees: ${shippingTotals.lines} line(s) across ${shippingTotals.invoices} invoice(s) (${fmtMoney(shippingTotals.amount, "EGP", lang)}).`)}</li>
-                <li>{t("الخصم على مستوى الفاتورة يُوزَّع بالتناسب على البنود غير الشحن.", "Invoice-level discount is prorated across non-shipping lines.")}</li>
-                <li>{t(`مصدر التكلفة الفعّال: ${costSourceLabel(costSource, t)} — أي تغيير في PO أو التعديل اليدوي ينعكس لحظياً.`, `Effective cost source: ${costSourceLabel(costSource, t)} — PO or manual-override changes reflect live.`)}</li>
-              </ul>
+
+            {/* Causes grid */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <div className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground">{t("سبب الاستبعادات", "Why the difference")}</div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <CauseCard icon={<Ban className="h-3.5 w-3.5" />} title={t("فواتير ملغاة/مسودّة", "Voided / draft invoices")} desc={t("تُستبعد تلقائيًا في الاستعلام.", "Excluded at query time.")} tone="rose" />
+                <CauseCard icon={<Truck className="h-3.5 w-3.5" />} title={t("رسوم شحن/خدمة", "Shipping / service fees")} desc={`${shippingTotals.lines} × ${shippingTotals.invoices} — ${fmtMoney(shippingTotals.amount, "EGP", lang)}`} tone="sky" />
+                <CauseCard icon={<Divide className="h-3.5 w-3.5" />} title={t("خصم على مستوى الفاتورة", "Invoice-level discount")} desc={t("يُوزَّع على البنود غير الشحن.", "Prorated over non-shipping lines.")} tone="amber" />
+                <CauseCard icon={<Calculator className="h-3.5 w-3.5" />} title={t("مصدر التكلفة الفعّال", "Effective cost source")} desc={`${costSourceLabel(costSource, t)} — ${t("انعكاس لحظي.", "reflects live.")}`} tone="emerald" />
+              </div>
             </div>
           </div>
         )}
       </div>
 
-
-      {/* Daily trend chart */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
-          <h3 className="font-semibold text-sm flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-            {t("اتجاه صافي الربح اليومي", "Daily net profit trend")}
-            <span className="text-[11px] text-muted-foreground font-normal">
-              · {t(`${dailyTrend.length} يوم`, `${dailyTrend.length} day(s)`)}
-            </span>
-          </h3>
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-[11px]">
-              {(["profit", "all"] as const).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setChartView(k)}
-                  className={`rounded-full px-2.5 py-1 font-semibold transition ${chartView === k ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"}`}
+      {/* 4. Daily trend hero chart */}
+      {(() => {
+        const trendStats = dailyTrend.length
+          ? {
+              latest: dailyTrend[dailyTrend.length - 1]?.profit ?? 0,
+              peak: dailyTrend.reduce((m, d) => Math.max(m, d.profit), -Infinity),
+              total: dailyTrend.reduce((s, d) => s + d.profit, 0),
+              first: dailyTrend[0]?.date,
+              last: dailyTrend[dailyTrend.length - 1]?.date,
+            }
+          : null;
+        return (
+          <div className="relative overflow-hidden rounded-2xl border bg-card shadow-sm ring-1 ring-primary/10">
+            <div className="pointer-events-none absolute -top-24 end-1/4 h-52 w-52 rounded-full bg-primary/[0.08] blur-3xl" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <div className="relative flex flex-col gap-3 border-b bg-gradient-to-b from-muted/20 to-transparent px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-500/12 ring-1 ring-emerald-500/25 text-emerald-600">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted-foreground">{t("سلسلة زمنية", "Time series")}</div>
+                  <h3 className="font-bold text-sm sm:text-base truncate">
+                    {t("اتجاه صافي الربح اليومي", "Daily net profit trend")}
+                    <span className="ms-2 text-[11px] text-muted-foreground font-normal">· {t(`${dailyTrend.length} يوم`, `${dailyTrend.length} day(s)`)}</span>
+                  </h3>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {trendStats && (
+                  <div className="hidden md:grid grid-cols-3 divide-x rtl:divide-x-reverse divide-border/60 rounded-xl border bg-background/60 shadow-inner">
+                    {[
+                      { label: t("الأخير", "Latest"), value: trendStats.latest },
+                      { label: t("الذروة", "Peak"), value: trendStats.peak },
+                      { label: t("الإجمالي", "Total"), value: trendStats.total },
+                    ].map((s) => (
+                      <div key={s.label} className="px-3 py-1.5 text-center min-w-[90px]">
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{s.label}</div>
+                        <div className="text-xs font-bold tabular-nums text-emerald-700">{fmtMoney(s.value, "EGP", lang)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="inline-flex rounded-full border border-primary/20 bg-muted/30 p-0.5 text-[11px] shadow-inner">
+                  {(["profit", "all"] as const).map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setChartView(k)}
+                      className={`rounded-full px-3 py-1 font-semibold transition ${chartView === k ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background"}`}
+                    >
+                      {k === "profit" ? t("صافي الربح فقط", "Profit only") : t("الكل", "All")}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 rounded-full border-primary/25 hover:bg-primary/5"
+                  disabled={dailyTrend.length === 0}
+                  onClick={() => {
+                    const headers = [
+                      t("التاريخ", "Date"),
+                      t("الإيراد", "Revenue"),
+                      t("التكلفة", "Cost"),
+                      t("صافي الربح", "Net Profit"),
+                    ];
+                    const lines = [headers.join(",")];
+                    for (const d of dailyTrend) {
+                      lines.push([d.date, d.revenue.toFixed(2), d.cost.toFixed(2), d.profit.toFixed(2)].join(","));
+                    }
+                    const totals = dailyTrend.reduce((a, d) => ({ r: a.r + d.revenue, c: a.c + d.cost, p: a.p + d.profit }), { r: 0, c: 0, p: 0 });
+                    lines.push([t("الإجمالي", "TOTAL"), totals.r.toFixed(2), totals.c.toFixed(2), totals.p.toFixed(2)].join(","));
+                    const csv = "\uFEFF" + lines.join("\n");
+                    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `profit_trend_${range}_${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success(t("تم تصدير CSV", "CSV exported"));
+                  }}
                 >
-                  {k === "profit" ? t("صافي الربح فقط", "Profit only") : t("الكل", "All")}
-                </button>
-              ))}
+                  <Download className="h-3.5 w-3.5" />
+                  CSV
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 h-8"
-              disabled={dailyTrend.length === 0}
-              onClick={() => {
-                const headers = [
-                  t("التاريخ", "Date"),
-                  t("الإيراد", "Revenue"),
-                  t("التكلفة", "Cost"),
-                  t("صافي الربح", "Net Profit"),
-                ];
-                const lines = [headers.join(",")];
-                for (const d of dailyTrend) {
-                  lines.push([d.date, d.revenue.toFixed(2), d.cost.toFixed(2), d.profit.toFixed(2)].join(","));
-                }
-                const totals = dailyTrend.reduce((a, d) => ({ r: a.r + d.revenue, c: a.c + d.cost, p: a.p + d.profit }), { r: 0, c: 0, p: 0 });
-                lines.push([t("الإجمالي", "TOTAL"), totals.r.toFixed(2), totals.c.toFixed(2), totals.p.toFixed(2)].join(","));
-                const csv = "\uFEFF" + lines.join("\n");
-                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `profit_trend_${range}_${new Date().toISOString().slice(0, 10)}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast.success(t("تم تصدير CSV", "CSV exported"));
-              }}
-            >
-              <Download className="h-3.5 w-3.5" />
-              CSV
-            </Button>
+            {/* Mobile mini-stats */}
+            {trendStats && (
+              <div className="md:hidden grid grid-cols-3 divide-x rtl:divide-x-reverse divide-border/60 border-b bg-muted/10">
+                {[
+                  { label: t("الأخير", "Latest"), value: trendStats.latest },
+                  { label: t("الذروة", "Peak"), value: trendStats.peak },
+                  { label: t("الإجمالي", "Total"), value: trendStats.total },
+                ].map((s) => (
+                  <div key={s.label} className="px-2 py-2 text-center">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{s.label}</div>
+                    <div className="text-[11px] font-bold tabular-nums text-emerald-700">{fmtMoney(s.value, "EGP", lang)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="relative p-3 h-[280px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+              {dailyTrend.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <div className="grid h-12 w-12 place-items-center rounded-full border border-dashed border-border">
+                    <LineChartIcon className="h-5 w-5 opacity-50" />
+                  </div>
+                  <span>{t("لا توجد بيانات لعرضها", "No data to display")}</span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dailyTrend} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="profitGoldFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 4" className="stroke-muted-foreground/20" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      reversed={lang === "ar"}
+                      tick={{ fontSize: 10, fill: "currentColor", opacity: 0.55 }}
+                      tickFormatter={(v) => String(v).slice(5)}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      orientation={lang === "ar" ? "right" : "left"}
+                      tick={{ fontSize: 10, fill: "currentColor", opacity: 0.55 }}
+                      tickFormatter={(v) => fmtNumber(Number(v), lang)}
+                      axisLine={false}
+                      tickLine={false}
+                      width={60}
+                    />
+                    <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
+                    <Tooltip
+                      cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.4, strokeDasharray: "3 3" }}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        return (
+                          <div className="rounded-xl border border-primary/30 bg-card/95 backdrop-blur px-3 py-2 shadow-xl min-w-[160px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+                            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border-b border-primary/15 pb-1 mb-1.5">
+                              {fmtDate(String(label), lang)}
+                            </div>
+                            <div className="space-y-1">
+                              {payload.map((p: any) => (
+                                <div key={p.dataKey} className="flex items-center justify-between gap-3 text-xs">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
+                                    <span className="text-muted-foreground">{p.name}</span>
+                                  </span>
+                                  <span className="tabular-nums font-bold" style={{ color: p.color }}>{fmtMoney(Number(p.value), "EGP", lang)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area type="monotone" dataKey="profit" name={t("صافي الربح", "Net Profit")} stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#profitGoldFill)" dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: "hsl(var(--background))" }} />
+                    {chartView === "all" && (
+                      <Line type="monotone" dataKey="revenue" name={t("البيع", "Revenue")} stroke="#0ea5e9" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                    )}
+                    {chartView === "all" && (
+                      <Line type="monotone" dataKey="cost" name={t("التكلفة", "Cost")} stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            {trendStats && (
+              <div className="flex items-center justify-center gap-2 border-t bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span className="tabular-nums font-semibold text-foreground/70">{trendStats.first}</span>
+                <ArrowRight className={`h-3 w-3 opacity-50 ${lang === "ar" ? "rotate-180" : ""}`} />
+                <span className="tabular-nums font-semibold text-foreground/70">{trendStats.last}</span>
+              </div>
+            )}
           </div>
-        </div>
-        <div className="p-3 h-[260px]" dir={lang === "ar" ? "rtl" : "ltr"}>
-          {dailyTrend.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-              {t("لا توجد بيانات لعرضها", "No data to display")}
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyTrend} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  reversed={lang === "ar"}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => String(v).slice(5)}
-                />
-                <YAxis
-                  orientation={lang === "ar" ? "right" : "left"}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => fmtNumber(Number(v), lang)}
-                />
-                <Tooltip
-                  contentStyle={{ fontSize: 12, direction: lang === "ar" ? "rtl" : "ltr" }}
-                  formatter={(v: any, name: any) => [fmtMoney(Number(v), "EGP", lang), name]}
-                  labelFormatter={(l) => fmtDate(String(l), lang)}
-                />
-                <Line type="monotone" dataKey="profit" name={t("صافي الربح", "Net Profit")} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                {chartView === "all" && (
-                  <Line type="monotone" dataKey="revenue" name={t("البيع", "Revenue")} stroke="#0ea5e9" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
-                )}
-                {chartView === "all" && (
-                  <Line type="monotone" dataKey="cost" name={t("التكلفة", "Cost")} stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+        );
+      })()}
+
 
       {/* Products table */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
