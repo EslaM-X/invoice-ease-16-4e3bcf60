@@ -137,9 +137,9 @@ export function CloseableInvoicesCard() {
           {/* CTA */}
           <Link
             to="/fulfillment"
-            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#c9a84c] px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-[#c9a84c]/20 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            className="noir-press noir-ripple group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#c9a84c] px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-[#c9a84c]/20"
           >
-            <span className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+            <span className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" />
             <span className="relative">{isAr ? "عرض الاقتراحات الذكية" : "View smart suggestions"}</span>
             <ArrowLeft className="relative h-4 w-4 rtl:rotate-0 ltr:rotate-180" />
           </Link>
