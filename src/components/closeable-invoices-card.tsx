@@ -292,11 +292,11 @@ function MetricTile(props: {
   );
   if (props.as === "button") {
     return (
-      <button type="button" onClick={props.onClick} className="group relative block w-full text-start">{inner}</button>
+      <button type="button" onClick={props.onClick} className="group relative block w-full text-start transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98]">{inner}</button>
     );
   }
   return (
-    <Link to={props.to!} className="group relative block">{inner}</Link>
+    <Link to={props.to!} className="group relative block transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98]">{inner}</Link>
   );
 }
 
