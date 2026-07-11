@@ -1239,7 +1239,7 @@ function ProfitsPage() {
                                   <div className="font-medium truncate flex items-center gap-1.5">
                                     {p.name}
                                     {p.collection && (
-                                    {p.collection && (
+
 
                                       <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
                                         <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
