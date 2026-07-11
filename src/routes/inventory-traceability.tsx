@@ -938,6 +938,65 @@ function Traceability() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Product logs Dialog (from Stock levels tab) */}
+      <Dialog open={!!selectedProduct} onOpenChange={(o) => !o && setSelectedProduct(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              {isAr ? "سجل حركة المنتج" : "Product movement log"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedProduct && (
+            <div className="space-y-4 text-sm">
+              <div className="rounded border p-3 bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="font-semibold">{selectedProduct.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono">{selectedProduct.serial_number ?? "—"}</div>
+                </div>
+                <div className="text-end">
+                  <div className="text-xs text-muted-foreground">{isAr ? "الكمية الحالية" : "Current qty"}</div>
+                  <div className="text-2xl font-bold">{Number(selectedProduct.stock_quantity ?? 0)}</div>
+                </div>
+              </div>
+              <div className="rounded-lg border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase">
+                    <tr>
+                      <th className="p-2 text-start">{isAr ? "التاريخ" : "Date"}</th>
+                      <th className="p-2 text-center">{isAr ? "التغيير" : "Change"}</th>
+                      <th className="p-2 text-start">{isAr ? "المصدر" : "Source"}</th>
+                      <th className="p-2 text-start">{isAr ? "مرجع" : "Reference"}</th>
+                      <th className="p-2 text-start">{isAr ? "المنفّذ" : "Actor"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedProductLogs.length === 0 ? (
+                      <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">{isAr ? "لا يوجد سجل" : "No history"}</td></tr>
+                    ) : selectedProductLogs.map((r) => (
+                      <tr key={r.log.id} className="border-t">
+                        <td className="p-2 text-xs whitespace-nowrap">{fmtDateTime(r.log.created_at, lang)}</td>
+                        <td className={`p-2 text-center font-mono font-bold ${r.log.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          {r.log.change > 0 ? `+${r.log.change}` : r.log.change}
+                        </td>
+                        <td className="p-2 text-xs">{r.log.reason ?? "—"}</td>
+                        <td className="p-2 text-xs font-mono">
+                          {r.invoice && <div>{r.invoice.invoice_number}</div>}
+                          {r.poRef && <div className="text-blue-700">{r.poRef}</div>}
+                          {r.drRef && <div className="text-purple-700">DR #{r.drRef}</div>}
+                          {!r.invoice && !r.poRef && !r.drRef && <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="p-2 text-xs text-muted-foreground">{r.log.actor_email ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
