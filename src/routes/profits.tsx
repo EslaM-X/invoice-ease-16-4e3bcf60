@@ -226,6 +226,34 @@ function ProfitsPage() {
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [items, setItems] = useState<RawItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // ==== Realtime pause + perf metrics ====
+  const [rtPaused, setRtPaused] = useState(false);
+  const rtPausedRef = React.useRef(false);
+  rtPausedRef.current = rtPaused;
+  const [rtPending, setRtPending] = useState<Set<string>>(new Set());
+  const [showPerf, setShowPerf] = useState(false);
+  const renderCountRef = React.useRef(0);
+  renderCountRef.current += 1;
+  const renderStartRef = React.useRef<number>(typeof performance !== "undefined" ? performance.now() : 0);
+  renderStartRef.current = typeof performance !== "undefined" ? performance.now() : 0;
+  const [lastRenderMs, setLastRenderMs] = useState(0);
+  const [avgRenderMs, setAvgRenderMs] = useState(0);
+  const renderSumRef = React.useRef(0);
+  const [updateCount, setUpdateCount] = useState(0);
+  const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null);
+  const bumpUpdate = React.useCallback(() => {
+    setUpdateCount((n) => n + 1);
+    setLastUpdateAt(Date.now());
+  }, []);
+  useEffect(() => {
+    if (typeof performance === "undefined") return;
+    const ms = performance.now() - renderStartRef.current;
+    setLastRenderMs(ms);
+    renderSumRef.current += ms;
+    setAvgRenderMs(renderSumRef.current / Math.max(1, renderCountRef.current));
+  });
+
   const [range, setRange] = useState<Range>("all");
   const today = new Date().toISOString().slice(0, 10);
   const [day, setDay] = useState(today);
