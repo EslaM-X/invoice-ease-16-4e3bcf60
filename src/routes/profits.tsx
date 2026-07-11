@@ -2834,6 +2834,29 @@ function ProfitsPage() {
                     </tr>
                   );
                 })}
+                {invHasMore && (
+                  <tr>
+                    <td colSpan={9} className="px-3 py-4 text-center bg-gradient-to-b from-transparent to-primary/[0.03]">
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setInvPageSize((n) => n + 25)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          {t(`تحميل 25 المزيد (${rankedInvoices.length - visibleInvoices.length} متبقية)`, `Load 25 more (${rankedInvoices.length - visibleInvoices.length} remaining)`)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvPageSize(rankedInvoices.length)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+                        >
+                          {t("عرض الكل", "Show all")}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
