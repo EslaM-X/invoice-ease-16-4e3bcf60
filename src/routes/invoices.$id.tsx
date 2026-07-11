@@ -301,30 +301,40 @@ function InvoiceView() {
                     </tr>
                   ));
                 })()}
-                <tr>
-                  <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "إجمالي السعر" : "Subtotal"}</td>
-                  <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {Number(inv.subtotal).toFixed(2)}</td>
-                </tr>
-                {Number(inv.discount) > 0 && (
-                  <>
-                    <tr>
-                      <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
-                      <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {Number(inv.discount).toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي بعد الخصم" : "Total after Discount"}</td>
-                      <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
-                    </tr>
-                  </>
-                )}
-                {Number(inv.discount) <= 0 && (
-                  <tr>
-                    <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {Number(inv.total).toFixed(2)}</td>
-                  </tr>
-                )}
                 {(() => {
-                  const totalNum = Number(inv.total);
+                  // Defensive recompute — never trust stale stored `total` when discount toggles.
+                  const subNum = Number(inv.subtotal ?? 0);
+                  const discNum = Number(inv.discount ?? 0);
+                  const totalNum = discNum > 0 ? +(subNum - discNum).toFixed(2) : subNum;
+                  return (
+                    <>
+                      <tr>
+                        <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "إجمالي السعر" : "Subtotal"}</td>
+                        <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {subNum.toFixed(2)}</td>
+                      </tr>
+                      {discNum > 0 ? (
+                        <>
+                          <tr>
+                            <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">{isAr ? "الخصم" : "Discount"}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">- EGP {discNum.toFixed(2)}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي بعد الخصم" : "Total after Discount"}</td>
+                            <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {totalNum.toFixed(2)}</td>
+                          </tr>
+                        </>
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
+                          <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {totalNum.toFixed(2)}</td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const discNum = Number(inv.discount ?? 0);
+                  const totalNum = discNum > 0 ? +(Number(inv.subtotal ?? 0) - discNum).toFixed(2) : Number(inv.subtotal ?? 0);
                   const paidNum = Number(inv.paid_amount ?? 0);
                   const remainingNum = +(totalNum - paidNum).toFixed(2);
                   const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;

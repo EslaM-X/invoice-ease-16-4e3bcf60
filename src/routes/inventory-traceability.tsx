@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import {
   BarChart3, ArrowRight, X, Package, ArrowDownWideNarrow, ArrowUpWideNarrow,
 } from "lucide-react";
 import { useRealtimeTable } from "@/lib/realtime";
+
 
 export const Route = createFileRoute("/inventory-traceability")({
   component: () => (
@@ -86,11 +87,22 @@ function Traceability() {
   const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
   const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [logsShown, setLogsShown] = useState(50);
+  useEffect(() => { setLogsShown(50); }, [selectedProduct?.id]);
   // Timeline filters
   const [tlDirection, setTlDirection] = useState<"all" | "in" | "out">("all");
   const [tlKind, setTlKind] = useState<"all" | "po" | "dr" | "invoice" | "manual" | "reservation">("all");
   const [tlFrom, setTlFrom] = useState("");
   const [tlTo, setTlTo] = useState("");
+  const setQuickRange = (days: number | "month") => {
+    const now = new Date();
+    const toD = now.toISOString().slice(0, 10);
+    const fromD = days === "month"
+      ? new Date(now.getFullYear(), now.getMonth(), 1)
+      : new Date(now.getTime() - days * 86_400_000);
+    setTlFrom(fromD.toISOString().slice(0, 10));
+    setTlTo(toD);
+  };
 
   useEffect(() => {
     (async () => {
@@ -712,6 +724,12 @@ function Traceability() {
               <Input type="date" value={tlTo} onChange={(e) => setTlTo(e.target.value)} />
             </div>
           </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange(7)}>{isAr ? "آخر 7 أيام" : "Last 7 days"}</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange(30)}>{isAr ? "آخر 30 يوم" : "Last 30 days"}</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange(90)}>{isAr ? "آخر 90 يوم" : "Last 90 days"}</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange("month")}>{isAr ? "هذا الشهر" : "This month"}</Button>
+          </div>
           {(productFilter || tlDirection !== "all" || tlKind !== "all" || tlFrom || tlTo) && (
             <Button variant="ghost" size="sm" onClick={() => { setProductFilter(""); setTlDirection("all"); setTlKind("all"); setTlFrom(""); setTlTo(""); }}>
               <X className="h-3 w-3 me-1" /> {isAr ? "مسح الفلاتر" : "Clear filters"}
@@ -974,17 +992,31 @@ function Traceability() {
                   <tbody>
                     {selectedProductLogs.length === 0 ? (
                       <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">{isAr ? "لا يوجد سجل" : "No history"}</td></tr>
-                    ) : selectedProductLogs.map((r) => (
+                    ) : selectedProductLogs.slice(0, logsShown).map((r) => (
                       <tr key={r.log.id} className="border-t">
                         <td className="p-2 text-xs whitespace-nowrap">{fmtDateTime(r.log.created_at, lang)}</td>
                         <td className={`p-2 text-center font-mono font-bold ${r.log.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
                           {r.log.change > 0 ? `+${r.log.change}` : r.log.change}
                         </td>
                         <td className="p-2 text-xs">{r.log.reason ?? "—"}</td>
-                        <td className="p-2 text-xs font-mono">
-                          {r.invoice && <div>{r.invoice.invoice_number}</div>}
-                          {r.poRef && <div className="text-blue-700">{r.poRef}</div>}
-                          {r.drRef && <div className="text-purple-700">DR #{r.drRef}</div>}
+                        <td className="p-2 text-xs font-mono space-y-0.5">
+                          {r.invoice && (
+                            <div>
+                              <Link to="/invoices/$id" params={{ id: r.invoice.id }} className="text-blue-700 hover:underline">
+                                {r.invoice.invoice_number}
+                              </Link>
+                            </div>
+                          )}
+                          {r.poRef && (
+                            <div>
+                              <a href={`/po-tracking?q=${encodeURIComponent(r.poRef)}`} className="text-blue-700 hover:underline">{r.poRef}</a>
+                            </div>
+                          )}
+                          {r.drRef && (
+                            <div>
+                              <a href={`/delivery-receipts?q=${encodeURIComponent(r.drRef)}`} className="text-purple-700 hover:underline">DR #{r.drRef}</a>
+                            </div>
+                          )}
                           {!r.invoice && !r.poRef && !r.drRef && <span className="text-muted-foreground">—</span>}
                         </td>
                         <td className="p-2 text-xs text-muted-foreground">{r.log.actor_email ?? "—"}</td>
@@ -993,6 +1025,16 @@ function Traceability() {
                   </tbody>
                 </table>
               </div>
+              {selectedProductLogs.length > logsShown && (
+                <div className="flex items-center justify-between pt-2">
+                  <div className="text-xs text-muted-foreground">
+                    {isAr ? `عرض ${logsShown} من ${selectedProductLogs.length}` : `Showing ${logsShown} of ${selectedProductLogs.length}`}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setLogsShown((n) => n + 50)}>
+                    {isAr ? "تحميل المزيد" : "Load more"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

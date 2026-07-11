@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -126,7 +126,16 @@ function InvoicesList() {
       setDelivProgress(progress);
     }
   };
-  useEffect(() => { load(); }, [user, from, to]);
+  // Debounce date range to avoid a re-query on every keystroke inside the date input.
+  const [fromDebounced, setFromDebounced] = useState(from);
+  const [toDebounced, setToDebounced] = useState(to);
+  useEffect(() => {
+    const h = setTimeout(() => { setFromDebounced(from); setToDebounced(to); }, 300);
+    return () => clearTimeout(h);
+  }, [from, to]);
+  useEffect(() => { load(); }, [user, fromDebounced, toDebounced]);
+  // Deferred text search — keeps the input responsive while filtering ~10k rows in memory.
+  const qDeferred = useDeferredValue(q);
   useBatchedRealtimeTables(["invoices", "delivery_receipts"], () => { load(); }, [user?.id]);
 
   const isClosed = (i: any) => {
@@ -155,7 +164,7 @@ function InvoicesList() {
         if (paymentFilter === "unpaid" && paid > 0.001) return false;
         if (paymentFilter === "partial" && (paid <= 0.001 || ratio >= 0.999)) return false;
       }
-      const s = q.trim().toLowerCase();
+      const s = qDeferred.trim().toLowerCase();
       if (!s) return true;
       const sSerial = s.replace(/[\s_\-./]+/g, "");
       return (
