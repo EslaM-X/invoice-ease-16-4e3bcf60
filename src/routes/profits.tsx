@@ -365,6 +365,23 @@ function ProfitsPage() {
     };
   }, [costBook, overrides, productById, costSource]);
 
+  // Which source actually produced the number costOf() returned for a product.
+  // Mirrors costOf() precedence so the UI can label/tooltip it accurately.
+  const costSourceOf = useMemo(() => {
+    return (productId: string | null | undefined): CostSource => {
+      if (!productId) return costSource;
+      const ov = overrides[productId];
+      if (costSource === "override") return "override";
+      if (ov) return "override";
+      const entry = costBook.products[productId];
+      if (!entry) return "current";
+      if (costSource === "wac") return Number(entry.wac_egp) > 0 ? "wac" : "current";
+      if (costSource === "latest_po") return Number(entry.latest_egp) > 0 ? "latest_po" : "current";
+      return "current";
+    };
+  }, [costBook, overrides, costSource]);
+
+
 
 
   // Per-invoice discount-proration factor: line_total -> net revenue after
@@ -451,17 +468,24 @@ function ProfitsPage() {
       byProduct.set(it.product_id!, cur);
     }
     const list = Array.from(byProduct.entries())
-      .map(([pid, v]) => ({
-        product_id: pid,
-        product: v.product,
-        name: v.product?.name ?? "(محذوف)",
-        qty: v.qty,
-        revenue: v.revenue,
-        cost: v.cost,
-        profit: v.revenue - v.cost,
-        margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
-        lines: v.lines,
-      }))
+      .map(([pid, v]) => {
+        const unitCost = v.qty > 0 ? v.cost / v.qty : costOf(pid);
+        return {
+          product_id: pid,
+          product: v.product,
+          name: v.product?.name ?? "(محذوف)",
+          qty: v.qty,
+          revenue: v.revenue,
+          cost: v.cost,
+          profit: v.revenue - v.cost,
+          margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
+          lines: v.lines,
+          unitCost,
+          costSourceUsed: costSourceOf(pid),
+          missingCost: v.qty > 0 && unitCost === 0,
+        };
+      })
+
       .filter((r) => selectedIds.size === 0 || selectedIds.has(r.product_id))
       .filter((r) => {
         if (!search.trim()) return true;
@@ -513,7 +537,7 @@ function ProfitsPage() {
         margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products, selectedIds, invoiceFactor, costOf]);
+  }, [items, productById, search, products, selectedIds, invoiceFactor, costOf, costSourceOf]);
 
   const totalsMatch = useMemo(() => {
     if (selectedIds.size > 0 || search.trim()) return null;
@@ -646,6 +670,7 @@ function ProfitsPage() {
         lang === "ar" ? "اللون" : "Color",
         lang === "ar" ? "الكمية المباعة" : "Sold Qty",
         lang === "ar" ? "سعر التكلفة" : "Cost Price",
+        lang === "ar" ? "مصدر التكلفة" : "Cost Source",
         lang === "ar" ? "سعر البيع" : "Sale Price",
         lang === "ar" ? "إجمالي التكلفة" : "Total Cost",
         lang === "ar" ? "إجمالي البيع" : "Total Revenue",
@@ -658,13 +683,15 @@ function ProfitsPage() {
         r.product?.serial_number ?? "",
         r.product?.color ?? "",
         r.qty,
-        Number(r.product?.cost_price ?? 0),
+        +Number(r.unitCost).toFixed(2),
+        r.costSourceUsed,
         Number(r.product?.price ?? 0),
         +r.cost.toFixed(2),
         +r.revenue.toFixed(2),
         +r.profit.toFixed(2),
         +r.margin.toFixed(2),
       ]),
+
       [],
       [
         lang === "ar" ? "الإجمالي" : "TOTAL",
@@ -674,11 +701,13 @@ function ProfitsPage() {
         rows.totals.qty,
         "",
         "",
+        "",
         +rows.totals.cost.toFixed(2),
         +rows.totals.revenue.toFixed(2),
         +rows.totals.profit.toFixed(2),
         +rows.totals.margin.toFixed(2),
       ],
+
     ];
 
     // Sheet 2: per-invoice
@@ -1841,9 +1870,25 @@ function ProfitsPage() {
               ) : rows.list.map((r) => {
                 const p = r.product;
                 const e = p ? editing[p.id] : undefined;
+                const srcLabel = r.costSourceUsed === "override" ? t("تعديل يدوي", "Manual override")
+                  : r.costSourceUsed === "wac" ? t("متوسط مرجّح (WAC)", "Weighted avg (WAC)")
+                  : r.costSourceUsed === "latest_po" ? t("آخر أمر شراء", "Latest PO")
+                  : t("التكلفة الحالية", "Current cost");
+                const srcTag = r.costSourceUsed === "override" ? "MAN"
+                  : r.costSourceUsed === "wac" ? "WAC"
+                  : r.costSourceUsed === "latest_po" ? "LPO"
+                  : "CUR";
+                const srcTagClass = r.costSourceUsed === "override"
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                  : r.costSourceUsed === "wac"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
+                  : r.costSourceUsed === "latest_po"
+                  ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25"
+                  : "bg-muted text-muted-foreground border-border";
                 return (
                   <Fragment key={r.product_id}>
-                  <tr className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
+                  <tr className={`${r.profit >= 0 ? "" : "bg-rose-500/5"} ${r.missingCost ? "border-s-2 border-amber-500/60" : ""}`}>
+
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="h-9 w-9 shrink-0 overflow-hidden rounded border bg-muted">
@@ -1872,7 +1917,7 @@ function ProfitsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.qty, lang)}</td>
-                    <td className="px-3 py-2 text-end">
+                    <td className={`px-3 py-2 text-end ${r.missingCost ? "ring-1 ring-inset ring-amber-500/40 bg-amber-500/5" : ""}`}>
                       {p && e ? (
                         <Input
                           type="number"
@@ -1881,10 +1926,22 @@ function ProfitsPage() {
                           onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], cost: ev.target.value } }))}
                           className="h-8 w-24 text-end"
                         />
+                      ) : r.qty === 0 && r.unitCost === 0 ? (
+                        <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="tabular-nums">{fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)}</span>
+                        <div
+                          className="inline-flex items-center gap-1.5 justify-end"
+                          title={r.missingCost
+                            ? t("لا توجد بيانات تكلفة لهذا المنتج — الربح مبالغ فيه", "No cost data for this product — profit is overstated")
+                            : `${t("المصدر", "Source")}: ${srcLabel}`}
+                        >
+                          {r.missingCost && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+                          <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span>
+                          <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span>
+                        </div>
                       )}
                     </td>
+
                     <td className="px-3 py-2 text-end">
                       {p && e ? (
                         <Input
@@ -1938,13 +1995,21 @@ function ProfitsPage() {
                               {t("معادلة الحساب", "Calculation")}
                             </div>
                             <div className="space-y-1.5 font-mono">
-                              <div>{t("سعر التكلفة", "Cost")}: <span className="tabular-nums">{fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)}</span></div>
+                              <div>{t("سعر التكلفة (وحدة)", "Unit cost")}: <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span> <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span></div>
+                              <div>{t("مصدر التكلفة", "Cost source")}: <span className="font-semibold">{srcLabel}</span></div>
                               <div>{t("سعر البيع", "Sale")}: <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span></div>
                               <div>{t("الكمية المباعة", "Sold qty")}: <span className="tabular-nums">{fmtNumber(r.qty, lang)}</span></div>
                               <div>{t("عدد بنود الفواتير", "Invoice lines")}: <span className="tabular-nums">{fmtNumber(r.lines, lang)}</span></div>
+                              {r.missingCost && (
+                                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                  <span>{t("⚠ لا يوجد سعر تكلفة مسجّل لهذا المنتج — الربح مبالغ فيه", "No cost price recorded — profit is overstated")}</span>
+                                </div>
+                              )}
                               <div className="pt-1.5 border-t">
-                                {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
+                                {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(r.unitCost, "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
                               </div>
+
                               <div>
                                 {t("إجمالي البيع", "Revenue")} = Σ(unit × qty − discount) = <span className="font-semibold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</span>
                               </div>
