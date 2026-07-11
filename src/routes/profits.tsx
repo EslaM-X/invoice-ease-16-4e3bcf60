@@ -1161,6 +1161,19 @@ function ProfitsPage() {
                 placeholder={t("بحث اسم / كولكشن / لون / سيريال", "Search name / collection / color / serial")}
                 className="h-8 max-w-xs text-xs"
               />
+              <div className="inline-flex items-center gap-1 text-[10px]">
+                <span className="text-muted-foreground">{t("ترتيب:", "Sort:")}</span>
+                <select
+                  value={cbSort}
+                  onChange={(e) => setCbSort(e.target.value as any)}
+                  className="h-7 rounded-md border bg-background px-2 text-[11px]"
+                >
+                  <option value="qty">{t("الأكثر كمية", "Highest qty")}</option>
+                  <option value="cost">{t("الأعلى تكلفة", "Highest cost")}</option>
+                  <option value="recent">{t("أحدث PO", "Most recent PO")}</option>
+                  <option value="name">{t("اسم أبجدي", "Name A-Z")}</option>
+                </select>
+              </div>
               <span className="text-[10px] text-muted-foreground ms-auto">
                 {t("انقر على منتج لعرض دفعات PO", "Click a product to expand PO lots")}
               </span>
@@ -1192,10 +1205,42 @@ function ProfitsPage() {
                       );
                     })
                     .sort((a, b) => {
-                      const ea = costBook.products[a.id]?.total_qty ?? 0;
-                      const eb = costBook.products[b.id]?.total_qty ?? 0;
-                      return eb - ea;
+                      const ea = costBook.products[a.id];
+                      const eb = costBook.products[b.id];
+                      if (cbSort === "name") return a.name.localeCompare(b.name);
+                      if (cbSort === "cost") return (costOf(b.id) || 0) - (costOf(a.id) || 0);
+                      if (cbSort === "recent") {
+                        const la = ea?.lots?.[0]?.shipment_date ?? "";
+                        const lb = eb?.lots?.[0]?.shipment_date ?? "";
+                        return lb.localeCompare(la);
+                      }
+                      return (eb?.total_qty ?? 0) - (ea?.total_qty ?? 0);
                     })
+                    .slice(0, 300)
+                    .map((p) => {
+                      const entry = costBook.products[p.id];
+                      const eff = costOf(p.id);
+                      const ov = overrides[p.id];
+                      const isOpen = !!expandedCB[p.id];
+                      return (
+                        <Fragment key={p.id}>
+                          <tr className={`hover:bg-muted/30 cursor-pointer ${ov ? "bg-amber-500/5" : ""}`} onClick={() => setExpandedCB((c) => ({ ...c, [p.id]: !c[p.id] }))}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isOpen ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
+                                {p.image_url ? (
+                                  <img src={p.image_url} alt="" className="h-9 w-9 rounded-md object-cover border shrink-0" loading="lazy" />
+                                ) : (
+                                  <div className="h-9 w-9 rounded-md border bg-muted/40 grid place-items-center shrink-0">
+                                    <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-medium truncate flex items-center gap-1.5">
+                                    {p.name}
+                                    {p.collection && (
+                                      <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+
                     .slice(0, 300)
                     .map((p) => {
                       const entry = costBook.products[p.id];
