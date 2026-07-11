@@ -842,9 +842,17 @@ function ProfitsPage() {
               </div>
             </>
           )}
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[220px]">
             <Label className="text-xs">{t("بحث منتج", "Search product")}</Label>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")} />
+            <div className="relative">
+              <Filter className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")}
+                className="ps-9"
+              />
+            </div>
           </div>
           <div className="min-w-[220px]">
             <Label className="text-xs">{t("العميل", "Customer")}</Label>
@@ -859,90 +867,220 @@ function ProfitsPage() {
               ))}
             </select>
           </div>
-          <div className="min-w-[200px]">
+          <div className="min-w-[220px]">
             <Label className="text-xs">{t("فلترة منتجات محددة", "Filter specific products")}</Label>
             <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start gap-2 h-10">
-                  <Filter className="h-4 w-4" />
-                  {selectedIds.size > 0
-                    ? t(`${selectedIds.size} منتج محدد`, `${selectedIds.size} selected`)
-                    : t("كل المنتجات", "All products")}
+                  <Layers className="h-4 w-4 text-primary" />
+                  <span className="truncate">
+                    {selectedIds.size > 0
+                      ? t(`${selectedIds.size} منتج محدد`, `${selectedIds.size} selected`)
+                      : t("كل المنتجات", "All products")}
+                  </span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[320px] p-0" align="end">
-                <div className="p-2 border-b flex items-center gap-2">
-                  <Input
-                    value={pickerSearch}
-                    onChange={(e) => setPickerSearch(e.target.value)}
-                    placeholder={t("بحث...", "Search...")}
-                    className="h-8 text-xs"
-                  />
-                  {selectedIds.size > 0 && (
-                    <Button size="sm" variant="ghost" onClick={clearSelected} className="h-8 px-2 text-[10px]">
-                      {t("مسح", "Clear")}
-                    </Button>
+              <PopoverContent className="w-[420px] p-0" align="end">
+                <div className="p-2 border-b space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={pickerSearch}
+                      onChange={(e) => setPickerSearch(e.target.value)}
+                      placeholder={t("بحث اسم / سيريال / لون...", "Search name / serial / color…")}
+                      className="h-8 text-xs"
+                    />
+                    {selectedIds.size > 0 && (
+                      <Button size="sm" variant="ghost" onClick={clearSelected} className="h-8 px-2 text-[10px]">
+                        {t("مسح", "Clear")}
+                      </Button>
+                    )}
+                  </div>
+                  {pickerFacets.collections.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] text-muted-foreground self-center me-1">{t("الكولكشن:", "Collection:")}</span>
+                      {pickerFacets.collections.map(([c, n]) => {
+                        const active = pickerCollections.has(c);
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() =>
+                              setPickerCollections((cur) => {
+                                const s = new Set(cur);
+                                if (s.has(c)) s.delete(c); else s.add(c);
+                                return s;
+                              })
+                            }
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition ${
+                              active ? collectionBadgeClass(c) + " ring-1 ring-primary/50" : "bg-muted/40 hover:bg-muted"
+                            }`}
+                          >
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(c)}`} />
+                            {c}
+                            <span className="opacity-60 tabular-nums">{n}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {pickerFacets.colors.length > 0 && (
+                    <div className="flex flex-wrap gap-1 items-center">
+                      <span className="text-[10px] text-muted-foreground me-1">{t("اللون:", "Color:")}</span>
+                      {pickerFacets.colors.map(([c, n]) => {
+                        const active = pickerColors.has(c);
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            title={`${c} · ${n}`}
+                            onClick={() =>
+                              setPickerColors((cur) => {
+                                const s = new Set(cur);
+                                if (s.has(c)) s.delete(c); else s.add(c);
+                                return s;
+                              })
+                            }
+                            className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] transition ${
+                              active ? "ring-2 ring-primary shadow-sm" : "hover:bg-muted"
+                            }`}
+                          >
+                            <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                            <span className="truncate max-w-[70px]">{c}</span>
+                          </button>
+                        );
+                      })}
+                      {(pickerColors.size > 0 || pickerCollections.size > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => { setPickerColors(new Set()); setPickerCollections(new Set()); }}
+                          className="text-[10px] text-primary underline ms-auto"
+                        >
+                          {t("إلغاء الفلاتر", "Reset facets")}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div className="max-h-72 overflow-y-auto p-1">
-                  {products
-                    .filter((p) => {
-                      const s = pickerSearch.trim().toLowerCase();
+                <div className="max-h-80 overflow-y-auto p-1">
+                  {(() => {
+                    const s = pickerSearch.trim().toLowerCase();
+                    const filtered = products.filter((p) => {
+                      if (pickerCollections.size > 0 && !pickerCollections.has((p.collection ?? "").trim())) return false;
+                      if (pickerColors.size > 0 && !pickerColors.has((p.color ?? "").trim())) return false;
                       if (!s) return true;
                       return (
                         p.name.toLowerCase().includes(s) ||
                         (p.serial_number ?? "").toLowerCase().includes(s) ||
+                        (p.color ?? "").toLowerCase().includes(s) ||
                         (p.collection ?? "").toLowerCase().includes(s)
                       );
-                    })
-                    .map((p) => {
-                      const checked = selectedIds.has(p.id);
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => toggleSelected(p.id)}
-                          className={`w-full text-start flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted ${checked ? "bg-primary/10" : ""}`}
-                        >
-                          <input type="checkbox" readOnly checked={checked} className="pointer-events-none" />
-                          <span className="truncate flex-1">{p.name}</span>
-                          {p.collection && (
-                            <span className={`text-[9px] rounded border px-1 ${collectionBadgeClass(p.collection)}`}>{p.collection}</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                    });
+                    if (filtered.length === 0) {
+                      return <div className="text-center text-[11px] text-muted-foreground py-6">{t("لا نتائج", "No results")}</div>;
+                    }
+                    return (
+                      <>
+                        <div className="flex items-center justify-between px-2 py-1 text-[10px] text-muted-foreground">
+                          <span>{filtered.length} {t("منتج", "product(s)")}</span>
+                          <button
+                            type="button"
+                            className="text-primary underline"
+                            onClick={() =>
+                              setSelectedIds((cur) => {
+                                const s2 = new Set(cur);
+                                for (const p of filtered) s2.add(p.id);
+                                return s2;
+                              })
+                            }
+                          >
+                            {t("تحديد كل الظاهر", "Select all shown")}
+                          </button>
+                        </div>
+                        {filtered.slice(0, 400).map((p) => {
+                          const checked = selectedIds.has(p.id);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => toggleSelected(p.id)}
+                              className={`w-full text-start flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted ${checked ? "bg-primary/10 ring-1 ring-primary/40" : ""}`}
+                            >
+                              <input type="checkbox" readOnly checked={checked} className="pointer-events-none" />
+                              {p.image_url ? (
+                                <img src={p.image_url} alt="" className="h-8 w-8 rounded-md object-cover border shrink-0" loading="lazy" />
+                              ) : (
+                                <div className="h-8 w-8 rounded-md border bg-muted/40 grid place-items-center shrink-0">
+                                  <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="truncate font-medium">{p.name}</div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                  {p.serial_number && <span className="font-mono truncate">{p.serial_number}</span>}
+                                  {p.color && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(p.color)} />
+                                      <span className="truncate max-w-[60px]">{p.color}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {p.collection && (
+                                <span className={`text-[9px] rounded border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}>
+                                  {p.collection}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
                 </div>
               </PopoverContent>
             </Popover>
           </div>
         </div>
         {selectedIds.size > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground">{t("المنتجات المحددة:", "Selected:")}</span>
-            {Array.from(selectedIds).map((id) => {
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+            <span className="text-[11px] font-semibold text-foreground">{t("المحددة:", "Selected:")}</span>
+            {Array.from(selectedIds).slice(0, 12).map((id) => {
               const p = productById.get(id);
               if (!p) return null;
               return (
-                <span key={id} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
-                  {p.name}
+                <span key={id} className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 py-0.5 ps-0.5 pe-2 text-[10px]">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt="" className="h-4 w-4 rounded-full object-cover" />
+                  ) : (
+                    <span className={`inline-block h-4 w-4 rounded-full ${collectionDotClass(p.collection)}`} />
+                  )}
+                  <span className="truncate max-w-[110px]">{p.name}</span>
                   <button onClick={() => toggleSelected(id)} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
                 </span>
               );
             })}
+            {selectedIds.size > 12 && (
+              <span className="text-[10px] text-muted-foreground">+{selectedIds.size - 12}</span>
+            )}
             <button onClick={clearSelected} className="text-[10px] text-primary underline ms-1">{t("إلغاء الكل", "Clear all")}</button>
           </div>
         )}
-      </div>
-
-      <div className="rounded-2xl border bg-card p-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-semibold text-foreground">{t("السياق الحالي", "Current context")}</span>
-          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("المدى", "Range")}: {filterSummary.rangeLabel}</span>
-          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("المنتج", "Product")}: {filterSummary.productSummary}</span>
-          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("العميل", "Customer")}: {filterSummary.customerName}</span>
+        {/* Current context — inline chips replacing the standalone card */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5 text-[11px]">
+          <span className="font-semibold text-muted-foreground">{t("السياق الحالي:", "Context:")}</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 px-2.5 py-0.5">
+            <Clock className="h-3 w-3" /> {filterSummary.rangeLabel}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">
+            <Layers className="h-3 w-3" /> {filterSummary.productSummary}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5">
+            <Receipt className="h-3 w-3" /> {filterSummary.customerName}
+          </span>
         </div>
       </div>
+
+
 
       {/* Cost Source & Cost Book */}
       <div className="rounded-2xl border bg-card shadow-sm">
