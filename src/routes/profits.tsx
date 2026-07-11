@@ -156,6 +156,10 @@ function ProfitsPage() {
   const [ovRevertingId, setOvRevertingId] = useState<string | null>(null);
   const [invoiceDetailOpen, setInvoiceDetailOpen] = useState<string | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  // Product table filters
+  const [ptSearch, setPtSearch] = useState("");
+  const [ptSort, setPtSort] = useState<{ field: "profit" | "qty" | "margin" | "name"; dir: "asc" | "desc" }>({ field: "profit", dir: "desc" });
+  const [productDetailId, setProductDetailId] = useState<string | null>(null);
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
