@@ -2974,8 +2974,28 @@ function ProfitsPage() {
             if (!r) return null;
             const p = r.product;
             const stock = Number(p?.stock_quantity ?? 0);
-            const productLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
-            // Build timeline (daily aggregation of revenue)
+            const allProductLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
+            // Available statuses in scope
+            const sheetStatusSet = new Set<string>();
+            for (const it of allProductLines) if (it.invoices?.status) sheetStatusSet.add(it.invoices.status);
+            const sheetStatusList = Array.from(sheetStatusSet).sort();
+            // Apply sheet filters to lines
+            const sSearch = sheetSearch.trim().toLowerCase();
+            const sFrom = sheetFrom ? new Date(sheetFrom + "T00:00:00").getTime() : null;
+            const sTo = sheetTo ? new Date(sheetTo + "T23:59:59").getTime() : null;
+            const productLines = allProductLines.filter((it) => {
+              const inv = it.invoices;
+              if (sheetStatus !== "all" && (inv?.status ?? "") !== sheetStatus) return false;
+              const ts = inv?.created_at ? new Date(inv.created_at).getTime() : 0;
+              if (sFrom !== null && ts < sFrom) return false;
+              if (sTo !== null && ts > sTo) return false;
+              if (sSearch) {
+                const hay = `${inv?.invoice_number ?? ""} ${inv?.customer_name ?? ""}`.toLowerCase();
+                if (!hay.includes(sSearch)) return false;
+              }
+              return true;
+            });
+            // Build timeline (daily aggregation)
             const byDay = new Map<string, { date: string; revenue: number; qty: number }>();
             for (const it of productLines) {
               const d = (it.invoices?.created_at ?? "").slice(0, 10);
@@ -2986,9 +3006,8 @@ function ProfitsPage() {
               byDay.set(d, cur);
             }
             const timeline = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
-            const maxDay = Math.max(1, ...timeline.map((d) => d.revenue));
             // Invoices grouped
-            const byInvoice = new Map<string, { invoice_id: string; invoice_number: string; created_at: string; qty: number; revenue: number }>();
+            const byInvoice = new Map<string, { invoice_id: string; invoice_number: string; created_at: string; customer_name: string | null; status: string; qty: number; revenue: number }>();
             for (const it of productLines) {
               const inv = it.invoices;
               if (!inv) continue;
@@ -2996,6 +3015,8 @@ function ProfitsPage() {
                 invoice_id: it.invoice_id,
                 invoice_number: inv.invoice_number ?? "—",
                 created_at: inv.created_at ?? "",
+                customer_name: inv.customer_name ?? null,
+                status: inv.status ?? "",
                 qty: 0, revenue: 0,
               };
               cur.qty += it.quantity;
@@ -3003,6 +3024,9 @@ function ProfitsPage() {
               byInvoice.set(it.invoice_id, cur);
             }
             const invList = Array.from(byInvoice.values()).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+            const filteredQty = productLines.reduce((s, it) => s + it.quantity, 0);
+            const filteredRev = productLines.reduce((s, it) => s + netRev(it), 0);
+            const activeFilters = sheetSearch || sheetFrom || sheetTo || sheetStatus !== "all";
             return (
               <>
                 <SheetHeader className="text-start">
