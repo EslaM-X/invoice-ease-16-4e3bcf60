@@ -181,12 +181,15 @@ export async function exportInvoicesBatchPDF(rows: InvoiceRow[], lang: Lang, cur
     pdf.line(margin + 300, y, pageW - margin, y);
     y += 18;
     pdf.setFontSize(10);
+    const subNum = Number(inv.subtotal ?? 0);
+    const discNum = Number(inv.discount ?? 0);
+    const totalNum = discNum > 0 ? +(subNum - discNum).toFixed(2) : subNum;
     pdf.text("Subtotal", margin + 300, y);
-    pdf.text(fmtMoney(Number(inv.subtotal), currency, "en"), pageW - margin, y, { align: "right" });
+    pdf.text(fmtMoney(subNum, currency, "en"), pageW - margin, y, { align: "right" });
     y += 16;
-    if (Number(inv.discount) > 0) {
+    if (discNum > 0) {
       pdf.text("Discount", margin + 300, y);
-      pdf.text(`-${fmtMoney(Number(inv.discount), currency, "en")}`, pageW - margin, y, { align: "right" });
+      pdf.text(`-${fmtMoney(discNum, currency, "en")}`, pageW - margin, y, { align: "right" });
       y += 8;
     }
     pdf.line(margin + 300, y, pageW - margin, y);
@@ -194,7 +197,7 @@ export async function exportInvoicesBatchPDF(rows: InvoiceRow[], lang: Lang, cur
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
     pdf.text("TOTAL", margin + 300, y);
-    pdf.text(fmtMoney(Number(inv.total), currency, "en"), pageW - margin, y, { align: "right" });
+    pdf.text(fmtMoney(totalNum, currency, "en"), pageW - margin, y, { align: "right" });
     pdf.setFont("helvetica", "normal");
 
     if (inv.status === "voided") {
