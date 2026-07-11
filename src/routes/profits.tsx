@@ -167,6 +167,54 @@ function ProfitsPage() {
   const [invTo, setInvTo] = useState("");
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invTrendMode, setInvTrendMode] = useState<"day" | "week">("day");
+  // Product-detail Sheet filters
+  const [sheetSearch, setSheetSearch] = useState("");
+  const [sheetFrom, setSheetFrom] = useState("");
+  const [sheetTo, setSheetTo] = useState("");
+  const [sheetStatus, setSheetStatus] = useState<string>("all");
+  // Reset sheet filters when product changes
+  useEffect(() => { setSheetSearch(""); setSheetFrom(""); setSheetTo(""); setSheetStatus("all"); }, [productDetailId]);
+
+  // Shared margin pill: gradient + icon + click popover explanation
+  const MarginPill = ({ margin, size = "sm" }: { margin: number; size?: "xs" | "sm" | "md" }) => {
+    const tier = margin >= 40 ? "high" : margin >= 20 ? "good" : margin >= 0 ? "low" : "loss";
+    const conf = {
+      high: { label: t("مرتفع", "High"), icon: Flame, wrap: "border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent text-emerald-700 dark:text-emerald-300", note: t("هامش ممتاز (≥ 40٪) — منتج مربح بقوة.", "Excellent margin (≥ 40%) — a very profitable line.") },
+      good: { label: t("جيد", "Good"), icon: TrendingUp, wrap: "border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-transparent text-amber-700 dark:text-amber-300", note: t("هامش جيد (20–40٪) — ربحية صحية.", "Healthy margin (20–40%).") },
+      low:  { label: t("منخفض", "Low"),  icon: Minus,      wrap: "border-orange-500/40 bg-gradient-to-r from-orange-500/15 via-orange-500/10 to-transparent text-orange-700 dark:text-orange-300", note: t("هامش منخفض (0–20٪) — راجع التكلفة أو السعر.", "Low margin (0–20%) — review cost or pricing.") },
+      loss: { label: t("خسارة", "Loss"), icon: TrendingDown, wrap: "border-rose-500/40 bg-gradient-to-r from-rose-500/15 via-rose-500/10 to-transparent text-rose-700 dark:text-rose-300", note: t("خسارة — سعر البيع أقل من التكلفة.", "Loss — sale price is below cost.") },
+    }[tier];
+    const Icon = conf.icon;
+    const px = size === "xs" ? "px-1.5 py-0.5 text-[10px]" : size === "md" ? "px-2.5 py-1 text-sm" : "px-2 py-0.5 text-xs";
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className={`inline-flex items-center gap-1 rounded-full border font-bold tabular-nums transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary/40 ${conf.wrap} ${px}`}
+            title={conf.label}
+          >
+            <Icon className="h-3 w-3" />
+            <span>{margin.toFixed(1)}%</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" align="center" className="w-64 p-3 text-xs" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5 font-bold mb-1">
+            <Icon className="h-3.5 w-3.5" />
+            <span>{conf.label} · {margin.toFixed(1)}%</span>
+          </div>
+          <p className="text-muted-foreground leading-relaxed">{conf.note}</p>
+          <div className="mt-2 pt-2 border-t border-border/60 grid grid-cols-4 gap-1 text-[9px] uppercase tracking-wider text-muted-foreground/80 font-semibold">
+            <span className={tier === "loss" ? "text-rose-600" : ""}>&lt;0</span>
+            <span className={tier === "low" ? "text-orange-600" : ""}>0–20</span>
+            <span className={tier === "good" ? "text-amber-600" : ""}>20–40</span>
+            <span className={tier === "high" ? "text-emerald-600" : ""}>≥40</span>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
