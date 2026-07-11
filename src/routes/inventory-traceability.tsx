@@ -85,7 +85,12 @@ function Traceability() {
   // Stock levels tab
   const [stockSearch, setStockSearch] = useState("");
   const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
+  const [stockSortBy, setStockSortBy] = useState<"qty" | "movement">("qty");
   const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
+  const [stockMovement, setStockMovement] = useState<"all" | "moving" | "stagnant">("all");
+  const [stockTopN, setStockTopN] = useState<0 | 10 | 20 | 50>(0);
+  const [stockMinQty, setStockMinQty] = useState<string>("");
+  const [stockMaxQty, setStockMaxQty] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [logsShown, setLogsShown] = useState(50);
   useEffect(() => { setLogsShown(50); }, [selectedProduct?.id]);
