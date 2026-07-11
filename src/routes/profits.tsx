@@ -364,11 +364,51 @@ function ProfitsPage() {
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
 
-  // Live toast when an invoice's status changes (paid, cancelled, …). Chart
-  // and tables refresh via the batched hook above; this only surfaces the
-  // event to the user so they know why numbers just moved.
+  // Live toast when invoice statuses change. Events are BUFFERED for a few
+  // seconds and coalesced into a single summary toast so that a burst of
+  // updates (e.g. bulk operations) doesn't flood the UI or thrash the chart.
   useEffect(() => {
     if (!user) return;
+    type Ev = { num: string; prev: string; next: string; at: number };
+    const buffer: Ev[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const FLUSH_MS = 4000;
+
+    const flush = () => {
+      flushTimer = null;
+      if (buffer.length === 0) return;
+      const events = buffer.splice(0, buffer.length);
+      // Group by outcome bucket
+      const byNext = new Map<string, number>();
+      let successCount = 0, errorCount = 0;
+      for (const e of events) {
+        byNext.set(e.next, (byNext.get(e.next) ?? 0) + 1);
+        if (e.next === "paid") successCount++;
+        else if (e.next === "cancelled" || e.next === "void") errorCount++;
+      }
+      if (events.length === 1) {
+        const e = events[0];
+        const tone = e.next === "cancelled" || e.next === "void" ? "error" : e.next === "paid" ? "success" : "info";
+        const msg = lang === "ar" ? `فاتورة ${e.num}: ${e.prev} → ${e.next}` : `Invoice ${e.num}: ${e.prev} → ${e.next}`;
+        const opts = { description: lang === "ar" ? "تم تحديث المخطط والجدول تلقائيًا." : "Chart and table auto-updated." };
+        if (tone === "success") toast.success(msg, opts);
+        else if (tone === "error") toast.error(msg, opts);
+        else toast.info(msg, opts);
+        return;
+      }
+      // Aggregated summary
+      const parts = Array.from(byNext.entries()).map(([k, n]) => lang === "ar" ? `${n} ${k}` : `${n} ${k}`);
+      const title = lang === "ar"
+        ? `تحديث ${events.length} فاتورة`
+        : `${events.length} invoices updated`;
+      const desc = parts.join(lang === "ar" ? " · " : " · ");
+      const tone = errorCount > successCount ? "error" : successCount > 0 ? "success" : "info";
+      const opts = { description: desc };
+      if (tone === "success") toast.success(title, opts);
+      else if (tone === "error") toast.error(title, opts);
+      else toast.info(title, opts);
+    };
+
     const channel = supabase
       .channel("profits-invoice-status")
       .on(
@@ -378,22 +418,18 @@ function ProfitsPage() {
           const prev = payload.old?.status;
           const next = payload.new?.status;
           if (!prev || !next || prev === next) return;
-          const num = payload.new?.invoice_number ?? "—";
-          const tone =
-            next === "cancelled" || next === "void" ? "error" :
-            next === "paid" ? "success" : "info";
-          const msg = lang === "ar"
-            ? `فاتورة ${num}: ${prev} → ${next}`
-            : `Invoice ${num}: ${prev} → ${next}`;
-          const opts = { description: lang === "ar" ? "تم تحديث المخطط والجدول تلقائيًا." : "Chart and table auto-updated." };
-          if (tone === "success") toast.success(msg, opts);
-          else if (tone === "error") toast.error(msg, opts);
-          else toast.info(msg, opts);
+          buffer.push({ num: payload.new?.invoice_number ?? "—", prev, next, at: Date.now() });
+          if (flushTimer) clearTimeout(flushTimer);
+          flushTimer = setTimeout(flush, FLUSH_MS);
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (flushTimer) { clearTimeout(flushTimer); flush(); }
+      supabase.removeChannel(channel);
+    };
   }, [user, lang]);
+
 
   const openOvHistory = async (p: Product) => {
     setOvHistoryOpen(p);
