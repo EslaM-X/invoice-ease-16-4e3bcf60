@@ -31,7 +31,9 @@ export function NoirKpiCard({
 }) {
   const t = toneMap[tone];
   return (
-    <div className="noir-kpi group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 hover:shadow-2xl sm:p-5">
+    <div className="noir-kpi noir-glow noir-ripple group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5">
+      {/* animated shimmering top gold hairline */}
+      <div className="gold-hairline-live absolute inset-x-0 top-0" />
       {/* animated top gold hairline */}
       <div className={`absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent ${t.bar} to-transparent opacity-60 group-hover:opacity-100 transition-opacity`} />
       {/* ambient glow (grows on hover) */}
