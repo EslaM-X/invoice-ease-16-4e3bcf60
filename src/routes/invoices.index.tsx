@@ -344,7 +344,7 @@ function InvoicesList() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="relative lg:col-span-2">
           <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_invoices_placeholder")} className="ps-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={lang === "ar" ? "بحث برقم/عميل/هاتف/موضوع/سيريال…" : "Search #/customer/phone/subject/serial…"} className="ps-9" />
         </div>
         <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
