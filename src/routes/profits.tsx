@@ -167,6 +167,11 @@ function ProfitsPage() {
   const [invTo, setInvTo] = useState("");
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invTrendMode, setInvTrendMode] = useState<"day" | "week">("day");
+  const [invPageSize, setInvPageSize] = useState(25);
+  const [invCustomerSuggestOpen, setInvCustomerSuggestOpen] = useState(false);
+  const [invCustomerHighlight, setInvCustomerHighlight] = useState(0);
+  // Reset visible page window when filters change
+  useEffect(() => { setInvPageSize(25); }, [invSearch, invFrom, invTo, invStatus]);
   // Product-detail Sheet filters
   const [sheetSearch, setSheetSearch] = useState("");
   const [sheetFrom, setSheetFrom] = useState("");
