@@ -314,6 +314,22 @@ function ProfitsPage() {
     return m;
   }, [products]);
 
+  // Unique collections / colors for the visual product picker
+  const pickerFacets = useMemo(() => {
+    const cols = new Map<string, number>();
+    const colors = new Map<string, number>();
+    for (const p of products) {
+      const c = (p.collection ?? "").trim();
+      if (c) cols.set(c, (cols.get(c) ?? 0) + 1);
+      const cl = (p.color ?? "").trim();
+      if (cl) colors.set(cl, (colors.get(cl) ?? 0) + 1);
+    }
+    return {
+      collections: Array.from(cols.entries()).sort((a, b) => b[1] - a[1]),
+      colors: Array.from(colors.entries()).sort((a, b) => b[1] - a[1]).slice(0, 24),
+    };
+  }, [products]);
+
   // Weighted-average / configurable per-product cost (EGP).
   // Falls back gracefully so KPIs never show NaN when a source is missing.
   const costOf = useMemo(() => {
