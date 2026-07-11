@@ -1883,219 +1883,324 @@ function ProfitsPage() {
       })()}
 
 
-      {/* Products table */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between border-b px-4 py-2.5">
-          <h3 className="font-semibold text-sm">{t("ربح كل منتج", "Per-Product Profit")} ({fmtNumber(rows.list.length, lang)})</h3>
-          {loading && <span className="text-[11px] text-muted-foreground">{t("...جاري التحميل", "loading...")}</span>}
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-sm">
-            <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 text-start">{t("المنتج", "Product")}</th>
-                <th className="px-3 py-2 text-end">{t("الكمية", "Qty")}</th>
-                <th className="px-3 py-2 text-end">{t("سعر التكلفة", "Cost")}</th>
-                <th className="px-3 py-2 text-end">{t("سعر البيع", "Sale")}</th>
-                <th className="px-3 py-2 text-end">{t("إجمالي التكلفة", "Total Cost")}</th>
-                <th className="px-3 py-2 text-end">{t("إجمالي البيع", "Revenue")}</th>
-                <th className="px-3 py-2 text-end">{t("صافي الربح", "Profit")}</th>
-                <th className="px-3 py-2 text-end">{t("هامش %", "Margin")}</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.list.length === 0 ? (
-                <tr><td colSpan={9} className="px-3 py-12 text-center text-muted-foreground text-sm">{t("لا توجد بيانات في هذا النطاق", "No data in this range")}</td></tr>
-              ) : rows.list.map((r) => {
-                const p = r.product;
-                const e = p ? editing[p.id] : undefined;
-                const srcLabel = r.costSourceUsed === "override" ? t("تعديل يدوي", "Manual override")
-                  : r.costSourceUsed === "wac" ? t("متوسط مرجّح (WAC)", "Weighted avg (WAC)")
-                  : r.costSourceUsed === "latest_po" ? t("آخر أمر شراء", "Latest PO")
-                  : t("التكلفة الحالية", "Current cost");
-                const srcTag = r.costSourceUsed === "override" ? "MAN"
-                  : r.costSourceUsed === "wac" ? "WAC"
-                  : r.costSourceUsed === "latest_po" ? "LPO"
-                  : "CUR";
-                const srcTagClass = r.costSourceUsed === "override"
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
-                  : r.costSourceUsed === "wac"
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
-                  : r.costSourceUsed === "latest_po"
-                  ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25"
-                  : "bg-muted text-muted-foreground border-border";
-                return (
-                  <Fragment key={r.product_id}>
-                  <tr className={`${r.profit >= 0 ? "" : "bg-rose-500/5"} ${r.missingCost ? "border-s-2 border-amber-500/60" : ""}`}>
+      {/* Products table — Noir & Gold */}
+      {(() => {
+        const activeRows = rows.list.filter((r) => r.qty > 0);
+        const topRow = activeRows[0];
+        const avgMargin = activeRows.length > 0
+          ? activeRows.reduce((s, r) => s + r.margin, 0) / activeRows.length
+          : 0;
+        const totalProfit = activeRows.reduce((s, r) => s + r.profit, 0);
+        const maxAbsProfit = Math.max(1, ...activeRows.map((r) => Math.abs(r.profit)));
+        const rankMedal = (i: number) => {
+          if (i === 0) return { label: "1", cls: "bg-gradient-to-br from-amber-300 to-yellow-600 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)] ring-1 ring-amber-200/60" };
+          if (i === 1) return { label: "2", cls: "bg-gradient-to-br from-slate-200 to-slate-400 text-black ring-1 ring-slate-100/60" };
+          if (i === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
+          return null;
+        };
+        return (
+        <div className="relative rounded-2xl overflow-hidden noir-surface border border-primary/20 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded border bg-muted">
-                          {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : null}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium truncate flex items-center gap-1.5">
-                            {r.name}
-                            {p?.collection && (
-                              <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
-                                <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
-                                {p.collection}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground flex gap-2 flex-wrap">
-                            {p?.serial_number && <span className="font-mono">{p.serial_number}</span>}
-                            {p?.color && (
-                              <span className="inline-flex items-center gap-1">
-                                <ColorSwatch value={p.color} size="sm" />
-                                {p.color}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+          {/* Luxury header */}
+          <div className="relative px-5 py-4 border-b border-primary/15 bg-gradient-to-br from-background via-background to-primary/5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/25 to-primary/5 border border-primary/30 flex items-center justify-center shrink-0">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <span className="absolute -inset-0.5 rounded-xl bg-primary/10 blur-md -z-10" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base tracking-tight bg-gradient-to-r from-foreground to-primary/80 bg-clip-text text-transparent">
+                    {t("ربح كل منتج", "Per-Product Profit")}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {t("ترتيب حسب الربح • مرتّب تنازليًا", "Ranked by profit • descending")}
+                    {loading && <span className="ms-2 inline-flex items-center gap-1 text-primary/70"><RefreshCw className="h-3 w-3 animate-spin" />{t("تحديث…", "syncing…")}</span>}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent px-3 py-1.5">
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("المنتجات", "Products")}</div>
+                  <div className="text-sm font-bold tabular-nums">{fmtNumber(activeRows.length, lang)}<span className="text-muted-foreground/50 text-xs">/{fmtNumber(rows.list.length, lang)}</span></div>
+                </div>
+                <div className={`rounded-lg border px-3 py-1.5 ${totalProfit >= 0 ? "border-emerald-500/30 bg-emerald-500/5" : "border-rose-500/30 bg-rose-500/5"}`}>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("إجمالي الربح", "Total Profit")}</div>
+                  <div className={`text-sm font-bold tabular-nums ${totalProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(totalProfit, "EGP", lang)}</div>
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent px-3 py-1.5">
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("متوسط الهامش", "Avg Margin")}</div>
+                  <div className="text-sm font-bold tabular-nums text-primary">{avgMargin.toFixed(1)}%</div>
+                </div>
+                {topRow && (
+                  <div className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent px-3 py-1.5 max-w-[220px]">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1">
+                      <span className="text-amber-500">★</span>{t("الأعلى ربحًا", "Top performer")}
+                    </div>
+                    <div className="text-sm font-bold truncate text-amber-700 dark:text-amber-300">{topRow.name}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[960px] text-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/90 font-bold">
+                  <th className="px-3 py-3 text-center w-12">#</th>
+                  <th className="px-3 py-3 text-start">{t("المنتج", "Product")}</th>
+                  <th className="px-3 py-3 text-end">{t("الكمية", "Qty")}</th>
+                  <th className="px-3 py-3 text-end">{t("سعر التكلفة", "Cost")}</th>
+                  <th className="px-3 py-3 text-end">{t("سعر البيع", "Sale")}</th>
+                  <th className="px-3 py-3 text-end">{t("إجمالي التكلفة", "Total Cost")}</th>
+                  <th className="px-3 py-3 text-end">{t("إجمالي البيع", "Revenue")}</th>
+                  <th className="px-3 py-3 text-end">{t("صافي الربح", "Profit")}</th>
+                  <th className="px-3 py-3 text-end min-w-[130px]">{t("هامش %", "Margin")}</th>
+                  <th className="px-3 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {rows.list.length === 0 ? (
+                  <tr><td colSpan={10} className="px-3 py-16 text-center">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <div className="h-12 w-12 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-primary/60" />
                       </div>
-                    </td>
-                    <td className="px-3 py-2 text-end tabular-nums">{fmtNumber(r.qty, lang)}</td>
-                    <td className={`px-3 py-2 text-end ${r.missingCost ? "ring-1 ring-inset ring-amber-500/40 bg-amber-500/5" : ""}`}>
-                      {p && e ? (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={e.cost}
-                          onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], cost: ev.target.value } }))}
-                          className="h-8 w-24 text-end"
-                        />
-                      ) : r.qty === 0 && r.unitCost === 0 ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <div
-                          className="inline-flex items-center gap-1.5 justify-end"
-                          title={r.missingCost
-                            ? t("لا توجد بيانات تكلفة لهذا المنتج — الربح مبالغ فيه", "No cost data for this product — profit is overstated")
-                            : `${t("المصدر", "Source")}: ${srcLabel}`}
-                        >
-                          {r.missingCost && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-                          <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span>
-                          <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span>
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-3 py-2 text-end">
-                      {p && e ? (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={e.sale}
-                          onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], sale: ev.target.value } }))}
-                          className="h-8 w-24 text-end"
-                        />
-                      ) : (
-                        <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</td>
-                    <td className="px-3 py-2 text-end tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</td>
-                    <td className={`px-3 py-2 text-end tabular-nums font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</td>
-                    <td className={`px-3 py-2 text-end tabular-nums ${r.margin >= 0 ? "" : "text-rose-600"}`}>{r.margin.toFixed(1)}%</td>
-                    <td className="px-3 py-2 text-end">
-                      <div className="flex items-center justify-end gap-1">
-                        {p && (
-                          e ? (
-                            <>
-                              <Button size="sm" variant="ghost" onClick={() => cancelEdit(p.id)} className="h-7 px-2">×</Button>
-                              <Button size="sm" disabled={savingId === p.id} onClick={() => saveEdit(p)} className="h-7 px-2 gap-1">
-                                <Save className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button size="sm" variant="ghost" onClick={() => startEdit(p)} className="h-7 text-xs">
-                                {t("تعديل", "Edit")}
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => openHistory(p)} className="h-7 px-1.5" title={t("سجل الأسعار", "Price history")}>
-                                <History className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )
+                      <div className="text-sm font-medium">{t("لا توجد بيانات في هذا النطاق", "No data in this range")}</div>
+                      <div className="text-[11px]">{t("جرّب تعديل الفلاتر أو النطاق الزمني", "Try adjusting filters or the date range")}</div>
+                    </div>
+                  </td></tr>
+                ) : rows.list.map((r, idx) => {
+                  const p = r.product;
+                  const e = p ? editing[p.id] : undefined;
+                  const srcLabel = r.costSourceUsed === "override" ? t("تعديل يدوي", "Manual override")
+                    : r.costSourceUsed === "wac" ? t("متوسط مرجّح (WAC)", "Weighted avg (WAC)")
+                    : r.costSourceUsed === "latest_po" ? t("آخر أمر شراء", "Latest PO")
+                    : t("التكلفة الحالية", "Current cost");
+                  const srcTag = r.costSourceUsed === "override" ? "MAN"
+                    : r.costSourceUsed === "wac" ? "WAC"
+                    : r.costSourceUsed === "latest_po" ? "LPO"
+                    : "CUR";
+                  const srcTagClass = r.costSourceUsed === "override"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                    : r.costSourceUsed === "wac"
+                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
+                    : r.costSourceUsed === "latest_po"
+                    ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25"
+                    : "bg-muted text-muted-foreground border-border";
+                  const medal = r.qty > 0 ? rankMedal(idx) : null;
+                  const isTop = medal !== null;
+                  const profitBarPct = Math.min(100, (Math.abs(r.profit) / maxAbsProfit) * 100);
+                  const marginPct = Math.max(0, Math.min(100, r.margin));
+                  return (
+                    <Fragment key={r.product_id}>
+                    <tr className={`group transition-colors duration-200 hover:bg-primary/[0.04] ${r.profit < 0 ? "bg-rose-500/[0.03]" : ""} ${r.missingCost ? "border-s-2 border-amber-500/60" : ""} ${isTop ? "bg-gradient-to-r from-amber-500/[0.04] via-transparent to-transparent" : ""}`}>
+                      <td className="px-3 py-3 text-center">
+                        {medal ? (
+                          <div className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${medal.cls}`}>{medal.label}</div>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground/60 tabular-nums font-mono">{r.qty > 0 ? idx + 1 : "—"}</span>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => setExpanded((cur) => ({ ...cur, [r.product_id]: !cur[r.product_id] }))} className="h-7 px-1.5" title={t("التفاصيل", "Details")}>
-                          {expanded[r.product_id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                  {expanded[r.product_id] && (
-                    <tr key={r.product_id + ":d"} className="bg-muted/20">
-                      <td colSpan={9} className="px-4 py-3">
-                        <div className="grid gap-3 md:grid-cols-2 text-xs">
-                          <div className="rounded-lg border bg-card p-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                              {t("معادلة الحساب", "Calculation")}
-                            </div>
-                            <div className="space-y-1.5 font-mono">
-                              <div>{t("سعر التكلفة (وحدة)", "Unit cost")}: <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span> <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span></div>
-                              <div>{t("مصدر التكلفة", "Cost source")}: <span className="font-semibold">{srcLabel}</span></div>
-                              <div>{t("سعر البيع", "Sale")}: <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span></div>
-                              <div>{t("الكمية المباعة", "Sold qty")}: <span className="tabular-nums">{fmtNumber(r.qty, lang)}</span></div>
-                              <div>{t("عدد بنود الفواتير", "Invoice lines")}: <span className="tabular-nums">{fmtNumber(r.lines, lang)}</span></div>
-                              {r.missingCost && (
-                                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
-                                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                                  <span>{t("⚠ لا يوجد سعر تكلفة مسجّل لهذا المنتج — الربح مبالغ فيه", "No cost price recorded — profit is overstated")}</span>
-                                </div>
-                              )}
-                              <div className="pt-1.5 border-t">
-                                {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(r.unitCost, "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
-                              </div>
+                      </td>
 
-                              <div>
-                                {t("إجمالي البيع", "Revenue")} = Σ(unit × qty − discount) = <span className="font-semibold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</span>
-                              </div>
-                              <div className={`pt-1 font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                                {t("صافي الربح", "Profit")} = {fmtMoney(r.revenue, "EGP", lang)} − {fmtMoney(r.cost, "EGP", lang)} = <span className="tabular-nums">{fmtMoney(r.profit, "EGP", lang)}</span>
-                              </div>
-                              <div>
-                                {t("الهامش", "Margin")} = ({fmtMoney(r.profit, "EGP", lang)} ÷ {fmtMoney(r.revenue, "EGP", lang)}) × 100 = <span className="font-semibold">{r.margin.toFixed(2)}%</span>
-                              </div>
-                            </div>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-muted transition-transform duration-200 group-hover:scale-105 ${isTop ? "ring-2 ring-amber-400/50 border-amber-400/40 shadow-[0_0_12px_-2px_rgba(234,179,8,0.4)]" : "border-border/60"}`}>
+                            {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full flex items-center justify-center text-muted-foreground/40 text-[10px]">—</div>}
                           </div>
-                          <div className="rounded-lg border bg-card p-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                              {t("بنود الفواتير المعتمدة", "Counted invoice lines")} ({fmtNumber(items.filter((it) => it.product_id === r.product_id && !isShippingLine(it)).length, lang)})
-                            </div>
-                            <div className="max-h-44 overflow-y-auto divide-y text-[11px]">
-                              {items
-                                .filter((it) => it.product_id === r.product_id && !isShippingLine(it))
-                                .slice(0, 50)
-                                .map((it, i) => (
-                                  <div key={i} className="py-1 flex items-center justify-between gap-2">
-                                    <span className="font-mono">{it.invoices?.invoice_number}</span>
-                                    <span className="text-muted-foreground">{it.invoices?.created_at?.slice(0,10)}</span>
-                                    <span className="tabular-nums">×{it.quantity}</span>
-                                    <span className="tabular-nums">{fmtMoney(Number(it.line_total ?? 0), "EGP", lang)}</span>
-                                  </div>
-                                ))}
-                              {items.filter((it) => it.product_id === r.product_id && !isShippingLine(it)).length === 0 && (
-                                <div className="py-3 text-center text-muted-foreground">{t("لا توجد مبيعات في النطاق", "No sales in range")}</div>
+                          <div className="min-w-0">
+                            <div className="font-semibold truncate flex items-center gap-1.5">
+                              {r.name}
+                              {p?.collection && (
+                                <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                                  <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                                  {p.collection}
+                                </span>
                               )}
                             </div>
-                            <div className="mt-2 text-[10px] text-muted-foreground">
-                              {t("الفواتير الملغية والمحذوفة ورسوم الشحن مستبعدة تلقائيًا.", "Voided/deleted invoices and shipping fees are auto-excluded.")}
+                            <div className="text-[11px] text-muted-foreground flex gap-2 flex-wrap mt-0.5">
+                              {p?.serial_number && <span className="font-mono opacity-80">{p.serial_number}</span>}
+                              {p?.color && (
+                                <span className="inline-flex items-center gap-1">
+                                  <ColorSwatch value={p.color} size="sm" />
+                                  {p.color}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
                       </td>
+                      <td className="px-3 py-3 text-end tabular-nums font-medium">{fmtNumber(r.qty, lang)}</td>
+                      <td className={`px-3 py-3 text-end ${r.missingCost ? "ring-1 ring-inset ring-amber-500/40 bg-amber-500/5" : ""}`}>
+                        {p && e ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={e.cost}
+                            onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], cost: ev.target.value } }))}
+                            className="h-8 w-24 text-end"
+                          />
+                        ) : r.qty === 0 && r.unitCost === 0 ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <div
+                            className="inline-flex items-center gap-1.5 justify-end"
+                            title={r.missingCost
+                              ? t("لا توجد بيانات تكلفة لهذا المنتج — الربح مبالغ فيه", "No cost data for this product — profit is overstated")
+                              : `${t("المصدر", "Source")}: ${srcLabel}`}
+                          >
+                            {r.missingCost && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+                            <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span>
+                            <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-3 py-3 text-end">
+                        {p && e ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={e.sale}
+                            onChange={(ev) => setEditing((cur) => ({ ...cur, [p.id]: { ...cur[p.id], sale: ev.target.value } }))}
+                            className="h-8 w-24 text-end"
+                          />
+                        ) : (
+                          <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-end tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</td>
+                      <td className="px-3 py-3 text-end tabular-nums font-medium">{fmtMoney(r.revenue, "EGP", lang)}</td>
+                      <td className="px-3 py-3 text-end">
+                        {r.qty > 0 ? (
+                          <div className="inline-flex flex-col items-end gap-1">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums border ${r.profit >= 0 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"}`}>
+                              {r.profit >= 0 ? <TrendingUp className="h-3 w-3" /> : <ArrowRight className="h-3 w-3 rotate-90" />}
+                              {fmtMoney(r.profit, "EGP", lang)}
+                            </span>
+                            <div className="h-1 w-24 rounded-full bg-muted/50 overflow-hidden">
+                              <div className={`h-full rounded-full ${r.profit >= 0 ? "bg-gradient-to-r from-emerald-500/70 to-emerald-400" : "bg-gradient-to-r from-rose-500/70 to-rose-400"}`} style={{ width: `${profitBarPct}%` }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-end">
+                        {r.qty > 0 ? (
+                          <div className="inline-flex flex-col items-end gap-1 min-w-[110px]">
+                            <span className={`tabular-nums font-bold text-sm ${r.margin >= 30 ? "text-emerald-600 dark:text-emerald-400" : r.margin >= 10 ? "text-primary" : r.margin >= 0 ? "text-amber-600 dark:text-amber-400" : "text-rose-600"}`}>{r.margin.toFixed(1)}%</span>
+                            <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
+                              <div className={`h-full rounded-full ${r.margin >= 30 ? "bg-gradient-to-r from-emerald-500 to-emerald-300" : r.margin >= 10 ? "bg-gradient-to-r from-primary to-amber-300" : r.margin >= 0 ? "bg-gradient-to-r from-amber-500 to-amber-300" : "bg-gradient-to-r from-rose-500 to-rose-300"}`} style={{ width: `${marginPct}%` }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-end">
+                        <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                          {p && (
+                            e ? (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => cancelEdit(p.id)} className="h-7 px-2">×</Button>
+                                <Button size="sm" disabled={savingId === p.id} onClick={() => saveEdit(p)} className="h-7 px-2 gap-1">
+                                  <Save className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => startEdit(p)} className="h-7 text-xs">
+                                  {t("تعديل", "Edit")}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => openHistory(p)} className="h-7 px-1.5" title={t("سجل الأسعار", "Price history")}>
+                                  <History className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => setExpanded((cur) => ({ ...cur, [r.product_id]: !cur[r.product_id] }))} className="h-7 px-1.5" title={t("التفاصيل", "Details")}>
+                            {expanded[r.product_id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
-                  )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                    {expanded[r.product_id] && (
+                      <tr key={r.product_id + ":d"} className="bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.03]">
+                        <td colSpan={10} className="px-4 py-4">
+                          <div className="grid gap-3 md:grid-cols-2 text-xs">
+                            <div className="rounded-xl border border-primary/15 bg-card/80 backdrop-blur p-3 shadow-sm">
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2 flex items-center gap-1.5">
+                                <Calculator className="h-3.5 w-3.5" />
+                                {t("معادلة الحساب", "Calculation")}
+                              </div>
+                              <div className="space-y-1.5 font-mono">
+                                <div>{t("سعر التكلفة (وحدة)", "Unit cost")}: <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span> <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span></div>
+                                <div>{t("مصدر التكلفة", "Cost source")}: <span className="font-semibold">{srcLabel}</span></div>
+                                <div>{t("سعر البيع", "Sale")}: <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span></div>
+                                <div>{t("الكمية المباعة", "Sold qty")}: <span className="tabular-nums">{fmtNumber(r.qty, lang)}</span></div>
+                                <div>{t("عدد بنود الفواتير", "Invoice lines")}: <span className="tabular-nums">{fmtNumber(r.lines, lang)}</span></div>
+                                {r.missingCost && (
+                                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                    <span>{t("⚠ لا يوجد سعر تكلفة مسجّل لهذا المنتج — الربح مبالغ فيه", "No cost price recorded — profit is overstated")}</span>
+                                  </div>
+                                )}
+                                <div className="pt-1.5 border-t border-primary/10">
+                                  {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(r.unitCost, "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
+                                </div>
+                                <div>
+                                  {t("إجمالي البيع", "Revenue")} = Σ(unit × qty − discount) = <span className="font-semibold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</span>
+                                </div>
+                                <div className={`pt-1 font-semibold ${r.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                  {t("صافي الربح", "Profit")} = {fmtMoney(r.revenue, "EGP", lang)} − {fmtMoney(r.cost, "EGP", lang)} = <span className="tabular-nums">{fmtMoney(r.profit, "EGP", lang)}</span>
+                                </div>
+                                <div>
+                                  {t("الهامش", "Margin")} = ({fmtMoney(r.profit, "EGP", lang)} ÷ {fmtMoney(r.revenue, "EGP", lang)}) × 100 = <span className="font-semibold">{r.margin.toFixed(2)}%</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-primary/15 bg-card/80 backdrop-blur p-3 shadow-sm">
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2 flex items-center gap-1.5">
+                                <Receipt className="h-3.5 w-3.5" />
+                                {t("بنود الفواتير المعتمدة", "Counted invoice lines")} ({fmtNumber(items.filter((it) => it.product_id === r.product_id && !isShippingLine(it)).length, lang)})
+                              </div>
+                              <div className="max-h-44 overflow-y-auto divide-y divide-border/40 text-[11px]">
+                                {items
+                                  .filter((it) => it.product_id === r.product_id && !isShippingLine(it))
+                                  .slice(0, 50)
+                                  .map((it, i) => (
+                                    <div key={i} className="py-1.5 flex items-center justify-between gap-2 hover:bg-primary/5 rounded px-1 transition-colors">
+                                      <span className="font-mono text-primary/80">{it.invoices?.invoice_number}</span>
+                                      <span className="text-muted-foreground">{it.invoices?.created_at?.slice(0,10)}</span>
+                                      <span className="tabular-nums">×{it.quantity}</span>
+                                      <span className="tabular-nums font-medium">{fmtMoney(Number(it.line_total ?? 0), "EGP", lang)}</span>
+                                    </div>
+                                  ))}
+                                {items.filter((it) => it.product_id === r.product_id && !isShippingLine(it)).length === 0 && (
+                                  <div className="py-3 text-center text-muted-foreground">{t("لا توجد مبيعات في النطاق", "No sales in range")}</div>
+                                )}
+                              </div>
+                              <div className="mt-2 text-[10px] text-muted-foreground italic">
+                                {t("الفواتير الملغية والمحذوفة ورسوم الشحن مستبعدة تلقائيًا.", "Voided/deleted invoices and shipping fees are auto-excluded.")}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+        );
+      })()}
 
       {/* Per-invoice profit */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
