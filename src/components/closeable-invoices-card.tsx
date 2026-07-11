@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CheckCircle2, Sparkles, Ship, Plane, Truck, Lock, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { CheckCircle2, Sparkles, Ship, Plane, Truck, Lock, ChevronDown, ChevronUp, Info, Clock, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
