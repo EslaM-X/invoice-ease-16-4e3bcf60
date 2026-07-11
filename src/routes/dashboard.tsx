@@ -243,13 +243,15 @@ function Dashboard() {
       {stats.lowStock > 0 && (
         <Link
           to="/inventory"
+          role="alert"
+          aria-label={`${t("stock_low_alert")}: ${stats.lowStock} ${lang === "ar" ? "منتج بحاجة لإعادة تخزين" : "products need restocking"}`}
           className="noir-press noir-ripple focus-gold group relative flex flex-col items-stretch gap-4 overflow-hidden rounded-2xl border border-amber-500/35 bg-gradient-to-br from-[#1a1408] to-[#0d0a05] p-4 shadow-xl shadow-amber-950/40 hover:border-amber-500/60 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
         >
-          <div className="pointer-events-none absolute -left-16 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-amber-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
+          <div aria-hidden="true" className="pointer-events-none absolute -left-16 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-amber-500/15 blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
 
           <div className="relative flex items-center gap-4 flex-1 min-w-0">
-            <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-amber-500/40 bg-amber-500/15 text-amber-400">
+            <div aria-hidden="true" className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-amber-500/40 bg-amber-500/15 text-amber-400">
               <span className="absolute inset-0 rounded-2xl bg-amber-400/20 animate-ping motion-reduce:hidden" style={{ animationDuration: "2.5s" }} />
               <AlertTriangle className="relative h-5 w-5" />
             </div>
@@ -264,12 +266,13 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="relative inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition-colors group-hover:bg-amber-500/20 sm:self-auto">
+          <div aria-hidden="true" className="relative inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition-colors group-hover:bg-amber-500/20 sm:self-auto">
             {t("view")}
             <span className="transition-transform duration-300 group-hover:translate-x-[-2px] rtl:rotate-180 motion-reduce:transition-none">→</span>
           </div>
         </Link>
       )}
+
 
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
