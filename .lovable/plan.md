@@ -1,47 +1,77 @@
-## هدف التحديث
-تحسين صفحة `/profits` — إعادة تصميم شريط الفلاتر ليكون أذكى وأوضح بصريًا مع صور المنتجات والألوان والكولكشن، وترقية «دفتر التكاليف» و«التحقق والمطابقة» ليكونا أكثر إبداعًا ودقة وسهولة.
+## Scope
 
-## 1) شريط الفلاتر — إعادة تصميم كامل
-- تقسيم الشريط إلى صفَّين واضحَين داخل بطاقة موحّدة:
-  - الصف 1: أزرار المدى (يوم/شهر/سنة/الإجمالي/نطاق) + حقول التاريخ الديناميكية.
-  - الصف 2: بحث المنتج (أيقونة عدسة) + منتقي العميل (Combobox قابل للبحث بدل `select`) + زر «فلترة منتجات محددة».
-- **منتقي المنتجات (Popover) بشكل بصري كامل**:
-  - كل صف: صورة مصغّرة للمنتج (`product_image` أو fallback أيقونة) + الاسم + سيريال + شارة كولكشن ملوّنة (`collectionBadgeClass`) + `ColorSwatch` للون.
-  - شريط فلاتر أفقي أعلى القائمة: شرائح كولكشن (JOY / UP / ART / QUATRO) بلون كل كولكشن + شرائح ألوان مستخرجة تلقائيًا من `products` مع `swatchStyle` + عدّاد لكل شريحة.
-  - بحث فوري + زر «تحديد كل الظاهر» + زر «مسح».
-- **شارات المنتجات المختارة** أسفل الشريط: كل شارة تحمل صورة صغيرة + الاسم + زر إزالة، مع إمكانية «إلغاء الكل».
-- **بطاقة «السياق الحالي»** تُدمج داخل شريط الفلاتر كسطر Chips أنيق بدل بطاقة منفصلة، مع أيقونات (📅 مدى، 🛍️ منتج، 👤 عميل) وألوان دلالية خفيفة، ومختصر ذكي (لو المنتجات >3 يعرض "3 محدّدة + N").
+Redesign four blocks on `/profits` shown in the screenshot into a fully Noir & Gold, luxury/editorial experience — same data, same interactions, richer surface:
 
-## 2) دفتر التكاليف — عرض أذكى وأوضح
-- رأس البطاقة يصبح شريطًا واحدًا مضغوطًا: العنوان + Chips «USD→EGP لكل PO» + «سعر افتراضي X» + «N منتج» + زر عرض/إخفاء.
-- «مصدر التكلفة» يتحوّل إلى Segmented Control مع أيقونة لكل مصدر ووصف قصير أسفله (سطر hint يشرح المعنى، مثال: WAC = "متوسط مرجّح لكل POs").
-- عند فتح الجدول:
-  - عمود «المنتج» يحصل على صورة مصغّرة + شارة كولكشن + `ColorSwatch` بدل النص فقط.
-  - أعمدة القيم تتلوّن حسب المصدر الفعّال: صف تعديل يدوي يُبرز بخلفية `amber/10` وشارة "Manual"، صف WAC نشط بشارة `primary`.
-  - إضافة عمود Mini-Sparkline بسيط (اختياري) لتغيّر سعر آخر 5 دفعات PO.
-  - صف تفصيل الدفعات (expanded) يعرض جدول لوت‑ات مع Chip لحالة الـ PO وتاريخه ورقم الشحنة قابل للنقر.
-- ترتيب الصفوف: قائمة منسدلة صغيرة (الأكثر كمية / الأعلى تكلفة / الأحدث PO / اسم أبجدي).
+1. Reconciliation alert banner ("تنبيه: يوجد فرق…")
+2. Shipping/exclusions footnote line
+3. "التحقق والمطابقة" collapsible panel
+4. "اتجاه صافي الربح اليومي" trend chart card
 
-## 3) بطاقات KPI + بانر المطابقة
-- بطاقات KPI الأربعة تكتسب:
-  - أيقونة داخل دائرة ملوّنة (كل بطاقة لون دلالي: أخضر للربح، أزرق للبيع، أحمر للتكلفة، ذهبي للهامش).
-  - Delta صغير أسفلها (مقارنة بالفترة السابقة إذا كان المدى محدّدًا) — يستخدم نفس `items` مع نطاق زمني مُزاح.
-- **بطاقة الشحن/الخدمة** تصبح Chip مصغّر داخل صف KPI بدل بطاقة كاملة (توفير مساحة).
-- **بانر «التحقق والمطابقة»** يُنقل من alert نصي إلى بطاقة أنيقة قابلة للطي:
-  - أيقونة `ShieldCheck` + عنوان + شارة حالة (متطابق ✅ / فرق ⚠️).
-  - جدول صغير: البند / القيمة / الفرق، مع Tooltip لكل صف يشرح مصدر الأرقام.
-  - زر «تفاصيل الاستبعادات» يفتح Dialog يعرض الفواتير الملغاة/المحذوفة وبنود الشحن التي استُبعدت.
+No new features, no data logic changes — only visual craft.
 
-## 4) قصر التغييرات على الواجهة
-- كل ما سبق تعديلات UI/presentation داخل `src/routes/profits.tsx` فقط.
-- استخدام موجود بالفعل: `collectionBadgeClass`, `collectionDotClass`, `ColorSwatch`, `swatchStyle`, `productById`, `costOf`, `costBook`, `overrides`.
-- لن يتغيّر أي منطق حساب في `src/lib/profit-calc.ts` ولا أي RPC ولا أي schema.
+## Direction
 
-## تفاصيل تقنية
-- الملف المعدّل: `src/routes/profits.tsx` (شريط الفلاتر ≈ سطور 772–926، Cost Book ≈ 928–1100، وبانر المطابقة لاحقًا في نفس الملف).
-- إضافة state جديد: `collectionFilter: Set<string>`, `colorFilter: Set<string>`, `cbSort: 'qty'|'cost'|'recent'|'name'`, `reconcileOpen: boolean`.
-- استخراج الكولكشن/الألوان الفريدة من `products` عبر `useMemo`.
-- الصورة المصغّرة تستخدم `product.image_url` إن وُجد، وإلا placeholder svg inline (بدون طلبات شبكة).
-- لا حاجة لأي package جديد.
+Signature language borrowed from the app's Noir & Gold identity:
+- Dark ink card surfaces with subtle gold hairlines (`ring-1 ring-primary/15`), soft radial gold glow in the corner
+- Serif display accents for section titles (uses the existing display font stack) with a thin gold rule underneath
+- Semantic status color kept (emerald = ok, amber/rose = review), but softened into gradient washes rather than flat pastels
+- Tabular monospaced digits everywhere, tighter tracking on labels
+- Micro-badges become gold-outlined pills; icons sit in circular tinted haloes
 
-هل أبدأ بالتنفيذ؟
+## Block-by-block
+
+### 1. Reconciliation alert banner
+
+Turn the flat red/green strip into a **status ribbon card**:
+
+- Left: circular halo icon (ShieldCheck for ok, AlertTriangle for review) with matching ring
+- Center: two-line stack — bold title + fine caption (`التقارير · الأرباح · الفرق`) with tabular digits
+- Right: three inline mini-stats laid out as a horizontal micro-table with vertical dividers (Reports / Profits / Variance), each with a whisper label above the number
+- Background: `bg-gradient-to-l from-rose-500/[0.06] via-transparent to-rose-500/[0.03]` (or emerald variant), thin gold-tinted top border, soft inner shadow
+- On mobile it collapses to stacked rows preserving the three mini-stats
+
+### 2. Shipping footnote
+
+Promote from muted paragraph to a **quiet meta strip**:
+
+- Small `Info` icon in a circle, italicised label, key numbers rendered as inline monospaced chips (e.g. `52 بند`, `52 فاتورة`, `EGP 13,000.00`) so the eye can scan without reading
+- Placed as a subtle divider band between KPIs and the verification panel
+
+### 3. Verification & Reconciliation panel
+
+Elevate the collapsible into a **ledger card**:
+
+- Header row: gold hairline underline, small serif title, status pill on the far edge, chevron in a subtle circular button
+- Expanded body reorganised into two "column-cards" with a vertical gold divider between them on desktop:
+  - "مطابقة إجمالي البيع": each row uses a two-column layout with dotted leader line between label and number (classic ledger feel), totals row emphasised with a gold top rule
+  - "مطابقة صافي الربح": same treatment; net profit line highlighted with an emerald left-border accent bar
+- "سبب الاستبعادات" reformatted from bullet list into a 2×2 grid of tiny cause-cards, each with an icon, one-line title, and inline stat chip
+- Card overall gets a faint diagonal noise/paper texture via a CSS gradient, plus a top-right gold glow
+
+### 4. Daily net profit trend chart
+
+Rework into a **hero chart card**:
+
+- Header: serif title on left, right side gets an inline mini-KPI trio (Latest, Peak, Total) with tiny sparklike labels, then the segmented Profit-only/All toggle (redesigned as gold-inset segmented control), then the CSV button styled as a subtle ghost button with icon
+- Chart canvas:
+  - Replace flat `<Line>` with an area gradient (gold fade for profit, thin dashed lines for revenue/cost when "All")
+  - Add horizontal reference line at zero
+  - Grid becomes dotted, near-invisible
+  - Tooltip restyled: dark card with gold hairline border, tabular digits, weekday + date
+  - Empty state upgraded from plain text to a centered whisper illustration (icon + one line)
+- Bottom of the card gets a small caption strip: date range shown as "من … إلى …" with tiny arrow between
+
+## Technical notes
+
+- All work lives in `src/routes/profits.tsx` between roughly lines 1414–1593
+- Use only existing tokens (`primary`, `emerald-500`, `rose-500`, `amber-500`) and Tailwind utility layering — no new CSS variables required
+- Chart tweaks stay within Recharts (`Area` from `recharts`, `ReferenceLine`, custom `Tooltip` content component). `recharts` is already installed and imported in this file
+- Segmented control and pills reuse the existing patterns already used elsewhere on the page for consistency
+- Zero data / query / calculation changes — same `totalsMatch`, `dailyTrend`, `shippingTotals` inputs
+- Keep RTL correctness: dividers, chevrons, and axis orientation continue to swap via `lang === "ar"`
+
+## Out of scope
+
+- Product picker, cost book, KPIs, per-product table (already redesigned in prior turns)
+- Any backend / RPC / query change
+- Adding new metrics or filters
