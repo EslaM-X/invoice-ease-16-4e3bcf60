@@ -2721,7 +2721,7 @@ function ProfitsPage() {
                       </td>
                       <td className="px-3 py-3 text-end">
                         <div className="flex flex-col items-end gap-1">
-                          <span className={`text-sm font-bold tabular-nums ${mt.text}`}>{r.margin.toFixed(1)}%</span>
+                          <MarginPill margin={r.margin} size="sm" />
                           <div className="w-20 h-1 rounded-full bg-muted/50 overflow-hidden">
                             <div className={`h-full ${mt.bar}`} style={{ width: `${marginPct}%` }} />
                           </div>
