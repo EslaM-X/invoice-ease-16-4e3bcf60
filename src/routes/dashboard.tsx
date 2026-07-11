@@ -356,7 +356,13 @@ function Dashboard() {
           ) : (
             <div className="divide-y divide-border">
               {recent.map((r) => (
-                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between py-3 transition hover:opacity-70">
+                <Link
+                  key={r.id}
+                  to="/invoices/$id"
+                  params={{ id: r.id }}
+                  aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
+                  className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
+                >
                   <div>
                     <div className="text-sm font-medium">{r.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
@@ -364,6 +370,7 @@ function Dashboard() {
                   <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
                 </Link>
               ))}
+
             </div>
           )}
         </div>
