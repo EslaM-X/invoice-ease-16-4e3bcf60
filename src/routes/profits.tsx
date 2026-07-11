@@ -1897,11 +1897,51 @@ function ProfitsPage() {
           : 0;
         const totalProfit = activeRows.reduce((s, r) => s + r.profit, 0);
         const maxAbsProfit = Math.max(1, ...activeRows.map((r) => Math.abs(r.profit)));
-        const rankMedal = (i: number) => {
-          if (i === 0) return { label: "1", cls: "bg-gradient-to-br from-amber-300 to-yellow-600 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)] ring-1 ring-amber-200/60" };
-          if (i === 1) return { label: "2", cls: "bg-gradient-to-br from-slate-200 to-slate-400 text-black ring-1 ring-slate-100/60" };
-          if (i === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
+        // Rank by profit (for medals) — independent of user sort
+        const profitRankIndex = new Map<string, number>();
+        [...rows.list]
+          .filter((r) => r.qty > 0)
+          .sort((a, b) => b.profit - a.profit)
+          .forEach((r, i) => profitRankIndex.set(r.product_id, i));
+        // Local search + sort for product table
+        const s = ptSearch.trim().toLowerCase();
+        const searched = s
+          ? rows.list.filter((r) =>
+              r.name.toLowerCase().includes(s) ||
+              (r.product?.serial_number ?? "").toLowerCase().includes(s) ||
+              (r.product?.color ?? "").toLowerCase().includes(s) ||
+              (r.product?.collection ?? "").toLowerCase().includes(s)
+            )
+          : rows.list;
+        const dir = ptSort.dir === "asc" ? 1 : -1;
+        const displayRows = [...searched].sort((a, b) => {
+          if (a.qty === 0 && b.qty === 0) return a.name.localeCompare(b.name);
+          if (a.qty === 0) return 1;
+          if (b.qty === 0) return -1;
+          if (ptSort.field === "name") return a.name.localeCompare(b.name) * dir;
+          if (ptSort.field === "qty") return (a.qty - b.qty) * dir;
+          if (ptSort.field === "margin") return (a.margin - b.margin) * dir;
+          return (a.profit - b.profit) * dir;
+        });
+        const rankMedal = (rank: number | undefined) => {
+          if (rank === 0) return { label: "1", cls: "bg-gradient-to-br from-amber-300 to-yellow-600 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)] ring-1 ring-amber-200/60" };
+          if (rank === 1) return { label: "2", cls: "bg-gradient-to-br from-slate-200 to-slate-400 text-black ring-1 ring-slate-100/60" };
+          if (rank === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
           return null;
+        };
+        const SortBtn = ({ field, label }: { field: typeof ptSort.field; label: string }) => {
+          const active = ptSort.field === field;
+          return (
+            <button
+              type="button"
+              onClick={() => setPtSort((cur) => cur.field === field ? { field, dir: cur.dir === "asc" ? "desc" : "asc" } : { field, dir: "desc" })}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${active ? "border-primary/50 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
+              title={t("ترتيب", "Sort")}
+            >
+              {label}
+              {active && (ptSort.dir === "desc" ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
+            </button>
+          );
         };
         return (
         <div className="relative rounded-2xl overflow-hidden noir-surface border border-primary/20 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
