@@ -59,7 +59,7 @@ function Dashboard() {
       (supabase as any)
         .from("defective_items")
         .select("quantity, returned_quantity, item_type, status")
-        .eq("item_type", "sample")
+        .in("item_type", ["sample", "loan", "showroom"])
         .neq("status", "returned_full"),
       user
         ? (supabase as any).from("settings").select("dashboard_usd_rate").eq("user_id", user.id).maybeSingle()
