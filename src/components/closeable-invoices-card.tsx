@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CheckCircle2, Sparkles, Ship, Plane, Truck, Lock, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { CheckCircle2, Sparkles, Ship, Plane, Truck, Lock, ChevronDown, ChevronUp, Info, Clock, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -66,53 +66,88 @@ export function CloseableInvoicesCard() {
   const shipIcon = (t: string | null) => t === "air" ? Plane : t === "door_to_door" ? Truck : Ship;
   const shipTone = (t: string | null) => t === "air" ? "bg-sky-500/10 text-sky-700 border-sky-500/20" : t === "door_to_door" ? "bg-violet-500/10 text-violet-700 border-violet-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20";
 
+  const isLoading = loading && !suggestions.length;
+  const nowVal = isLoading ? "—" : String(counts.nowFull).padStart(2, "0");
+  const incVal = isLoading ? "—" : String(counts.incomingFull).padStart(2, "0");
+  const rsvVal = loading && reserved.length === 0 ? "—" : String(reserved.length).padStart(2, "0");
+
   return (
     <div className="space-y-3">
-      <div className="group relative rounded-2xl border bg-card p-4 sm:p-5 shadow-sm transition hover:shadow-md">
-        <Link to="/fulfillment" className="absolute inset-0 rounded-2xl" aria-label={isAr ? "افتح صفحة الاقتراحات" : "Open suggestions"} />
-        <div className="relative flex items-center gap-3 sm:gap-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Sparkles className="h-3 w-3 shrink-0" />
-              <span className="truncate">{isAr ? "اقتراحات الإقفال الذكية" : "Smart closure suggestions"}</span>
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWhyOpen(true); }}
-                className="relative z-10 ms-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted"
-                title={isAr ? "لماذا هذه الأرقام؟" : "Why these numbers?"}
-              >
-                <Info className="h-3 w-3" />
-                {isAr ? "لماذا؟" : "Why?"}
-              </button>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:gap-x-6">
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold tabular-nums transition-all">{loading && !suggestions.length ? "—" : counts.nowFull}</span>
-                <span className="text-xs text-muted-foreground">{isAr ? "جاهزة الآن" : "Ready now"}</span>
+      <div className="relative overflow-hidden rounded-2xl border border-[#c9a84c]/25 bg-gradient-to-br from-[#161616] to-[#0d0d0d] shadow-2xl shadow-black/50">
+        {/* Top decorative gold bar */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#c9a84c] to-transparent opacity-70" />
+
+        <div className="relative p-5 sm:p-6">
+          {/* Header */}
+          <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#c9a84c]/30 bg-[#c9a84c]/10">
+                <Sparkles className="h-5 w-5 text-[#c9a84c]" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold tabular-nums text-blue-600 transition-all">{loading && !suggestions.length ? "—" : counts.incomingFull}</span>
-                <span className="text-xs text-muted-foreground">{isAr ? "بعد الوصول" : "After arrival"}</span>
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-bold text-[#fdfcfb] sm:text-lg">
+                  {isAr ? "اقتراحات الإقفال الذكية" : "Smart closure suggestions"}
+                </h3>
+                <p className="mt-0.5 truncate text-[11px] text-white/50">
+                  {isAr ? "تحديثات فورية للحالات المعلقة" : "Live pending fulfillment updates"}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReservedOpen(v => !v); }}
-                className="relative z-10 flex flex-col text-start hover:opacity-80 transition"
-              >
-                <span className="text-2xl font-bold tabular-nums text-amber-600 inline-flex items-center gap-1">
-                  <Lock className="h-4 w-4" />
-                  {loading && reserved.length === 0 ? "—" : reserved.length}
-                  {reservedOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                </span>
-                <span className="text-xs text-muted-foreground">{isAr ? "محجوزة" : "Reserved"}</span>
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => setWhyOpen(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#c9a84c]/25 bg-[#c9a84c]/5 px-2.5 py-1.5 text-xs font-medium text-[#c9a84c] transition-colors hover:bg-[#c9a84c]/15"
+              title={isAr ? "لماذا هذه الأرقام؟" : "Why these numbers?"}
+            >
+              <Info className="h-3.5 w-3.5" />
+              {isAr ? "لماذا؟" : "Why?"}
+            </button>
           </div>
+
+          {/* Metrics */}
+          <div className="mb-6 grid grid-cols-3 gap-3 sm:gap-4">
+            <MetricTile
+              as={Link}
+              to="/fulfillment"
+              tone="emerald"
+              icon={<CheckCircle2 className="h-4 w-4" />}
+              value={nowVal}
+              label={isAr ? "جاهزة الآن" : "Ready now"}
+            />
+            <MetricTile
+              as={Link}
+              to="/fulfillment"
+              tone="blue"
+              icon={<Clock className="h-4 w-4" />}
+              value={incVal}
+              label={isAr ? "بعد الوصول" : "After arrival"}
+            />
+            <MetricTile
+              as="button"
+              onClick={() => setReservedOpen(v => !v)}
+              tone="amber"
+              icon={<Lock className="h-4 w-4" />}
+              value={rsvVal}
+              label={isAr ? "محجوزة" : "Reserved"}
+              trailing={reservedOpen ? <ChevronUp className="h-3.5 w-3.5 text-amber-500" /> : <ChevronDown className="h-3.5 w-3.5 text-amber-500" />}
+            />
+          </div>
+
+          {/* CTA */}
+          <Link
+            to="/fulfillment"
+            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#c9a84c] px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-[#c9a84c]/20 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <span className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+            <span className="relative">{isAr ? "عرض الاقتراحات الذكية" : "View smart suggestions"}</span>
+            <ArrowLeft className="relative h-4 w-4 rtl:rotate-0 ltr:rotate-180" />
+          </Link>
         </div>
+
+        {/* Ambient gold glow */}
+        <div className="pointer-events-none absolute -bottom-16 left-1/2 h-32 w-64 -translate-x-1/2 bg-[#c9a84c]/10 blur-[80px]" />
       </div>
+
 
       {incomingSlots.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -220,6 +255,50 @@ export function CloseableInvoicesCard() {
     </div>
   );
 }
+
+type TileTone = "emerald" | "blue" | "amber";
+const toneMap: Record<TileTone, { glow: string; border: string; icon: string; text: string }> = {
+  emerald: { glow: "bg-emerald-500/5 group-hover:bg-emerald-500/10", border: "group-hover:border-emerald-500/40", icon: "bg-emerald-500/10 text-emerald-400", text: "text-emerald-400" },
+  blue:    { glow: "bg-blue-500/5 group-hover:bg-blue-500/10",       border: "group-hover:border-blue-500/40",    icon: "bg-blue-500/10 text-blue-400",       text: "text-blue-400" },
+  amber:   { glow: "bg-amber-500/5 group-hover:bg-amber-500/10",     border: "group-hover:border-amber-500/40",   icon: "bg-amber-500/10 text-amber-500",     text: "text-amber-500" },
+};
+
+function MetricTile(props: {
+  as: typeof Link | "button";
+  to?: string;
+  onClick?: () => void;
+  tone: TileTone;
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  trailing?: React.ReactNode;
+}) {
+  const t = toneMap[props.tone];
+  const inner = (
+    <>
+      <div className={`absolute inset-0 rounded-2xl blur-xl transition-all duration-500 ${t.glow}`} />
+      <div className={`relative rounded-2xl border border-white/5 bg-[#1a1a1a] p-4 transition-all duration-300 ${t.border}`}>
+        <div className="mb-3 flex items-center justify-between">
+          <div className={`grid h-7 w-7 place-items-center rounded-full ${t.icon}`}>{props.icon}</div>
+          <div className="flex items-center gap-1">
+            <span className={`text-2xl font-bold tabular-nums tracking-tight ${t.text}`}>{props.value}</span>
+            {props.trailing}
+          </div>
+        </div>
+        <span className="text-xs text-white/60">{props.label}</span>
+      </div>
+    </>
+  );
+  if (props.as === "button") {
+    return (
+      <button type="button" onClick={props.onClick} className="group relative block w-full text-start">{inner}</button>
+    );
+  }
+  return (
+    <Link to={props.to!} className="group relative block">{inner}</Link>
+  );
+}
+
 
 function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
