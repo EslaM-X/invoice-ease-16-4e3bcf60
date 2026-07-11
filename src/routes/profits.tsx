@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { fmtMoney, fmtNumber, fmtDate } from "@/lib/utils-money";
 import { collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
 import { toast } from "sonner";
-import { Download, Save, TrendingUp, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers, ShieldCheck, Receipt, Clock, AlertTriangle, Sparkles, ArrowRight, Truck, Ban, Divide, Calculator, LineChart as LineChartIcon } from "lucide-react";
+import { Download, Save, TrendingUp, TrendingDown, Minus, Flame, Wallet, Coins, Percent, RefreshCw, History, Info, ChevronDown, ChevronUp, Undo2, X, Filter, BookOpen, Layers, ShieldCheck, Receipt, Clock, AlertTriangle, Sparkles, ArrowRight, Truck, Ban, Divide, Calculator, LineChart as LineChartIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -167,6 +167,54 @@ function ProfitsPage() {
   const [invTo, setInvTo] = useState("");
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invTrendMode, setInvTrendMode] = useState<"day" | "week">("day");
+  // Product-detail Sheet filters
+  const [sheetSearch, setSheetSearch] = useState("");
+  const [sheetFrom, setSheetFrom] = useState("");
+  const [sheetTo, setSheetTo] = useState("");
+  const [sheetStatus, setSheetStatus] = useState<string>("all");
+  // Reset sheet filters when product changes
+  useEffect(() => { setSheetSearch(""); setSheetFrom(""); setSheetTo(""); setSheetStatus("all"); }, [productDetailId]);
+
+  // Shared margin pill: gradient + icon + click popover explanation
+  const MarginPill = ({ margin, size = "sm" }: { margin: number; size?: "xs" | "sm" | "md" }) => {
+    const tier = margin >= 40 ? "high" : margin >= 20 ? "good" : margin >= 0 ? "low" : "loss";
+    const conf = {
+      high: { label: t("مرتفع", "High"), icon: Flame, wrap: "border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent text-emerald-700 dark:text-emerald-300", note: t("هامش ممتاز (≥ 40٪) — منتج مربح بقوة.", "Excellent margin (≥ 40%) — a very profitable line.") },
+      good: { label: t("جيد", "Good"), icon: TrendingUp, wrap: "border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-transparent text-amber-700 dark:text-amber-300", note: t("هامش جيد (20–40٪) — ربحية صحية.", "Healthy margin (20–40%).") },
+      low:  { label: t("منخفض", "Low"),  icon: Minus,      wrap: "border-orange-500/40 bg-gradient-to-r from-orange-500/15 via-orange-500/10 to-transparent text-orange-700 dark:text-orange-300", note: t("هامش منخفض (0–20٪) — راجع التكلفة أو السعر.", "Low margin (0–20%) — review cost or pricing.") },
+      loss: { label: t("خسارة", "Loss"), icon: TrendingDown, wrap: "border-rose-500/40 bg-gradient-to-r from-rose-500/15 via-rose-500/10 to-transparent text-rose-700 dark:text-rose-300", note: t("خسارة — سعر البيع أقل من التكلفة.", "Loss — sale price is below cost.") },
+    }[tier];
+    const Icon = conf.icon;
+    const px = size === "xs" ? "px-1.5 py-0.5 text-[10px]" : size === "md" ? "px-2.5 py-1 text-sm" : "px-2 py-0.5 text-xs";
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className={`inline-flex items-center gap-1 rounded-full border font-bold tabular-nums transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary/40 ${conf.wrap} ${px}`}
+            title={conf.label}
+          >
+            <Icon className="h-3 w-3" />
+            <span>{margin.toFixed(1)}%</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" align="center" className="w-64 p-3 text-xs" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5 font-bold mb-1">
+            <Icon className="h-3.5 w-3.5" />
+            <span>{conf.label} · {margin.toFixed(1)}%</span>
+          </div>
+          <p className="text-muted-foreground leading-relaxed">{conf.note}</p>
+          <div className="mt-2 pt-2 border-t border-border/60 grid grid-cols-4 gap-1 text-[9px] uppercase tracking-wider text-muted-foreground/80 font-semibold">
+            <span className={tier === "loss" ? "text-rose-600" : ""}>&lt;0</span>
+            <span className={tier === "low" ? "text-orange-600" : ""}>0–20</span>
+            <span className={tier === "good" ? "text-amber-600" : ""}>20–40</span>
+            <span className={tier === "high" ? "text-emerald-600" : ""}>≥40</span>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
@@ -2114,7 +2162,7 @@ function ProfitsPage() {
                       <div>
                         <div className="flex items-center justify-between text-[10px] mb-1">
                           <span className="text-muted-foreground/70 font-semibold uppercase tracking-widest">{t("الهامش", "Margin")}</span>
-                          <span className={`tabular-nums font-bold ${marginColor}`}>{r.margin.toFixed(1)}%</span>
+                          <MarginPill margin={r.margin} size="xs" />
                         </div>
                         <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
                           <div className={`h-full ${marginBar}`} style={{ width: `${marginPct}%` }} />
@@ -2274,7 +2322,7 @@ function ProfitsPage() {
                       <td className="px-3 py-3 text-end">
                         {r.qty > 0 ? (
                           <div className="inline-flex flex-col items-end gap-1 min-w-[110px]">
-                            <span className={`tabular-nums font-bold text-sm ${r.margin >= 30 ? "text-emerald-600 dark:text-emerald-400" : r.margin >= 10 ? "text-primary" : r.margin >= 0 ? "text-amber-600 dark:text-amber-400" : "text-rose-600"}`}>{r.margin.toFixed(1)}%</span>
+                            <MarginPill margin={r.margin} size="sm" />
                             <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
                               <div className={`h-full rounded-full ${r.margin >= 30 ? "bg-gradient-to-r from-emerald-500 to-emerald-300" : r.margin >= 10 ? "bg-gradient-to-r from-primary to-amber-300" : r.margin >= 0 ? "bg-gradient-to-r from-amber-500 to-amber-300" : "bg-gradient-to-r from-rose-500 to-rose-300"}`} style={{ width: `${marginPct}%` }} />
                             </div>
@@ -2673,7 +2721,7 @@ function ProfitsPage() {
                       </td>
                       <td className="px-3 py-3 text-end">
                         <div className="flex flex-col items-end gap-1">
-                          <span className={`text-sm font-bold tabular-nums ${mt.text}`}>{r.margin.toFixed(1)}%</span>
+                          <MarginPill margin={r.margin} size="sm" />
                           <div className="w-20 h-1 rounded-full bg-muted/50 overflow-hidden">
                             <div className={`h-full ${mt.bar}`} style={{ width: `${marginPct}%` }} />
                           </div>
@@ -2926,8 +2974,28 @@ function ProfitsPage() {
             if (!r) return null;
             const p = r.product;
             const stock = Number(p?.stock_quantity ?? 0);
-            const productLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
-            // Build timeline (daily aggregation of revenue)
+            const allProductLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
+            // Available statuses in scope
+            const sheetStatusSet = new Set<string>();
+            for (const it of allProductLines) if (it.invoices?.status) sheetStatusSet.add(it.invoices.status);
+            const sheetStatusList = Array.from(sheetStatusSet).sort();
+            // Apply sheet filters to lines
+            const sSearch = sheetSearch.trim().toLowerCase();
+            const sFrom = sheetFrom ? new Date(sheetFrom + "T00:00:00").getTime() : null;
+            const sTo = sheetTo ? new Date(sheetTo + "T23:59:59").getTime() : null;
+            const productLines = allProductLines.filter((it) => {
+              const inv = it.invoices;
+              if (sheetStatus !== "all" && (inv?.status ?? "") !== sheetStatus) return false;
+              const ts = inv?.created_at ? new Date(inv.created_at).getTime() : 0;
+              if (sFrom !== null && ts < sFrom) return false;
+              if (sTo !== null && ts > sTo) return false;
+              if (sSearch) {
+                const hay = `${inv?.invoice_number ?? ""} ${inv?.customer_name ?? ""}`.toLowerCase();
+                if (!hay.includes(sSearch)) return false;
+              }
+              return true;
+            });
+            // Build timeline (daily aggregation)
             const byDay = new Map<string, { date: string; revenue: number; qty: number }>();
             for (const it of productLines) {
               const d = (it.invoices?.created_at ?? "").slice(0, 10);
@@ -2938,9 +3006,8 @@ function ProfitsPage() {
               byDay.set(d, cur);
             }
             const timeline = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
-            const maxDay = Math.max(1, ...timeline.map((d) => d.revenue));
             // Invoices grouped
-            const byInvoice = new Map<string, { invoice_id: string; invoice_number: string; created_at: string; qty: number; revenue: number }>();
+            const byInvoice = new Map<string, { invoice_id: string; invoice_number: string; created_at: string; customer_name: string | null; status: string; qty: number; revenue: number }>();
             for (const it of productLines) {
               const inv = it.invoices;
               if (!inv) continue;
@@ -2948,6 +3015,8 @@ function ProfitsPage() {
                 invoice_id: it.invoice_id,
                 invoice_number: inv.invoice_number ?? "—",
                 created_at: inv.created_at ?? "",
+                customer_name: inv.customer_name ?? null,
+                status: inv.status ?? "",
                 qty: 0, revenue: 0,
               };
               cur.qty += it.quantity;
@@ -2955,6 +3024,9 @@ function ProfitsPage() {
               byInvoice.set(it.invoice_id, cur);
             }
             const invList = Array.from(byInvoice.values()).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+            const filteredQty = productLines.reduce((s, it) => s + it.quantity, 0);
+            const filteredRev = productLines.reduce((s, it) => s + netRev(it), 0);
+            const activeFilters = sheetSearch || sheetFrom || sheetTo || sheetStatus !== "all";
             return (
               <>
                 <SheetHeader className="text-start">
@@ -3004,34 +3076,116 @@ function ProfitsPage() {
                       </div>
                       <div className="text-end">
                         <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الهامش", "Margin")}</div>
-                        <div className="mt-1 text-lg font-bold tabular-nums text-primary">{r.margin.toFixed(1)}%</div>
+                        <div className="mt-1"><MarginPill margin={r.margin} size="md" /></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Mini timeline */}
-                {timeline.length > 0 && (
+                {/* Filters */}
+                <div className="mt-4 rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-3">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary/80 mb-2">
+                    <Filter className="h-3 w-3" />
+                    {t("فلاتر الفواتير", "Invoice filters")}
+                    {activeFilters && (
+                      <button type="button" onClick={() => { setSheetSearch(""); setSheetFrom(""); setSheetTo(""); setSheetStatus("all"); }} className="ms-auto inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] normal-case tracking-normal text-muted-foreground hover:border-primary/40 hover:text-foreground">
+                        <X className="h-3 w-3" />{t("مسح", "Clear")}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[160px]">
+                      <Filter className="h-3 w-3 absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        value={sheetSearch}
+                        onChange={(e) => setSheetSearch(e.target.value)}
+                        placeholder={t("بحث برقم الفاتورة أو العميل…", "Search invoice # or customer…")}
+                        className="w-full h-7 rounded-full border border-border/60 bg-background/60 ps-7 pe-2 text-[11px] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px]">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <input type="date" value={sheetFrom} onChange={(e) => setSheetFrom(e.target.value)} className="bg-transparent focus:outline-none tabular-nums" title={t("من", "From")} />
+                      <span className="text-muted-foreground">→</span>
+                      <input type="date" value={sheetTo} onChange={(e) => setSheetTo(e.target.value)} className="bg-transparent focus:outline-none tabular-nums" title={t("إلى", "To")} />
+                    </div>
+                    <select
+                      value={sheetStatus}
+                      onChange={(e) => setSheetStatus(e.target.value)}
+                      className="h-7 rounded-full border border-border/60 bg-background/60 px-2 text-[11px] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      title={t("حالة السداد", "Payment status")}
+                    >
+                      <option value="all">{t("كل الحالات", "All statuses")}</option>
+                      {sheetStatusList.map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  </div>
+                  {activeFilters && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                      <span>{t(`${invList.length} فاتورة`, `${invList.length} invoice(s)`)}</span>
+                      <span>·</span>
+                      <span className="tabular-nums">{t(`${fmtNumber(filteredQty, lang)} قطعة`, `${fmtNumber(filteredQty, lang)} pcs`)}</span>
+                      <span>·</span>
+                      <span className="tabular-nums font-semibold text-primary/90">{fmtMoney(filteredRev, "EGP", lang)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mini timeline — Recharts with rich tooltip */}
+                {timeline.length > 0 ? (
                   <div className="mt-4 rounded-xl border border-primary/15 bg-card/70 p-3">
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
-                      <LineChartIcon className="h-3.5 w-3.5" />
-                      {t("المخطط الزمني للمبيعات", "Sales timeline")}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80">
+                        <LineChartIcon className="h-3.5 w-3.5" />
+                        {t("المخطط الزمني للمبيعات", "Sales timeline")}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="inline-flex items-center gap-1 text-primary/80"><span className="inline-block h-2 w-2 rounded-sm bg-gradient-to-b from-primary/80 to-primary/30" />{t("البيع", "Revenue")}</span>
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300"><span className="inline-block h-[2px] w-3 bg-amber-500" />{t("القطع", "Qty")}</span>
+                      </div>
                     </div>
-                    <div className="flex items-end gap-1 h-20">
-                      {timeline.map((d) => (
-                        <div key={d.date} className="flex-1 min-w-0 group/bar relative">
-                          <div
-                            className="w-full rounded-t bg-gradient-to-t from-primary/70 to-primary/30 hover:from-primary hover:to-primary/60 transition-colors"
-                            style={{ height: `${(d.revenue / maxDay) * 100}%` }}
-                            title={`${d.date} • ${fmtNumber(d.qty, lang)} × • ${fmtMoney(d.revenue, "EGP", lang)}`}
+                    <div className="h-32">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={timeline} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="pdRevFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
+                              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.25} vertical={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} minTickGap={16} />
+                          <YAxis yAxisId="rev" hide />
+                          <YAxis yAxisId="qty" orientation="right" hide />
+                          <Tooltip
+                            cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
+                            content={({ active, payload, label }: any) => {
+                              if (!active || !payload || payload.length === 0) return null;
+                              const d = payload[0]?.payload as { date: string; revenue: number; qty: number };
+                              return (
+                                <div className="rounded-lg border border-primary/30 bg-background/95 px-2.5 py-2 shadow-lg text-[11px]">
+                                  <div className="font-semibold text-primary mb-1 tabular-nums">{d.date}</div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{t("القطع", "Qty")}</span>
+                                    <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">{fmtNumber(d.qty, lang)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{t("البيع", "Revenue")}</span>
+                                    <span className="font-bold tabular-nums text-primary">{fmtMoney(d.revenue, "EGP", lang)}</span>
+                                  </div>
+                                </div>
+                              );
+                            }}
                           />
-                        </div>
-                      ))}
+                          <Area yAxisId="rev" type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#pdRevFill)" />
+                          <Line yAxisId="qty" type="monotone" dataKey="qty" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 2, fill: "#f59e0b" }} activeDot={{ r: 3 }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground tabular-nums">
-                      <span>{timeline[0].date}</span>
-                      <span>{timeline[timeline.length - 1].date}</span>
-                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed border-border/60 bg-card/40 p-6 text-center text-[11px] text-muted-foreground">
+                    {t("لا توجد بيانات مبيعات في هذا النطاق", "No sales data in this range")}
                   </div>
                 )}
 
@@ -3050,12 +3204,16 @@ function ProfitsPage() {
                           key={inv.invoice_id}
                           type="button"
                           onClick={() => { setProductDetailId(null); setInvoiceDetailOpen(inv.invoice_id); }}
-                          className="w-full text-start py-2 px-1 flex items-center justify-between gap-2 text-xs hover:bg-primary/5 rounded transition-colors"
+                          className="w-full text-start py-2 px-1.5 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-0.5 text-xs hover:bg-primary/5 rounded transition-colors"
                         >
-                          <span className="font-mono font-semibold text-primary">{inv.invoice_number}</span>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{fmtDate(inv.created_at, lang)}</span>
-                          <span className="tabular-nums text-muted-foreground">×{fmtNumber(inv.qty, lang)}</span>
-                          <span className="tabular-nums font-semibold">{fmtMoney(inv.revenue, "EGP", lang)}</span>
+                          <span className="font-mono font-semibold text-primary row-span-2 self-center">{inv.invoice_number}</span>
+                          <span className="truncate text-[11px] text-foreground/90">{inv.customer_name || t("— بدون عميل —", "— no customer —")}</span>
+                          <span className="tabular-nums font-semibold text-end">{fmtMoney(inv.revenue, "EGP", lang)}</span>
+                          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <span className="tabular-nums">{fmtDate(inv.created_at, lang)}</span>
+                            {inv.status && <span className="inline-flex items-center rounded-full border border-border/60 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider">{inv.status}</span>}
+                          </span>
+                          <span className="tabular-nums text-muted-foreground text-end">×{fmtNumber(inv.qty, lang)}</span>
                         </button>
                       ))}
                     </div>
