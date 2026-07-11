@@ -58,8 +58,7 @@ function Dashboard() {
       ),
       (supabase as any)
         .from("defective_items")
-        .select("quantity, returned_quantity, item_type, status")
-        .in("item_type", ["sample", "loan", "showroom"])
+        .select("quantity, returned_quantity, item_type, status, reason")
         .neq("status", "returned_full"),
       user
         ? (supabase as any).from("settings").select("dashboard_usd_rate").eq("user_id", user.id).maybeSingle()
@@ -79,7 +78,14 @@ function Dashboard() {
     const inventoryStock = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0), 0);
     const costValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.cost_price_usd) || 0) * latestUsdRate, 0);
     const salesValueEgp = (prods ?? []).reduce((s: number, p: any) => s + Math.max(0, Number(p.stock_quantity) || 0) * (Number(p.price) || 0), 0);
-    const sampleStock = ((sampleRows as any[]) ?? []).reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
+    const sampleStock = ((sampleRows as any[]) ?? [])
+      .filter((r: any) => {
+        const t = String(r.item_type || "").toLowerCase();
+        const reason = String(r.reason || "").toLowerCase();
+        if (["sample", "loan", "showroom"].includes(t)) return true;
+        return /sample|عين|إعار|اعار|عرض|showroom|loan|test/.test(reason);
+      })
+      .reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
 
     // Trust the persisted `delivery_status` (maintained by tg_recalc_delivery_status).
     // Earlier we recomputed from delivery_receipt_items.invoice_item_id, but ~76%
