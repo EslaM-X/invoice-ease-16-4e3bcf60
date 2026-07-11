@@ -544,7 +544,8 @@ function ProfitsPage() {
         return;
       }
       bumpUpdate();
-      loadItems();
+      loadItems({ force: true });
+
     },
     [],
     { debounceMs: 2500, maxWaitMs: 6000 },
