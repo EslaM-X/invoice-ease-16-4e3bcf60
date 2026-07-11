@@ -163,6 +163,7 @@ function InvoicesList() {
         String(i.receipt_number ?? "").includes(s) ||
         (i.customer_name ?? "").toLowerCase().includes(s) ||
         (i.customer_phone ?? "").toLowerCase().includes(s) ||
+        (i.subject ?? "").toLowerCase().includes(s) ||
         (serialsByInvoice[i.id] ?? []).some((sn) => sn.includes(sSerial))
       );
     })
