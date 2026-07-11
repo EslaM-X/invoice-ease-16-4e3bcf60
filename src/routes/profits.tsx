@@ -580,6 +580,7 @@ function ProfitsPage() {
         invoice_number: string;
         created_at: string;
         customer_name: string | null;
+        status: string;
         revenue: number;
         cost: number;
         items: number;
@@ -597,6 +598,7 @@ function ProfitsPage() {
         invoice_number: it.invoices?.invoice_number ?? "",
         created_at: it.invoices?.created_at ?? "",
         customer_name: it.invoices?.customer_name ?? null,
+        status: it.invoices?.status ?? "",
         revenue: 0,
         cost: 0,
         items: 0,
