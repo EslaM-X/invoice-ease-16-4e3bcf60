@@ -209,12 +209,19 @@ export function LowStockAlerts() {
             </ul>
           )}
         </div>
-        <div className="border-t p-2">
+        <div className="border-t p-2 grid grid-cols-2 gap-1">
           <Link
             to="/inventory"
-            className="block rounded-md px-3 py-2 text-center text-xs font-medium text-primary hover:bg-accent"
+            className="rounded-md px-3 py-2 text-center text-xs font-medium text-primary hover:bg-accent"
           >
-            {lang === "ar" ? "عرض كل المخزون" : "View all inventory"}
+            {lang === "ar" ? "كل المخزون" : "All inventory"}
+          </Link>
+          <Link
+            to="/inventory-traceability"
+            search={{ tab: "stock" }}
+            className="rounded-md px-3 py-2 text-center text-xs font-medium text-primary hover:bg-accent"
+          >
+            {lang === "ar" ? "مستويات المخزون" : "Stock levels"}
           </Link>
         </div>
       </PopoverContent>
