@@ -2780,6 +2780,158 @@ function ProfitsPage() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Product detail sheet */}
+      <Sheet open={!!productDetailId} onOpenChange={(o) => { if (!o) setProductDetailId(null); }}>
+        <SheetContent side={lang === "ar" ? "left" : "right"} className="w-full sm:max-w-lg overflow-y-auto">
+          {(() => {
+            const r = productDetailId ? rows.list.find((x) => x.product_id === productDetailId) : null;
+            if (!r) return null;
+            const p = r.product;
+            const stock = Number(p?.stock ?? 0);
+            const productLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
+            // Build timeline (daily aggregation of revenue)
+            const byDay = new Map<string, { date: string; revenue: number; qty: number }>();
+            for (const it of productLines) {
+              const d = (it.invoices?.created_at ?? "").slice(0, 10);
+              if (!d) continue;
+              const cur = byDay.get(d) ?? { date: d, revenue: 0, qty: 0 };
+              cur.revenue += netRev(it);
+              cur.qty += it.quantity;
+              byDay.set(d, cur);
+            }
+            const timeline = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+            const maxDay = Math.max(1, ...timeline.map((d) => d.revenue));
+            // Invoices grouped
+            const byInvoice = new Map<string, { invoice_id: string; invoice_number: string; created_at: string; qty: number; revenue: number }>();
+            for (const it of productLines) {
+              const inv = it.invoices;
+              if (!inv) continue;
+              const cur = byInvoice.get(it.invoice_id) ?? {
+                invoice_id: it.invoice_id,
+                invoice_number: inv.invoice_number ?? "—",
+                created_at: inv.created_at ?? "",
+                qty: 0, revenue: 0,
+              };
+              cur.qty += it.quantity;
+              cur.revenue += netRev(it);
+              byInvoice.set(it.invoice_id, cur);
+            }
+            const invList = Array.from(byInvoice.values()).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+            return (
+              <>
+                <SheetHeader className="text-start">
+                  <div className="flex items-start gap-3">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/30 bg-muted ring-2 ring-primary/20">
+                      {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <SheetTitle className="text-base truncate">{r.name}</SheetTitle>
+                      <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+                        {p?.collection && (
+                          <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}>
+                            <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                            {p.collection}
+                          </span>
+                        )}
+                        {p?.serial_number && <span className="font-mono rounded bg-muted px-1.5 py-0.5">{p.serial_number}</span>}
+                        {p?.color && <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5"><ColorSwatch value={p.color} size="sm" />{p.color}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                {/* KPI grid */}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("المخزون الحالي", "Current stock")}</div>
+                    <div className={`mt-1 text-lg font-extrabold tabular-nums ${stock <= 0 ? "text-rose-600" : stock < 5 ? "text-amber-600" : "text-foreground"}`}>{fmtNumber(stock, lang)}</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الكمية المباعة", "Sold qty")}</div>
+                    <div className="mt-1 text-lg font-extrabold tabular-nums">{fmtNumber(r.qty, lang)}</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("إجمالي التكلفة", "Total cost")}</div>
+                    <div className="mt-1 text-sm font-bold tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("إجمالي البيع", "Revenue")}</div>
+                    <div className="mt-1 text-sm font-bold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</div>
+                  </div>
+                  <div className={`rounded-xl border p-3 col-span-2 ${r.profit >= 0 ? "border-emerald-500/30 bg-emerald-500/5" : "border-rose-500/30 bg-rose-500/5"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("صافي الربح", "Net profit")}</div>
+                        <div className={`mt-1 text-xl font-extrabold tabular-nums ${r.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</div>
+                      </div>
+                      <div className="text-end">
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الهامش", "Margin")}</div>
+                        <div className="mt-1 text-lg font-bold tabular-nums text-primary">{r.margin.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mini timeline */}
+                {timeline.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-primary/15 bg-card/70 p-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
+                      <LineChartIcon className="h-3.5 w-3.5" />
+                      {t("المخطط الزمني للمبيعات", "Sales timeline")}
+                    </div>
+                    <div className="flex items-end gap-1 h-20">
+                      {timeline.map((d) => (
+                        <div key={d.date} className="flex-1 min-w-0 group/bar relative">
+                          <div
+                            className="w-full rounded-t bg-gradient-to-t from-primary/70 to-primary/30 hover:from-primary hover:to-primary/60 transition-colors"
+                            style={{ height: `${(d.revenue / maxDay) * 100}%` }}
+                            title={`${d.date} • ${fmtNumber(d.qty, lang)} × • ${fmtMoney(d.revenue, "EGP", lang)}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground tabular-nums">
+                      <span>{timeline[0].date}</span>
+                      <span>{timeline[timeline.length - 1].date}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Invoices list */}
+                <div className="mt-4 rounded-xl border border-primary/15 bg-card/70 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
+                    <Receipt className="h-3.5 w-3.5" />
+                    {t("الفواتير المرتبطة", "Linked invoices")} ({fmtNumber(invList.length, lang)})
+                  </div>
+                  {invList.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">{t("لا توجد فواتير في النطاق", "No invoices in range")}</div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+                      {invList.map((inv) => (
+                        <button
+                          key={inv.invoice_id}
+                          type="button"
+                          onClick={() => { setProductDetailId(null); setInvoiceDetailOpen(inv.invoice_id); }}
+                          className="w-full text-start py-2 px-1 flex items-center justify-between gap-2 text-xs hover:bg-primary/5 rounded transition-colors"
+                        >
+                          <span className="font-mono font-semibold text-primary">{inv.invoice_number}</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{fmtDate(inv.created_at, lang)}</span>
+                          <span className="tabular-nums text-muted-foreground">×{fmtNumber(inv.qty, lang)}</span>
+                          <span className="tabular-nums font-semibold">{fmtMoney(inv.revenue, "EGP", lang)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-2 text-[10px] text-muted-foreground italic">
+                    {t("الفواتير الملغية والمحذوفة ورسوم الشحن مستبعدة.", "Voided/deleted invoices and shipping fees are excluded.")}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
