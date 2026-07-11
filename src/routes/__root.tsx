@@ -115,7 +115,26 @@ function RootComponent() {
             <InstallPrompt />
             <SyncStatusPill />
             <SyncToaster />
-            <Toaster position="top-center" richColors closeButton />
+            <Toaster
+              position="top-center"
+              richColors
+              closeButton
+              theme="system"
+              toastOptions={{
+                classNames: {
+                  toast:
+                    "!rounded-2xl !border !border-[color-mix(in_oklab,var(--brand-gold)_30%,var(--border))] !bg-[color-mix(in_oklab,var(--card)_92%,transparent)] !text-foreground !shadow-[0_18px_50px_-18px_color-mix(in_oklab,var(--brand-ink)_45%,transparent)] backdrop-blur-xl",
+                  title: "!font-semibold !tracking-tight",
+                  description: "!text-muted-foreground",
+                  actionButton: "!bg-primary !text-primary-foreground",
+                  cancelButton: "!bg-muted",
+                  success: "!border-emerald-500/30",
+                  error: "!border-rose-500/40",
+                  info: "!border-sky-500/30",
+                  warning: "!border-amber-500/40",
+                },
+              }}
+            />
           </AuthProvider>
         </I18nProvider>
       </ThemeProvider>
