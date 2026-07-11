@@ -34,10 +34,8 @@ export function NoirKpiCard({
     <div className="noir-kpi noir-glow noir-ripple group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5">
       {/* animated shimmering top gold hairline */}
       <div className="gold-hairline-live absolute inset-x-0 top-0" />
-      {/* animated top gold hairline */}
-      <div className={`absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent ${t.bar} to-transparent opacity-60 group-hover:opacity-100 transition-opacity`} />
       {/* ambient glow (grows on hover) */}
-      <div className={`pointer-events-none absolute -bottom-14 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full ${t.glow} blur-3xl opacity-40 transition-all duration-500 group-hover:opacity-90 group-hover:w-56`} />
+      <div className={`pointer-events-none absolute -bottom-14 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full ${t.glow} blur-3xl opacity-40 transition-all duration-500 group-hover:opacity-90 group-hover:w-56 motion-reduce:transition-none`} />
 
       <div className="relative flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
