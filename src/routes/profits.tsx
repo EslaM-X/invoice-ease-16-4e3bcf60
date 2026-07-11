@@ -2015,17 +2015,23 @@ function ProfitsPage() {
   );
 }
 
-function KpiCard({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
+function KpiCard({ icon, label, value, className, hint, iconRing }: { icon: React.ReactNode; label: string; value: string; className?: string; hint?: string; iconRing?: string }) {
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${className ?? ""}`}>
-      <div className="flex items-center gap-2 text-xs font-semibold opacity-80">
-        {icon}
-        <span>{label}</span>
+    <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition hover:shadow-md ${className ?? ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-wider opacity-70">{label}</div>
+          <div className="mt-1.5 text-lg sm:text-2xl font-extrabold tabular-nums text-foreground leading-tight">{value}</div>
+          {hint && <div className="mt-1 text-[10px] opacity-70">{hint}</div>}
+        </div>
+        <div className={`grid place-items-center h-9 w-9 rounded-full shrink-0 ${iconRing ?? "bg-background/60 border"}`}>
+          {icon}
+        </div>
       </div>
-      <div className="mt-1.5 text-lg sm:text-xl font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );
 }
+
 
 function RowLine({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
