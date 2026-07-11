@@ -523,10 +523,15 @@ function ProfitsPage() {
     loadCostBook();
   }, [user, fyBounds.start, fyBounds.end]);
 
+  // Debounce filter-driven refetches: rapid changes (day picker scrubbing,
+  // typing a date, toggling ranges) collapse into a single request.
   useEffect(() => {
     if (!user) return;
-    loadItems();
+    const t = setTimeout(() => { loadItems(); }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, range, day, month, year, from, to, customerId]);
+
 
   // Batched realtime — a burst across invoices/items or across PO tables
   // coalesces into ONE refetch instead of one per table (already 500ms debounced
