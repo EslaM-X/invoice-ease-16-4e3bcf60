@@ -399,11 +399,20 @@ aside[class*="bg-sidebar"] .bg-sidebar-primary:hover {
   .stagger > *:nth-child(7) { animation-delay: 260ms; }
   .stagger > *:nth-child(8) { animation-delay: 300ms; }
 
-  /* Soft focus ring everywhere */
-  .focus-gold:focus-visible {
+  /* Full gold focus ring for keyboard nav — high contrast on any background */
+  .focus-gold {
     outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px color-mix(in oklab, var(--brand-gold) 60%, transparent);
   }
+  .focus-gold:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--brand-gold) 85%, transparent);
+    outline-offset: 3px;
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 5px color-mix(in oklab, var(--brand-gold) 70%, transparent),
+      0 0 22px -2px color-mix(in oklab, var(--brand-gold) 55%, transparent);
+    border-radius: inherit;
+  }
+
 
   @media (prefers-reduced-motion: reduce) {
     .skeleton-shimmer, .stagger > *, .card-premium { animation: none !important; transition: none !important; }

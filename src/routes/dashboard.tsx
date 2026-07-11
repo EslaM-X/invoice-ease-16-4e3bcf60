@@ -243,13 +243,15 @@ function Dashboard() {
       {stats.lowStock > 0 && (
         <Link
           to="/inventory"
+          role="alert"
+          aria-label={`${t("stock_low_alert")}: ${stats.lowStock} ${lang === "ar" ? "منتج بحاجة لإعادة تخزين" : "products need restocking"}`}
           className="noir-press noir-ripple focus-gold group relative flex flex-col items-stretch gap-4 overflow-hidden rounded-2xl border border-amber-500/35 bg-gradient-to-br from-[#1a1408] to-[#0d0a05] p-4 shadow-xl shadow-amber-950/40 hover:border-amber-500/60 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
         >
-          <div className="pointer-events-none absolute -left-16 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-amber-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
+          <div aria-hidden="true" className="pointer-events-none absolute -left-16 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-amber-500/15 blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
 
           <div className="relative flex items-center gap-4 flex-1 min-w-0">
-            <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-amber-500/40 bg-amber-500/15 text-amber-400">
+            <div aria-hidden="true" className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-amber-500/40 bg-amber-500/15 text-amber-400">
               <span className="absolute inset-0 rounded-2xl bg-amber-400/20 animate-ping motion-reduce:hidden" style={{ animationDuration: "2.5s" }} />
               <AlertTriangle className="relative h-5 w-5" />
             </div>
@@ -264,12 +266,13 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="relative inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition-colors group-hover:bg-amber-500/20 sm:self-auto">
+          <div aria-hidden="true" className="relative inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition-colors group-hover:bg-amber-500/20 sm:self-auto">
             {t("view")}
             <span className="transition-transform duration-300 group-hover:translate-x-[-2px] rtl:rotate-180 motion-reduce:transition-none">→</span>
           </div>
         </Link>
       )}
+
 
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
@@ -353,7 +356,13 @@ function Dashboard() {
           ) : (
             <div className="divide-y divide-border">
               {recent.map((r) => (
-                <Link key={r.id} to="/invoices/$id" params={{ id: r.id }} className="flex items-center justify-between py-3 transition hover:opacity-70">
+                <Link
+                  key={r.id}
+                  to="/invoices/$id"
+                  params={{ id: r.id }}
+                  aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
+                  className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
+                >
                   <div>
                     <div className="text-sm font-medium">{r.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
@@ -361,6 +370,7 @@ function Dashboard() {
                   <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
                 </Link>
               ))}
+
             </div>
           )}
         </div>
@@ -386,21 +396,31 @@ function InventoryValueCard({
   sensitive?: boolean;
   footer?: ReactNode;
 }) {
+  const ariaValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
   return (
-    <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
+    <div
+      role="group"
+      tabIndex={0}
+      aria-label={ariaValue ? `${label}: ${ariaValue}. ${sub}` : label}
+      className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 sm:p-5"
+    >
+      <div aria-hidden="true" className="gold-hairline-live absolute inset-x-0 top-0" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full bg-[#c9a84c]/10 blur-3xl opacity-40 transition-all duration-500 group-hover:opacity-80 group-hover:w-56 motion-reduce:transition-none" />
+      <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="eyebrow text-[0.62rem] sm:text-[0.68rem]">{label}</div>
-          <div className="ltr-nums mt-3 font-display text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-3xl break-words">
+          <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45 truncate sm:text-[11px]">{label}</div>
+          <div className="ltr-nums mt-3 font-display text-2xl font-bold tracking-tight tabular-nums text-[#f5e7b8] sm:text-3xl break-words">
             {value}
           </div>
         </div>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
-          <Icon className="h-5 w-5" />
+        <div aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#c9a84c]/30 bg-[#c9a84c]/12 text-[#c9a84c] transition-transform duration-300 group-hover:scale-110">
+          <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className="mt-3 text-xs text-muted-foreground">{sub}</div>
-      {footer}
+      <div className="relative mt-3 text-xs text-white/55">{sub}</div>
+      {footer && <div className="relative">{footer}</div>}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-transparent via-[#c9a84c]/70 to-transparent transition-transform duration-500 group-hover:scale-x-100" />
     </div>
   );
 }
+
