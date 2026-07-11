@@ -1865,9 +1865,25 @@ function ProfitsPage() {
               ) : rows.list.map((r) => {
                 const p = r.product;
                 const e = p ? editing[p.id] : undefined;
+                const srcLabel = r.costSourceUsed === "override" ? t("تعديل يدوي", "Manual override")
+                  : r.costSourceUsed === "wac" ? t("متوسط مرجّح (WAC)", "Weighted avg (WAC)")
+                  : r.costSourceUsed === "latest_po" ? t("آخر أمر شراء", "Latest PO")
+                  : t("التكلفة الحالية", "Current cost");
+                const srcTag = r.costSourceUsed === "override" ? "MAN"
+                  : r.costSourceUsed === "wac" ? "WAC"
+                  : r.costSourceUsed === "latest_po" ? "LPO"
+                  : "CUR";
+                const srcTagClass = r.costSourceUsed === "override"
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                  : r.costSourceUsed === "wac"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
+                  : r.costSourceUsed === "latest_po"
+                  ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25"
+                  : "bg-muted text-muted-foreground border-border";
                 return (
                   <Fragment key={r.product_id}>
-                  <tr className={r.profit >= 0 ? "" : "bg-rose-500/5"}>
+                  <tr className={`${r.profit >= 0 ? "" : "bg-rose-500/5"} ${r.missingCost ? "border-s-2 border-amber-500/60" : ""}`}>
+
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="h-9 w-9 shrink-0 overflow-hidden rounded border bg-muted">
