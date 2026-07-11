@@ -37,8 +37,23 @@ function Dashboard() {
   const [recent, setRecent] = useState<any[]>([]);
   const [fxInput, setFxInput] = useState("50.5");
   const [savingFx, setSavingFx] = useState(false);
+  const [avatar, setAvatar] = useState<{ url: string | null; name: string | null }>({ url: null, name: null });
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("avatar_url, display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cancelled && data) setAvatar({ url: data.avatar_url ?? null, name: data.display_name ?? null });
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const load = async (forceRefresh = false) => {
     const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
@@ -208,6 +223,29 @@ function Dashboard() {
             </div>
           </div>
 
+          <div className="flex flex-col items-stretch gap-3 sm:items-end">
+            {/* Luxury avatar */}
+            <Link
+              to="/settings"
+              aria-label={lang === "ar" ? "الملف الشخصي" : "Profile"}
+              className="noir-press focus-gold group relative mx-auto sm:mx-0 inline-flex h-16 w-16 shrink-0 items-center justify-center"
+            >
+              <span aria-hidden="true" className="pointer-events-none absolute inset-[-6px] rounded-full bg-[conic-gradient(from_0deg,transparent,#c9a84c66,transparent_60%)] opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100 motion-reduce:hidden" />
+              <span aria-hidden="true" className="pointer-events-none absolute inset-[-3px] rounded-full bg-[#c9a84c]/25 blur-md" />
+              <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-full border-2 border-[#c9a84c]/70 bg-[#0a0a0a] shadow-[0_8px_24px_-6px_rgba(201,168,76,0.55)] ring-2 ring-black/60 ring-offset-0">
+                {avatar.url ? (
+                  <img src={avatar.url} alt={avatar.name ?? displayName ?? "avatar"} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="text-lg font-bold tracking-wide text-[#f5e7b8]">
+                    {(avatar.name || displayName || (user as any)?.email || "U").toString().trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <span aria-hidden="true" className="absolute -bottom-0.5 -end-0.5 grid h-4 w-4 place-items-center rounded-full border-2 border-[#0a0a0a] bg-emerald-500 shadow">
+                <span className="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-300 motion-reduce:hidden" />
+              </span>
+            </Link>
+            <div aria-hidden="true" className="mx-auto h-px w-16 bg-gradient-to-r from-transparent via-[#c9a84c]/40 to-transparent sm:mx-0 sm:w-24 sm:self-end" />
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
             <button
               type="button"
@@ -241,6 +279,7 @@ function Dashboard() {
               <span className="truncate">{t("new_invoice")}</span>
               <span className="pointer-events-none absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none" />
             </button>
+          </div>
           </div>
         </div>
       </header>
