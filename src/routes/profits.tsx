@@ -595,6 +595,7 @@ function ProfitsPage() {
           const prev = payload.old?.status;
           const next = payload.new?.status;
           if (!prev || !next || prev === next) return;
+          if (rtPausedRef.current) return; // suppress toasts while paused
           buffer.push({ num: payload.new?.invoice_number ?? "—", prev, next, at: Date.now() });
           if (flushTimer) clearTimeout(flushTimer);
           flushTimer = setTimeout(flush, FLUSH_MS);
