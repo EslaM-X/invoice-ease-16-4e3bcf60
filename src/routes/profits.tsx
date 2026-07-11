@@ -3900,9 +3900,12 @@ import { ExecutiveGate } from "@/components/executive-gate";
 export const Route = createFileRoute("/profits")({
   component: () => (
     <AppShell>
-      <ExecutiveGate>
-        <ProfitsPage />
-      </ExecutiveGate>
+      <RouteErrorBoundary label="صافي الأرباح">
+        <ExecutiveGate>
+          <ProfitsPage />
+        </ExecutiveGate>
+      </RouteErrorBoundary>
     </AppShell>
   ),
 });
+
