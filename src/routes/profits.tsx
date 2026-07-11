@@ -1368,18 +1368,49 @@ function ProfitsPage() {
 
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard icon={<Wallet className="h-5 w-5" />} label={t("إجمالي البيع", "Revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} className="from-sky-500/15 to-sky-500/5 text-sky-600" />
-        <KpiCard icon={<Coins className="h-5 w-5" />} label={t("إجمالي التكلفة", "Cost")} value={fmtMoney(rows.totals.cost, "EGP", lang)} className="from-amber-500/15 to-amber-500/5 text-amber-600" />
-        <KpiCard icon={<TrendingUp className="h-5 w-5" />} label={t("صافي الربح", "Net Profit")} value={fmtMoney(rows.totals.profit, "EGP", lang)} className="from-emerald-500/20 to-emerald-500/5 text-emerald-600" />
-        <KpiCard icon={<Percent className="h-5 w-5" />} label={t("هامش الربح", "Margin")} value={`${rows.totals.margin.toFixed(1)}%`} className="from-violet-500/15 to-violet-500/5 text-violet-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
-          icon={<Coins className="h-5 w-5" />}
-          label={t("شحن/خدمة (مستبعد)", "Shipping/Fees (excluded)")}
-          value={fmtMoney(shippingTotals.amount, "EGP", lang)}
-          className="from-slate-500/15 to-slate-500/5 text-slate-600"
+          icon={<Wallet className="h-4 w-4 text-sky-600" />}
+          iconRing="bg-sky-500/15 ring-1 ring-sky-500/30"
+          label={t("إجمالي البيع", "Revenue")}
+          value={fmtMoney(rows.totals.revenue, "EGP", lang)}
+          hint={t(`${rows.totals.lines} بند مبيعات`, `${rows.totals.lines} sold line(s)`)}
+          className="from-sky-500/10 to-sky-500/[0.03] text-sky-700"
+        />
+        <KpiCard
+          icon={<Coins className="h-4 w-4 text-amber-600" />}
+          iconRing="bg-amber-500/15 ring-1 ring-amber-500/30"
+          label={t("إجمالي التكلفة", "Cost")}
+          value={fmtMoney(rows.totals.cost, "EGP", lang)}
+          hint={t(`مصدر: ${costSourceLabel(costSource, t)}`, `Source: ${costSourceLabel(costSource, t)}`)}
+          className="from-amber-500/10 to-amber-500/[0.03] text-amber-700"
+        />
+        <KpiCard
+          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+          iconRing="bg-emerald-500/15 ring-1 ring-emerald-500/30"
+          label={t("صافي الربح", "Net Profit")}
+          value={fmtMoney(rows.totals.profit, "EGP", lang)}
+          hint={t("إيراد − تكلفة (بدون شحن)", "Revenue − Cost (ex. shipping)")}
+          className="from-emerald-500/15 to-emerald-500/[0.03] text-emerald-700"
+        />
+        <KpiCard
+          icon={<Percent className="h-4 w-4 text-primary" />}
+          iconRing="bg-primary/15 ring-1 ring-primary/30"
+          label={t("هامش الربح", "Margin")}
+          value={`${rows.totals.margin.toFixed(1)}%`}
+          hint={rows.totals.margin >= 30 ? t("ممتاز", "Excellent") : rows.totals.margin >= 15 ? t("جيد", "Good") : t("يحتاج مراجعة", "Needs review")}
+          className="from-primary/10 to-primary/[0.03] text-primary"
         />
       </div>
+      <div className="flex flex-wrap items-center gap-2 -mt-1">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[11px] text-slate-700 dark:text-slate-300">
+          <Coins className="h-3 w-3" />
+          {t("شحن/خدمة (مستبعد)", "Shipping/Fees (excluded)")}:
+          <span className="tabular-nums font-bold">{fmtMoney(shippingTotals.amount, "EGP", lang)}</span>
+          <span className="opacity-60">· {shippingTotals.lines} {t("بند", "line(s)")}</span>
+        </span>
+      </div>
+
       {totalsMatch && (
         <div className={`rounded-2xl border px-4 py-3 text-sm ${totalsMatch.ok ? "border-emerald-500/30 bg-emerald-500/8 text-emerald-700" : "border-destructive/30 bg-destructive/8 text-destructive"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
