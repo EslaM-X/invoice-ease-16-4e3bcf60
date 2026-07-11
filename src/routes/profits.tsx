@@ -2767,7 +2767,7 @@ function ProfitsPage() {
                       <div className="text-[11px]">{t("جرّب تعديل الفلاتر أو النطاق الزمني", "Try adjusting filters or the date range")}</div>
                     </div>
                   </td></tr>
-                ) : rankedInvoices.map((r, idx) => {
+                ) : visibleInvoices.map((r, idx) => {
                   const medal = invRankMedal(idx);
                   const isTop = medal !== null;
                   const profitBarPct = Math.min(100, (Math.abs(r.profit) / invMaxAbsProfit) * 100);
