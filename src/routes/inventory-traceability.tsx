@@ -18,7 +18,14 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { RouteErrorBoundary } from "@/components/error-boundary";
 
 
+const VALID_TABS = ["lines", "per-product", "validate", "timeline", "stock"] as const;
+type TabValue = typeof VALID_TABS[number];
+
 export const Route = createFileRoute("/inventory-traceability")({
+  validateSearch: (search: Record<string, unknown>): { tab?: TabValue } => {
+    const raw = typeof search.tab === "string" ? search.tab : undefined;
+    return { tab: (VALID_TABS as readonly string[]).includes(raw ?? "") ? (raw as TabValue) : undefined };
+  },
   component: () => (
     <AppShell>
       <RouteErrorBoundary label="متتبع المخزون">
