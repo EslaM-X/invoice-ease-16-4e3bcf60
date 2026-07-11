@@ -3052,7 +3052,7 @@ function ProfitsPage() {
                       </div>
                       <div className="text-end">
                         <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">{t("الهامش", "Margin")}</div>
-                        <div className="mt-1 text-lg font-bold tabular-nums text-primary">{r.margin.toFixed(1)}%</div>
+                        <div className="mt-1"><MarginPill margin={r.margin} size="md" /></div>
                       </div>
                     </div>
                   </div>
