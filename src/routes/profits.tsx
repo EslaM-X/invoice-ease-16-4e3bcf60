@@ -2788,7 +2788,7 @@ function ProfitsPage() {
             const r = productDetailId ? rows.list.find((x) => x.product_id === productDetailId) : null;
             if (!r) return null;
             const p = r.product;
-            const stock = Number(p?.stock ?? 0);
+            const stock = Number(p?.stock_quantity ?? 0);
             const productLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
             // Build timeline (daily aggregation of revenue)
             const byDay = new Map<string, { date: string; revenue: number; qty: number }>();
