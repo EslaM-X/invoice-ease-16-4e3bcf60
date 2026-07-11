@@ -2205,7 +2205,7 @@ function ProfitsPage() {
                               )}
                             </div>
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-3 py-3 text-end tabular-nums font-medium">{fmtNumber(r.qty, lang)}</td>
                       <td className={`px-3 py-3 text-end ${r.missingCost ? "ring-1 ring-inset ring-amber-500/40 bg-amber-500/5" : ""}`}>
