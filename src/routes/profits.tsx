@@ -2392,7 +2392,31 @@ function ProfitsPage() {
           if (i === 2) return { label: "3", cls: "bg-gradient-to-br from-orange-400 to-amber-700 text-white ring-1 ring-orange-300/50" };
           return null;
         };
-        const rankedInvoices = [...invoiceRows].sort((a, b) => b.profit - a.profit);
+        // Available statuses (from data)
+        const statusSet = new Set<string>();
+        for (const r of invoiceRows) if (r.status) statusSet.add(r.status);
+        const statusList = Array.from(statusSet).sort();
+        // Apply invoice-scoped filters
+        const invSearchLc = invSearch.trim().toLowerCase();
+        const fromMs = invFrom ? new Date(invFrom + "T00:00:00").getTime() : null;
+        const toMs = invTo ? new Date(invTo + "T23:59:59").getTime() : null;
+        const filteredInvoices = invoiceRows.filter((r) => {
+          if (invStatus !== "all" && r.status !== invStatus) return false;
+          if (fromMs !== null) {
+            const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
+            if (ts < fromMs) return false;
+          }
+          if (toMs !== null) {
+            const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
+            if (ts > toMs) return false;
+          }
+          if (invSearchLc) {
+            const hay = `${r.invoice_number} ${r.customer_name ?? ""}`.toLowerCase();
+            if (!hay.includes(invSearchLc)) return false;
+          }
+          return true;
+        });
+        const rankedInvoices = [...filteredInvoices].sort((a, b) => b.profit - a.profit);
         const invMaxAbsProfit = Math.max(1, ...rankedInvoices.map((r) => Math.abs(r.profit)));
         const invTotalProfit = rankedInvoices.reduce((s, r) => s + r.profit, 0);
         const invTotalRevenue = rankedInvoices.reduce((s, r) => s + r.revenue, 0);
@@ -2400,6 +2424,25 @@ function ProfitsPage() {
           ? rankedInvoices.reduce((s, r) => s + r.margin, 0) / rankedInvoices.length
           : 0;
         const invTop = rankedInvoices[0];
+        // Trend bucket (day/week) from filtered invoices
+        const bucketKey = (iso: string) => {
+          if (!iso) return "";
+          const d = new Date(iso);
+          if (invTrendMode === "day") return d.toISOString().slice(0, 10);
+          // ISO week bucket: monday of that week
+          const day = (d.getUTCDay() + 6) % 7; // 0=Mon
+          const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+          return mon.toISOString().slice(0, 10);
+        };
+        const trendMap = new Map<string, number>();
+        for (const r of filteredInvoices) {
+          const k = bucketKey(r.created_at);
+          if (!k) continue;
+          trendMap.set(k, (trendMap.get(k) ?? 0) + r.profit);
+        }
+        const invTrend = Array.from(trendMap.entries())
+          .sort((a, b) => (a[0] > b[0] ? 1 : -1))
+          .map(([date, profit]) => ({ date, profit }));
         const marginTone = (m: number) =>
           m >= 40 ? { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-gradient-to-r from-emerald-500 to-emerald-400" }
           : m >= 20 ? { text: "text-amber-600 dark:text-amber-300", bar: "bg-gradient-to-r from-amber-500 to-yellow-400" }
