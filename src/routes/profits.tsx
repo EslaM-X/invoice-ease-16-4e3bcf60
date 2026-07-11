@@ -110,6 +110,115 @@ function rangeBounds(r: Range, day: string, month: string, year: string, from: s
   return { startISO: s.toISOString(), endISO: e.toISOString() };
 }
 
+// ---- Virtualized invoice row (react-window) ----
+type InvVRow = {
+  invoice_id: string;
+  invoice_number: string;
+  created_at: string;
+  customer_name: string | null;
+  status: string;
+  revenue: number;
+  cost: number;
+  items: number;
+  profit: number;
+  margin: number;
+};
+type InvVProps = {
+  rows: InvVRow[];
+  lang: "ar" | "en";
+  t: (ar: string, en: string) => string;
+  maxAbs: number;
+  onOpen: (id: string) => void;
+  medalOf: (i: number) => { label: string; cls: string } | null;
+  toneOf: (m: number) => { text: string; bar: string };
+  MarginPillCmp: (p: { margin: number; size?: "xs" | "sm" | "md" }) => JSX.Element;
+};
+const INV_GRID_COLS = "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)";
+function VirtualInvoiceRow({
+  index,
+  style,
+  ariaAttributes,
+  rows,
+  lang,
+  t,
+  maxAbs,
+  onOpen,
+  medalOf,
+  toneOf,
+  MarginPillCmp,
+}: RowComponentProps<InvVProps>) {
+  const r = rows[index];
+  if (!r) return null;
+  const medal = medalOf(index);
+  const isTop = medal !== null;
+  const profitBarPct = Math.min(100, (Math.abs(r.profit) / Math.max(1, maxAbs)) * 100);
+  const marginPct = Math.max(0, Math.min(100, r.margin));
+  const mt = toneOf(r.margin);
+  return (
+    <div
+      style={{ ...style, gridTemplateColumns: INV_GRID_COLS }}
+      {...ariaAttributes}
+      onClick={() => onOpen(r.invoice_id)}
+      className={`grid items-center cursor-pointer transition-colors duration-200 hover:bg-primary/[0.04] ${r.profit < 0 ? "bg-rose-500/[0.03]" : ""} ${isTop ? "bg-gradient-to-r from-amber-500/[0.04] via-transparent to-transparent" : ""}`}
+      title={t("عرض تفاصيل الحساب", "Show calculation details")}
+    >
+      <div className="px-3 py-3 text-center">
+        {medal ? (
+          <div className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${medal.cls}`}>{medal.label}</div>
+        ) : (
+          <span className="text-[11px] text-muted-foreground/60 tabular-nums font-mono">{index + 1}</span>
+        )}
+      </div>
+      <div className="px-3 py-3">
+        <div className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-primary underline-offset-2 hover:underline">
+          <Receipt className="h-3.5 w-3.5 opacity-70" />
+          {r.invoice_number}
+        </div>
+      </div>
+      <div className="px-3 py-3">
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span className="tabular-nums">{fmtDate(r.created_at, lang)}</span>
+        </div>
+      </div>
+      <div className="px-3 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+            {(r.customer_name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+          </div>
+          <span className="truncate text-sm">{r.customer_name ?? "—"}</span>
+        </div>
+      </div>
+      <div className="px-3 py-3 text-end tabular-nums">
+        <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-xs font-semibold">{fmtNumber(r.items, lang)}</span>
+      </div>
+      <div className="px-3 py-3 text-end tabular-nums font-medium">{fmtMoney(r.revenue, "EGP", lang)}</div>
+      <div className="px-3 py-3 text-end tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</div>
+      <div className="px-3 py-3 text-end">
+        <div className="flex flex-col items-end gap-1">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums border ${r.profit >= 0 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"}`}>
+            {r.profit >= 0 ? <TrendingUp className="h-3 w-3" /> : <ArrowRight className="h-3 w-3 rotate-90" />}
+            {fmtMoney(r.profit, "EGP", lang)}
+          </span>
+          <div className="w-24 h-1 rounded-full bg-muted/50 overflow-hidden">
+            <div className={`h-full ${r.profit >= 0 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" : "bg-gradient-to-r from-rose-600 to-rose-400"}`} style={{ width: `${profitBarPct}%` }} />
+          </div>
+        </div>
+      </div>
+      <div className="px-3 py-3 text-end">
+        <div className="flex flex-col items-end gap-1">
+          <MarginPillCmp margin={r.margin} size="sm" />
+          <div className="w-20 h-1 rounded-full bg-muted/50 overflow-hidden">
+            <div className={`h-full ${mt.bar}`} style={{ width: `${marginPct}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
 function ProfitsPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
