@@ -2239,17 +2239,18 @@ function ProfitsPage() {
 
 function KpiCard({ icon, label, value, className, hint, iconRing }: { icon: React.ReactNode; label: string; value: string; className?: string; hint?: string; iconRing?: string }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition hover:shadow-md ${className ?? ""}`}>
-      <div className="flex items-start justify-between gap-2">
+    <div className={`kpi-luxe group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${className ?? ""}`}>
+      <div className="relative z-[2] flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-wider opacity-70">{label}</div>
-          <div className="mt-1.5 text-lg sm:text-2xl font-extrabold tabular-nums text-foreground leading-tight">{value}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">{label}</div>
+          <div className="mt-1.5 text-lg sm:text-2xl font-extrabold tabular-nums text-foreground leading-tight transition-transform duration-500 group-hover:-translate-y-0.5">{value}</div>
           {hint && <div className="mt-1 text-[10px] opacity-70">{hint}</div>}
         </div>
-        <div className={`grid place-items-center h-9 w-9 rounded-full shrink-0 ${iconRing ?? "bg-background/60 border"}`}>
+        <div className={`grid place-items-center h-9 w-9 rounded-full shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[6deg] ${iconRing ?? "bg-background/60 border"}`}>
           {icon}
         </div>
       </div>
+      <div className="pointer-events-none absolute -bottom-8 -end-8 h-24 w-24 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--brand-gold)_35%,transparent),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
     </div>
   );
 }
