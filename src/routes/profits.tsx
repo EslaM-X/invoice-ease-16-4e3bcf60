@@ -3114,10 +3114,60 @@ function ProfitsPage() {
 
       {/* Product detail sheet */}
       <Sheet open={!!productDetailId} onOpenChange={(o) => { if (!o) setProductDetailId(null); }}>
-        <SheetContent side={lang === "ar" ? "left" : "right"} className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side={lang === "ar" ? "left" : "right"} dir={lang === "ar" ? "rtl" : "ltr"} className="w-full sm:max-w-lg overflow-y-auto">
           {(() => {
             const r = productDetailId ? rows.list.find((x) => x.product_id === productDetailId) : null;
-            if (!r) return null;
+            if (!r) {
+              // Skeleton while data is loading / not yet materialized
+              return (
+                <div className="space-y-4" aria-busy="true" aria-live="polite">
+                  <div className="flex items-start gap-3">
+                    <div className="skeleton-noir h-16 w-16 rounded-xl" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <div className="skeleton-noir h-4 w-3/4" />
+                      <div className="flex gap-1.5">
+                        <div className="skeleton-noir h-4 w-14 rounded" />
+                        <div className="skeleton-noir h-4 w-20 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-primary/15 p-3 space-y-2">
+                        <div className="skeleton-noir h-2 w-16" />
+                        <div className="skeleton-noir h-5 w-24" style={{ animationDelay: `${i * 80}ms` }} />
+                      </div>
+                    ))}
+                    <div className="col-span-2 rounded-xl border border-primary/15 p-3 space-y-2">
+                      <div className="skeleton-noir h-2 w-20" />
+                      <div className="skeleton-noir h-6 w-40" />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 p-3 space-y-2">
+                    <div className="skeleton-noir h-3 w-24" />
+                    <div className="flex flex-wrap gap-2">
+                      <div className="skeleton-noir h-7 flex-1 min-w-[160px] rounded-full" />
+                      <div className="skeleton-noir h-7 w-40 rounded-full" />
+                      <div className="skeleton-noir h-7 w-28 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 p-3">
+                    <div className="skeleton-noir h-3 w-32 mb-2" />
+                    <div className="skeleton-noir h-32 w-full rounded" />
+                  </div>
+                  <div className="rounded-xl border border-primary/15 p-3 space-y-2">
+                    <div className="skeleton-noir h-3 w-28" />
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-2 py-1.5">
+                        <div className="skeleton-noir h-3 w-16" />
+                        <div className="skeleton-noir h-3 flex-1" />
+                        <div className="skeleton-noir h-3 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
             const p = r.product;
             const stock = Number(p?.stock_quantity ?? 0);
             const allProductLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
