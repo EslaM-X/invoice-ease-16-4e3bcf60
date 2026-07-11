@@ -2695,7 +2695,7 @@ function ProfitsPage() {
                   </button>
                 )}
                 <span className="ms-auto text-[11px] text-muted-foreground tabular-nums">
-                  {t(`${rankedInvoices.length} نتيجة`, `${rankedInvoices.length} result(s)`)}
+                  {t(`عرض ${visibleInvoices.length} من ${rankedInvoices.length}`, `Showing ${visibleInvoices.length} of ${rankedInvoices.length}`)}
                 </span>
               </div>
 
