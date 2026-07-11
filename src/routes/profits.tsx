@@ -2791,6 +2791,49 @@ function ProfitsPage() {
                     {t("ترتيب حسب الربح • انقر الصف لعرض التفاصيل", "Ranked by profit • click any row for details")}
                     {loading && <span className="ms-2 inline-flex items-center gap-1 text-primary/70"><RefreshCw className="h-3 w-3 animate-spin" />{t("تحديث…", "syncing…")}</span>}
                   </p>
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setRtPaused((v) => !v)}
+                      title={rtPaused ? t("استئناف التحديثات المباشرة", "Resume realtime updates") : t("إيقاف مؤقت للتحديثات المباشرة", "Pause realtime updates")}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition ${rtPaused ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${rtPaused ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+                      {rtPaused
+                        ? t(`متوقف${rtPending.size ? ` (${rtPending.size} معلّق)` : ""}`, `Paused${rtPending.size ? ` (${rtPending.size} pending)` : ""}`)
+                        : t("مباشر", "Live")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPerf((v) => !v)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+                      title={t("مقاييس الأداء", "Performance metrics")}
+                    >
+                      <Clock className="h-2.5 w-2.5" />
+                      {t("أداء", "Perf")}
+                    </button>
+                    {showPerf && (
+                      <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.04] px-2.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums">
+                        <span title={t("عدد مرات الإخراج", "Renders")}><span className="text-primary/80 font-bold">R</span>{renderCountRef.current}</span>
+                        <span className="opacity-40">·</span>
+                        <span title={t("زمن آخر إخراج", "Last render")}><span className="text-primary/80 font-bold">t</span>{lastRenderMs.toFixed(1)}ms</span>
+                        <span className="opacity-40">·</span>
+                        <span title={t("متوسط زمن الإخراج", "Avg render")}><span className="text-primary/80 font-bold">avg</span>{avgRenderMs.toFixed(1)}ms</span>
+                        <span className="opacity-40">·</span>
+                        <span title={t("تحديثات Realtime المطبّقة", "Realtime updates applied")}><span className="text-primary/80 font-bold">U</span>{updateCount}</span>
+                        {lastUpdateAt && (
+                          <>
+                            <span className="opacity-40">·</span>
+                            <span title={t("آخر تحديث", "Last update")}>{Math.max(0, Math.round((Date.now() - lastUpdateAt) / 1000))}s</span>
+                          </>
+                        )}
+                        <span className="opacity-40">·</span>
+                        <span title={t("طريقة العرض", "View mode")}>{visibleInvoices.length > 60 ? "vlist" : "table"}</span>
+                        <span className="opacity-40">·</span>
+                        <span>{fmtNumber(visibleInvoices.length, lang)}/{fmtNumber(rankedInvoices.length, lang)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
