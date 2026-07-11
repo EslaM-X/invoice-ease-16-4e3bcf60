@@ -1369,6 +1369,22 @@ function ProfitsPage() {
 
 
       {/* KPIs */}
+      {loading && items.length === 0 ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-busy="true" aria-live="polite">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="relative overflow-hidden rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="skeleton-noir h-2.5 w-20" />
+                  <div className="skeleton-noir h-6 w-28" style={{ animationDelay: `${i * 90}ms` }} />
+                  <div className="skeleton-noir h-2 w-16 opacity-70" />
+                </div>
+                <div className="skeleton-noir h-9 w-9 rounded-full" style={{ animationDelay: `${i * 90 + 60}ms` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={<Wallet className="h-4 w-4 text-sky-600" />}
@@ -1403,6 +1419,7 @@ function ProfitsPage() {
           className="from-primary/10 to-primary/[0.03] text-primary"
         />
       </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 -mt-1">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[11px] text-slate-700 dark:text-slate-300">
           <Coins className="h-3 w-3" />
