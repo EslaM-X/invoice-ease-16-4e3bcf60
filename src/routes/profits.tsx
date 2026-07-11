@@ -161,6 +161,12 @@ function ProfitsPage() {
   const [ptSearch, setPtSearch] = useState("");
   const [ptSort, setPtSort] = useState<{ field: "profit" | "qty" | "margin" | "name"; dir: "asc" | "desc" }>({ field: "profit", dir: "desc" });
   const [productDetailId, setProductDetailId] = useState<string | null>(null);
+  // Invoice table filters
+  const [invSearch, setInvSearch] = useState("");
+  const [invFrom, setInvFrom] = useState("");
+  const [invTo, setInvTo] = useState("");
+  const [invStatus, setInvStatus] = useState<string>("all");
+  const [invTrendMode, setInvTrendMode] = useState<"day" | "week">("day");
 
   const toggleSelected = (id: string) => {
     setSelectedIds((cur) => {
