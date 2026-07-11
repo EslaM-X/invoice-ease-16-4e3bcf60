@@ -1436,7 +1436,7 @@ function ProfitsPage() {
         return (
           <div
             className={[
-              "relative overflow-hidden rounded-2xl border shadow-sm ring-1",
+              "relative overflow-hidden rounded-2xl border shadow-sm ring-1 ribbon-sheen transition-shadow duration-500 hover:shadow-[0_18px_40px_-18px_color-mix(in_oklab,var(--brand-ink)_45%,transparent)]",
               ok
                 ? "border-emerald-500/25 ring-emerald-500/10 bg-gradient-to-l from-emerald-500/[0.08] via-transparent to-emerald-500/[0.02]"
                 : "border-rose-500/30 ring-rose-500/10 bg-gradient-to-l from-rose-500/[0.09] via-transparent to-rose-500/[0.02]",
