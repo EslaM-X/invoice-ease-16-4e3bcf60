@@ -1239,24 +1239,8 @@ function ProfitsPage() {
                                   <div className="font-medium truncate flex items-center gap-1.5">
                                     {p.name}
                                     {p.collection && (
-                                      <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
-
-                    .slice(0, 300)
-                    .map((p) => {
-                      const entry = costBook.products[p.id];
-                      const eff = costOf(p.id);
-                      const ov = overrides[p.id];
-                      const isOpen = !!expandedCB[p.id];
-                      return (
-                        <Fragment key={p.id}>
-                          <tr className="hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedCB((c) => ({ ...c, [p.id]: !c[p.id] }))}>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                {isOpen ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
-                                <div className="min-w-0">
-                                  <div className="font-medium truncate flex items-center gap-1.5">
-                                    {p.name}
                                     {p.collection && (
+
                                       <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
                                         <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
                                         {p.collection}
