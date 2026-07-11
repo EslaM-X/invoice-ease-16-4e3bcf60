@@ -87,11 +87,22 @@ function Traceability() {
   const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
   const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [logsShown, setLogsShown] = useState(50);
+  useEffect(() => { setLogsShown(50); }, [selectedProduct?.id]);
   // Timeline filters
   const [tlDirection, setTlDirection] = useState<"all" | "in" | "out">("all");
   const [tlKind, setTlKind] = useState<"all" | "po" | "dr" | "invoice" | "manual" | "reservation">("all");
   const [tlFrom, setTlFrom] = useState("");
   const [tlTo, setTlTo] = useState("");
+  const setQuickRange = (days: number | "month") => {
+    const now = new Date();
+    const toD = now.toISOString().slice(0, 10);
+    const fromD = days === "month"
+      ? new Date(now.getFullYear(), now.getMonth(), 1)
+      : new Date(now.getTime() - days * 86_400_000);
+    setTlFrom(fromD.toISOString().slice(0, 10));
+    setTlTo(toD);
+  };
 
   useEffect(() => {
     (async () => {
