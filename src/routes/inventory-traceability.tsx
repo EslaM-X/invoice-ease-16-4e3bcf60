@@ -312,32 +312,46 @@ function Traceability() {
       if (!lastMoveMap.has(l.product_id)) lastMoveMap.set(l.product_id, l.created_at);
     }
     const q = stockSearch.trim().toLowerCase();
+    const minQ = stockMinQty.trim() === "" ? null : Number(stockMinQty);
+    const maxQ = stockMaxQty.trim() === "" ? null : Number(stockMaxQty);
     const rows = products.map((p) => {
       const qty = Number(p.stock_quantity ?? 0);
       const threshold = Number(p.low_stock_threshold ?? 0);
       let bucket: "in" | "low" | "out" = "in";
       if (qty <= 0) bucket = "out";
       else if (threshold > 0 && qty <= threshold) bucket = "low";
+      const moved30d = moveMap.get(p.id) ?? 0;
       return {
         product: p,
         qty,
         threshold,
         bucket,
-        moved30d: moveMap.get(p.id) ?? 0,
+        moved30d,
+        movement: (moved30d > 0 ? "moving" : "stagnant") as "moving" | "stagnant",
         lastMoveAt: lastMoveMap.get(p.id) ?? null,
       };
     });
     const filtered = rows
       .filter((r) => stockOnly === "all" || r.bucket === stockOnly)
+      .filter((r) => stockMovement === "all" || r.movement === stockMovement)
+      .filter((r) => minQ === null || r.qty >= minQ)
+      .filter((r) => maxQ === null || r.qty <= maxQ)
       .filter((r) =>
         !q ||
         r.product.name?.toLowerCase().includes(q) ||
         (r.product.serial_number ?? "").toLowerCase().includes(q) ||
         (r.product.color ?? "").toLowerCase().includes(q),
       );
-    filtered.sort((a, b) => (stockSort === "desc" ? b.qty - a.qty : a.qty - b.qty));
-    return filtered;
-  }, [products, logs, stockSearch, stockSort, stockOnly]);
+    filtered.sort((a, b) => {
+      const av = stockSortBy === "movement" ? a.moved30d : a.qty;
+      const bv = stockSortBy === "movement" ? b.moved30d : b.qty;
+      return stockSort === "desc" ? bv - av : av - bv;
+    });
+    const limited = stockTopN > 0 ? filtered.slice(0, stockTopN) : filtered;
+    const maxQty = Math.max(1, ...limited.map((r) => r.qty));
+    const maxMoved = Math.max(1, ...limited.map((r) => r.moved30d));
+    return limited.map((r, idx) => ({ ...r, rank: idx + 1, maxQty, maxMoved }));
+  }, [products, logs, stockSearch, stockSort, stockSortBy, stockOnly, stockMovement, stockMinQty, stockMaxQty, stockTopN]);
 
 
   // === Audit timeline per product ===
