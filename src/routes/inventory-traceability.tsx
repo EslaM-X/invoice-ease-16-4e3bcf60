@@ -724,6 +724,12 @@ function Traceability() {
               <Input type="date" value={tlTo} onChange={(e) => setTlTo(e.target.value)} />
             </div>
           </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange(7)}>{isAr ? "آخر 7 أيام" : "Last 7 days"}</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange(30)}>{isAr ? "آخر 30 يوم" : "Last 30 days"}</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange(90)}>{isAr ? "آخر 90 يوم" : "Last 90 days"}</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuickRange("month")}>{isAr ? "هذا الشهر" : "This month"}</Button>
+          </div>
           {(productFilter || tlDirection !== "all" || tlKind !== "all" || tlFrom || tlTo) && (
             <Button variant="ghost" size="sm" onClick={() => { setProductFilter(""); setTlDirection("all"); setTlKind("all"); setTlFrom(""); setTlTo(""); }}>
               <X className="h-3 w-3 me-1" /> {isAr ? "مسح الفلاتر" : "Clear filters"}
