@@ -205,18 +205,18 @@ function Dashboard() {
       )}
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ label, value, Icon, accent }) => (
-          <div key={label} className="ios-card group relative p-3 sm:p-6 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="eyebrow text-[0.6rem] sm:text-[0.68rem] truncate">{label}</div>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/60 sm:h-9 sm:w-9 ${accent ?? "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
-                <Icon className="h-4 w-4" />
-              </div>
-            </div>
-            <div className={`ltr-nums mt-3 sm:mt-5 font-display text-xl font-medium tracking-tight tabular-nums sm:text-3xl break-words ${accent ?? "text-foreground"}`}>{value}</div>
-          </div>
+        {cards.map(({ label, value, Icon, tone, sensitive }) => (
+          <NoirKpiCard
+            key={label}
+            label={label}
+            value={value}
+            Icon={Icon}
+            tone={tone}
+            hidden={!!sensitive && hidden}
+          />
         ))}
       </div>
+
 
       <CloseableInvoicesCard />
       <PendingAccountsCard />
