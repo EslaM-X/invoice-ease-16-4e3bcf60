@@ -3082,28 +3082,110 @@ function ProfitsPage() {
                   </div>
                 </div>
 
-                {/* Mini timeline */}
-                {timeline.length > 0 && (
+                {/* Filters */}
+                <div className="mt-4 rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-3">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary/80 mb-2">
+                    <Filter className="h-3 w-3" />
+                    {t("فلاتر الفواتير", "Invoice filters")}
+                    {activeFilters && (
+                      <button type="button" onClick={() => { setSheetSearch(""); setSheetFrom(""); setSheetTo(""); setSheetStatus("all"); }} className="ms-auto inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] normal-case tracking-normal text-muted-foreground hover:border-primary/40 hover:text-foreground">
+                        <X className="h-3 w-3" />{t("مسح", "Clear")}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[160px]">
+                      <Filter className="h-3 w-3 absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        value={sheetSearch}
+                        onChange={(e) => setSheetSearch(e.target.value)}
+                        placeholder={t("بحث برقم الفاتورة أو العميل…", "Search invoice # or customer…")}
+                        className="w-full h-7 rounded-full border border-border/60 bg-background/60 ps-7 pe-2 text-[11px] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px]">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <input type="date" value={sheetFrom} onChange={(e) => setSheetFrom(e.target.value)} className="bg-transparent focus:outline-none tabular-nums" title={t("من", "From")} />
+                      <span className="text-muted-foreground">→</span>
+                      <input type="date" value={sheetTo} onChange={(e) => setSheetTo(e.target.value)} className="bg-transparent focus:outline-none tabular-nums" title={t("إلى", "To")} />
+                    </div>
+                    <select
+                      value={sheetStatus}
+                      onChange={(e) => setSheetStatus(e.target.value)}
+                      className="h-7 rounded-full border border-border/60 bg-background/60 px-2 text-[11px] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      title={t("حالة السداد", "Payment status")}
+                    >
+                      <option value="all">{t("كل الحالات", "All statuses")}</option>
+                      {sheetStatusList.map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  </div>
+                  {activeFilters && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                      <span>{t(`${invList.length} فاتورة`, `${invList.length} invoice(s)`)}</span>
+                      <span>·</span>
+                      <span className="tabular-nums">{t(`${fmtNumber(filteredQty, lang)} قطعة`, `${fmtNumber(filteredQty, lang)} pcs`)}</span>
+                      <span>·</span>
+                      <span className="tabular-nums font-semibold text-primary/90">{fmtMoney(filteredRev, "EGP", lang)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mini timeline — Recharts with rich tooltip */}
+                {timeline.length > 0 ? (
                   <div className="mt-4 rounded-xl border border-primary/15 bg-card/70 p-3">
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
-                      <LineChartIcon className="h-3.5 w-3.5" />
-                      {t("المخطط الزمني للمبيعات", "Sales timeline")}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary/80">
+                        <LineChartIcon className="h-3.5 w-3.5" />
+                        {t("المخطط الزمني للمبيعات", "Sales timeline")}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="inline-flex items-center gap-1 text-primary/80"><span className="inline-block h-2 w-2 rounded-sm bg-gradient-to-b from-primary/80 to-primary/30" />{t("البيع", "Revenue")}</span>
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300"><span className="inline-block h-[2px] w-3 bg-amber-500" />{t("القطع", "Qty")}</span>
+                      </div>
                     </div>
-                    <div className="flex items-end gap-1 h-20">
-                      {timeline.map((d) => (
-                        <div key={d.date} className="flex-1 min-w-0 group/bar relative">
-                          <div
-                            className="w-full rounded-t bg-gradient-to-t from-primary/70 to-primary/30 hover:from-primary hover:to-primary/60 transition-colors"
-                            style={{ height: `${(d.revenue / maxDay) * 100}%` }}
-                            title={`${d.date} • ${fmtNumber(d.qty, lang)} × • ${fmtMoney(d.revenue, "EGP", lang)}`}
+                    <div className="h-32">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={timeline} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="pdRevFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
+                              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.25} vertical={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} minTickGap={16} />
+                          <YAxis yAxisId="rev" hide />
+                          <YAxis yAxisId="qty" orientation="right" hide />
+                          <Tooltip
+                            cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
+                            content={({ active, payload, label }: any) => {
+                              if (!active || !payload || payload.length === 0) return null;
+                              const d = payload[0]?.payload as { date: string; revenue: number; qty: number };
+                              return (
+                                <div className="rounded-lg border border-primary/30 bg-background/95 px-2.5 py-2 shadow-lg text-[11px]">
+                                  <div className="font-semibold text-primary mb-1 tabular-nums">{d.date}</div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{t("القطع", "Qty")}</span>
+                                    <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">{fmtNumber(d.qty, lang)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">{t("البيع", "Revenue")}</span>
+                                    <span className="font-bold tabular-nums text-primary">{fmtMoney(d.revenue, "EGP", lang)}</span>
+                                  </div>
+                                </div>
+                              );
+                            }}
                           />
-                        </div>
-                      ))}
+                          <Area yAxisId="rev" type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#pdRevFill)" />
+                          <Line yAxisId="qty" type="monotone" dataKey="qty" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 2, fill: "#f59e0b" }} activeDot={{ r: 3 }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground tabular-nums">
-                      <span>{timeline[0].date}</span>
-                      <span>{timeline[timeline.length - 1].date}</span>
-                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed border-border/60 bg-card/40 p-6 text-center text-[11px] text-muted-foreground">
+                    {t("لا توجد بيانات مبيعات في هذا النطاق", "No sales data in this range")}
                   </div>
                 )}
 
