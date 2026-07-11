@@ -2255,7 +2255,42 @@ function KpiCard({ icon, label, value, className, hint, iconRing }: { icon: Reac
 }
 
 
+function LedgerRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className={`flex items-baseline gap-2 text-[13px] ${muted ? "text-muted-foreground" : "text-foreground"}`}>
+      <span className="truncate">{label}</span>
+      <span className="flex-1 border-b border-dotted border-border/70 translate-y-[-3px]" aria-hidden />
+      <span className="tabular-nums font-semibold shrink-0">{value}</span>
+    </div>
+  );
+}
+
+function CauseCard({ icon, title, desc, tone }: { icon: React.ReactNode; title: string; desc: string; tone: "rose" | "sky" | "amber" | "emerald" }) {
+  const tones: Record<string, string> = {
+    rose: "border-rose-500/25 bg-rose-500/[0.05] text-rose-700",
+    sky: "border-sky-500/25 bg-sky-500/[0.05] text-sky-700",
+    amber: "border-amber-500/25 bg-amber-500/[0.05] text-amber-700",
+    emerald: "border-emerald-500/25 bg-emerald-500/[0.05] text-emerald-700",
+  };
+  const iconTones: Record<string, string> = {
+    rose: "bg-rose-500/15 ring-rose-500/25 text-rose-600",
+    sky: "bg-sky-500/15 ring-sky-500/25 text-sky-600",
+    amber: "bg-amber-500/15 ring-amber-500/25 text-amber-600",
+    emerald: "bg-emerald-500/15 ring-emerald-500/25 text-emerald-600",
+  };
+  return (
+    <div className={`flex items-start gap-2.5 rounded-xl border p-2.5 ${tones[tone]}`}>
+      <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ring-1 ${iconTones[tone]}`}>{icon}</div>
+      <div className="min-w-0">
+        <div className="text-[12px] font-bold text-foreground truncate">{title}</div>
+        <div className="text-[11px] text-muted-foreground leading-snug">{desc}</div>
+      </div>
+    </div>
+  );
+}
+
 function RowLine({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+
   return (
     <div className={`flex items-center justify-between gap-2 ${muted ? "text-muted-foreground" : ""}`}>
       <span>{label}</span>
