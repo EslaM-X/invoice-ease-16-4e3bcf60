@@ -1009,12 +1009,12 @@ function Traceability() {
                           )}
                           {r.poRef && (
                             <div>
-                              <Link to="/po-tracking" search={{ q: r.poRef } as any} className="text-blue-700 hover:underline">{r.poRef}</Link>
+                              <a href={`/po-tracking?q=${encodeURIComponent(r.poRef)}`} className="text-blue-700 hover:underline">{r.poRef}</a>
                             </div>
                           )}
                           {r.drRef && (
                             <div>
-                              <Link to="/delivery-receipts" search={{ q: r.drRef } as any} className="text-purple-700 hover:underline">DR #{r.drRef}</Link>
+                              <a href={`/delivery-receipts?q=${encodeURIComponent(r.drRef)}`} className="text-purple-700 hover:underline">DR #{r.drRef}</a>
                             </div>
                           )}
                           {!r.invoice && !r.poRef && !r.drRef && <span className="text-muted-foreground">—</span>}
