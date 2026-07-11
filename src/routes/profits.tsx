@@ -3305,19 +3305,24 @@ function ProfitsPage() {
                           <YAxis yAxisId="qty" orientation="right" hide />
                           <Tooltip
                             cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
-                            content={({ active, payload, label }: any) => {
+                            content={({ active, payload }: any) => {
                               if (!active || !payload || payload.length === 0) return null;
                               const d = payload[0]?.payload as { date: string; revenue: number; qty: number };
+                              const avg = d.qty > 0 ? d.revenue / d.qty : 0;
                               return (
-                                <div className="rounded-lg border border-primary/30 bg-background/95 px-2.5 py-2 shadow-lg text-[11px]">
-                                  <div className="font-semibold text-primary mb-1 tabular-nums">{d.date}</div>
+                                <div className="rounded-lg border border-primary/30 bg-background/95 backdrop-blur px-2.5 py-2 shadow-lg text-[11px] min-w-[170px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+                                  <div className="font-semibold text-primary mb-1 tabular-nums border-b border-primary/15 pb-1">{fmtDate(d.date, lang)}</div>
                                   <div className="flex items-center justify-between gap-3">
-                                    <span className="text-muted-foreground">{t("القطع", "Qty")}</span>
+                                    <span className="text-muted-foreground">{t("القطع", "Pieces")}</span>
                                     <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">{fmtNumber(d.qty, lang)}</span>
                                   </div>
                                   <div className="flex items-center justify-between gap-3">
-                                    <span className="text-muted-foreground">{t("البيع", "Revenue")}</span>
+                                    <span className="text-muted-foreground">{t("إجمالي البيع", "Revenue")}</span>
                                     <span className="font-bold tabular-nums text-primary">{fmtMoney(d.revenue, "EGP", lang)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3 border-t border-primary/15 pt-1 mt-1">
+                                    <span className="text-muted-foreground">{t("متوسط سعر القطعة", "Avg / pc")}</span>
+                                    <span className="font-bold tabular-nums text-foreground/80">{fmtMoney(avg, "EGP", lang)}</span>
                                   </div>
                                 </div>
                               );
