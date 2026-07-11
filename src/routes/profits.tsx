@@ -1146,7 +1146,7 @@ function ProfitsPage() {
           <Button
             variant="outline"
             onClick={async () => {
-              await Promise.all([loadProducts(), loadItems()]);
+              await Promise.all([loadProducts(), loadItems({ force: true })]);
               const r = rows.totals;
               toast.success(
                 t("تم إعادة الاحتساب", "Recalculated"),
