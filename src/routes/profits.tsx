@@ -167,6 +167,11 @@ function ProfitsPage() {
   const [invTo, setInvTo] = useState("");
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invTrendMode, setInvTrendMode] = useState<"day" | "week">("day");
+  const [invPageSize, setInvPageSize] = useState(25);
+  const [invCustomerSuggestOpen, setInvCustomerSuggestOpen] = useState(false);
+  const [invCustomerHighlight, setInvCustomerHighlight] = useState(0);
+  // Reset visible page window when filters change
+  useEffect(() => { setInvPageSize(25); }, [invSearch, invFrom, invTo, invStatus]);
   // Product-detail Sheet filters
   const [sheetSearch, setSheetSearch] = useState("");
   const [sheetFrom, setSheetFrom] = useState("");
@@ -358,6 +363,37 @@ function ProfitsPage() {
   );
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
+
+  // Live toast when an invoice's status changes (paid, cancelled, …). Chart
+  // and tables refresh via the batched hook above; this only surfaces the
+  // event to the user so they know why numbers just moved.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("profits-invoice-status")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "invoices" },
+        (payload: any) => {
+          const prev = payload.old?.status;
+          const next = payload.new?.status;
+          if (!prev || !next || prev === next) return;
+          const num = payload.new?.invoice_number ?? "—";
+          const tone =
+            next === "cancelled" || next === "void" ? "error" :
+            next === "paid" ? "success" : "info";
+          const msg = lang === "ar"
+            ? `فاتورة ${num}: ${prev} → ${next}`
+            : `Invoice ${num}: ${prev} → ${next}`;
+          const opts = { description: lang === "ar" ? "تم تحديث المخطط والجدول تلقائيًا." : "Chart and table auto-updated." };
+          if (tone === "success") toast.success(msg, opts);
+          else if (tone === "error") toast.error(msg, opts);
+          else toast.info(msg, opts);
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, lang]);
 
   const openOvHistory = async (p: Product) => {
     setOvHistoryOpen(p);
@@ -2465,6 +2501,26 @@ function ProfitsPage() {
           return true;
         });
         const rankedInvoices = [...filteredInvoices].sort((a, b) => b.profit - a.profit);
+        // Pagination (page size grows via Load More)
+        const visibleInvoices = rankedInvoices.slice(0, invPageSize);
+        const invHasMore = rankedInvoices.length > visibleInvoices.length;
+        // Customer autocomplete suggestions: unique names from invoices + customers list
+        const invCustomerSuggestions: string[] = (() => {
+          const q = invSearch.trim().toLowerCase();
+          if (!q) return [];
+          const set = new Set<string>();
+          for (const r of invoiceRows) if (r.customer_name) set.add(r.customer_name);
+          for (const c of customers) if (c.name) set.add(c.name);
+          const all = Array.from(set);
+          const match = all.filter((n) => n.toLowerCase().includes(q));
+          match.sort((a, b) => {
+            const ai = a.toLowerCase().indexOf(q);
+            const bi = b.toLowerCase().indexOf(q);
+            if (ai !== bi) return ai - bi;
+            return a.localeCompare(b);
+          });
+          return match.slice(0, 8);
+        })();
         const invMaxAbsProfit = Math.max(1, ...rankedInvoices.map((r) => Math.abs(r.profit)));
         const invTotalProfit = rankedInvoices.reduce((s, r) => s + r.profit, 0);
         const invTotalRevenue = rankedInvoices.reduce((s, r) => s + r.revenue, 0);
@@ -2556,15 +2612,63 @@ function ProfitsPage() {
             <div className="flex flex-col lg:flex-row lg:items-stretch gap-3">
               {/* Filters */}
               <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
-                <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
                   <Filter className="h-3.5 w-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
                     value={invSearch}
-                    onChange={(e) => setInvSearch(e.target.value)}
+                    onChange={(e) => { setInvSearch(e.target.value); setInvCustomerSuggestOpen(true); setInvCustomerHighlight(0); }}
+                    onFocus={() => setInvCustomerSuggestOpen(true)}
+                    onBlur={() => setTimeout(() => setInvCustomerSuggestOpen(false), 120)}
+                    onKeyDown={(e) => {
+                      if (!invCustomerSuggestOpen || invCustomerSuggestions.length === 0) return;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setInvCustomerHighlight((h) => Math.min(invCustomerSuggestions.length - 1, h + 1)); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setInvCustomerHighlight((h) => Math.max(0, h - 1)); }
+                      else if (e.key === "Enter") { e.preventDefault(); const pick = invCustomerSuggestions[invCustomerHighlight]; if (pick) { setInvSearch(pick); setInvCustomerSuggestOpen(false); } }
+                      else if (e.key === "Escape") { setInvCustomerSuggestOpen(false); }
+                    }}
                     placeholder={t("بحث برقم الفاتورة أو العميل…", "Search invoice # or customer…")}
                     className="w-full h-8 rounded-full border border-border/60 bg-background/60 ps-8 pe-3 text-xs focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={invCustomerSuggestOpen && invCustomerSuggestions.length > 0}
+                    aria-controls="inv-customer-suggest"
                   />
+                  {invCustomerSuggestOpen && invCustomerSuggestions.length > 0 && (
+                    <ul
+                      id="inv-customer-suggest"
+                      role="listbox"
+                      className="absolute z-30 mt-1 start-0 end-0 max-h-64 overflow-y-auto rounded-xl border border-primary/25 bg-background/95 backdrop-blur shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] p-1"
+                    >
+                      {invCustomerSuggestions.map((name, i) => {
+                        const q = invSearch.trim();
+                        const idx = q ? name.toLowerCase().indexOf(q.toLowerCase()) : -1;
+                        return (
+                          <li key={name} role="option" aria-selected={i === invCustomerHighlight}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); setInvSearch(name); setInvCustomerSuggestOpen(false); }}
+                              onMouseEnter={() => setInvCustomerHighlight(i)}
+                              className={`w-full text-start px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-2 transition ${i === invCustomerHighlight ? "bg-primary/10 text-foreground" : "hover:bg-muted/60"}`}
+                            >
+                              <div className="h-5 w-5 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                                {name.trim().charAt(0).toUpperCase() || "?"}
+                              </div>
+                              <span className="truncate">
+                                {idx >= 0 ? (
+                                  <>
+                                    {name.slice(0, idx)}
+                                    <span className="bg-primary/20 text-primary font-semibold rounded px-0.5">{name.slice(idx, idx + q.length)}</span>
+                                    {name.slice(idx + q.length)}
+                                  </>
+                                ) : name}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[11px]">
                   <Clock className="h-3 w-3 text-muted-foreground" />
@@ -2591,7 +2695,7 @@ function ProfitsPage() {
                   </button>
                 )}
                 <span className="ms-auto text-[11px] text-muted-foreground tabular-nums">
-                  {t(`${rankedInvoices.length} نتيجة`, `${rankedInvoices.length} result(s)`)}
+                  {t(`عرض ${visibleInvoices.length} من ${rankedInvoices.length}`, `Showing ${visibleInvoices.length} of ${rankedInvoices.length}`)}
                 </span>
               </div>
 
@@ -2663,7 +2767,7 @@ function ProfitsPage() {
                       <div className="text-[11px]">{t("جرّب تعديل الفلاتر أو النطاق الزمني", "Try adjusting filters or the date range")}</div>
                     </div>
                   </td></tr>
-                ) : rankedInvoices.map((r, idx) => {
+                ) : visibleInvoices.map((r, idx) => {
                   const medal = invRankMedal(idx);
                   const isTop = medal !== null;
                   const profitBarPct = Math.min(100, (Math.abs(r.profit) / invMaxAbsProfit) * 100);
@@ -2730,6 +2834,29 @@ function ProfitsPage() {
                     </tr>
                   );
                 })}
+                {invHasMore && (
+                  <tr>
+                    <td colSpan={9} className="px-3 py-4 text-center bg-gradient-to-b from-transparent to-primary/[0.03]">
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setInvPageSize((n) => n + 25)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          {t(`تحميل 25 المزيد (${rankedInvoices.length - visibleInvoices.length} متبقية)`, `Load 25 more (${rankedInvoices.length - visibleInvoices.length} remaining)`)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvPageSize(rankedInvoices.length)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+                        >
+                          {t("عرض الكل", "Show all")}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
