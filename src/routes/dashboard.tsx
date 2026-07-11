@@ -14,6 +14,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { CloseableInvoicesCard } from "@/components/closeable-invoices-card";
+import { NoirKpiCard, type NoirTone } from "@/components/noir-kpi-card";
 import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
 import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
@@ -152,13 +153,13 @@ function Dashboard() {
 
   useBatchedRealtimeTables(["invoices", "products", "customers", "defective_items", "purchase_orders"], scheduleRealtimeRefresh, [user?.id]);
 
-  const cards = [
-    { label: t("total_sales"), value: hidden ? "•••••" : fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp, sensitive: true },
-    { label: t("total_invoices"), value: stats.invoices, Icon: FileText, sensitive: false },
-    { label: t("closed_invoices"), value: stats.closed, Icon: CheckCircle2, sensitive: false, accent: "text-emerald-700 dark:text-emerald-400" },
-    { label: t("partial_delivery_invoices"), value: stats.partial, Icon: Truck, sensitive: false, accent: "text-amber-700 dark:text-amber-400" },
-    { label: t("open_invoices"), value: stats.open, Icon: Clock, sensitive: false, accent: "text-sky-700 dark:text-sky-400" },
-    { label: t("total_customers"), value: stats.customers, Icon: Users, sensitive: false },
+  const cards: Array<{ label: string; value: any; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
+    { label: t("total_sales"),               value: fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp,   tone: "gold",    sensitive: true },
+    { label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
+    { label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
+    { label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
+    { label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
+    { label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
 
   return (
@@ -204,18 +205,18 @@ function Dashboard() {
       )}
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ label, value, Icon, accent }) => (
-          <div key={label} className="ios-card group relative p-3 sm:p-6 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="eyebrow text-[0.6rem] sm:text-[0.68rem] truncate">{label}</div>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/60 sm:h-9 sm:w-9 ${accent ?? "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
-                <Icon className="h-4 w-4" />
-              </div>
-            </div>
-            <div className={`ltr-nums mt-3 sm:mt-5 font-display text-xl font-medium tracking-tight tabular-nums sm:text-3xl break-words ${accent ?? "text-foreground"}`}>{value}</div>
-          </div>
+        {cards.map(({ label, value, Icon, tone, sensitive }) => (
+          <NoirKpiCard
+            key={label}
+            label={label}
+            value={value}
+            Icon={Icon}
+            tone={tone}
+            hidden={!!sensitive && hidden}
+          />
         ))}
       </div>
+
 
       <CloseableInvoicesCard />
       <PendingAccountsCard />
