@@ -2801,6 +2801,72 @@ function ProfitsPage() {
             </div>
           </div>
 
+          {visibleInvoices.length > 60 ? (
+            /* ==== Virtualized view (react-window) for large lists ==== */
+            <div className="overflow-x-auto">
+              <div className="min-w-[920px]">
+                {/* Header */}
+                <div
+                  className="grid gap-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/90 font-bold border-b border-primary/15"
+                  style={{ gridTemplateColumns: "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)" }}
+                >
+                  <div className="px-3 py-3 text-center">#</div>
+                  <div className="px-3 py-3 text-start">{t("الفاتورة", "Invoice")}</div>
+                  <div className="px-3 py-3 text-start">{t("التاريخ", "Date")}</div>
+                  <div className="px-3 py-3 text-start">{t("العميل", "Customer")}</div>
+                  <div className="px-3 py-3 text-end">{t("القطع", "Items")}</div>
+                  <div className="px-3 py-3 text-end">{t("البيع", "Revenue")}</div>
+                  <div className="px-3 py-3 text-end">{t("التكلفة", "Cost")}</div>
+                  <div className="px-3 py-3 text-end">{t("صافي الربح", "Profit")}</div>
+                  <div className="px-3 py-3 text-end">{t("هامش %", "Margin")}</div>
+                </div>
+                {/* Body */}
+                <List
+                  rowCount={visibleInvoices.length}
+                  rowHeight={84}
+                  defaultHeight={Math.min(560, Math.max(320, visibleInvoices.length * 84))}
+                  overscanCount={8}
+                  className="divide-y divide-border/40"
+                  rowProps={{
+                    rows: visibleInvoices,
+                    lang,
+                    t,
+                    maxAbs: invMaxAbsProfit,
+                    onOpen: (id: string) => setInvoiceDetailOpen(id),
+                    medalOf: invRankMedal,
+                    toneOf: marginTone,
+                    MarginPillCmp: MarginPill,
+                  }}
+                  rowComponent={VirtualInvoiceRow}
+                />
+                {/* Footer with load more / show all — outside virtual list */}
+                {invHasMore && (
+                  <div className="px-3 py-4 text-center bg-gradient-to-b from-transparent to-primary/[0.03] border-t border-border/40">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInvPageSize((n) => n + 25)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                        {t(`تحميل 25 المزيد (${rankedInvoices.length - visibleInvoices.length} متبقية)`, `Load 25 more (${rankedInvoices.length - visibleInvoices.length} remaining)`)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInvPageSize(rankedInvoices.length)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+                      >
+                        {t("عرض الكل", "Show all")}
+                      </button>
+                    </div>
+                    <div className="mt-1.5 text-[10px] text-muted-foreground/70">
+                      {t("عرض افتراضي (Virtualization) مفعّل لأداء أسرع", "Virtualized view enabled for faster rendering")}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-sm">
               <thead>
