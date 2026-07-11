@@ -206,7 +206,11 @@ function ProfitsPage() {
   };
 
   const loadItems = async () => {
-    if (items.length === 0) setLoading(true);
+    const isFirst = items.length === 0;
+    if (isFirst) setLoading(true);
+    const loadingToast = isFirst
+      ? toast.loading(lang === "ar" ? "جارٍ حساب الأرباح…" : "Computing profits…", { duration: 12000 })
+      : null;
 
     const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
     let q = supabase
@@ -219,7 +223,17 @@ function ProfitsPage() {
     if (endISO) q = q.lt("invoices.created_at", endISO);
     if (customerId) q = q.eq("invoices.customer_id", customerId);
     const { data, error } = await q.limit(10000);
-    if (error) toast.error(error.message);
+    if (loadingToast != null) toast.dismiss(loadingToast);
+    if (error) {
+      toast.error(error.message);
+    } else if (isFirst && data) {
+      toast.success(
+        lang === "ar"
+          ? `تم تحميل ${fmtNumber(data.length, lang)} بند بنجاح`
+          : `Loaded ${fmtNumber(data.length, lang)} line item(s)`,
+        { duration: 2400 }
+      );
+    }
     setItems((data ?? []) as any);
     setLoading(false);
   };
