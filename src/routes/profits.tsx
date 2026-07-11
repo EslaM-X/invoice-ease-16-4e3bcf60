@@ -2731,9 +2731,24 @@ function ProfitsPage() {
                         <YAxis hide />
                         <Tooltip
                           cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
-                          contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8, fontSize: 11 }}
-                          formatter={(v: any) => [fmtMoney(Number(v), "EGP", lang), t("الربح", "Profit")]}
-                          labelFormatter={(l: any) => String(l)}
+                          content={({ active, payload }: any) => {
+                            if (!active || !payload || payload.length === 0) return null;
+                            const d = payload[0]?.payload as { date: string; profit: number; revenue: number; qty: number; avg: number };
+                            const label = invTrendMode === "week"
+                              ? t(`أسبوع ${d.date}`, `Week of ${d.date}`)
+                              : fmtDate(d.date, lang);
+                            return (
+                              <div className="rounded-lg border border-primary/30 bg-background/95 backdrop-blur px-2.5 py-2 shadow-xl text-[11px] min-w-[160px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+                                <div className="font-semibold text-primary border-b border-primary/15 pb-1 mb-1 tabular-nums">{label}</div>
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">{t("القطع", "Pieces")}</span><span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">{fmtNumber(d.qty, lang)}</span></div>
+                                  <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">{t("إجمالي البيع", "Revenue")}</span><span className="font-bold tabular-nums text-sky-600 dark:text-sky-300">{fmtMoney(d.revenue, "EGP", lang)}</span></div>
+                                  <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">{t("متوسط سعر القطعة", "Avg / pc")}</span><span className="font-bold tabular-nums text-foreground/80">{fmtMoney(d.avg, "EGP", lang)}</span></div>
+                                  <div className="flex items-center justify-between gap-3 border-t border-primary/15 pt-1 mt-1"><span className="text-muted-foreground">{t("الربح", "Profit")}</span><span className={`font-bold tabular-nums ${d.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(d.profit, "EGP", lang)}</span></div>
+                                </div>
+                              </div>
+                            );
+                          }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="2 2" />
                         <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#invTrendFill)" />
