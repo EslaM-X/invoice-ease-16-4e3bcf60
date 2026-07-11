@@ -73,9 +73,9 @@ export function CloseableInvoicesCard() {
 
   return (
     <div className="space-y-3">
-      <div className="ribbon-sheen relative overflow-hidden rounded-2xl border border-[#c9a84c]/25 bg-gradient-to-br from-[#161616] to-[#0d0d0d] shadow-2xl shadow-black/50 transition-all duration-500 hover:-translate-y-0.5 hover:border-[#c9a84c]/45 hover:shadow-[0_25px_60px_-15px_rgba(201,168,76,0.35)]">
-        {/* Animated top decorative gold bar */}
-        <div className="gold-hairline absolute inset-x-0 top-0" />
+      <div className="ribbon-sheen noir-glow relative overflow-hidden rounded-2xl border border-[#c9a84c]/25 bg-gradient-to-br from-[#161616] to-[#0d0d0d] shadow-2xl shadow-black/50 hover:-translate-y-0.5 hover:border-[#c9a84c]/45">
+        {/* Animated shimmering top gold bar */}
+        <div className="gold-hairline-live absolute inset-x-0 top-0" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#c9a84c]/40 to-transparent" />
 
         <div className="relative p-5 sm:p-6">
@@ -137,9 +137,9 @@ export function CloseableInvoicesCard() {
           {/* CTA */}
           <Link
             to="/fulfillment"
-            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#c9a84c] px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-[#c9a84c]/20 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            className="noir-press noir-ripple group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#c9a84c] px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-[#c9a84c]/20"
           >
-            <span className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+            <span className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" />
             <span className="relative">{isAr ? "عرض الاقتراحات الذكية" : "View smart suggestions"}</span>
             <ArrowLeft className="relative h-4 w-4 rtl:rotate-0 ltr:rotate-180" />
           </Link>
@@ -292,11 +292,11 @@ function MetricTile(props: {
   );
   if (props.as === "button") {
     return (
-      <button type="button" onClick={props.onClick} className="group relative block w-full text-start transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98]">{inner}</button>
+      <button type="button" onClick={props.onClick} className="noir-press noir-ripple group relative block w-full rounded-2xl text-start">{inner}</button>
     );
   }
   return (
-    <Link to={props.to!} className="group relative block transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98]">{inner}</Link>
+    <Link to={props.to!} className="noir-press noir-ripple group relative block rounded-2xl">{inner}</Link>
   );
 }
 

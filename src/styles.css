@@ -510,11 +510,79 @@ aside[class*="bg-sidebar"] .bg-sidebar-primary:hover {
     border-radius: 0.5rem;
   }
 
+  /* === Unified Noir & Gold card interactions === */
+  .noir-press {
+    transition:
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 260ms ease;
+    will-change: transform;
+  }
+  .noir-press:hover { transform: translateY(-2px); }
+  .noir-press:active { transform: scale(0.96); }
+
+  .noir-glow {
+    transition: box-shadow 380ms cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 380ms ease,
+                transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .noir-glow:hover {
+    box-shadow:
+      0 22px 55px -20px color-mix(in oklab, var(--brand-gold) 45%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--brand-gold) 30%, transparent);
+  }
+
+  @keyframes noir-ripple {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+    to   { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
+  }
+  .noir-ripple { position: relative; overflow: hidden; }
+  .noir-ripple::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 24px; height: 24px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--brand-gold) 55%, transparent);
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .noir-ripple:active::after {
+    animation: noir-ripple 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes gold-hairline-sweep {
+    0%   { background-position: -200% 0; opacity: 0.6; }
+    50%  { opacity: 1; }
+    100% { background-position: 200% 0; opacity: 0.6; }
+  }
+  @keyframes gold-hairline-jitter {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(0.5px); }
+  }
+  .gold-hairline-live {
+    height: 1.5px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--brand-gold) 30%, transparent) 30%,
+      color-mix(in oklab, var(--brand-gold) 90%, transparent) 50%,
+      color-mix(in oklab, var(--brand-gold) 30%, transparent) 70%,
+      transparent 100%);
+    background-size: 220% 100%;
+    animation:
+      gold-hairline-sweep 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+      gold-hairline-jitter 6s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .kpi-luxe, .kpi-luxe::before, .ribbon-sheen::after, .gold-hairline, .skeleton-noir {
+    .kpi-luxe, .kpi-luxe::before, .ribbon-sheen::after,
+    .gold-hairline, .gold-hairline-live, .skeleton-noir,
+    .noir-press, .noir-glow, .noir-ripple::after {
       animation: none !important;
       transition: none !important;
     }
+    .noir-press:hover, .noir-press:active { transform: none !important; }
   }
 }
 
