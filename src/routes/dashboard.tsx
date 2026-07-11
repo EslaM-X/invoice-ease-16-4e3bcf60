@@ -162,47 +162,115 @@ function Dashboard() {
     { label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
 
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = lang === "ar"
+    ? (hour < 5 ? "مساء الخير" : hour < 12 ? "صباح الخير" : hour < 18 ? "طاب يومك" : "مساء الخير")
+    : (hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
+  const displayName = (user as any)?.user_metadata?.full_name
+    || (user as any)?.email?.split("@")[0]
+    || "";
+  const dateStr = now.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
   return (
     <div className="space-y-8 sm:space-y-10">
-      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-6 sm:pb-6">
-        <div>
-          <div className="eyebrow mb-2 sm:mb-3">{t("welcome")}</div>
-          <h1 className="display-xl text-foreground">{t("dashboard")}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggle}
-            className="rounded-full ios-tap"
-            title={hidden ? "إظهار الأرقام" : "إخفاء الأرقام"}
-          >
-            {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              const isPhone = typeof window !== "undefined" && window.innerWidth < 768;
-              if (isPhone) navigate({ to: "/scan-and-sell" });
-              else navigate({ to: "/invoices/new", search: { scan: true } });
-            }}
-            className="flex-1 gap-2 rounded-full px-4 ios-tap sm:flex-none sm:px-5"
-          >
-            <ScanLine className="h-4 w-4" /> <span className="truncate">{t("scan_and_sell")}</span>
-          </Button>
-          <Button onClick={() => navigate({ to: "/invoices/new" })} className="flex-1 gap-2 rounded-full px-4 press-spring ios-tap sm:flex-none sm:px-5">
-            <Plus className="h-4 w-4" /> <span className="truncate">{t("new_invoice")}</span>
-          </Button>
+      {/* === Luxury Hero Header === */}
+      <header className="noir-surface relative overflow-hidden rounded-3xl border border-[#c9a84c]/25 p-5 shadow-2xl shadow-black/40 sm:p-7">
+        <div className="gold-hairline-live absolute inset-x-0 top-0" />
+        <div className="gradient-mesh pointer-events-none absolute inset-0 opacity-60" />
+        <div className="pointer-events-none absolute -top-24 end-[-60px] h-64 w-64 rounded-full bg-[#c9a84c]/10 blur-3xl" />
+
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#c9a84c]/85">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="truncate">{greeting}{displayName ? (lang === "ar" ? "، " : ", ") + displayName : ""}</span>
+            </div>
+            <h1 className="display-xl text-foreground">
+              {lang === "ar" ? (<>لوحة <span className="text-gradient-gold">التحكم</span></>) : (<>Control <span className="text-gradient-gold">Center</span></>)}
+            </h1>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-600 dark:text-emerald-300">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                {lang === "ar" ? "مباشر" : "Live"}
+              </span>
+              <span className="opacity-60">·</span>
+              <span className="truncate">{dateStr}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
+            <button
+              type="button"
+              onClick={toggle}
+              title={hidden ? (lang === "ar" ? "إظهار الأرقام" : "Show numbers") : (lang === "ar" ? "إخفاء الأرقام" : "Hide numbers")}
+              className="noir-press noir-ripple focus-gold grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#c9a84c]/30 bg-[#161616]/70 text-[#f5e7b8] backdrop-blur hover:border-[#c9a84c]/60 hover:bg-[#161616]"
+            >
+              {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const isPhone = typeof window !== "undefined" && window.innerWidth < 768;
+                if (isPhone) navigate({ to: "/scan-and-sell" });
+                else navigate({ to: "/invoices/new", search: { scan: true } });
+              }}
+              className="noir-press noir-ripple focus-gold group inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-[#c9a84c]/35 bg-[#161616]/70 px-5 py-2.5 text-sm font-semibold text-[#f5e7b8] backdrop-blur hover:border-[#c9a84c]/70 sm:flex-none"
+            >
+              <ScanLine className="h-4 w-4 transition-transform duration-500 group-hover:scale-110 motion-reduce:transition-none" />
+              <span className="truncate">{t("scan_and_sell")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/invoices/new" })}
+              className="noir-press noir-ripple focus-gold group relative inline-flex flex-1 items-center justify-center gap-2 overflow-hidden rounded-full px-5 py-2.5 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-[#c9a84c]/30 sm:flex-none"
+              style={{ background: "var(--gradient-gold)" }}
+            >
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#0a0a0a]/15">
+                <Plus className="h-3.5 w-3.5" />
+              </span>
+              <span className="truncate">{t("new_invoice")}</span>
+              <span className="pointer-events-none absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none" />
+            </button>
+          </div>
         </div>
       </header>
 
+      {/* === Low stock luxury alert === */}
       {stats.lowStock > 0 && (
-        <div className="flex items-center gap-3 rounded-md border border-foreground/15 bg-muted/40 px-4 py-3 text-sm">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span className="font-medium truncate">{t("stock_low_alert")}: {stats.lowStock}</span>
-          <Link to="/inventory" className="ms-auto text-xs font-semibold underline-offset-4 hover:underline shrink-0">{t("view")} →</Link>
-        </div>
+        <Link
+          to="/inventory"
+          className="noir-press noir-ripple focus-gold group relative flex flex-col items-stretch gap-4 overflow-hidden rounded-2xl border border-amber-500/35 bg-gradient-to-br from-[#1a1408] to-[#0d0a05] p-4 shadow-xl shadow-amber-950/40 hover:border-amber-500/60 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
+        >
+          <div className="pointer-events-none absolute -left-16 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-amber-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
+
+          <div className="relative flex items-center gap-4 flex-1 min-w-0">
+            <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-amber-500/40 bg-amber-500/15 text-amber-400">
+              <span className="absolute inset-0 rounded-2xl bg-amber-400/20 animate-ping motion-reduce:hidden" style={{ animationDuration: "2.5s" }} />
+              <AlertTriangle className="relative h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-500/90">
+                {t("stock_low_alert")}
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="ltr-nums font-display text-3xl font-bold text-amber-300 sm:text-4xl">{stats.lowStock}</span>
+                <span className="text-xs text-white/60">{lang === "ar" ? "منتج بحاجة لإعادة تخزين" : "products need restocking"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition-colors group-hover:bg-amber-500/20 sm:self-auto">
+            {t("view")}
+            <span className="transition-transform duration-300 group-hover:translate-x-[-2px] rtl:rotate-180 motion-reduce:transition-none">→</span>
+          </div>
+        </Link>
       )}
+
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
         {cards.map(({ label, value, Icon, tone, sensitive }) => (
