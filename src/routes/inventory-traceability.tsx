@@ -992,17 +992,31 @@ function Traceability() {
                   <tbody>
                     {selectedProductLogs.length === 0 ? (
                       <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">{isAr ? "لا يوجد سجل" : "No history"}</td></tr>
-                    ) : selectedProductLogs.map((r) => (
+                    ) : selectedProductLogs.slice(0, logsShown).map((r) => (
                       <tr key={r.log.id} className="border-t">
                         <td className="p-2 text-xs whitespace-nowrap">{fmtDateTime(r.log.created_at, lang)}</td>
                         <td className={`p-2 text-center font-mono font-bold ${r.log.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
                           {r.log.change > 0 ? `+${r.log.change}` : r.log.change}
                         </td>
                         <td className="p-2 text-xs">{r.log.reason ?? "—"}</td>
-                        <td className="p-2 text-xs font-mono">
-                          {r.invoice && <div>{r.invoice.invoice_number}</div>}
-                          {r.poRef && <div className="text-blue-700">{r.poRef}</div>}
-                          {r.drRef && <div className="text-purple-700">DR #{r.drRef}</div>}
+                        <td className="p-2 text-xs font-mono space-y-0.5">
+                          {r.invoice && (
+                            <div>
+                              <Link to="/invoices/$id" params={{ id: r.invoice.id }} className="text-blue-700 hover:underline">
+                                {r.invoice.invoice_number}
+                              </Link>
+                            </div>
+                          )}
+                          {r.poRef && (
+                            <div>
+                              <Link to="/po-tracking" search={{ q: r.poRef } as any} className="text-blue-700 hover:underline">{r.poRef}</Link>
+                            </div>
+                          )}
+                          {r.drRef && (
+                            <div>
+                              <Link to="/delivery-receipts" search={{ q: r.drRef } as any} className="text-purple-700 hover:underline">DR #{r.drRef}</Link>
+                            </div>
+                          )}
                           {!r.invoice && !r.poRef && !r.drRef && <span className="text-muted-foreground">—</span>}
                         </td>
                         <td className="p-2 text-xs text-muted-foreground">{r.log.actor_email ?? "—"}</td>
@@ -1011,6 +1025,16 @@ function Traceability() {
                   </tbody>
                 </table>
               </div>
+              {selectedProductLogs.length > logsShown && (
+                <div className="flex items-center justify-between pt-2">
+                  <div className="text-xs text-muted-foreground">
+                    {isAr ? `عرض ${logsShown} من ${selectedProductLogs.length}` : `Showing ${logsShown} of ${selectedProductLogs.length}`}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setLogsShown((n) => n + 50)}>
+                    {isAr ? "تحميل المزيد" : "Load more"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
