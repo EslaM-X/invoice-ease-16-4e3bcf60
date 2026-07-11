@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CheckCircle2, Sparkles, Ship, Plane, Truck, Lock, ChevronDown, ChevronUp, Info, Clock, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Sparkles, Ship, Plane, Truck, Lock, ChevronDown, ChevronUp, Info, Clock, ArrowLeft, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -64,7 +64,8 @@ export function CloseableInvoicesCard() {
   }, [suggestions, posMeta]);
 
   const shipIcon = (t: string | null) => t === "air" ? Plane : t === "door_to_door" ? Truck : Ship;
-  const shipTone = (t: string | null) => t === "air" ? "bg-sky-500/10 text-sky-700 border-sky-500/20" : t === "door_to_door" ? "bg-violet-500/10 text-violet-700 border-violet-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20";
+  const shipAccent = (t: string | null) => t === "air" ? "text-sky-300" : t === "door_to_door" ? "text-[#e8c76a]" : "text-amber-300";
+  const shipLabel = (t: string | null) => t === "air" ? (isAr ? "جوي" : "Air") : t === "door_to_door" ? (isAr ? "بري" : "Road") : (isAr ? "بحري" : "Sea");
 
   const isLoading = loading && !suggestions.length;
   const nowVal = isLoading ? "—" : String(counts.nowFull).padStart(2, "0");
@@ -151,18 +152,73 @@ export function CloseableInvoicesCard() {
 
 
       {incomingSlots.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {incomingSlots.map((s) => {
-            const Icon = shipIcon(s.shipment_type);
-            return (
-              <div key={s.po_number} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs ${shipTone(s.shipment_type)}`}>
-                <Icon className="h-3 w-3" />
-                <span className="font-bold">{s.shipment_code || s.po_number}</span>
-                <span>{s.eta ? new Date(s.eta).toLocaleDateString() : "---"}</span>
-                <span className="rounded-full bg-white/50 px-1.5 font-bold">{s.invoiceIds.size}</span>
-              </div>
-            );
-          })}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#c9a84c]/25 to-transparent" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9a84c]/70">
+              {isAr ? "الشحنات المرتبطة" : "Linked shipments"}
+            </span>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#c9a84c]/25 to-transparent" />
+          </div>
+          <div className="relative">
+            <div aria-hidden className="pointer-events-none absolute inset-y-0 start-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
+            <div aria-hidden className="pointer-events-none absolute inset-y-0 end-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+            <div className="flex gap-2.5 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {incomingSlots.map((s) => {
+                const Icon = shipIcon(s.shipment_type);
+                const qty = s.invoiceIds.size;
+                const etaStr = s.eta ? new Date(s.eta).toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric" }) : "---";
+                const code = s.shipment_code || s.po_number;
+                return (
+                  <div
+                    key={s.po_number}
+                    tabIndex={0}
+                    role="group"
+                    aria-label={`${shipLabel(s.shipment_type)} • ${code} • ETA ${etaStr} • ${qty} ${isAr ? "فاتورة" : "invoices"}`}
+                    className="noir-press noir-ripple focus-gold group relative flex shrink-0 items-center gap-3 overflow-hidden rounded-2xl border border-[#c9a84c]/25 bg-gradient-to-br from-[#161616] to-[#0d0d0d] px-3 py-2.5 shadow-lg shadow-black/40 transition-all hover:-translate-y-0.5 hover:border-[#c9a84c]/50 hover:shadow-[0_8px_28px_-8px_rgba(201,168,76,0.45)] motion-reduce:transition-none motion-reduce:hover:transform-none"
+                  >
+                    {/* Ambient gold glow on hover */}
+                    <span aria-hidden className="pointer-events-none absolute -inset-8 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100 motion-reduce:transition-none">
+                      <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,168,76,0.25),transparent_60%)]" />
+                    </span>
+
+                    {/* Quantity bubble */}
+                    <div aria-hidden className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#e8c76a] to-[#b8942f] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_6px_rgba(0,0,0,0.4)]">
+                      <span className="font-display text-[13px] font-black leading-none text-[#0a0a0a] tabular-nums">{qty}</span>
+                    </div>
+
+                    {/* Gold hairline divider */}
+                    <span aria-hidden className="h-8 w-px bg-gradient-to-b from-transparent via-[#c9a84c]/40 to-transparent" />
+
+                    {/* ETA */}
+                    <div className="relative flex flex-col leading-none">
+                      <span className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#c9a84c]/60">
+                        <Calendar className="h-2.5 w-2.5" aria-hidden /> ETA
+                      </span>
+                      <span className="text-[12px] font-semibold tabular-nums text-white/90">{etaStr}</span>
+                    </div>
+
+                    {/* Gold hairline divider */}
+                    <span aria-hidden className="h-8 w-px bg-gradient-to-b from-transparent via-[#c9a84c]/40 to-transparent" />
+
+                    {/* PO Code */}
+                    <div className="relative flex flex-col leading-none">
+                      <span className="mb-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#c9a84c]/60">PO</span>
+                      <span className="rounded-md border border-[#c9a84c]/20 bg-[#c9a84c]/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#e8c76a]">
+                        {code}
+                      </span>
+                    </div>
+
+                    {/* Shipment icon */}
+                    <div aria-hidden className="relative ms-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c9a84c]/20 bg-black/40">
+                      <Icon className={`h-3.5 w-3.5 ${shipAccent(s.shipment_type)}`} />
+                      <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(201,168,76,0.18),transparent_70%)]" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
