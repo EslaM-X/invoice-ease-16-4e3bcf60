@@ -134,6 +134,9 @@ function ProfitsPage() {
   const [chartView, setChartView] = useState<"profit" | "all">("profit");
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerCollections, setPickerCollections] = useState<Set<string>>(new Set());
+  const [pickerColors, setPickerColors] = useState<Set<string>>(new Set());
+  const [cbSort, setCbSort] = useState<"qty" | "cost" | "recent" | "name">("qty");
 
   // ---- Weighted-Average Cost engine ----
   const { isAdmin } = useRole();
