@@ -1,7 +1,7 @@
 import { swatchStyle } from "@/lib/color-swatch";
 import { ColorSwatch } from "@/components/color-swatch";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { List, type RowComponentProps } from "react-window";
 
 import type { Product } from "@/lib/data";
 import { useRole } from "@/lib/use-role";
@@ -108,6 +109,115 @@ function rangeBounds(r: Range, day: string, month: string, year: string, from: s
   e.setDate(e.getDate() + 1);
   return { startISO: s.toISOString(), endISO: e.toISOString() };
 }
+
+// ---- Virtualized invoice row (react-window) ----
+type InvVRow = {
+  invoice_id: string;
+  invoice_number: string;
+  created_at: string;
+  customer_name: string | null;
+  status: string;
+  revenue: number;
+  cost: number;
+  items: number;
+  profit: number;
+  margin: number;
+};
+type InvVProps = {
+  rows: InvVRow[];
+  lang: "ar" | "en";
+  t: (ar: string, en: string) => string;
+  maxAbs: number;
+  onOpen: (id: string) => void;
+  medalOf: (i: number) => { label: string; cls: string } | null;
+  toneOf: (m: number) => { text: string; bar: string };
+  MarginPillCmp: (p: { margin: number; size?: "xs" | "sm" | "md" }) => React.ReactNode;
+};
+const INV_GRID_COLS = "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)";
+function VirtualInvoiceRow({
+  index,
+  style,
+  ariaAttributes,
+  rows,
+  lang,
+  t,
+  maxAbs,
+  onOpen,
+  medalOf,
+  toneOf,
+  MarginPillCmp,
+}: RowComponentProps<InvVProps>) {
+  const r = rows[index];
+  if (!r) return null;
+  const medal = medalOf(index);
+  const isTop = medal !== null;
+  const profitBarPct = Math.min(100, (Math.abs(r.profit) / Math.max(1, maxAbs)) * 100);
+  const marginPct = Math.max(0, Math.min(100, r.margin));
+  const mt = toneOf(r.margin);
+  return (
+    <div
+      style={{ ...style, gridTemplateColumns: INV_GRID_COLS }}
+      {...ariaAttributes}
+      onClick={() => onOpen(r.invoice_id)}
+      className={`grid items-center cursor-pointer transition-colors duration-200 hover:bg-primary/[0.04] ${r.profit < 0 ? "bg-rose-500/[0.03]" : ""} ${isTop ? "bg-gradient-to-r from-amber-500/[0.04] via-transparent to-transparent" : ""}`}
+      title={t("عرض تفاصيل الحساب", "Show calculation details")}
+    >
+      <div className="px-3 py-3 text-center">
+        {medal ? (
+          <div className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${medal.cls}`}>{medal.label}</div>
+        ) : (
+          <span className="text-[11px] text-muted-foreground/60 tabular-nums font-mono">{index + 1}</span>
+        )}
+      </div>
+      <div className="px-3 py-3">
+        <div className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-primary underline-offset-2 hover:underline">
+          <Receipt className="h-3.5 w-3.5 opacity-70" />
+          {r.invoice_number}
+        </div>
+      </div>
+      <div className="px-3 py-3">
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span className="tabular-nums">{fmtDate(r.created_at, lang)}</span>
+        </div>
+      </div>
+      <div className="px-3 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+            {(r.customer_name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+          </div>
+          <span className="truncate text-sm">{r.customer_name ?? "—"}</span>
+        </div>
+      </div>
+      <div className="px-3 py-3 text-end tabular-nums">
+        <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-xs font-semibold">{fmtNumber(r.items, lang)}</span>
+      </div>
+      <div className="px-3 py-3 text-end tabular-nums font-medium">{fmtMoney(r.revenue, "EGP", lang)}</div>
+      <div className="px-3 py-3 text-end tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</div>
+      <div className="px-3 py-3 text-end">
+        <div className="flex flex-col items-end gap-1">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums border ${r.profit >= 0 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"}`}>
+            {r.profit >= 0 ? <TrendingUp className="h-3 w-3" /> : <ArrowRight className="h-3 w-3 rotate-90" />}
+            {fmtMoney(r.profit, "EGP", lang)}
+          </span>
+          <div className="w-24 h-1 rounded-full bg-muted/50 overflow-hidden">
+            <div className={`h-full ${r.profit >= 0 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" : "bg-gradient-to-r from-rose-600 to-rose-400"}`} style={{ width: `${profitBarPct}%` }} />
+          </div>
+        </div>
+      </div>
+      <div className="px-3 py-3 text-end">
+        <div className="flex flex-col items-end gap-1">
+          <MarginPillCmp margin={r.margin} size="sm" />
+          <div className="w-20 h-1 rounded-full bg-muted/50 overflow-hidden">
+            <div className={`h-full ${mt.bar}`} style={{ width: `${marginPct}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 
 function ProfitsPage() {
   const { user } = useAuth();
@@ -353,6 +463,8 @@ function ProfitsPage() {
   useBatchedRealtimeTables(
     ["invoices", "invoice_items"],
     () => loadItems(),
+    [],
+    { debounceMs: 2500, maxWaitMs: 6000 },
   );
   useBatchedRealtimeTables(
     ["purchase_orders", "purchase_order_items", "profit_cost_overrides"],
@@ -360,15 +472,57 @@ function ProfitsPage() {
       if (table === "profit_cost_overrides") loadOverrides();
       else loadCostBook();
     },
+    [],
+    { debounceMs: 2500, maxWaitMs: 6000 },
   );
   useRealtimeTable("products", () => loadProducts());
   useRealtimeTable("customers", () => loadCustomers());
 
-  // Live toast when an invoice's status changes (paid, cancelled, …). Chart
-  // and tables refresh via the batched hook above; this only surfaces the
-  // event to the user so they know why numbers just moved.
+  // Live toast when invoice statuses change. Events are BUFFERED for a few
+  // seconds and coalesced into a single summary toast so that a burst of
+  // updates (e.g. bulk operations) doesn't flood the UI or thrash the chart.
   useEffect(() => {
     if (!user) return;
+    type Ev = { num: string; prev: string; next: string; at: number };
+    const buffer: Ev[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const FLUSH_MS = 4000;
+
+    const flush = () => {
+      flushTimer = null;
+      if (buffer.length === 0) return;
+      const events = buffer.splice(0, buffer.length);
+      // Group by outcome bucket
+      const byNext = new Map<string, number>();
+      let successCount = 0, errorCount = 0;
+      for (const e of events) {
+        byNext.set(e.next, (byNext.get(e.next) ?? 0) + 1);
+        if (e.next === "paid") successCount++;
+        else if (e.next === "cancelled" || e.next === "void") errorCount++;
+      }
+      if (events.length === 1) {
+        const e = events[0];
+        const tone = e.next === "cancelled" || e.next === "void" ? "error" : e.next === "paid" ? "success" : "info";
+        const msg = lang === "ar" ? `فاتورة ${e.num}: ${e.prev} → ${e.next}` : `Invoice ${e.num}: ${e.prev} → ${e.next}`;
+        const opts = { description: lang === "ar" ? "تم تحديث المخطط والجدول تلقائيًا." : "Chart and table auto-updated." };
+        if (tone === "success") toast.success(msg, opts);
+        else if (tone === "error") toast.error(msg, opts);
+        else toast.info(msg, opts);
+        return;
+      }
+      // Aggregated summary
+      const parts = Array.from(byNext.entries()).map(([k, n]) => lang === "ar" ? `${n} ${k}` : `${n} ${k}`);
+      const title = lang === "ar"
+        ? `تحديث ${events.length} فاتورة`
+        : `${events.length} invoices updated`;
+      const desc = parts.join(lang === "ar" ? " · " : " · ");
+      const tone = errorCount > successCount ? "error" : successCount > 0 ? "success" : "info";
+      const opts = { description: desc };
+      if (tone === "success") toast.success(title, opts);
+      else if (tone === "error") toast.error(title, opts);
+      else toast.info(title, opts);
+    };
+
     const channel = supabase
       .channel("profits-invoice-status")
       .on(
@@ -378,22 +532,18 @@ function ProfitsPage() {
           const prev = payload.old?.status;
           const next = payload.new?.status;
           if (!prev || !next || prev === next) return;
-          const num = payload.new?.invoice_number ?? "—";
-          const tone =
-            next === "cancelled" || next === "void" ? "error" :
-            next === "paid" ? "success" : "info";
-          const msg = lang === "ar"
-            ? `فاتورة ${num}: ${prev} → ${next}`
-            : `Invoice ${num}: ${prev} → ${next}`;
-          const opts = { description: lang === "ar" ? "تم تحديث المخطط والجدول تلقائيًا." : "Chart and table auto-updated." };
-          if (tone === "success") toast.success(msg, opts);
-          else if (tone === "error") toast.error(msg, opts);
-          else toast.info(msg, opts);
+          buffer.push({ num: payload.new?.invoice_number ?? "—", prev, next, at: Date.now() });
+          if (flushTimer) clearTimeout(flushTimer);
+          flushTimer = setTimeout(flush, FLUSH_MS);
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (flushTimer) { clearTimeout(flushTimer); flush(); }
+      supabase.removeChannel(channel);
+    };
   }, [user, lang]);
+
 
   const openOvHistory = async (p: Product) => {
     setOvHistoryOpen(p);
@@ -2760,6 +2910,72 @@ function ProfitsPage() {
             </div>
           </div>
 
+          {visibleInvoices.length > 60 ? (
+            /* ==== Virtualized view (react-window) for large lists ==== */
+            <div className="overflow-x-auto">
+              <div className="min-w-[920px]">
+                {/* Header */}
+                <div
+                  className="grid gap-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/90 font-bold border-b border-primary/15"
+                  style={{ gridTemplateColumns: "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)" }}
+                >
+                  <div className="px-3 py-3 text-center">#</div>
+                  <div className="px-3 py-3 text-start">{t("الفاتورة", "Invoice")}</div>
+                  <div className="px-3 py-3 text-start">{t("التاريخ", "Date")}</div>
+                  <div className="px-3 py-3 text-start">{t("العميل", "Customer")}</div>
+                  <div className="px-3 py-3 text-end">{t("القطع", "Items")}</div>
+                  <div className="px-3 py-3 text-end">{t("البيع", "Revenue")}</div>
+                  <div className="px-3 py-3 text-end">{t("التكلفة", "Cost")}</div>
+                  <div className="px-3 py-3 text-end">{t("صافي الربح", "Profit")}</div>
+                  <div className="px-3 py-3 text-end">{t("هامش %", "Margin")}</div>
+                </div>
+                {/* Body */}
+                <List
+                  rowCount={visibleInvoices.length}
+                  rowHeight={84}
+                  defaultHeight={Math.min(560, Math.max(320, visibleInvoices.length * 84))}
+                  overscanCount={8}
+                  className="divide-y divide-border/40"
+                  rowProps={{
+                    rows: visibleInvoices,
+                    lang,
+                    t,
+                    maxAbs: invMaxAbsProfit,
+                    onOpen: (id: string) => setInvoiceDetailOpen(id),
+                    medalOf: invRankMedal,
+                    toneOf: marginTone,
+                    MarginPillCmp: MarginPill,
+                  }}
+                  rowComponent={VirtualInvoiceRow}
+                />
+                {/* Footer with load more / show all — outside virtual list */}
+                {invHasMore && (
+                  <div className="px-3 py-4 text-center bg-gradient-to-b from-transparent to-primary/[0.03] border-t border-border/40">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInvPageSize((n) => n + 25)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 hover:border-primary/60 transition"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                        {t(`تحميل 25 المزيد (${rankedInvoices.length - visibleInvoices.length} متبقية)`, `Load 25 more (${rankedInvoices.length - visibleInvoices.length} remaining)`)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInvPageSize(rankedInvoices.length)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+                      >
+                        {t("عرض الكل", "Show all")}
+                      </button>
+                    </div>
+                    <div className="mt-1.5 text-[10px] text-muted-foreground/70">
+                      {t("عرض افتراضي (Virtualization) مفعّل لأداء أسرع", "Virtualized view enabled for faster rendering")}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-sm">
               <thead>
@@ -2879,6 +3095,7 @@ function ProfitsPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
         );
       })()}
