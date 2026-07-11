@@ -325,10 +325,10 @@ function Dashboard() {
                 step="0.01"
                 value={fxInput}
                 onChange={(e) => setFxInput(e.target.value)}
-                className="h-8 min-w-0 text-xs tabular-nums"
+                className="h-8 min-w-0 border-[#c9a84c]/30 bg-black/60 text-xs tabular-nums text-[#f5e7b8] placeholder:text-white/40 focus-visible:ring-[#c9a84c]/60"
                 aria-label={lang === "ar" ? "سعر الدولار" : "USD rate"}
               />
-              <Button size="sm" variant="outline" className="h-8 shrink-0 px-3 text-xs" disabled={savingFx} onClick={saveFxRate}>
+              <Button size="sm" variant="outline" className="h-8 shrink-0 border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 text-xs font-bold text-[#f5e7b8] hover:bg-[#c9a84c]/20 hover:text-[#f5e7b8]" disabled={savingFx} onClick={saveFxRate}>
                 {lang === "ar" ? "تطبيق" : "Apply"}
               </Button>
             </div>
