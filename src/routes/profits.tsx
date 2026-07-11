@@ -2136,17 +2136,17 @@ function ProfitsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {rows.list.length === 0 ? (
+                {displayRows.length === 0 ? (
                   <tr><td colSpan={10} className="px-3 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <div className="h-12 w-12 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center">
                         <BookOpen className="h-5 w-5 text-primary/60" />
                       </div>
-                      <div className="text-sm font-medium">{t("لا توجد بيانات في هذا النطاق", "No data in this range")}</div>
+                      <div className="text-sm font-medium">{ptSearch ? t("لا نتائج مطابقة للبحث", "No matching results") : t("لا توجد بيانات في هذا النطاق", "No data in this range")}</div>
                       <div className="text-[11px]">{t("جرّب تعديل الفلاتر أو النطاق الزمني", "Try adjusting filters or the date range")}</div>
                     </div>
                   </td></tr>
-                ) : rows.list.map((r, idx) => {
+                ) : displayRows.map((r, idx) => {
                   const p = r.product;
                   const e = p ? editing[p.id] : undefined;
                   const srcLabel = r.costSourceUsed === "override" ? t("تعديل يدوي", "Manual override")
@@ -2164,7 +2164,8 @@ function ProfitsPage() {
                     : r.costSourceUsed === "latest_po"
                     ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25"
                     : "bg-muted text-muted-foreground border-border";
-                  const medal = r.qty > 0 ? rankMedal(idx) : null;
+                  const rank = profitRankIndex.get(r.product_id);
+                  const medal = r.qty > 0 ? rankMedal(rank) : null;
                   const isTop = medal !== null;
                   const profitBarPct = Math.min(100, (Math.abs(r.profit) / maxAbsProfit) * 100);
                   const marginPct = Math.max(0, Math.min(100, r.margin));
@@ -2180,7 +2181,7 @@ function ProfitsPage() {
                       </td>
 
                       <td className="px-3 py-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                        <button type="button" onClick={() => setProductDetailId(r.product_id)} className="flex items-center gap-3 min-w-0 text-start hover:text-primary transition-colors" title={t("عرض تفاصيل المنتج", "View product details")}>
                           <div className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-muted transition-transform duration-200 group-hover:scale-105 ${isTop ? "ring-2 ring-amber-400/50 border-amber-400/40 shadow-[0_0_12px_-2px_rgba(234,179,8,0.4)]" : "border-border/60"}`}>
                             {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full flex items-center justify-center text-muted-foreground/40 text-[10px]">—</div>}
                           </div>
