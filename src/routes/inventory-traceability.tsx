@@ -85,7 +85,12 @@ function Traceability() {
   // Stock levels tab
   const [stockSearch, setStockSearch] = useState("");
   const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
+  const [stockSortBy, setStockSortBy] = useState<"qty" | "movement">("qty");
   const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
+  const [stockMovement, setStockMovement] = useState<"all" | "moving" | "stagnant">("all");
+  const [stockTopN, setStockTopN] = useState<0 | 10 | 20 | 50>(0);
+  const [stockMinQty, setStockMinQty] = useState<string>("");
+  const [stockMaxQty, setStockMaxQty] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [logsShown, setLogsShown] = useState(50);
   useEffect(() => { setLogsShown(50); }, [selectedProduct?.id]);
@@ -307,32 +312,46 @@ function Traceability() {
       if (!lastMoveMap.has(l.product_id)) lastMoveMap.set(l.product_id, l.created_at);
     }
     const q = stockSearch.trim().toLowerCase();
+    const minQ = stockMinQty.trim() === "" ? null : Number(stockMinQty);
+    const maxQ = stockMaxQty.trim() === "" ? null : Number(stockMaxQty);
     const rows = products.map((p) => {
       const qty = Number(p.stock_quantity ?? 0);
       const threshold = Number(p.low_stock_threshold ?? 0);
       let bucket: "in" | "low" | "out" = "in";
       if (qty <= 0) bucket = "out";
       else if (threshold > 0 && qty <= threshold) bucket = "low";
+      const moved30d = moveMap.get(p.id) ?? 0;
       return {
         product: p,
         qty,
         threshold,
         bucket,
-        moved30d: moveMap.get(p.id) ?? 0,
+        moved30d,
+        movement: (moved30d > 0 ? "moving" : "stagnant") as "moving" | "stagnant",
         lastMoveAt: lastMoveMap.get(p.id) ?? null,
       };
     });
     const filtered = rows
       .filter((r) => stockOnly === "all" || r.bucket === stockOnly)
+      .filter((r) => stockMovement === "all" || r.movement === stockMovement)
+      .filter((r) => minQ === null || r.qty >= minQ)
+      .filter((r) => maxQ === null || r.qty <= maxQ)
       .filter((r) =>
         !q ||
         r.product.name?.toLowerCase().includes(q) ||
         (r.product.serial_number ?? "").toLowerCase().includes(q) ||
         (r.product.color ?? "").toLowerCase().includes(q),
       );
-    filtered.sort((a, b) => (stockSort === "desc" ? b.qty - a.qty : a.qty - b.qty));
-    return filtered;
-  }, [products, logs, stockSearch, stockSort, stockOnly]);
+    filtered.sort((a, b) => {
+      const av = stockSortBy === "movement" ? a.moved30d : a.qty;
+      const bv = stockSortBy === "movement" ? b.moved30d : b.qty;
+      return stockSort === "desc" ? bv - av : av - bv;
+    });
+    const limited = stockTopN > 0 ? filtered.slice(0, stockTopN) : filtered;
+    const maxQty = Math.max(1, ...limited.map((r) => r.qty));
+    const maxMoved = Math.max(1, ...limited.map((r) => r.moved30d));
+    return limited.map((r, idx) => ({ ...r, rank: idx + 1, maxQty, maxMoved }));
+  }, [products, logs, stockSearch, stockSort, stockSortBy, stockOnly, stockMovement, stockMinQty, stockMaxQty, stockTopN]);
 
 
   // === Audit timeline per product ===
@@ -772,7 +791,32 @@ function Traceability() {
 
         {/* === Stock levels tab === */}
         <TabsContent value="stock" className="space-y-3">
-          <div className="rounded-2xl border bg-card p-3 sm:p-4">
+          {/* Luxury KPI strip */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {(() => {
+              const totalQty = products.reduce((s, p) => s + Number(p.stock_quantity ?? 0), 0);
+              const inCount = products.filter((p) => Number(p.stock_quantity ?? 0) > Number(p.low_stock_threshold ?? 0)).length;
+              const lowCount = products.filter((p) => { const q = Number(p.stock_quantity ?? 0); const t = Number(p.low_stock_threshold ?? 0); return q > 0 && t > 0 && q <= t; }).length;
+              const outCount = products.filter((p) => Number(p.stock_quantity ?? 0) <= 0).length;
+              const movingCount = products.filter((p) => (stockRows.find(r => r.product.id === p.id))?.moved30d ?? 0).length;
+              const kpi = [
+                { label: isAr ? "إجمالي المنتجات" : "Products", value: products.length, cls: "from-amber-500/20 to-amber-500/5 border-amber-500/30 text-amber-700" },
+                { label: isAr ? "إجمالي القطع" : "Total units", value: totalQty, cls: "from-primary/25 to-primary/5 border-primary/30 text-primary" },
+                { label: isAr ? "متوفر" : "In stock", value: inCount, cls: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/30 text-emerald-700" },
+                { label: isAr ? "منخفض" : "Low", value: lowCount, cls: "from-amber-500/25 to-amber-500/5 border-amber-500/30 text-amber-700" },
+                { label: isAr ? "نافد" : "Out", value: outCount, cls: "from-rose-500/25 to-rose-500/5 border-rose-500/30 text-rose-700" },
+              ];
+              return kpi.map((k, i) => (
+                <div key={i} className={`rounded-2xl border bg-gradient-to-br ${k.cls} p-3 transition-all hover:scale-[1.02] hover:shadow-md`}>
+                  <div className="text-[11px] opacity-80">{k.label}</div>
+                  <div className="text-2xl font-bold tabular-nums mt-0.5">{k.value.toLocaleString()}</div>
+                </div>
+              ));
+            })()}
+          </div>
+
+          <div className="rounded-2xl border bg-card p-3 sm:p-4 shadow-sm">
+            {/* Search + status + sort direction */}
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -784,12 +828,19 @@ function Traceability() {
                 />
               </div>
               <Select value={stockOnly} onValueChange={(v) => setStockOnly(v as any)}>
-                <SelectTrigger className="w-full md:w-44"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full md:w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{isAr ? "كل المنتجات" : "All products"}</SelectItem>
+                  <SelectItem value="all">{isAr ? "كل الحالات" : "All statuses"}</SelectItem>
                   <SelectItem value="in">{isAr ? "متوفر" : "In stock"}</SelectItem>
                   <SelectItem value="low">{isAr ? "منخفض" : "Low stock"}</SelectItem>
                   <SelectItem value="out">{isAr ? "نافد" : "Out of stock"}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={stockSortBy} onValueChange={(v) => setStockSortBy(v as any)}>
+                <SelectTrigger className="w-full md:w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="qty">{isAr ? "ترتيب حسب: الكمية" : "Sort by: Quantity"}</SelectItem>
+                  <SelectItem value="movement">{isAr ? "ترتيب حسب: الحركة (30ي)" : "Sort by: Movement (30d)"}</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -798,65 +849,144 @@ function Traceability() {
                 className="gap-2"
               >
                 {stockSort === "desc" ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpWideNarrow className="h-4 w-4" />}
-                {stockSort === "desc"
-                  ? (isAr ? "أعلى كمية أولاً" : "Highest first")
-                  : (isAr ? "أقل كمية أولاً" : "Lowest first")}
+                {stockSort === "desc" ? (isAr ? "الأعلى أولاً" : "Highest first") : (isAr ? "الأقل أولاً" : "Lowest first")}
               </Button>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              <div className="rounded-lg border p-2"><div className="text-muted-foreground">{isAr ? "إجمالي المنتجات" : "Products"}</div><div className="text-lg font-semibold">{products.length}</div></div>
-              <div className="rounded-lg border p-2 bg-emerald-500/5"><div className="text-emerald-700">{isAr ? "متوفر" : "In stock"}</div><div className="text-lg font-semibold">{products.filter((p) => Number(p.stock_quantity ?? 0) > Number(p.low_stock_threshold ?? 0)).length}</div></div>
-              <div className="rounded-lg border p-2 bg-amber-500/5"><div className="text-amber-700">{isAr ? "منخفض" : "Low"}</div><div className="text-lg font-semibold">{products.filter((p) => { const q = Number(p.stock_quantity ?? 0); const t = Number(p.low_stock_threshold ?? 0); return q > 0 && t > 0 && q <= t; }).length}</div></div>
-              <div className="rounded-lg border p-2 bg-rose-500/5"><div className="text-rose-700">{isAr ? "نافد" : "Out"}</div><div className="text-lg font-semibold">{products.filter((p) => Number(p.stock_quantity ?? 0) <= 0).length}</div></div>
+            {/* Smart preset chips */}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {[
+                { key: "top10-qty", label: isAr ? "أعلى 10 مخزون" : "Top 10 stock", on: () => { setStockSortBy("qty"); setStockSort("desc"); setStockTopN(10); setStockOnly("all"); setStockMovement("all"); } },
+                { key: "bot10-qty", label: isAr ? "أقل 10 مخزون" : "Bottom 10 stock", on: () => { setStockSortBy("qty"); setStockSort("asc"); setStockTopN(10); setStockOnly("in"); setStockMovement("all"); } },
+                { key: "top10-move", label: isAr ? "الأكثر حركة" : "Most moving", on: () => { setStockSortBy("movement"); setStockSort("desc"); setStockTopN(10); setStockMovement("moving"); setStockOnly("all"); } },
+                { key: "stagnant", label: isAr ? "راكد (بدون حركة)" : "Stagnant", on: () => { setStockMovement("stagnant"); setStockTopN(0); setStockOnly("all"); setStockSortBy("qty"); setStockSort("desc"); } },
+                { key: "low", label: isAr ? "قارب على النفاد" : "About to run out", on: () => { setStockOnly("low"); setStockTopN(0); setStockMovement("all"); setStockSortBy("qty"); setStockSort("asc"); } },
+                { key: "out", label: isAr ? "نافد الآن" : "Out now", on: () => { setStockOnly("out"); setStockTopN(0); setStockMovement("all"); } },
+                { key: "reset", label: isAr ? "مسح" : "Reset", on: () => { setStockOnly("all"); setStockMovement("all"); setStockTopN(0); setStockMinQty(""); setStockMaxQty(""); setStockSortBy("qty"); setStockSort("desc"); setStockSearch(""); }, muted: true },
+              ].map((c) => (
+                <button
+                  key={c.key}
+                  onClick={c.on}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all hover:scale-105 ${c.muted ? "bg-muted/50 text-muted-foreground border-border" : "bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/20"}`}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
 
-            <div className="mt-3 overflow-x-auto">
+            {/* Advanced qty range + movement + Top N */}
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">{isAr ? "أدنى كمية" : "Min qty"}</label>
+                <Input type="number" min={0} value={stockMinQty} onChange={(e) => setStockMinQty(e.target.value)} placeholder="0" className="h-8 text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">{isAr ? "أقصى كمية" : "Max qty"}</label>
+                <Input type="number" min={0} value={stockMaxQty} onChange={(e) => setStockMaxQty(e.target.value)} placeholder="∞" className="h-8 text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">{isAr ? "الحركة" : "Movement"}</label>
+                <Select value={stockMovement} onValueChange={(v) => setStockMovement(v as any)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{isAr ? "الكل" : "All"}</SelectItem>
+                    <SelectItem value="moving">{isAr ? "متحرك (30ي)" : "Moving (30d)"}</SelectItem>
+                    <SelectItem value="stagnant">{isAr ? "راكد" : "Stagnant"}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">{isAr ? "عرض" : "Show"}</label>
+                <Select value={String(stockTopN)} onValueChange={(v) => setStockTopN(Number(v) as any)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">{isAr ? "الكل" : "All"}</SelectItem>
+                    <SelectItem value="10">{isAr ? "أعلى/أقل 10" : "Top/Bottom 10"}</SelectItem>
+                    <SelectItem value="20">{isAr ? "أعلى/أقل 20" : "Top/Bottom 20"}</SelectItem>
+                    <SelectItem value="50">{isAr ? "أعلى/أقل 50" : "Top/Bottom 50"}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-3 text-xs text-muted-foreground flex items-center justify-between">
+              <span>{isAr ? `النتائج: ${stockRows.length}` : `Results: ${stockRows.length}`}</span>
+              <span className="hidden md:inline">{isAr ? "اضغط على أي صف لعرض تفاصيل المنتج" : "Click any row for product details"}</span>
+            </div>
+
+            {/* Luxury table */}
+            <div className="mt-2 overflow-x-auto rounded-xl border bg-gradient-to-b from-card to-muted/20">
               <table className="w-full text-sm">
-                <thead className="text-xs text-muted-foreground">
+                <thead className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/40">
                   <tr className="border-b">
+                    <th className="text-center py-2 px-2 w-10">#</th>
                     <th className="text-start py-2 px-2">{isAr ? "المنتج" : "Product"}</th>
                     <th className="text-start py-2 px-2">{isAr ? "الكود" : "Code"}</th>
                     <th className="text-end py-2 px-2">{isAr ? "الكمية" : "Qty"}</th>
                     <th className="text-end py-2 px-2">{isAr ? "حد التنبيه" : "Threshold"}</th>
-                    <th className="text-end py-2 px-2">{isAr ? "حركة 30 يوم" : "30-day movement"}</th>
-                    <th className="text-start py-2 px-2">{isAr ? "آخر حركة" : "Last movement"}</th>
+                    <th className="text-end py-2 px-2">{isAr ? "حركة 30ي" : "30d move"}</th>
+                    <th className="text-start py-2 px-2">{isAr ? "آخر حركة" : "Last move"}</th>
                     <th className="text-start py-2 px-2">{isAr ? "الحالة" : "Status"}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stockRows.length === 0 ? (
-                    <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</td></tr>
-                  ) : stockRows.map((r) => (
-                    <tr key={r.product.id} className="border-b hover:bg-muted/40 cursor-pointer" onClick={() => setSelectedProduct(r.product)}>
-                      <td className="py-2 px-2">
-                        <div className="font-medium">{r.product.name}</div>
-                        {r.product.color && <div className="text-xs text-muted-foreground">{r.product.color}</div>}
-                      </td>
-                      <td className="py-2 px-2 font-mono text-xs">{r.product.serial_number ?? "—"}</td>
-                      <td className="py-2 px-2 text-end tabular-nums font-semibold">{r.qty}</td>
-                      <td className="py-2 px-2 text-end tabular-nums text-muted-foreground">{r.threshold || "—"}</td>
-                      <td className="py-2 px-2 text-end tabular-nums">
-                        {r.moved30d > 0 ? (
-                          <span className="text-emerald-700">{r.moved30d}</span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-2 text-xs text-muted-foreground">{r.lastMoveAt ? fmtDateTime(r.lastMoveAt, lang) : "—"}</td>
-                      <td className="py-2 px-2">
-                        {r.bucket === "out" ? (
-                          <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/30">{isAr ? "نافد" : "Out"}</Badge>
-                        ) : r.bucket === "low" ? (
-                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30">{isAr ? "منخفض" : "Low"}</Badge>
-                        ) : r.moved30d === 0 ? (
-                          <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/30">{isAr ? "راكد" : "Stagnant"}</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">{isAr ? "متحرك" : "Moving"}</Badge>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                    <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">{isAr ? "لا توجد نتائج مطابقة للفلاتر" : "No results match the filters"}</td></tr>
+                  ) : stockRows.map((r) => {
+                    const barField = stockSortBy === "movement" ? r.moved30d : r.qty;
+                    const barMax = stockSortBy === "movement" ? r.maxMoved : r.maxQty;
+                    const pct = Math.max(2, Math.round((barField / barMax) * 100));
+                    const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : null;
+                    return (
+                      <tr key={r.product.id} className="border-b hover:bg-primary/5 cursor-pointer transition-colors group" onClick={() => setSelectedProduct(r.product)}>
+                        <td className="py-2 px-2 text-center">
+                          {medal ? <span className="text-lg">{medal}</span> : <span className="text-xs text-muted-foreground tabular-nums">{r.rank}</span>}
+                        </td>
+                        <td className="py-2 px-2">
+                          <div className="font-medium group-hover:text-primary transition-colors">{r.product.name}</div>
+                          {r.product.color && <div className="text-xs text-muted-foreground">{r.product.color}</div>}
+                        </td>
+                        <td className="py-2 px-2 font-mono text-xs text-muted-foreground">{r.product.serial_number ?? "—"}</td>
+                        <td className="py-2 px-2 text-end">
+                          <div className="tabular-nums font-bold text-base">{r.qty.toLocaleString()}</div>
+                          {stockSortBy === "qty" && (
+                            <div className="mt-1 h-1.5 w-24 ms-auto rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${r.bucket === "out" ? "bg-rose-500" : r.bucket === "low" ? "bg-amber-500" : "bg-gradient-to-r from-primary to-amber-400"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2 px-2 text-end tabular-nums text-muted-foreground">{r.threshold || "—"}</td>
+                        <td className="py-2 px-2 text-end">
+                          <div className={`tabular-nums font-semibold ${r.moved30d > 0 ? "text-emerald-700" : "text-muted-foreground"}`}>{r.moved30d}</div>
+                          {stockSortBy === "movement" && (
+                            <div className="mt-1 h-1.5 w-24 ms-auto rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${pct}%` }} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2 px-2 text-xs text-muted-foreground whitespace-nowrap">{r.lastMoveAt ? fmtDateTime(r.lastMoveAt, lang) : "—"}</td>
+                        <td className="py-2 px-2">
+                          <div className="flex flex-col gap-1">
+                            {r.bucket === "out" ? (
+                              <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/30 w-fit">{isAr ? "نافد" : "Out"}</Badge>
+                            ) : r.bucket === "low" ? (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 w-fit">{isAr ? "منخفض" : "Low"}</Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 w-fit">{isAr ? "متوفر" : "In stock"}</Badge>
+                            )}
+                            {r.moved30d === 0 ? (
+                              <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/30 w-fit text-[10px]">{isAr ? "راكد" : "Stagnant"}</Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 w-fit text-[10px]">{isAr ? "متحرك" : "Moving"}</Badge>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
