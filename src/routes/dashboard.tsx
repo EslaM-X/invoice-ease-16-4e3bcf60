@@ -37,8 +37,23 @@ function Dashboard() {
   const [recent, setRecent] = useState<any[]>([]);
   const [fxInput, setFxInput] = useState("50.5");
   const [savingFx, setSavingFx] = useState(false);
+  const [avatar, setAvatar] = useState<{ url: string | null; name: string | null }>({ url: null, name: null });
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("avatar_url, display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cancelled && data) setAvatar({ url: data.avatar_url ?? null, name: data.display_name ?? null });
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const load = async (forceRefresh = false) => {
     const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
