@@ -537,7 +537,7 @@ function ProfitsPage() {
         margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
       },
     };
-  }, [items, productById, search, products, selectedIds, invoiceFactor, costOf]);
+  }, [items, productById, search, products, selectedIds, invoiceFactor, costOf, costSourceOf]);
 
   const totalsMatch = useMemo(() => {
     if (selectedIds.size > 0 || search.trim()) return null;
