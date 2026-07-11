@@ -832,6 +832,46 @@ function ProfitsPage() {
         </div>
       </div>
 
+      {/* Cost source legend */}
+      <div className="rounded-2xl border bg-card/50 p-3 sm:p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {t("دليل اختصارات مصدر التكلفة", "Cost Source Abbreviations")}
+          </h4>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="flex items-start gap-2 rounded-xl border bg-background/60 p-2.5">
+            <span className="mt-0.5 inline-flex items-center justify-center rounded border bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25 px-1.5 py-0.5 text-[10px] font-bold">WAC</span>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold">{t("متوسط مرجّح", "Weighted Avg")}</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">{t("متوسط تكلفة كل POs مرجّح بالكمية.", "Weighted average of all POs by quantity.")}</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 rounded-xl border bg-background/60 p-2.5">
+            <span className="mt-0.5 inline-flex items-center justify-center rounded border bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25 px-1.5 py-0.5 text-[10px] font-bold">LPO</span>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold">{t("آخر PO", "Latest PO")}</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">{t("سعر آخر أمر شراء تم استلامه.", "Latest received purchase order cost.")}</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 rounded-xl border bg-background/60 p-2.5">
+            <span className="mt-0.5 inline-flex items-center justify-center rounded border bg-muted text-muted-foreground border-border px-1.5 py-0.5 text-[10px] font-bold">CUR</span>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold">{t("التكلفة الحالية", "Current Cost")}</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">{t("سعر المنتج المحفوظ حاليًا.", "The product's stored cost price.")}</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 rounded-xl border bg-background/60 p-2.5">
+            <span className="mt-0.5 inline-flex items-center justify-center rounded border bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold">MAN</span>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold">{t("تعديل يدوي", "Manual Override")}</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">{t("تعديل مخصص من صفحة الأرباح للمشرفين.", "Admin override from the Profits page only.")}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Range filter */}
       <div className="rounded-2xl border bg-card p-3 sm:p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
