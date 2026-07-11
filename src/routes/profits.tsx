@@ -2538,15 +2538,19 @@ function ProfitsPage() {
           const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
           return mon.toISOString().slice(0, 10);
         };
-        const trendMap = new Map<string, number>();
+        const trendMap = new Map<string, { profit: number; revenue: number; qty: number }>();
         for (const r of filteredInvoices) {
           const k = bucketKey(r.created_at);
           if (!k) continue;
-          trendMap.set(k, (trendMap.get(k) ?? 0) + r.profit);
+          const cur = trendMap.get(k) ?? { profit: 0, revenue: 0, qty: 0 };
+          cur.profit += r.profit;
+          cur.revenue += r.revenue;
+          cur.qty += r.items;
+          trendMap.set(k, cur);
         }
         const invTrend = Array.from(trendMap.entries())
           .sort((a, b) => (a[0] > b[0] ? 1 : -1))
-          .map(([date, profit]) => ({ date, profit }));
+          .map(([date, v]) => ({ date, profit: v.profit, revenue: v.revenue, qty: v.qty, avg: v.qty > 0 ? v.revenue / v.qty : 0 }));
         const marginTone = (m: number) =>
           m >= 40 ? { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-gradient-to-r from-emerald-500 to-emerald-400" }
           : m >= 20 ? { text: "text-amber-600 dark:text-amber-300", bar: "bg-gradient-to-r from-amber-500 to-yellow-400" }
@@ -2727,9 +2731,24 @@ function ProfitsPage() {
                         <YAxis hide />
                         <Tooltip
                           cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
-                          contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8, fontSize: 11 }}
-                          formatter={(v: any) => [fmtMoney(Number(v), "EGP", lang), t("الربح", "Profit")]}
-                          labelFormatter={(l: any) => String(l)}
+                          content={({ active, payload }: any) => {
+                            if (!active || !payload || payload.length === 0) return null;
+                            const d = payload[0]?.payload as { date: string; profit: number; revenue: number; qty: number; avg: number };
+                            const label = invTrendMode === "week"
+                              ? t(`أسبوع ${d.date}`, `Week of ${d.date}`)
+                              : fmtDate(d.date, lang);
+                            return (
+                              <div className="rounded-lg border border-primary/30 bg-background/95 backdrop-blur px-2.5 py-2 shadow-xl text-[11px] min-w-[160px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+                                <div className="font-semibold text-primary border-b border-primary/15 pb-1 mb-1 tabular-nums">{label}</div>
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">{t("القطع", "Pieces")}</span><span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">{fmtNumber(d.qty, lang)}</span></div>
+                                  <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">{t("إجمالي البيع", "Revenue")}</span><span className="font-bold tabular-nums text-sky-600 dark:text-sky-300">{fmtMoney(d.revenue, "EGP", lang)}</span></div>
+                                  <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">{t("متوسط سعر القطعة", "Avg / pc")}</span><span className="font-bold tabular-nums text-foreground/80">{fmtMoney(d.avg, "EGP", lang)}</span></div>
+                                  <div className="flex items-center justify-between gap-3 border-t border-primary/15 pt-1 mt-1"><span className="text-muted-foreground">{t("الربح", "Profit")}</span><span className={`font-bold tabular-nums ${d.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(d.profit, "EGP", lang)}</span></div>
+                                </div>
+                              </div>
+                            );
+                          }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="2 2" />
                         <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#invTrendFill)" />
@@ -3095,10 +3114,60 @@ function ProfitsPage() {
 
       {/* Product detail sheet */}
       <Sheet open={!!productDetailId} onOpenChange={(o) => { if (!o) setProductDetailId(null); }}>
-        <SheetContent side={lang === "ar" ? "left" : "right"} className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side={lang === "ar" ? "left" : "right"} dir={lang === "ar" ? "rtl" : "ltr"} className="w-full sm:max-w-lg overflow-y-auto">
           {(() => {
             const r = productDetailId ? rows.list.find((x) => x.product_id === productDetailId) : null;
-            if (!r) return null;
+            if (!r) {
+              // Skeleton while data is loading / not yet materialized
+              return (
+                <div className="space-y-4" aria-busy="true" aria-live="polite">
+                  <div className="flex items-start gap-3">
+                    <div className="skeleton-noir h-16 w-16 rounded-xl" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <div className="skeleton-noir h-4 w-3/4" />
+                      <div className="flex gap-1.5">
+                        <div className="skeleton-noir h-4 w-14 rounded" />
+                        <div className="skeleton-noir h-4 w-20 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-primary/15 p-3 space-y-2">
+                        <div className="skeleton-noir h-2 w-16" />
+                        <div className="skeleton-noir h-5 w-24" style={{ animationDelay: `${i * 80}ms` }} />
+                      </div>
+                    ))}
+                    <div className="col-span-2 rounded-xl border border-primary/15 p-3 space-y-2">
+                      <div className="skeleton-noir h-2 w-20" />
+                      <div className="skeleton-noir h-6 w-40" />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 p-3 space-y-2">
+                    <div className="skeleton-noir h-3 w-24" />
+                    <div className="flex flex-wrap gap-2">
+                      <div className="skeleton-noir h-7 flex-1 min-w-[160px] rounded-full" />
+                      <div className="skeleton-noir h-7 w-40 rounded-full" />
+                      <div className="skeleton-noir h-7 w-28 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-primary/15 p-3">
+                    <div className="skeleton-noir h-3 w-32 mb-2" />
+                    <div className="skeleton-noir h-32 w-full rounded" />
+                  </div>
+                  <div className="rounded-xl border border-primary/15 p-3 space-y-2">
+                    <div className="skeleton-noir h-3 w-28" />
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-2 py-1.5">
+                        <div className="skeleton-noir h-3 w-16" />
+                        <div className="skeleton-noir h-3 flex-1" />
+                        <div className="skeleton-noir h-3 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
             const p = r.product;
             const stock = Number(p?.stock_quantity ?? 0);
             const allProductLines = items.filter((it) => it.product_id === r.product_id && !isShippingLine(it));
@@ -3286,19 +3355,24 @@ function ProfitsPage() {
                           <YAxis yAxisId="qty" orientation="right" hide />
                           <Tooltip
                             cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
-                            content={({ active, payload, label }: any) => {
+                            content={({ active, payload }: any) => {
                               if (!active || !payload || payload.length === 0) return null;
                               const d = payload[0]?.payload as { date: string; revenue: number; qty: number };
+                              const avg = d.qty > 0 ? d.revenue / d.qty : 0;
                               return (
-                                <div className="rounded-lg border border-primary/30 bg-background/95 px-2.5 py-2 shadow-lg text-[11px]">
-                                  <div className="font-semibold text-primary mb-1 tabular-nums">{d.date}</div>
+                                <div className="rounded-lg border border-primary/30 bg-background/95 backdrop-blur px-2.5 py-2 shadow-lg text-[11px] min-w-[170px]" dir={lang === "ar" ? "rtl" : "ltr"}>
+                                  <div className="font-semibold text-primary mb-1 tabular-nums border-b border-primary/15 pb-1">{fmtDate(d.date, lang)}</div>
                                   <div className="flex items-center justify-between gap-3">
-                                    <span className="text-muted-foreground">{t("القطع", "Qty")}</span>
+                                    <span className="text-muted-foreground">{t("القطع", "Pieces")}</span>
                                     <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">{fmtNumber(d.qty, lang)}</span>
                                   </div>
                                   <div className="flex items-center justify-between gap-3">
-                                    <span className="text-muted-foreground">{t("البيع", "Revenue")}</span>
+                                    <span className="text-muted-foreground">{t("إجمالي البيع", "Revenue")}</span>
                                     <span className="font-bold tabular-nums text-primary">{fmtMoney(d.revenue, "EGP", lang)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3 border-t border-primary/15 pt-1 mt-1">
+                                    <span className="text-muted-foreground">{t("متوسط سعر القطعة", "Avg / pc")}</span>
+                                    <span className="font-bold tabular-nums text-foreground/80">{fmtMoney(avg, "EGP", lang)}</span>
                                   </div>
                                 </div>
                               );
