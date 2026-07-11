@@ -467,31 +467,35 @@ function Traceability() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="lines">
-            <PackageCheck className="h-4 w-4 me-2" />
-            {isAr ? "تتبع سطور الفواتير" : "Invoice line tracing"}
-          </TabsTrigger>
-          <TabsTrigger value="per-product">
-            <BarChart3 className="h-4 w-4 me-2" />
-            {isAr ? "تقرير لكل منتج" : "Per-product report"}
-          </TabsTrigger>
-          <TabsTrigger value="validate">
-            <AlertTriangle className="h-4 w-4 me-2" />
-            {isAr ? "فحص التطابق" : "Validation"}
-            {mismatches.length > 0 && (
-              <Badge variant="destructive" className="ms-2">{mismatches.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="timeline">
-            <History className="h-4 w-4 me-2" />
-            {isAr ? "الجدول الزمني للمخزون" : "Inventory timeline"}
-          </TabsTrigger>
-          <TabsTrigger value="stock">
-            <Package className="h-4 w-4 me-2" />
-            {isAr ? "مستويات المخزون" : "Stock levels"}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="lines">
+              <PackageCheck className="h-4 w-4 me-2" />
+              {isAr ? "تتبع سطور الفواتير" : "Invoice line tracing"}
+            </TabsTrigger>
+            <TabsTrigger value="per-product">
+              <BarChart3 className="h-4 w-4 me-2" />
+              {isAr ? "تقرير لكل منتج" : "Per-product report"}
+            </TabsTrigger>
+            <TabsTrigger value="validate">
+              <AlertTriangle className="h-4 w-4 me-2" />
+              {isAr ? "فحص التطابق" : "Validation"}
+              {mismatches.length > 0 && (
+                <Badge variant="destructive" className="ms-2">{mismatches.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="timeline">
+              <History className="h-4 w-4 me-2" />
+              {isAr ? "الجدول الزمني للمخزون" : "Inventory timeline"}
+            </TabsTrigger>
+            <TabsTrigger value="stock" className="relative data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/20 data-[state=active]:to-amber-500/10">
+              <Package className="h-4 w-4 me-2" />
+              {isAr ? "مستويات المخزون" : "Stock levels"}
+              <span className="ms-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-500 to-primary text-white">{isAr ? "جديد" : "NEW"}</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
 
         {/* === Lines tab === */}
         <TabsContent value="lines" className="space-y-3">
