@@ -2986,6 +2986,7 @@ function ProfitsPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
         );
       })()}
