@@ -678,15 +678,45 @@ function Traceability() {
 
         {/* === Timeline tab === */}
         <TabsContent value="timeline" className="space-y-3">
-          <div className="relative max-w-md">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-              placeholder={isAr ? "فلتر باسم المنتج (مثلاً MIXER أو body)..." : "Filter by product name..."}
-              className="ps-9"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            <div className="relative md:col-span-2">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                placeholder={isAr ? "فلتر باسم المنتج..." : "Filter by product name..."}
+                className="ps-9"
+              />
+            </div>
+            <Select value={tlDirection} onValueChange={(v) => setTlDirection(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isAr ? "كل الحركات" : "All movements"}</SelectItem>
+                <SelectItem value="in">{isAr ? "زيادة (+)" : "Increase (+)"}</SelectItem>
+                <SelectItem value="out">{isAr ? "نقصان (−)" : "Decrease (−)"}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={tlKind} onValueChange={(v) => setTlKind(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isAr ? "كل المصادر" : "All sources"}</SelectItem>
+                <SelectItem value="po">{isAr ? "أمر شراء PO" : "Purchase order (PO)"}</SelectItem>
+                <SelectItem value="dr">{isAr ? "محضر استلام DR" : "Delivery receipt (DR)"}</SelectItem>
+                <SelectItem value="invoice">{isAr ? "فاتورة" : "Invoice"}</SelectItem>
+                <SelectItem value="reservation">{isAr ? "تنفيذ حجز" : "Reservation"}</SelectItem>
+                <SelectItem value="manual">{isAr ? "يدوي" : "Manual"}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-1">
+              <Input type="date" value={tlFrom} onChange={(e) => setTlFrom(e.target.value)} />
+              <Input type="date" value={tlTo} onChange={(e) => setTlTo(e.target.value)} />
+            </div>
           </div>
+          {(productFilter || tlDirection !== "all" || tlKind !== "all" || tlFrom || tlTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setProductFilter(""); setTlDirection("all"); setTlKind("all"); setTlFrom(""); setTlTo(""); }}>
+              <X className="h-3 w-3 me-1" /> {isAr ? "مسح الفلاتر" : "Clear filters"}
+            </Button>
+          )}
           <div className="rounded-lg border overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase">
