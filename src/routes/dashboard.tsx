@@ -217,23 +217,38 @@ function Dashboard() {
             <Link
               to="/settings"
               aria-label={lang === "ar" ? "الملف الشخصي" : "Profile"}
-              className="noir-press focus-gold group relative mx-auto sm:mx-0 inline-flex h-16 w-16 shrink-0 items-center justify-center"
+              className="noir-press focus-gold group relative mx-auto sm:mx-0 inline-flex h-20 w-20 shrink-0 items-center justify-center"
             >
-              <span aria-hidden="true" className="pointer-events-none absolute inset-[-6px] rounded-full bg-[conic-gradient(from_0deg,transparent,#c9a84c66,transparent_60%)] opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100 motion-reduce:hidden" />
+              <span aria-hidden="true" className="pointer-events-none absolute inset-[-7px] rounded-full bg-[conic-gradient(from_0deg,transparent,#c9a84c66,transparent_60%)] opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100 motion-reduce:hidden" />
               <span aria-hidden="true" className="pointer-events-none absolute inset-[-3px] rounded-full bg-[#c9a84c]/25 blur-md" />
-              <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-full border-2 border-[#c9a84c]/70 bg-[#0a0a0a] shadow-[0_8px_24px_-6px_rgba(201,168,76,0.55)] ring-2 ring-black/60 ring-offset-0">
-                {avatar.url ? (
-                  <img src={avatar.url} alt={avatar.name ?? displayName ?? "avatar"} className="h-full w-full object-cover" loading="lazy" />
-                ) : (
-                  <span className="text-lg font-bold tracking-wide text-[#f5e7b8]">
-                    {(avatar.name || displayName || (user as any)?.email || "U").toString().trim().charAt(0).toUpperCase()}
-                  </span>
+              <span className="relative grid h-20 w-20 place-items-center overflow-hidden rounded-full border-2 border-[#c9a84c]/70 bg-[#0a0a0a] shadow-[0_8px_24px_-6px_rgba(201,168,76,0.55)] ring-2 ring-black/60 ring-offset-0">
+                {/* Initial fallback / placeholder always underneath so there's no flash */}
+                <span className="absolute inset-0 grid place-items-center text-xl font-bold tracking-wide text-[#f5e7b8] bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]">
+                  {avatar.initial || (displayName || (user as any)?.email || "U").toString().trim().charAt(0).toUpperCase()}
+                </span>
+                {/* Shimmer skeleton while resolving */}
+                {avatar.loading && !avatar.url && (
+                  <span aria-hidden="true" className="absolute inset-0 animate-pulse bg-gradient-to-r from-[#161616] via-[#2a2416] to-[#161616] motion-reduce:animate-none" />
+                )}
+                {avatar.url && (
+                  <img
+                    src={avatar.url}
+                    alt={avatar.name ?? displayName ?? "avatar"}
+                    width={80}
+                    height={80}
+                    loading="eager"
+                    decoding="async"
+                    onLoad={() => setAvatarImgLoaded(true)}
+                    onError={() => setAvatarImgLoaded(true)}
+                    className={`relative h-full w-full object-cover transition-[opacity,filter] duration-500 ${avatarImgLoaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
+                  />
                 )}
               </span>
               <span aria-hidden="true" className="absolute -bottom-0.5 -end-0.5 grid h-4 w-4 place-items-center rounded-full border-2 border-[#0a0a0a] bg-emerald-500 shadow">
                 <span className="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-300 motion-reduce:hidden" />
               </span>
             </Link>
+
             <div aria-hidden="true" className="mx-auto h-px w-16 bg-gradient-to-r from-transparent via-[#c9a84c]/40 to-transparent sm:mx-0 sm:w-24 sm:self-end" />
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
             <button
