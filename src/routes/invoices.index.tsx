@@ -126,7 +126,16 @@ function InvoicesList() {
       setDelivProgress(progress);
     }
   };
-  useEffect(() => { load(); }, [user, from, to]);
+  // Debounce date range to avoid a re-query on every keystroke inside the date input.
+  const [fromDebounced, setFromDebounced] = useState(from);
+  const [toDebounced, setToDebounced] = useState(to);
+  useEffect(() => {
+    const h = setTimeout(() => { setFromDebounced(from); setToDebounced(to); }, 300);
+    return () => clearTimeout(h);
+  }, [from, to]);
+  useEffect(() => { load(); }, [user, fromDebounced, toDebounced]);
+  // Deferred text search — keeps the input responsive while filtering ~10k rows in memory.
+  const qDeferred = useDeferredValue(q);
   useBatchedRealtimeTables(["invoices", "delivery_receipts"], () => { load(); }, [user?.id]);
 
   const isClosed = (i: any) => {
