@@ -2612,15 +2612,63 @@ function ProfitsPage() {
             <div className="flex flex-col lg:flex-row lg:items-stretch gap-3">
               {/* Filters */}
               <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
-                <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
                   <Filter className="h-3.5 w-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
                     value={invSearch}
-                    onChange={(e) => setInvSearch(e.target.value)}
+                    onChange={(e) => { setInvSearch(e.target.value); setInvCustomerSuggestOpen(true); setInvCustomerHighlight(0); }}
+                    onFocus={() => setInvCustomerSuggestOpen(true)}
+                    onBlur={() => setTimeout(() => setInvCustomerSuggestOpen(false), 120)}
+                    onKeyDown={(e) => {
+                      if (!invCustomerSuggestOpen || invCustomerSuggestions.length === 0) return;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setInvCustomerHighlight((h) => Math.min(invCustomerSuggestions.length - 1, h + 1)); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setInvCustomerHighlight((h) => Math.max(0, h - 1)); }
+                      else if (e.key === "Enter") { e.preventDefault(); const pick = invCustomerSuggestions[invCustomerHighlight]; if (pick) { setInvSearch(pick); setInvCustomerSuggestOpen(false); } }
+                      else if (e.key === "Escape") { setInvCustomerSuggestOpen(false); }
+                    }}
                     placeholder={t("بحث برقم الفاتورة أو العميل…", "Search invoice # or customer…")}
                     className="w-full h-8 rounded-full border border-border/60 bg-background/60 ps-8 pe-3 text-xs focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={invCustomerSuggestOpen && invCustomerSuggestions.length > 0}
+                    aria-controls="inv-customer-suggest"
                   />
+                  {invCustomerSuggestOpen && invCustomerSuggestions.length > 0 && (
+                    <ul
+                      id="inv-customer-suggest"
+                      role="listbox"
+                      className="absolute z-30 mt-1 start-0 end-0 max-h-64 overflow-y-auto rounded-xl border border-primary/25 bg-background/95 backdrop-blur shadow-[0_10px_30px_-10px_rgba(0,0,0,0.4)] p-1"
+                    >
+                      {invCustomerSuggestions.map((name, i) => {
+                        const q = invSearch.trim();
+                        const idx = q ? name.toLowerCase().indexOf(q.toLowerCase()) : -1;
+                        return (
+                          <li key={name} role="option" aria-selected={i === invCustomerHighlight}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); setInvSearch(name); setInvCustomerSuggestOpen(false); }}
+                              onMouseEnter={() => setInvCustomerHighlight(i)}
+                              className={`w-full text-start px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-2 transition ${i === invCustomerHighlight ? "bg-primary/10 text-foreground" : "hover:bg-muted/60"}`}
+                            >
+                              <div className="h-5 w-5 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                                {name.trim().charAt(0).toUpperCase() || "?"}
+                              </div>
+                              <span className="truncate">
+                                {idx >= 0 ? (
+                                  <>
+                                    {name.slice(0, idx)}
+                                    <span className="bg-primary/20 text-primary font-semibold rounded px-0.5">{name.slice(idx, idx + q.length)}</span>
+                                    {name.slice(idx + q.length)}
+                                  </>
+                                ) : name}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[11px]">
                   <Clock className="h-3 w-3 text-muted-foreground" />
