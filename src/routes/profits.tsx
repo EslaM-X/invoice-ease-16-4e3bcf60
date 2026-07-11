@@ -1117,6 +1117,12 @@ function ProfitsPage() {
                 </button>
               ))}
             </div>
+            <div className="mt-1.5 text-[10px] text-muted-foreground leading-relaxed">
+              {costSource === "wac" && t("متوسط تكلفة كل POs مرجّح بالكمية — الأدق للأرباح.", "Weighted average of all POs by quantity — most accurate for profit.")}
+              {costSource === "latest_po" && t("سعر آخر أمر شراء وصل — يعكس أحدث تكلفة استيراد.", "Uses the latest received PO cost — reflects current import price.")}
+              {costSource === "current" && t("سعر المنتج المحفوظ حاليًا — يتجاهل تعديلات الأرباح اليدوية.", "Uses the product's stored cost — ignores manual overrides.")}
+              {costSource === "override" && t("لا يُستخدم إلا التعديل اليدوي — بديله سعر المنتج الحالي.", "Only manual overrides apply — falls back to current product cost.")}
+            </div>
           </div>
           <div>
             <Label className="text-[11px] text-muted-foreground">{t("السنة المالية (لدفتر التكاليف)", "Fiscal year (Cost Book)")}</Label>
@@ -1131,11 +1137,20 @@ function ProfitsPage() {
               ))}
             </select>
           </div>
-          <div className="flex flex-col justify-end text-[11px] text-muted-foreground">
-            <div>{t("سعر افتراضي", "Fallback rate")}: <span className="tabular-nums font-semibold text-foreground">{costBook.default_rate?.toFixed?.(2) ?? "50.00"}</span></div>
-            <div>{t("منتجات في الدفتر", "Products in book")}: <span className="tabular-nums font-semibold text-foreground">{Object.keys(costBook.products).length}</span></div>
+          <div className="flex flex-col justify-end gap-1 text-[11px]">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 self-start">
+              <span className="text-muted-foreground">{t("سعر افتراضي", "Fallback rate")}</span>
+              <span className="tabular-nums font-bold text-primary">${costBook.default_rate?.toFixed?.(2) ?? "50.00"}</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 self-start">
+              <BookOpen className="h-3 w-3 text-muted-foreground" />
+              <span className="tabular-nums font-semibold">{Object.keys(costBook.products).length}</span>
+              <span className="text-muted-foreground">{t("منتج في الدفتر", "in book")}</span>
+            </div>
           </div>
         </div>
+
+
 
         {costBookOpen && (
           <div className="border-t">
