@@ -55,9 +55,9 @@ export function NoirKpiCard({
 
       <div className="relative mt-4 flex items-end justify-between gap-2 sm:mt-6">
         {loading ? (
-          <div className="skeleton-noir h-8 w-20 rounded-md sm:h-10 sm:w-28" />
+          <div aria-hidden="true" className="skeleton-noir h-8 w-20 rounded-md sm:h-10 sm:w-28" />
         ) : hidden ? (
-          <div className="flex items-center gap-1.5">
+          <div aria-hidden="true" className="flex items-center gap-1.5">
             {[0,1,2,3,4].map(i => (
               <span key={i} className="h-2.5 w-2.5 rounded-full bg-[#c9a84c]/60 shadow-[0_0_6px_rgba(201,168,76,0.5)]" />
             ))}
@@ -71,7 +71,8 @@ export function NoirKpiCard({
       </div>
 
       {/* bottom gold sweep (slides in on hover) */}
-      <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-transparent via-[#c9a84c]/70 to-transparent transition-transform duration-500 group-hover:scale-x-100" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-transparent via-[#c9a84c]/70 to-transparent transition-transform duration-500 group-hover:scale-x-100" />
     </div>
   );
 }
+
