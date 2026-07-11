@@ -701,11 +701,13 @@ function ProfitsPage() {
         rows.totals.qty,
         "",
         "",
+        "",
         +rows.totals.cost.toFixed(2),
         +rows.totals.revenue.toFixed(2),
         +rows.totals.profit.toFixed(2),
         +rows.totals.margin.toFixed(2),
       ],
+
     ];
 
     // Sheet 2: per-invoice
