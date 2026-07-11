@@ -468,17 +468,24 @@ function ProfitsPage() {
       byProduct.set(it.product_id!, cur);
     }
     const list = Array.from(byProduct.entries())
-      .map(([pid, v]) => ({
-        product_id: pid,
-        product: v.product,
-        name: v.product?.name ?? "(محذوف)",
-        qty: v.qty,
-        revenue: v.revenue,
-        cost: v.cost,
-        profit: v.revenue - v.cost,
-        margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
-        lines: v.lines,
-      }))
+      .map(([pid, v]) => {
+        const unitCost = v.qty > 0 ? v.cost / v.qty : costOf(pid);
+        return {
+          product_id: pid,
+          product: v.product,
+          name: v.product?.name ?? "(محذوف)",
+          qty: v.qty,
+          revenue: v.revenue,
+          cost: v.cost,
+          profit: v.revenue - v.cost,
+          margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
+          lines: v.lines,
+          unitCost,
+          costSourceUsed: costSourceOf(pid),
+          missingCost: v.qty > 0 && unitCost === 0,
+        };
+      })
+
       .filter((r) => selectedIds.size === 0 || selectedIds.has(r.product_id))
       .filter((r) => {
         if (!search.trim()) return true;
