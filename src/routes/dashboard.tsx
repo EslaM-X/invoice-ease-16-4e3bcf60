@@ -396,21 +396,31 @@ function InventoryValueCard({
   sensitive?: boolean;
   footer?: ReactNode;
 }) {
+  const ariaValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
   return (
-    <div className="ios-card group relative overflow-hidden p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
+    <div
+      role="group"
+      tabIndex={0}
+      aria-label={ariaValue ? `${label}: ${ariaValue}. ${sub}` : label}
+      className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 sm:p-5"
+    >
+      <div aria-hidden="true" className="gold-hairline-live absolute inset-x-0 top-0" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full bg-[#c9a84c]/10 blur-3xl opacity-40 transition-all duration-500 group-hover:opacity-80 group-hover:w-56 motion-reduce:transition-none" />
+      <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="eyebrow text-[0.62rem] sm:text-[0.68rem]">{label}</div>
-          <div className="ltr-nums mt-3 font-display text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-3xl break-words">
+          <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45 truncate sm:text-[11px]">{label}</div>
+          <div className="ltr-nums mt-3 font-display text-2xl font-bold tracking-tight tabular-nums text-[#f5e7b8] sm:text-3xl break-words">
             {value}
           </div>
         </div>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
-          <Icon className="h-5 w-5" />
+        <div aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#c9a84c]/30 bg-[#c9a84c]/12 text-[#c9a84c] transition-transform duration-300 group-hover:scale-110">
+          <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className="mt-3 text-xs text-muted-foreground">{sub}</div>
-      {footer}
+      <div className="relative mt-3 text-xs text-white/55">{sub}</div>
+      {footer && <div className="relative">{footer}</div>}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-transparent via-[#c9a84c]/70 to-transparent transition-transform duration-500 group-hover:scale-x-100" />
     </div>
   );
 }
+
