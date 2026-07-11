@@ -490,21 +490,56 @@ function ProfitsPage() {
   // inside the hook). Products/customers stay separate: they change rarely.
   useBatchedRealtimeTables(
     ["invoices", "invoice_items"],
-    () => loadItems(),
+    () => {
+      if (rtPausedRef.current) {
+        setRtPending((s) => new Set(s).add("items"));
+        return;
+      }
+      bumpUpdate();
+      loadItems();
+    },
     [],
     { debounceMs: 2500, maxWaitMs: 6000 },
   );
   useBatchedRealtimeTables(
     ["purchase_orders", "purchase_order_items", "profit_cost_overrides"],
     (table) => {
+      if (rtPausedRef.current) {
+        setRtPending((s) => new Set(s).add(table === "profit_cost_overrides" ? "overrides" : "costbook"));
+        return;
+      }
+      bumpUpdate();
       if (table === "profit_cost_overrides") loadOverrides();
       else loadCostBook();
     },
     [],
     { debounceMs: 2500, maxWaitMs: 6000 },
   );
-  useRealtimeTable("products", () => loadProducts());
-  useRealtimeTable("customers", () => loadCustomers());
+  useRealtimeTable("products", () => {
+    if (rtPausedRef.current) { setRtPending((s) => new Set(s).add("products")); return; }
+    bumpUpdate();
+    loadProducts();
+  });
+  useRealtimeTable("customers", () => {
+    if (rtPausedRef.current) { setRtPending((s) => new Set(s).add("customers")); return; }
+    bumpUpdate();
+    loadCustomers();
+  });
+
+  // When user resumes realtime, flush any pending refetches once.
+  useEffect(() => {
+    if (rtPaused) return;
+    if (rtPending.size === 0) return;
+    const pend = rtPending;
+    setRtPending(new Set());
+    if (pend.has("items")) { bumpUpdate(); loadItems(); }
+    if (pend.has("costbook")) { bumpUpdate(); loadCostBook(); }
+    if (pend.has("overrides")) { bumpUpdate(); loadOverrides(); }
+    if (pend.has("products")) { bumpUpdate(); loadProducts(); }
+    if (pend.has("customers")) { bumpUpdate(); loadCustomers(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rtPaused]);
+
 
   // Live toast when invoice statuses change. Events are BUFFERED for a few
   // seconds and coalesced into a single summary toast so that a burst of
