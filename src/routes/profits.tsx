@@ -1991,7 +1991,135 @@ function ProfitsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Toolbar: search + sort */}
+          <div className="border-b border-primary/10 bg-background/40 px-4 py-2.5 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px] max-w-md">
+              <Filter className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
+              <Input
+                value={ptSearch}
+                onChange={(e) => setPtSearch(e.target.value)}
+                placeholder={t("ابحث باسم المنتج أو الكود أو اللون…", "Search product name, code, color…")}
+                className="h-8 ps-8 text-xs"
+              />
+              {ptSearch && (
+                <button type="button" onClick={() => setPtSearch("")} className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground" title={t("مسح", "Clear")}>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold me-1">{t("ترتيب", "Sort")}</span>
+              <SortBtn field="profit" label={t("الربح", "Profit")} />
+              <SortBtn field="qty" label={t("الكمية", "Qty")} />
+              <SortBtn field="margin" label={t("الهامش", "Margin")} />
+              <SortBtn field="name" label={t("الاسم", "Name")} />
+            </div>
+            <div className="ms-auto text-[11px] text-muted-foreground tabular-nums">
+              {t("النتائج", "Results")}: <span className="font-bold text-foreground">{fmtNumber(displayRows.length, lang)}</span>
+              {ptSearch && <span> / {fmtNumber(rows.list.length, lang)}</span>}
+            </div>
+          </div>
+
+          {/* Mobile card view */}
+          <div className="md:hidden divide-y divide-border/40">
+            {displayRows.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <div className="h-12 w-12 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-primary/60" />
+                  </div>
+                  <div className="text-sm font-medium">{t("لا توجد نتائج", "No results")}</div>
+                </div>
+              </div>
+            ) : displayRows.map((r) => {
+              const p = r.product;
+              const rank = profitRankIndex.get(r.product_id);
+              const medal = r.qty > 0 ? rankMedal(rank) : null;
+              const isTop = medal !== null;
+              const profitBarPct = Math.min(100, (Math.abs(r.profit) / maxAbsProfit) * 100);
+              const marginPct = Math.max(0, Math.min(100, r.margin));
+              const marginColor = r.margin >= 30 ? "text-emerald-600 dark:text-emerald-400"
+                : r.margin >= 10 ? "text-primary"
+                : r.margin >= 0 ? "text-amber-600 dark:text-amber-400"
+                : "text-rose-600";
+              const marginBar = r.margin >= 30 ? "bg-gradient-to-r from-emerald-500 to-emerald-300"
+                : r.margin >= 10 ? "bg-gradient-to-r from-primary to-amber-300"
+                : r.margin >= 0 ? "bg-gradient-to-r from-amber-500 to-amber-300"
+                : "bg-gradient-to-r from-rose-500 to-rose-300";
+              return (
+                <button
+                  key={r.product_id}
+                  type="button"
+                  onClick={() => setProductDetailId(r.product_id)}
+                  className={`w-full text-start px-4 py-3 hover:bg-primary/[0.04] transition-colors ${isTop ? "bg-gradient-to-r from-amber-500/[0.05] via-transparent to-transparent" : ""} ${r.profit < 0 ? "bg-rose-500/[0.03]" : ""}`}
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-muted ${isTop ? "ring-2 ring-amber-400/50 border-amber-400/40" : "border-border/60"}`}>
+                        {p?.image_url ? <img src={p.image_url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {medal && <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black shrink-0 ${medal.cls}`}>{medal.label}</span>}
+                          <span className="truncate font-semibold text-sm">{r.name}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground flex gap-2 flex-wrap mt-0.5">
+                          {p?.collection && (
+                            <span className={`inline-flex items-center gap-1 rounded border px-1 py-px text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                              <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
+                              {p.collection}
+                            </span>
+                          )}
+                          {p?.color && (
+                            <span className="inline-flex items-center gap-1"><ColorSwatch value={p.color} size="sm" />{p.color}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground/50 -rotate-90 rtl:rotate-90" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">{t("الكمية", "Qty")}</div>
+                      <div className="tabular-nums font-bold text-sm">{fmtNumber(r.qty, lang)}</div>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">{t("البيع", "Revenue")}</div>
+                      <div className="tabular-nums font-semibold">{fmtMoney(r.revenue, "EGP", lang)}</div>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5">
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">{t("التكلفة", "Cost")}</div>
+                      <div className="tabular-nums text-muted-foreground">{fmtMoney(r.cost, "EGP", lang)}</div>
+                    </div>
+                  </div>
+                  {r.qty > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <span className="text-muted-foreground/70 font-semibold uppercase tracking-widest">{t("الربح", "Profit")}</span>
+                          <span className={`tabular-nums font-bold ${r.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>{fmtMoney(r.profit, "EGP", lang)}</span>
+                        </div>
+                        <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+                          <div className={`h-full ${r.profit >= 0 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" : "bg-gradient-to-r from-rose-600 to-rose-400"}`} style={{ width: `${profitBarPct}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <span className="text-muted-foreground/70 font-semibold uppercase tracking-widest">{t("الهامش", "Margin")}</span>
+                          <span className={`tabular-nums font-bold ${marginColor}`}>{r.margin.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+                          <div className={`h-full ${marginBar}`} style={{ width: `${marginPct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/90 font-bold">
