@@ -3017,7 +3017,55 @@ function ProfitsPage() {
             </div>
           </div>
 
-          {visibleInvoices.length > 60 ? (
+          {loading && rankedInvoices.length === 0 ? (
+            /* ==== Skeleton (Noir & Gold) — prevents layout jump ==== */
+            <div className="overflow-hidden" aria-busy="true" aria-live="polite">
+              <div className="min-w-[920px]">
+                <div
+                  className="grid gap-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/60 font-bold border-b border-primary/15"
+                  style={{ gridTemplateColumns: "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)" }}
+                >
+                  <div className="px-3 py-3 text-center">#</div>
+                  <div className="px-3 py-3 text-start">{t("الفاتورة", "Invoice")}</div>
+                  <div className="px-3 py-3 text-start">{t("التاريخ", "Date")}</div>
+                  <div className="px-3 py-3 text-start">{t("العميل", "Customer")}</div>
+                  <div className="px-3 py-3 text-end">{t("القطع", "Items")}</div>
+                  <div className="px-3 py-3 text-end">{t("البيع", "Revenue")}</div>
+                  <div className="px-3 py-3 text-end">{t("التكلفة", "Cost")}</div>
+                  <div className="px-3 py-3 text-end">{t("صافي الربح", "Profit")}</div>
+                  <div className="px-3 py-3 text-end">{t("هامش %", "Margin")}</div>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="grid items-center"
+                      style={{ gridTemplateColumns: "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)", height: 84 }}
+                    >
+                      <div className="px-3 py-3 flex justify-center"><div className="skeleton-noir h-7 w-7 rounded-full" style={{ animationDelay: `${i * 60}ms` }} /></div>
+                      <div className="px-3 py-3"><div className="skeleton-noir h-4 w-24" style={{ animationDelay: `${i * 60 + 20}ms` }} /></div>
+                      <div className="px-3 py-3"><div className="skeleton-noir h-3 w-20" style={{ animationDelay: `${i * 60 + 40}ms` }} /></div>
+                      <div className="px-3 py-3 flex items-center gap-2">
+                        <div className="skeleton-noir h-7 w-7 rounded-full" style={{ animationDelay: `${i * 60 + 60}ms` }} />
+                        <div className="skeleton-noir h-4 flex-1 max-w-[140px]" style={{ animationDelay: `${i * 60 + 80}ms` }} />
+                      </div>
+                      <div className="px-3 py-3 flex justify-end"><div className="skeleton-noir h-5 w-10 rounded-md" style={{ animationDelay: `${i * 60 + 100}ms` }} /></div>
+                      <div className="px-3 py-3 flex justify-end"><div className="skeleton-noir h-4 w-20" style={{ animationDelay: `${i * 60 + 120}ms` }} /></div>
+                      <div className="px-3 py-3 flex justify-end"><div className="skeleton-noir h-4 w-20" style={{ animationDelay: `${i * 60 + 140}ms` }} /></div>
+                      <div className="px-3 py-3 flex flex-col items-end gap-1">
+                        <div className="skeleton-noir h-5 w-24 rounded-full" style={{ animationDelay: `${i * 60 + 160}ms` }} />
+                        <div className="skeleton-noir h-1 w-24 rounded-full" style={{ animationDelay: `${i * 60 + 180}ms` }} />
+                      </div>
+                      <div className="px-3 py-3 flex flex-col items-end gap-1">
+                        <div className="skeleton-noir h-5 w-16 rounded-full" style={{ animationDelay: `${i * 60 + 200}ms` }} />
+                        <div className="skeleton-noir h-1 w-20 rounded-full" style={{ animationDelay: `${i * 60 + 220}ms` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : visibleInvoices.length > 60 ? (
             /* ==== Virtualized view (react-window) for large lists ==== */
             <div className="overflow-x-auto">
               <div className="min-w-[920px]">
