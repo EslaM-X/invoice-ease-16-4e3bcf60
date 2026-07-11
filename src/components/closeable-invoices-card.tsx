@@ -64,7 +64,8 @@ export function CloseableInvoicesCard() {
   }, [suggestions, posMeta]);
 
   const shipIcon = (t: string | null) => t === "air" ? Plane : t === "door_to_door" ? Truck : Ship;
-  const shipTone = (t: string | null) => t === "air" ? "bg-sky-500/10 text-sky-700 border-sky-500/20" : t === "door_to_door" ? "bg-violet-500/10 text-violet-700 border-violet-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20";
+  const shipAccent = (t: string | null) => t === "air" ? "text-sky-300" : t === "door_to_door" ? "text-[#e8c76a]" : "text-amber-300";
+  const shipLabel = (t: string | null) => t === "air" ? (isAr ? "جوي" : "Air") : t === "door_to_door" ? (isAr ? "بري" : "Road") : (isAr ? "بحري" : "Sea");
 
   const isLoading = loading && !suggestions.length;
   const nowVal = isLoading ? "—" : String(counts.nowFull).padStart(2, "0");
