@@ -226,6 +226,34 @@ function ProfitsPage() {
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [items, setItems] = useState<RawItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // ==== Realtime pause + perf metrics ====
+  const [rtPaused, setRtPaused] = useState(false);
+  const rtPausedRef = React.useRef(false);
+  rtPausedRef.current = rtPaused;
+  const [rtPending, setRtPending] = useState<Set<string>>(new Set());
+  const [showPerf, setShowPerf] = useState(false);
+  const renderCountRef = React.useRef(0);
+  renderCountRef.current += 1;
+  const renderStartRef = React.useRef<number>(typeof performance !== "undefined" ? performance.now() : 0);
+  renderStartRef.current = typeof performance !== "undefined" ? performance.now() : 0;
+  const [lastRenderMs, setLastRenderMs] = useState(0);
+  const [avgRenderMs, setAvgRenderMs] = useState(0);
+  const renderSumRef = React.useRef(0);
+  const [updateCount, setUpdateCount] = useState(0);
+  const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null);
+  const bumpUpdate = React.useCallback(() => {
+    setUpdateCount((n) => n + 1);
+    setLastUpdateAt(Date.now());
+  }, []);
+  useEffect(() => {
+    if (typeof performance === "undefined") return;
+    const ms = performance.now() - renderStartRef.current;
+    setLastRenderMs(ms);
+    renderSumRef.current += ms;
+    setAvgRenderMs(renderSumRef.current / Math.max(1, renderCountRef.current));
+  });
+
   const [range, setRange] = useState<Range>("all");
   const today = new Date().toISOString().slice(0, 10);
   const [day, setDay] = useState(today);
@@ -462,21 +490,56 @@ function ProfitsPage() {
   // inside the hook). Products/customers stay separate: they change rarely.
   useBatchedRealtimeTables(
     ["invoices", "invoice_items"],
-    () => loadItems(),
+    () => {
+      if (rtPausedRef.current) {
+        setRtPending((s) => new Set(s).add("items"));
+        return;
+      }
+      bumpUpdate();
+      loadItems();
+    },
     [],
     { debounceMs: 2500, maxWaitMs: 6000 },
   );
   useBatchedRealtimeTables(
     ["purchase_orders", "purchase_order_items", "profit_cost_overrides"],
     (table) => {
+      if (rtPausedRef.current) {
+        setRtPending((s) => new Set(s).add(table === "profit_cost_overrides" ? "overrides" : "costbook"));
+        return;
+      }
+      bumpUpdate();
       if (table === "profit_cost_overrides") loadOverrides();
       else loadCostBook();
     },
     [],
     { debounceMs: 2500, maxWaitMs: 6000 },
   );
-  useRealtimeTable("products", () => loadProducts());
-  useRealtimeTable("customers", () => loadCustomers());
+  useRealtimeTable("products", () => {
+    if (rtPausedRef.current) { setRtPending((s) => new Set(s).add("products")); return; }
+    bumpUpdate();
+    loadProducts();
+  });
+  useRealtimeTable("customers", () => {
+    if (rtPausedRef.current) { setRtPending((s) => new Set(s).add("customers")); return; }
+    bumpUpdate();
+    loadCustomers();
+  });
+
+  // When user resumes realtime, flush any pending refetches once.
+  useEffect(() => {
+    if (rtPaused) return;
+    if (rtPending.size === 0) return;
+    const pend = rtPending;
+    setRtPending(new Set());
+    if (pend.has("items")) { bumpUpdate(); loadItems(); }
+    if (pend.has("costbook")) { bumpUpdate(); loadCostBook(); }
+    if (pend.has("overrides")) { bumpUpdate(); loadOverrides(); }
+    if (pend.has("products")) { bumpUpdate(); loadProducts(); }
+    if (pend.has("customers")) { bumpUpdate(); loadCustomers(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rtPaused]);
+
 
   // Live toast when invoice statuses change. Events are BUFFERED for a few
   // seconds and coalesced into a single summary toast so that a burst of
@@ -532,6 +595,7 @@ function ProfitsPage() {
           const prev = payload.old?.status;
           const next = payload.new?.status;
           if (!prev || !next || prev === next) return;
+          if (rtPausedRef.current) return; // suppress toasts while paused
           buffer.push({ num: payload.new?.invoice_number ?? "—", prev, next, at: Date.now() });
           if (flushTimer) clearTimeout(flushTimer);
           flushTimer = setTimeout(flush, FLUSH_MS);
@@ -2727,6 +2791,49 @@ function ProfitsPage() {
                     {t("ترتيب حسب الربح • انقر الصف لعرض التفاصيل", "Ranked by profit • click any row for details")}
                     {loading && <span className="ms-2 inline-flex items-center gap-1 text-primary/70"><RefreshCw className="h-3 w-3 animate-spin" />{t("تحديث…", "syncing…")}</span>}
                   </p>
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setRtPaused((v) => !v)}
+                      title={rtPaused ? t("استئناف التحديثات المباشرة", "Resume realtime updates") : t("إيقاف مؤقت للتحديثات المباشرة", "Pause realtime updates")}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition ${rtPaused ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${rtPaused ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+                      {rtPaused
+                        ? t(`متوقف${rtPending.size ? ` (${rtPending.size} معلّق)` : ""}`, `Paused${rtPending.size ? ` (${rtPending.size} pending)` : ""}`)
+                        : t("مباشر", "Live")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPerf((v) => !v)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground transition"
+                      title={t("مقاييس الأداء", "Performance metrics")}
+                    >
+                      <Clock className="h-2.5 w-2.5" />
+                      {t("أداء", "Perf")}
+                    </button>
+                    {showPerf && (
+                      <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.04] px-2.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums">
+                        <span title={t("عدد مرات الإخراج", "Renders")}><span className="text-primary/80 font-bold">R</span>{renderCountRef.current}</span>
+                        <span className="opacity-40">·</span>
+                        <span title={t("زمن آخر إخراج", "Last render")}><span className="text-primary/80 font-bold">t</span>{lastRenderMs.toFixed(1)}ms</span>
+                        <span className="opacity-40">·</span>
+                        <span title={t("متوسط زمن الإخراج", "Avg render")}><span className="text-primary/80 font-bold">avg</span>{avgRenderMs.toFixed(1)}ms</span>
+                        <span className="opacity-40">·</span>
+                        <span title={t("تحديثات Realtime المطبّقة", "Realtime updates applied")}><span className="text-primary/80 font-bold">U</span>{updateCount}</span>
+                        {lastUpdateAt && (
+                          <>
+                            <span className="opacity-40">·</span>
+                            <span title={t("آخر تحديث", "Last update")}>{Math.max(0, Math.round((Date.now() - lastUpdateAt) / 1000))}s</span>
+                          </>
+                        )}
+                        <span className="opacity-40">·</span>
+                        <span title={t("طريقة العرض", "View mode")}>{visibleInvoices.length > 60 ? "vlist" : "table"}</span>
+                        <span className="opacity-40">·</span>
+                        <span>{fmtNumber(visibleInvoices.length, lang)}/{fmtNumber(rankedInvoices.length, lang)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -2910,7 +3017,55 @@ function ProfitsPage() {
             </div>
           </div>
 
-          {visibleInvoices.length > 60 ? (
+          {loading && rankedInvoices.length === 0 ? (
+            /* ==== Skeleton (Noir & Gold) — prevents layout jump ==== */
+            <div className="overflow-hidden" aria-busy="true" aria-live="polite">
+              <div className="min-w-[920px]">
+                <div
+                  className="grid gap-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 text-[10px] uppercase tracking-[0.15em] text-primary/60 font-bold border-b border-primary/15"
+                  style={{ gridTemplateColumns: "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)" }}
+                >
+                  <div className="px-3 py-3 text-center">#</div>
+                  <div className="px-3 py-3 text-start">{t("الفاتورة", "Invoice")}</div>
+                  <div className="px-3 py-3 text-start">{t("التاريخ", "Date")}</div>
+                  <div className="px-3 py-3 text-start">{t("العميل", "Customer")}</div>
+                  <div className="px-3 py-3 text-end">{t("القطع", "Items")}</div>
+                  <div className="px-3 py-3 text-end">{t("البيع", "Revenue")}</div>
+                  <div className="px-3 py-3 text-end">{t("التكلفة", "Cost")}</div>
+                  <div className="px-3 py-3 text-end">{t("صافي الربح", "Profit")}</div>
+                  <div className="px-3 py-3 text-end">{t("هامش %", "Margin")}</div>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="grid items-center"
+                      style={{ gridTemplateColumns: "48px minmax(120px,1fr) minmax(110px,1fr) minmax(160px,1.4fr) 80px minmax(120px,1fr) minmax(120px,1fr) minmax(180px,1.4fr) minmax(130px,1fr)", height: 84 }}
+                    >
+                      <div className="px-3 py-3 flex justify-center"><div className="skeleton-noir h-7 w-7 rounded-full" style={{ animationDelay: `${i * 60}ms` }} /></div>
+                      <div className="px-3 py-3"><div className="skeleton-noir h-4 w-24" style={{ animationDelay: `${i * 60 + 20}ms` }} /></div>
+                      <div className="px-3 py-3"><div className="skeleton-noir h-3 w-20" style={{ animationDelay: `${i * 60 + 40}ms` }} /></div>
+                      <div className="px-3 py-3 flex items-center gap-2">
+                        <div className="skeleton-noir h-7 w-7 rounded-full" style={{ animationDelay: `${i * 60 + 60}ms` }} />
+                        <div className="skeleton-noir h-4 flex-1 max-w-[140px]" style={{ animationDelay: `${i * 60 + 80}ms` }} />
+                      </div>
+                      <div className="px-3 py-3 flex justify-end"><div className="skeleton-noir h-5 w-10 rounded-md" style={{ animationDelay: `${i * 60 + 100}ms` }} /></div>
+                      <div className="px-3 py-3 flex justify-end"><div className="skeleton-noir h-4 w-20" style={{ animationDelay: `${i * 60 + 120}ms` }} /></div>
+                      <div className="px-3 py-3 flex justify-end"><div className="skeleton-noir h-4 w-20" style={{ animationDelay: `${i * 60 + 140}ms` }} /></div>
+                      <div className="px-3 py-3 flex flex-col items-end gap-1">
+                        <div className="skeleton-noir h-5 w-24 rounded-full" style={{ animationDelay: `${i * 60 + 160}ms` }} />
+                        <div className="skeleton-noir h-1 w-24 rounded-full" style={{ animationDelay: `${i * 60 + 180}ms` }} />
+                      </div>
+                      <div className="px-3 py-3 flex flex-col items-end gap-1">
+                        <div className="skeleton-noir h-5 w-16 rounded-full" style={{ animationDelay: `${i * 60 + 200}ms` }} />
+                        <div className="skeleton-noir h-1 w-20 rounded-full" style={{ animationDelay: `${i * 60 + 220}ms` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : visibleInvoices.length > 60 ? (
             /* ==== Virtualized view (react-window) for large lists ==== */
             <div className="overflow-x-auto">
               <div className="min-w-[920px]">
