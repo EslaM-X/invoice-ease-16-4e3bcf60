@@ -72,6 +72,8 @@ type LineRow = {
 function Traceability() {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const searchParams = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -84,7 +86,10 @@ function Traceability() {
   const [logs, setLogs] = useState<Log[]>([]);
 
   // Filters
-  const [tab, setTab] = useState<string>("lines");
+  const tab: TabValue = searchParams.tab ?? "lines";
+  const setTab = (next: string) => {
+    navigate({ search: (prev) => ({ ...prev, tab: next as TabValue }), replace: true });
+  };
   const [search, setSearch] = useState("");
   const [poFilter, setPoFilter] = useState("");
   const [drFilter, setDrFilter] = useState("");
