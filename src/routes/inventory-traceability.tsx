@@ -85,6 +85,12 @@ function Traceability() {
   const [stockSearch, setStockSearch] = useState("");
   const [stockSort, setStockSort] = useState<"desc" | "asc">("desc");
   const [stockOnly, setStockOnly] = useState<"all" | "in" | "low" | "out">("all");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  // Timeline filters
+  const [tlDirection, setTlDirection] = useState<"all" | "in" | "out">("all");
+  const [tlKind, setTlKind] = useState<"all" | "po" | "dr" | "invoice" | "manual" | "reservation">("all");
+  const [tlFrom, setTlFrom] = useState("");
+  const [tlTo, setTlTo] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -319,8 +325,31 @@ function Traceability() {
 
   // === Audit timeline per product ===
   const timelineRows = useMemo(() => {
+    const fromT = tlFrom ? new Date(tlFrom).getTime() : null;
+    const toT = tlTo ? new Date(tlTo).getTime() + 86_400_000 : null;
     return logs
       .filter((l) => !productFilter || prodById.get(l.product_id)?.name?.toLowerCase().includes(productFilter.toLowerCase()))
+      .filter((l) => {
+        const t = new Date(l.created_at).getTime();
+        if (fromT && t < fromT) return false;
+        if (toT && t > toT) return false;
+        if (tlDirection === "in" && !(Number(l.change) > 0)) return false;
+        if (tlDirection === "out" && !(Number(l.change) < 0)) return false;
+        if (tlKind !== "all") {
+          const r = l.reason ?? "";
+          const isPO = /^PO /i.test(r);
+          const isDR = /خصم محضر|delivery receipt|DR /i.test(r);
+          const isInv = /^sale |^void /i.test(r) || !!l.invoice_id;
+          const isManual = /^manual/i.test(r) || /يدوي/.test(r);
+          const isResv = /reservation-fulfilled/i.test(r);
+          if (tlKind === "po" && !isPO) return false;
+          if (tlKind === "dr" && !isDR) return false;
+          if (tlKind === "invoice" && !isInv) return false;
+          if (tlKind === "manual" && !isManual) return false;
+          if (tlKind === "reservation" && !isResv) return false;
+        }
+        return true;
+      })
       .slice(0, 500)
       .map((l) => {
         const reason = l.reason ?? "";
@@ -335,7 +364,26 @@ function Traceability() {
         const inv = l.invoice_id ? invById.get(l.invoice_id) : undefined;
         return { log: l, product: prodById.get(l.product_id), kind, link, invoice: inv };
       });
-  }, [logs, prodById, invById, productFilter, isAr]);
+  }, [logs, prodById, invById, productFilter, isAr, tlDirection, tlKind, tlFrom, tlTo]);
+
+  // Logs for the selected product (stock detail dialog)
+  const selectedProductLogs = useMemo(() => {
+    if (!selectedProduct) return [] as { log: Log; invoice: Invoice | undefined; poRef: string | null; drRef: string | null }[];
+    return logs
+      .filter((l) => l.product_id === selectedProduct.id)
+      .slice(0, 500)
+      .map((l) => {
+        const reason = l.reason ?? "";
+        const poMatch = reason.match(/PO-\d{4}-\d{4}/);
+        const drMatch = reason.match(/DR[-# ]?(\d+)/i);
+        return {
+          log: l,
+          invoice: l.invoice_id ? invById.get(l.invoice_id) : undefined,
+          poRef: poMatch ? poMatch[0] : null,
+          drRef: drMatch ? drMatch[1] : null,
+        };
+      });
+  }, [logs, selectedProduct, invById]);
 
   return (
     <div className="space-y-6">
@@ -630,15 +678,45 @@ function Traceability() {
 
         {/* === Timeline tab === */}
         <TabsContent value="timeline" className="space-y-3">
-          <div className="relative max-w-md">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-              placeholder={isAr ? "فلتر باسم المنتج (مثلاً MIXER أو body)..." : "Filter by product name..."}
-              className="ps-9"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            <div className="relative md:col-span-2">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                placeholder={isAr ? "فلتر باسم المنتج..." : "Filter by product name..."}
+                className="ps-9"
+              />
+            </div>
+            <Select value={tlDirection} onValueChange={(v) => setTlDirection(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isAr ? "كل الحركات" : "All movements"}</SelectItem>
+                <SelectItem value="in">{isAr ? "زيادة (+)" : "Increase (+)"}</SelectItem>
+                <SelectItem value="out">{isAr ? "نقصان (−)" : "Decrease (−)"}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={tlKind} onValueChange={(v) => setTlKind(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isAr ? "كل المصادر" : "All sources"}</SelectItem>
+                <SelectItem value="po">{isAr ? "أمر شراء PO" : "Purchase order (PO)"}</SelectItem>
+                <SelectItem value="dr">{isAr ? "محضر استلام DR" : "Delivery receipt (DR)"}</SelectItem>
+                <SelectItem value="invoice">{isAr ? "فاتورة" : "Invoice"}</SelectItem>
+                <SelectItem value="reservation">{isAr ? "تنفيذ حجز" : "Reservation"}</SelectItem>
+                <SelectItem value="manual">{isAr ? "يدوي" : "Manual"}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-1">
+              <Input type="date" value={tlFrom} onChange={(e) => setTlFrom(e.target.value)} />
+              <Input type="date" value={tlTo} onChange={(e) => setTlTo(e.target.value)} />
+            </div>
           </div>
+          {(productFilter || tlDirection !== "all" || tlKind !== "all" || tlFrom || tlTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setProductFilter(""); setTlDirection("all"); setTlKind("all"); setTlFrom(""); setTlTo(""); }}>
+              <X className="h-3 w-3 me-1" /> {isAr ? "مسح الفلاتر" : "Clear filters"}
+            </Button>
+          )}
           <div className="rounded-lg border overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase">
@@ -732,7 +810,7 @@ function Traceability() {
                   {stockRows.length === 0 ? (
                     <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">{isAr ? "لا توجد نتائج" : "No results"}</td></tr>
                   ) : stockRows.map((r) => (
-                    <tr key={r.product.id} className="border-b hover:bg-muted/40">
+                    <tr key={r.product.id} className="border-b hover:bg-muted/40 cursor-pointer" onClick={() => setSelectedProduct(r.product)}>
                       <td className="py-2 px-2">
                         <div className="font-medium">{r.product.name}</div>
                         {r.product.color && <div className="text-xs text-muted-foreground">{r.product.color}</div>}
@@ -855,6 +933,65 @@ function Traceability() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Product logs Dialog (from Stock levels tab) */}
+      <Dialog open={!!selectedProduct} onOpenChange={(o) => !o && setSelectedProduct(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              {isAr ? "سجل حركة المنتج" : "Product movement log"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedProduct && (
+            <div className="space-y-4 text-sm">
+              <div className="rounded border p-3 bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="font-semibold">{selectedProduct.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono">{selectedProduct.serial_number ?? "—"}</div>
+                </div>
+                <div className="text-end">
+                  <div className="text-xs text-muted-foreground">{isAr ? "الكمية الحالية" : "Current qty"}</div>
+                  <div className="text-2xl font-bold">{Number(selectedProduct.stock_quantity ?? 0)}</div>
+                </div>
+              </div>
+              <div className="rounded-lg border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase">
+                    <tr>
+                      <th className="p-2 text-start">{isAr ? "التاريخ" : "Date"}</th>
+                      <th className="p-2 text-center">{isAr ? "التغيير" : "Change"}</th>
+                      <th className="p-2 text-start">{isAr ? "المصدر" : "Source"}</th>
+                      <th className="p-2 text-start">{isAr ? "مرجع" : "Reference"}</th>
+                      <th className="p-2 text-start">{isAr ? "المنفّذ" : "Actor"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedProductLogs.length === 0 ? (
+                      <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">{isAr ? "لا يوجد سجل" : "No history"}</td></tr>
+                    ) : selectedProductLogs.map((r) => (
+                      <tr key={r.log.id} className="border-t">
+                        <td className="p-2 text-xs whitespace-nowrap">{fmtDateTime(r.log.created_at, lang)}</td>
+                        <td className={`p-2 text-center font-mono font-bold ${r.log.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          {r.log.change > 0 ? `+${r.log.change}` : r.log.change}
+                        </td>
+                        <td className="p-2 text-xs">{r.log.reason ?? "—"}</td>
+                        <td className="p-2 text-xs font-mono">
+                          {r.invoice && <div>{r.invoice.invoice_number}</div>}
+                          {r.poRef && <div className="text-blue-700">{r.poRef}</div>}
+                          {r.drRef && <div className="text-purple-700">DR #{r.drRef}</div>}
+                          {!r.invoice && !r.poRef && !r.drRef && <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="p-2 text-xs text-muted-foreground">{r.log.actor_email ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
