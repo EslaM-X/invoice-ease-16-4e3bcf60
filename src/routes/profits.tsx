@@ -2503,6 +2503,92 @@ function ProfitsPage() {
             </div>
           </div>
 
+          {/* Filters + mini trend */}
+          <div className="border-b border-primary/10 bg-gradient-to-b from-primary/[0.03] to-transparent px-4 py-3">
+            <div className="flex flex-col lg:flex-row lg:items-stretch gap-3">
+              {/* Filters */}
+              <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[180px] max-w-xs">
+                  <Filter className="h-3.5 w-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={invSearch}
+                    onChange={(e) => setInvSearch(e.target.value)}
+                    placeholder={t("بحث برقم الفاتورة أو العميل…", "Search invoice # or customer…")}
+                    className="w-full h-8 rounded-full border border-border/60 bg-background/60 ps-8 pe-3 text-xs focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[11px]">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <input type="date" value={invFrom} onChange={(e) => setInvFrom(e.target.value)} className="bg-transparent focus:outline-none tabular-nums" title={t("من", "From")} />
+                  <span className="text-muted-foreground">→</span>
+                  <input type="date" value={invTo} onChange={(e) => setInvTo(e.target.value)} className="bg-transparent focus:outline-none tabular-nums" title={t("إلى", "To")} />
+                </div>
+                <select
+                  value={invStatus}
+                  onChange={(e) => setInvStatus(e.target.value)}
+                  className="h-8 rounded-full border border-border/60 bg-background/60 px-3 text-xs focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  title={t("حالة الفاتورة", "Invoice status")}
+                >
+                  <option value="all">{t("كل الحالات", "All statuses")}</option>
+                  {statusList.map((s) => (<option key={s} value={s}>{s}</option>))}
+                </select>
+                {(invSearch || invFrom || invTo || invStatus !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => { setInvSearch(""); setInvFrom(""); setInvTo(""); setInvStatus("all"); }}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />{t("مسح", "Clear")}
+                  </button>
+                )}
+                <span className="ms-auto text-[11px] text-muted-foreground tabular-nums">
+                  {t(`${rankedInvoices.length} نتيجة`, `${rankedInvoices.length} result(s)`)}
+                </span>
+              </div>
+
+              {/* Mini trend chart */}
+              <div className="lg:w-[300px] rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.06] to-transparent p-2">
+                <div className="flex items-center justify-between px-1 pb-1">
+                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+                    <LineChartIcon className="h-3 w-3 text-primary" />
+                    {t("اتجاه الأرباح", "Profit trend")}
+                  </div>
+                  <div className="inline-flex rounded-full border border-border/60 bg-background/60 p-0.5 text-[10px] font-semibold">
+                    <button type="button" onClick={() => setInvTrendMode("day")} className={`px-2 py-0.5 rounded-full transition ${invTrendMode === "day" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t("يومي", "Day")}</button>
+                    <button type="button" onClick={() => setInvTrendMode("week")} className={`px-2 py-0.5 rounded-full transition ${invTrendMode === "week" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t("أسبوعي", "Week")}</button>
+                  </div>
+                </div>
+                <div className="h-[70px]">
+                  {invTrend.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground/70">{t("لا توجد بيانات", "No data")}</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={invTrend} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="invTrendFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="date" hide />
+                        <YAxis hide />
+                        <Tooltip
+                          cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
+                          contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8, fontSize: 11 }}
+                          formatter={(v: any) => [fmtMoney(Number(v), "EGP", lang), t("الربح", "Profit")]}
+                          labelFormatter={(l: any) => String(l)}
+                        />
+                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="2 2" />
+                        <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#invTrendFill)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-sm">
               <thead>
