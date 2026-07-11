@@ -329,6 +329,7 @@ const en: Dict = {
 
   fulfillment: "Smart Fulfillment",
   inventory: "Inventory Analysis",
+  inventory_traceability: "Inventory Traceability & Levels",
   stock_intake: "Inventory",
   stock_intake_desc: "Record incoming units from suppliers, update quantities and costs",
   new_intake: "New stock intake",
