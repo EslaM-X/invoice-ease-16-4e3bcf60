@@ -256,6 +256,50 @@ export function CloseableInvoicesCard() {
   );
 }
 
+type TileTone = "emerald" | "blue" | "amber";
+const toneMap: Record<TileTone, { glow: string; border: string; icon: string; text: string }> = {
+  emerald: { glow: "bg-emerald-500/5 group-hover:bg-emerald-500/10", border: "group-hover:border-emerald-500/40", icon: "bg-emerald-500/10 text-emerald-400", text: "text-emerald-400" },
+  blue:    { glow: "bg-blue-500/5 group-hover:bg-blue-500/10",       border: "group-hover:border-blue-500/40",    icon: "bg-blue-500/10 text-blue-400",       text: "text-blue-400" },
+  amber:   { glow: "bg-amber-500/5 group-hover:bg-amber-500/10",     border: "group-hover:border-amber-500/40",   icon: "bg-amber-500/10 text-amber-500",     text: "text-amber-500" },
+};
+
+function MetricTile(props: {
+  as: typeof Link | "button";
+  to?: string;
+  onClick?: () => void;
+  tone: TileTone;
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  trailing?: React.ReactNode;
+}) {
+  const t = toneMap[props.tone];
+  const inner = (
+    <>
+      <div className={`absolute inset-0 rounded-2xl blur-xl transition-all duration-500 ${t.glow}`} />
+      <div className={`relative rounded-2xl border border-white/5 bg-[#1a1a1a] p-4 transition-all duration-300 ${t.border}`}>
+        <div className="mb-3 flex items-center justify-between">
+          <div className={`grid h-7 w-7 place-items-center rounded-full ${t.icon}`}>{props.icon}</div>
+          <div className="flex items-center gap-1">
+            <span className={`text-2xl font-bold tabular-nums tracking-tight ${t.text}`}>{props.value}</span>
+            {props.trailing}
+          </div>
+        </div>
+        <span className="text-xs text-white/60">{props.label}</span>
+      </div>
+    </>
+  );
+  if (props.as === "button") {
+    return (
+      <button type="button" onClick={props.onClick} className="group relative block w-full text-start">{inner}</button>
+    );
+  }
+  return (
+    <Link to={props.to!} className="group relative block">{inner}</Link>
+  );
+}
+
+
 function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div className="rounded-md bg-muted/40 p-1.5">
