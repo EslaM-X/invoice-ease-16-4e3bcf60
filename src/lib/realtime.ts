@@ -172,10 +172,13 @@ export function useRealtimeTable(
 export function useBatchedRealtimeTables(
   tables: string[],
   onChange: (table: string, payload: Payload) => void,
-  deps: any[] = []
+  deps: any[] = [],
+  options: { debounceMs?: number; maxWaitMs?: number } = {}
 ) {
   const cbRef = useRef(onChange);
   cbRef.current = onChange;
+  const debounceMs = options.debounceMs ?? DEBOUNCE_MS;
+  const maxWaitMs = options.maxWaitMs ?? MAX_WAIT_MS;
 
   useEffect(() => {
     let cancelled = false;
@@ -201,8 +204,8 @@ export function useBatchedRealtimeTables(
       lastTable = table;
       lastPayload = payload;
       if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(flush, DEBOUNCE_MS);
-      if (!maxWaitTimer) maxWaitTimer = setTimeout(flush, MAX_WAIT_MS);
+      debounceTimer = setTimeout(flush, debounceMs);
+      if (!maxWaitTimer) maxWaitTimer = setTimeout(flush, maxWaitMs);
     };
 
     const cleanup = () => {
