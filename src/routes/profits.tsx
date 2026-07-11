@@ -3204,12 +3204,16 @@ function ProfitsPage() {
                           key={inv.invoice_id}
                           type="button"
                           onClick={() => { setProductDetailId(null); setInvoiceDetailOpen(inv.invoice_id); }}
-                          className="w-full text-start py-2 px-1 flex items-center justify-between gap-2 text-xs hover:bg-primary/5 rounded transition-colors"
+                          className="w-full text-start py-2 px-1.5 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-0.5 text-xs hover:bg-primary/5 rounded transition-colors"
                         >
-                          <span className="font-mono font-semibold text-primary">{inv.invoice_number}</span>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{fmtDate(inv.created_at, lang)}</span>
-                          <span className="tabular-nums text-muted-foreground">×{fmtNumber(inv.qty, lang)}</span>
-                          <span className="tabular-nums font-semibold">{fmtMoney(inv.revenue, "EGP", lang)}</span>
+                          <span className="font-mono font-semibold text-primary row-span-2 self-center">{inv.invoice_number}</span>
+                          <span className="truncate text-[11px] text-foreground/90">{inv.customer_name || t("— بدون عميل —", "— no customer —")}</span>
+                          <span className="tabular-nums font-semibold text-end">{fmtMoney(inv.revenue, "EGP", lang)}</span>
+                          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <span className="tabular-nums">{fmtDate(inv.created_at, lang)}</span>
+                            {inv.status && <span className="inline-flex items-center rounded-full border border-border/60 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider">{inv.status}</span>}
+                          </span>
+                          <span className="tabular-nums text-muted-foreground text-end">×{fmtNumber(inv.qty, lang)}</span>
                         </button>
                       ))}
                     </div>
