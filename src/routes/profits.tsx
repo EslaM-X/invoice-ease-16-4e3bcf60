@@ -1990,13 +1990,21 @@ function ProfitsPage() {
                               {t("معادلة الحساب", "Calculation")}
                             </div>
                             <div className="space-y-1.5 font-mono">
-                              <div>{t("سعر التكلفة", "Cost")}: <span className="tabular-nums">{fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)}</span></div>
+                              <div>{t("سعر التكلفة (وحدة)", "Unit cost")}: <span className="tabular-nums">{fmtMoney(r.unitCost, "EGP", lang)}</span> <span className={`text-[9px] font-bold rounded border px-1 py-0.5 leading-none ${srcTagClass}`}>{srcTag}</span></div>
+                              <div>{t("مصدر التكلفة", "Cost source")}: <span className="font-semibold">{srcLabel}</span></div>
                               <div>{t("سعر البيع", "Sale")}: <span className="tabular-nums">{fmtMoney(Number(p?.price ?? 0), "EGP", lang)}</span></div>
                               <div>{t("الكمية المباعة", "Sold qty")}: <span className="tabular-nums">{fmtNumber(r.qty, lang)}</span></div>
                               <div>{t("عدد بنود الفواتير", "Invoice lines")}: <span className="tabular-nums">{fmtNumber(r.lines, lang)}</span></div>
+                              {r.missingCost && (
+                                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                  <span>{t("⚠ لا يوجد سعر تكلفة مسجّل لهذا المنتج — الربح مبالغ فيه", "No cost price recorded — profit is overstated")}</span>
+                                </div>
+                              )}
                               <div className="pt-1.5 border-t">
-                                {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(Number(p?.cost_price ?? 0), "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
+                                {t("إجمالي التكلفة", "Total Cost")} = {fmtMoney(r.unitCost, "EGP", lang)} × {fmtNumber(r.qty, lang)} = <span className="font-semibold tabular-nums">{fmtMoney(r.cost, "EGP", lang)}</span>
                               </div>
+
                               <div>
                                 {t("إجمالي البيع", "Revenue")} = Σ(unit × qty − discount) = <span className="font-semibold tabular-nums">{fmtMoney(r.revenue, "EGP", lang)}</span>
                               </div>
