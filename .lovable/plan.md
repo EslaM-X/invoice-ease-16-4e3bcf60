@@ -1,23 +1,27 @@
-## Goal
-Display the signed-in user's profile avatar (`profiles.avatar_url`) inside the Noir & Gold dashboard hero header, positioned above the "فاتورة جديدة" button, without removing or shrinking any existing content.
+## الهدف
+تحويل كارتَي "لا توجد ... بانتظار الموافقة" من كارتات بيضاء عامة إلى لوحات Noir & Gold فاخرة متسقة مع باقي التطبيق — اتجاه **Noir Panels** الذي اخترته.
 
-## Design
-- Luxury circular avatar (56–64px) with:
-  - Double gold ring: outer `#c9a84c/60` hairline + inner black separator + soft ambient gold glow.
-  - Subtle rotating conic-gradient gold aura on hover.
-  - Live green status dot (bottom-right) matching the existing "مباشر" indicator.
-  - Fallback: gold-tinted initials on noir surface when no `avatar_url`.
-- Placement: inside the actions column of the hero (`src/routes/dashboard.tsx`), stacked ABOVE the button row — right-aligned in RTL so it sits directly over "فاتورة جديدة". A tiny gold hairline separator between avatar and buttons.
-- Reuses existing shadcn `Avatar` primitive; wrapped in `noir-press` + `focus-gold` and links to `/settings` (profile edit) with `aria-label`.
-- Fully respects `prefers-reduced-motion` (aura disabled).
+## الملفات المعدَّلة
+- `src/components/pending-accounts-card.tsx` — استبدال فرع `rows.length === 0`.
+- `src/components/distributor-approvals-card.tsx` — استبدال فرع `rows.length === 0`.
 
-## Data
-- Fetch once on mount in `dashboard.tsx`: `supabase.from("profiles").select("avatar_url, display_name").eq("user_id", user.id).maybeSingle()`.
-- Store in local state; no schema change needed.
+## البنية البصرية (لكلا الكارتين)
+- **الحاوية**: `noir-surface` بحواف `rounded-xl`، خط ذهبي بحدود `border-[hsl(var(--gold))]/20`، وظل داخلي فاخر.
+- **هالة ذهبية خارجية**: طبقة `absolute -inset-0.5 blur` بلون ذهبي خفيف تشتعل عند hover.
+- **شريط تدرّج ذهبي** يمين الكارت (RTL) بعمق ناعم `from-gold/5 to-transparent`.
+- **ميدالية أيقونة 56px**: دائرة noir بحد ذهبي + `blur` هالة خلفية + أيقونة ذهبية:
+  - كارت الحسابات → `BadgeCheck` (lucide).
+  - كارت فواتير الموزعين → `ReceiptText` (lucide).
+- **العنوان**: `text-foreground` بحجم `text-base sm:text-lg` — يحافظ على نص الـ Arabic كما هو (لا توجد طلبات حسابات بانتظار الموافقة / لا توجد فواتير موزّعين بانتظار الموافقة).
+- **السطر الفرعي**: نقطة ذهبية نابضة `1px` + النص الحالي عن الـ realtime.
+- **شارة الحالة** (مخفية على الموبايل، `hidden md:inline-flex`): كبسولة صغيرة بحد ذهبي شفاف ونص uppercase tracking-widest — "Realtime Sync" للحسابات و "Verified" للموزعين، مع نسخة عربية عبر `isAr` (مزامنة فورية / موثّق).
 
-## Files
-- `src/routes/dashboard.tsx` — add avatar fetch + render block above the buttons row inside the hero card. No other markup touched; greeting, name, title, live badge, buttons, and low-stock alert remain identical.
+## Motion & A11y
+- انتقالات `duration-500` على الهالة والحد.
+- النقطة النابضة تستخدم `animate-pulse` — يحترمها `prefers-reduced-motion` تلقائيًا في Tailwind config الحالي (بدون keyframes مخصصة).
+- ألوان ذهبية من متغيرات `--gold` الموجودة في `styles.css` (لا ألوان مبرمجة hex في JSX — نستخدم `hsl(var(--gold))` وopacity utilities).
 
-## Non-goals
-- No change to buttons, greeting, low-stock alert, KPI cards, or any numbers/data.
-- No new tables, policies, or routes.
+## Guardrails
+- ارتفاع الكارت ~88–96px — يظل صف حالة مضغوطًا لا hero.
+- بدون تغيير في المنطق أو الاستعلامات أو النصوص العربية الأصلية.
+- الكارتان متطابقان بصريًا (variant واحد بأيقونة مختلفة) للحفاظ على الاتساق.
