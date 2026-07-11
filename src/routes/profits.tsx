@@ -413,18 +413,38 @@ function ProfitsPage() {
     setCustomers(((data ?? []) as { id: string; name: string }[]));
   };
 
-  const loadItems = async () => {
+  // In-memory cache keyed by the range signature. Avoids re-hitting the DB
+  // when the user oscillates between the same day/month/year/customer filters.
+  const itemsCacheRef = React.useRef<Map<string, { at: number; data: any[] }>>(new Map());
+  const inflightRef = React.useRef<AbortController | null>(null);
+  const CACHE_TTL_MS = 30_000;
+
+  const loadItems = async (opts?: { force?: boolean }) => {
+    const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
+    const key = JSON.stringify({ startISO, endISO, customerId });
+
+    // Serve from cache when fresh (and not a forced realtime refetch).
+    if (!opts?.force) {
+      const cached = itemsCacheRef.current.get(key);
+      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+        setItems(cached.data as any);
+        return;
+      }
+    }
+
+    // Cancel any in-flight request so rapid filter changes don't stack.
+    if (inflightRef.current) inflightRef.current.abort();
+
     const isFirst = items.length === 0;
     if (isFirst) setLoading(true);
     const loadingToast = isFirst
       ? toast.loading(lang === "ar" ? "جارٍ حساب الأرباح…" : "Computing profits…", { duration: Infinity })
       : null;
-    // Safety net: never let the query hang forever.
     const ac = new AbortController();
+    inflightRef.current = ac;
     const timeoutId = setTimeout(() => ac.abort(), 45000);
 
     try {
-      const { startISO, endISO } = rangeBounds(range, day, month, year, from, to);
       let q = supabase
         .from("invoice_items")
         .select(
@@ -436,29 +456,31 @@ function ProfitsPage() {
       if (customerId) q = q.eq("invoices.customer_id", customerId);
       const { data, error } = await q.abortSignal(ac.signal).limit(10000);
       if (error) {
-        toast.error(error.message);
-      } else if (isFirst && data) {
-        toast.success(
-          lang === "ar"
-            ? `تم تحميل ${fmtNumber(data.length, lang)} بند بنجاح`
-            : `Loaded ${fmtNumber(data.length, lang)} line item(s)`,
-          { duration: 2400 }
-        );
+        // Ignore benign aborts from filter changes.
+        if (!/aborted|AbortError/i.test(error.message)) toast.error(error.message);
+      } else if (data) {
+        itemsCacheRef.current.set(key, { at: Date.now(), data: data as any[] });
+        if (isFirst) {
+          toast.success(
+            lang === "ar"
+              ? `تم تحميل ${fmtNumber(data.length, lang)} بند بنجاح`
+              : `Loaded ${fmtNumber(data.length, lang)} line item(s)`,
+            { duration: 2400 }
+          );
+        }
+        setItems(data as any);
       }
-      setItems((data ?? []) as any);
     } catch (e: any) {
       const aborted = e?.name === "AbortError" || ac.signal.aborted;
-      toast.error(
-        aborted
-          ? (lang === "ar" ? "استغرق الحساب وقتًا طويلًا. جرّب فترة أضيق." : "Computation timed out. Try a narrower range.")
-          : (e?.message ?? String(e))
-      );
+      if (!aborted) toast.error(e?.message ?? String(e));
     } finally {
       clearTimeout(timeoutId);
+      if (inflightRef.current === ac) inflightRef.current = null;
       if (loadingToast != null) toast.dismiss(loadingToast);
       setLoading(false);
     }
   };
+
 
 
   const fyBounds = useMemo(() => {
