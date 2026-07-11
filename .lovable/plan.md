@@ -1,68 +1,47 @@
-## Goal
+## هدف التحديث
+تحسين صفحة `/profits` — إعادة تصميم شريط الفلاتر ليكون أذكى وأوضح بصريًا مع صور المنتجات والألوان والكولكشن، وترقية «دفتر التكاليف» و«التحقق والمطابقة» ليكونا أكثر إبداعًا ودقة وسهولة.
 
-Introduce a **weighted-average cost (WAC)** engine per product, computed from every PO's historical cost, and wire it into صفحة صافي الأرباح so profit stays accurate across FX changes and future cost edits — without touching invoices, DRs, POs, or `products.cost_price*` writes.
+## 1) شريط الفلاتر — إعادة تصميم كامل
+- تقسيم الشريط إلى صفَّين واضحَين داخل بطاقة موحّدة:
+  - الصف 1: أزرار المدى (يوم/شهر/سنة/الإجمالي/نطاق) + حقول التاريخ الديناميكية.
+  - الصف 2: بحث المنتج (أيقونة عدسة) + منتقي العميل (Combobox قابل للبحث بدل `select`) + زر «فلترة منتجات محددة».
+- **منتقي المنتجات (Popover) بشكل بصري كامل**:
+  - كل صف: صورة مصغّرة للمنتج (`product_image` أو fallback أيقونة) + الاسم + سيريال + شارة كولكشن ملوّنة (`collectionBadgeClass`) + `ColorSwatch` للون.
+  - شريط فلاتر أفقي أعلى القائمة: شرائح كولكشن (JOY / UP / ART / QUATRO) بلون كل كولكشن + شرائح ألوان مستخرجة تلقائيًا من `products` مع `swatchStyle` + عدّاد لكل شريحة.
+  - بحث فوري + زر «تحديد كل الظاهر» + زر «مسح».
+- **شارات المنتجات المختارة** أسفل الشريط: كل شارة تحمل صورة صغيرة + الاسم + زر إزالة، مع إمكانية «إلغاء الكل».
+- **بطاقة «السياق الحالي»** تُدمج داخل شريط الفلاتر كسطر Chips أنيق بدل بطاقة منفصلة، مع أيقونات (📅 مدى، 🛍️ منتج، 👤 عميل) وألوان دلالية خفيفة، ومختصر ذكي (لو المنتجات >3 يعرض "3 محدّدة + N").
 
-## Approach: read-only "Cost Book"
+## 2) دفتر التكاليف — عرض أذكى وأوضح
+- رأس البطاقة يصبح شريطًا واحدًا مضغوطًا: العنوان + Chips «USD→EGP لكل PO» + «سعر افتراضي X» + «N منتج» + زر عرض/إخفاء.
+- «مصدر التكلفة» يتحوّل إلى Segmented Control مع أيقونة لكل مصدر ووصف قصير أسفله (سطر hint يشرح المعنى، مثال: WAC = "متوسط مرجّح لكل POs").
+- عند فتح الجدول:
+  - عمود «المنتج» يحصل على صورة مصغّرة + شارة كولكشن + `ColorSwatch` بدل النص فقط.
+  - أعمدة القيم تتلوّن حسب المصدر الفعّال: صف تعديل يدوي يُبرز بخلفية `amber/10` وشارة "Manual"، صف WAC نشط بشارة `primary`.
+  - إضافة عمود Mini-Sparkline بسيط (اختياري) لتغيّر سعر آخر 5 دفعات PO.
+  - صف تفصيل الدفعات (expanded) يعرض جدول لوت‑ات مع Chip لحالة الـ PO وتاريخه ورقم الشحنة قابل للنقر.
+- ترتيب الصفوف: قائمة منسدلة صغيرة (الأكثر كمية / الأعلى تكلفة / الأحدث PO / اسم أبجدي).
 
-Add a **pure derived view** `product_cost_book` (SQL view + RPC) that aggregates every `purchase_order_items` row for POs whose status ∈ (`priced`, `partially_received`, `received`, `closed`) — cancelled/draft excluded. For each `product_id` it returns:
+## 3) بطاقات KPI + بانر المطابقة
+- بطاقات KPI الأربعة تكتسب:
+  - أيقونة داخل دائرة ملوّنة (كل بطاقة لون دلالي: أخضر للربح، أزرق للبيع، أحمر للتكلفة، ذهبي للهامش).
+  - Delta صغير أسفلها (مقارنة بالفترة السابقة إذا كان المدى محدّدًا) — يستخدم نفس `items` مع نطاق زمني مُزاح.
+- **بطاقة الشحن/الخدمة** تصبح Chip مصغّر داخل صف KPI بدل بطاقة كاملة (توفير مساحة).
+- **بانر «التحقق والمطابقة»** يُنقل من alert نصي إلى بطاقة أنيقة قابلة للطي:
+  - أيقونة `ShieldCheck` + عنوان + شارة حالة (متطابق ✅ / فرق ⚠️).
+  - جدول صغير: البند / القيمة / الفرق، مع Tooltip لكل صف يشرح مصدر الأرقام.
+  - زر «تفاصيل الاستبعادات» يفتح Dialog يعرض الفواتير الملغاة/المحذوفة وبنود الشحن التي استُبعدت.
 
-- `po_lots[]`: `{ po_id, shipment_code, po_date, qty, unit_cost_usd, usd_rate, unit_cost_egp, line_total_egp }`
-- `wac_usd` = Σ(qty × unit_usd) / Σ(qty)
-- `wac_egp` = Σ(qty × unit_egp) / Σ(qty) — where `unit_egp = unit_cost_usd × COALESCE(po.usd_rate, current_rate)`
-- `latest_unit_usd`, `latest_unit_egp`, `min_unit`, `max_unit`, `total_qty_purchased`
+## 4) قصر التغييرات على الواجهة
+- كل ما سبق تعديلات UI/presentation داخل `src/routes/profits.tsx` فقط.
+- استخدام موجود بالفعل: `collectionBadgeClass`, `collectionDotClass`, `ColorSwatch`, `swatchStyle`, `productById`, `costOf`, `costBook`, `overrides`.
+- لن يتغيّر أي منطق حساب في `src/lib/profit-calc.ts` ولا أي RPC ولا أي schema.
 
-**No writes anywhere.** Products/POs/invoices remain untouched.
+## تفاصيل تقنية
+- الملف المعدّل: `src/routes/profits.tsx` (شريط الفلاتر ≈ سطور 772–926، Cost Book ≈ 928–1100، وبانر المطابقة لاحقًا في نفس الملف).
+- إضافة state جديد: `collectionFilter: Set<string>`, `colorFilter: Set<string>`, `cbSort: 'qty'|'cost'|'recent'|'name'`, `reconcileOpen: boolean`.
+- استخراج الكولكشن/الألوان الفريدة من `products` عبر `useMemo`.
+- الصورة المصغّرة تستخدم `product.image_url` إن وُجد، وإلا placeholder svg inline (بدون طلبات شبكة).
+- لا حاجة لأي package جديد.
 
-## Profits page rewrite (cost source switch)
-
-Add a segmented control at the top of `/profits`:
-
-```text
-مصدر التكلفة:  [ متوسط مرجّح (WAC) ]  [ آخر PO ]  [ تكلفة المنتج الحالية ]  [ يدوي ]
-سنة مالية:     [ 2024 ] [ 2025 ] [ 2026 ]  [ الكل ]
-```
-
-- **WAC (default & recommended)** — uses `wac_egp` per product from the Cost Book.
-- **Last PO** — uses `latest_unit_egp`.
-- **Current product cost** — today's behavior (`products.cost_price`).
-- **Manual** — per-product override stored in a new tiny table `profit_cost_overrides (product_id, cost_egp, note)` — admin-only, does NOT affect any other page.
-
-All KPI cards (إجمالي البيع / التكلفة / صافي الربح / هامش الربح / شحن مستبعد) recompute live from the selected source. The mismatch banner stays.
-
-## New section on Profits page: "دفتر التكاليف" (Cost Book)
-
-Collapsible panel with:
-
-- Filters: بحث منتج، لون (ColorSwatch chips), كولكشن، سيريال، PO/شحنة.
-- Table per product row: صورة · اسم · لون · سيريال · كولكشن · **متوسط USD** · **متوسط EGP** · آخر تكلفة · أقل/أعلى · إجمالي الكمية المشتراة.
-- Expand row → per-PO lots table: `PO code · تاريخ · qty · unit USD · usd_rate · unit EGP · إجمالي EGP` with a mini sparkline of unit_usd over time.
-- Export Excel/PDF.
-
-## Fiscal year handling
-
-- `fiscal_year_start_month` setting (default: 1 = January). Presets: 2024 / 2025 / 2026 / كل.
-- All Profits queries + Cost Book lots are filtered by the chosen FY.
-
-## Responsiveness
-
-Cards → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`. Filter bar → stacked on mobile, inline on ≥sm. Cost Book table → horizontal scroll on mobile with sticky product column. Verified via Playwright at 375 / 768 / 1280.
-
-## Safety guarantees
-
-- No changes to `invoices`, `invoice_items`, `purchase_orders`, `purchase_order_items`, `delivery_receipts`, `products.cost_price*`.
-- No triggers touched.
-- The Cost Book is a SELECT-only view + RPC; overrides live in a separate table used only by `/profits`.
-
-## Technical details
-
-- **Migration 1:** `CREATE OR REPLACE VIEW product_cost_book_lots` + `CREATE FUNCTION get_product_cost_book(p_fy_start date, p_fy_end date)` returning JSON per product (uses `SECURITY DEFINER` + `is_admin()`/`is_company_member()` gate; cost columns are admin/executive-only per existing memory).
-- **Migration 2:** `CREATE TABLE profit_cost_overrides` (admin-only RLS) + `updated_at` trigger + GRANTs.
-- **Frontend:** rewrite `src/routes/profits.tsx` — add `useCostSource` state, fetch cost book via RPC with React Query, replace `costOf(product)` helper to switch source. Add `<CostBookPanel>` component. Add FY selector. Keep existing Excel export, extend it with WAC columns.
-- **Realtime:** subscribe to `purchase_order_items` and `purchase_orders` to invalidate the cost book query.
-- FX fallback: if `po.usd_rate` is null on a historical PO, use the nearest later PO's `usd_rate`, else `settings.default_usd_rate`, else 50.
-
-## Out of scope (call out explicitly)
-
-- No change to how invoice profit is stored per line.
-- No auto-update of `products.cost_price` from WAC.
-- No change to distributor/PO/DR flows.
+هل أبدأ بالتنفيذ؟

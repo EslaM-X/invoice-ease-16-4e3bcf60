@@ -134,6 +134,9 @@ function ProfitsPage() {
   const [chartView, setChartView] = useState<"profit" | "all">("profit");
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerCollections, setPickerCollections] = useState<Set<string>>(new Set());
+  const [pickerColors, setPickerColors] = useState<Set<string>>(new Set());
+  const [cbSort, setCbSort] = useState<"qty" | "cost" | "recent" | "name">("qty");
 
   // ---- Weighted-Average Cost engine ----
   const { isAdmin } = useRole();
@@ -309,6 +312,22 @@ function ProfitsPage() {
     const m = new Map<string, Product>();
     for (const p of products) m.set(p.id, p);
     return m;
+  }, [products]);
+
+  // Unique collections / colors for the visual product picker
+  const pickerFacets = useMemo(() => {
+    const cols = new Map<string, number>();
+    const colors = new Map<string, number>();
+    for (const p of products) {
+      const c = (p.collection ?? "").trim();
+      if (c) cols.set(c, (cols.get(c) ?? 0) + 1);
+      const cl = (p.color ?? "").trim();
+      if (cl) colors.set(cl, (colors.get(cl) ?? 0) + 1);
+    }
+    return {
+      collections: Array.from(cols.entries()).sort((a, b) => b[1] - a[1]),
+      colors: Array.from(colors.entries()).sort((a, b) => b[1] - a[1]).slice(0, 24),
+    };
   }, [products]);
 
   // Weighted-average / configurable per-product cost (EGP).
@@ -823,9 +842,17 @@ function ProfitsPage() {
               </div>
             </>
           )}
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[220px]">
             <Label className="text-xs">{t("بحث منتج", "Search product")}</Label>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")} />
+            <div className="relative">
+              <Filter className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("اسم / تسلسلي / لون / كولكشن", "name / serial / color / collection")}
+                className="ps-9"
+              />
+            </div>
           </div>
           <div className="min-w-[220px]">
             <Label className="text-xs">{t("العميل", "Customer")}</Label>
@@ -840,90 +867,220 @@ function ProfitsPage() {
               ))}
             </select>
           </div>
-          <div className="min-w-[200px]">
+          <div className="min-w-[220px]">
             <Label className="text-xs">{t("فلترة منتجات محددة", "Filter specific products")}</Label>
             <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start gap-2 h-10">
-                  <Filter className="h-4 w-4" />
-                  {selectedIds.size > 0
-                    ? t(`${selectedIds.size} منتج محدد`, `${selectedIds.size} selected`)
-                    : t("كل المنتجات", "All products")}
+                  <Layers className="h-4 w-4 text-primary" />
+                  <span className="truncate">
+                    {selectedIds.size > 0
+                      ? t(`${selectedIds.size} منتج محدد`, `${selectedIds.size} selected`)
+                      : t("كل المنتجات", "All products")}
+                  </span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[320px] p-0" align="end">
-                <div className="p-2 border-b flex items-center gap-2">
-                  <Input
-                    value={pickerSearch}
-                    onChange={(e) => setPickerSearch(e.target.value)}
-                    placeholder={t("بحث...", "Search...")}
-                    className="h-8 text-xs"
-                  />
-                  {selectedIds.size > 0 && (
-                    <Button size="sm" variant="ghost" onClick={clearSelected} className="h-8 px-2 text-[10px]">
-                      {t("مسح", "Clear")}
-                    </Button>
+              <PopoverContent className="w-[420px] p-0" align="end">
+                <div className="p-2 border-b space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={pickerSearch}
+                      onChange={(e) => setPickerSearch(e.target.value)}
+                      placeholder={t("بحث اسم / سيريال / لون...", "Search name / serial / color…")}
+                      className="h-8 text-xs"
+                    />
+                    {selectedIds.size > 0 && (
+                      <Button size="sm" variant="ghost" onClick={clearSelected} className="h-8 px-2 text-[10px]">
+                        {t("مسح", "Clear")}
+                      </Button>
+                    )}
+                  </div>
+                  {pickerFacets.collections.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] text-muted-foreground self-center me-1">{t("الكولكشن:", "Collection:")}</span>
+                      {pickerFacets.collections.map(([c, n]) => {
+                        const active = pickerCollections.has(c);
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() =>
+                              setPickerCollections((cur) => {
+                                const s = new Set(cur);
+                                if (s.has(c)) s.delete(c); else s.add(c);
+                                return s;
+                              })
+                            }
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition ${
+                              active ? collectionBadgeClass(c) + " ring-1 ring-primary/50" : "bg-muted/40 hover:bg-muted"
+                            }`}
+                          >
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(c)}`} />
+                            {c}
+                            <span className="opacity-60 tabular-nums">{n}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {pickerFacets.colors.length > 0 && (
+                    <div className="flex flex-wrap gap-1 items-center">
+                      <span className="text-[10px] text-muted-foreground me-1">{t("اللون:", "Color:")}</span>
+                      {pickerFacets.colors.map(([c, n]) => {
+                        const active = pickerColors.has(c);
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            title={`${c} · ${n}`}
+                            onClick={() =>
+                              setPickerColors((cur) => {
+                                const s = new Set(cur);
+                                if (s.has(c)) s.delete(c); else s.add(c);
+                                return s;
+                              })
+                            }
+                            className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] transition ${
+                              active ? "ring-2 ring-primary shadow-sm" : "hover:bg-muted"
+                            }`}
+                          >
+                            <span className="inline-block h-3 w-3 rounded-full border" style={swatchStyle(c)} />
+                            <span className="truncate max-w-[70px]">{c}</span>
+                          </button>
+                        );
+                      })}
+                      {(pickerColors.size > 0 || pickerCollections.size > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => { setPickerColors(new Set()); setPickerCollections(new Set()); }}
+                          className="text-[10px] text-primary underline ms-auto"
+                        >
+                          {t("إلغاء الفلاتر", "Reset facets")}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div className="max-h-72 overflow-y-auto p-1">
-                  {products
-                    .filter((p) => {
-                      const s = pickerSearch.trim().toLowerCase();
+                <div className="max-h-80 overflow-y-auto p-1">
+                  {(() => {
+                    const s = pickerSearch.trim().toLowerCase();
+                    const filtered = products.filter((p) => {
+                      if (pickerCollections.size > 0 && !pickerCollections.has((p.collection ?? "").trim())) return false;
+                      if (pickerColors.size > 0 && !pickerColors.has((p.color ?? "").trim())) return false;
                       if (!s) return true;
                       return (
                         p.name.toLowerCase().includes(s) ||
                         (p.serial_number ?? "").toLowerCase().includes(s) ||
+                        (p.color ?? "").toLowerCase().includes(s) ||
                         (p.collection ?? "").toLowerCase().includes(s)
                       );
-                    })
-                    .map((p) => {
-                      const checked = selectedIds.has(p.id);
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => toggleSelected(p.id)}
-                          className={`w-full text-start flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted ${checked ? "bg-primary/10" : ""}`}
-                        >
-                          <input type="checkbox" readOnly checked={checked} className="pointer-events-none" />
-                          <span className="truncate flex-1">{p.name}</span>
-                          {p.collection && (
-                            <span className={`text-[9px] rounded border px-1 ${collectionBadgeClass(p.collection)}`}>{p.collection}</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                    });
+                    if (filtered.length === 0) {
+                      return <div className="text-center text-[11px] text-muted-foreground py-6">{t("لا نتائج", "No results")}</div>;
+                    }
+                    return (
+                      <>
+                        <div className="flex items-center justify-between px-2 py-1 text-[10px] text-muted-foreground">
+                          <span>{filtered.length} {t("منتج", "product(s)")}</span>
+                          <button
+                            type="button"
+                            className="text-primary underline"
+                            onClick={() =>
+                              setSelectedIds((cur) => {
+                                const s2 = new Set(cur);
+                                for (const p of filtered) s2.add(p.id);
+                                return s2;
+                              })
+                            }
+                          >
+                            {t("تحديد كل الظاهر", "Select all shown")}
+                          </button>
+                        </div>
+                        {filtered.slice(0, 400).map((p) => {
+                          const checked = selectedIds.has(p.id);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => toggleSelected(p.id)}
+                              className={`w-full text-start flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted ${checked ? "bg-primary/10 ring-1 ring-primary/40" : ""}`}
+                            >
+                              <input type="checkbox" readOnly checked={checked} className="pointer-events-none" />
+                              {p.image_url ? (
+                                <img src={p.image_url} alt="" className="h-8 w-8 rounded-md object-cover border shrink-0" loading="lazy" />
+                              ) : (
+                                <div className="h-8 w-8 rounded-md border bg-muted/40 grid place-items-center shrink-0">
+                                  <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="truncate font-medium">{p.name}</div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                  {p.serial_number && <span className="font-mono truncate">{p.serial_number}</span>}
+                                  {p.color && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="inline-block h-2 w-2 rounded-full border" style={swatchStyle(p.color)} />
+                                      <span className="truncate max-w-[60px]">{p.color}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {p.collection && (
+                                <span className={`text-[9px] rounded border px-1.5 py-0.5 font-bold ${collectionBadgeClass(p.collection)}`}>
+                                  {p.collection}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
                 </div>
               </PopoverContent>
             </Popover>
           </div>
         </div>
         {selectedIds.size > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground">{t("المنتجات المحددة:", "Selected:")}</span>
-            {Array.from(selectedIds).map((id) => {
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+            <span className="text-[11px] font-semibold text-foreground">{t("المحددة:", "Selected:")}</span>
+            {Array.from(selectedIds).slice(0, 12).map((id) => {
               const p = productById.get(id);
               if (!p) return null;
               return (
-                <span key={id} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
-                  {p.name}
+                <span key={id} className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 py-0.5 ps-0.5 pe-2 text-[10px]">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt="" className="h-4 w-4 rounded-full object-cover" />
+                  ) : (
+                    <span className={`inline-block h-4 w-4 rounded-full ${collectionDotClass(p.collection)}`} />
+                  )}
+                  <span className="truncate max-w-[110px]">{p.name}</span>
                   <button onClick={() => toggleSelected(id)} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
                 </span>
               );
             })}
+            {selectedIds.size > 12 && (
+              <span className="text-[10px] text-muted-foreground">+{selectedIds.size - 12}</span>
+            )}
             <button onClick={clearSelected} className="text-[10px] text-primary underline ms-1">{t("إلغاء الكل", "Clear all")}</button>
           </div>
         )}
-      </div>
-
-      <div className="rounded-2xl border bg-card p-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-semibold text-foreground">{t("السياق الحالي", "Current context")}</span>
-          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("المدى", "Range")}: {filterSummary.rangeLabel}</span>
-          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("المنتج", "Product")}: {filterSummary.productSummary}</span>
-          <span className="rounded-full border bg-muted/40 px-2.5 py-1">{t("العميل", "Customer")}: {filterSummary.customerName}</span>
+        {/* Current context — inline chips replacing the standalone card */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5 text-[11px]">
+          <span className="font-semibold text-muted-foreground">{t("السياق الحالي:", "Context:")}</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 px-2.5 py-0.5">
+            <Clock className="h-3 w-3" /> {filterSummary.rangeLabel}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">
+            <Layers className="h-3 w-3" /> {filterSummary.productSummary}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5">
+            <Receipt className="h-3 w-3" /> {filterSummary.customerName}
+          </span>
         </div>
       </div>
+
+
 
       {/* Cost Source & Cost Book */}
       <div className="rounded-2xl border bg-card shadow-sm">
@@ -960,6 +1117,12 @@ function ProfitsPage() {
                 </button>
               ))}
             </div>
+            <div className="mt-1.5 text-[10px] text-muted-foreground leading-relaxed">
+              {costSource === "wac" && t("متوسط تكلفة كل POs مرجّح بالكمية — الأدق للأرباح.", "Weighted average of all POs by quantity — most accurate for profit.")}
+              {costSource === "latest_po" && t("سعر آخر أمر شراء وصل — يعكس أحدث تكلفة استيراد.", "Uses the latest received PO cost — reflects current import price.")}
+              {costSource === "current" && t("سعر المنتج المحفوظ حاليًا — يتجاهل تعديلات الأرباح اليدوية.", "Uses the product's stored cost — ignores manual overrides.")}
+              {costSource === "override" && t("لا يُستخدم إلا التعديل اليدوي — بديله سعر المنتج الحالي.", "Only manual overrides apply — falls back to current product cost.")}
+            </div>
           </div>
           <div>
             <Label className="text-[11px] text-muted-foreground">{t("السنة المالية (لدفتر التكاليف)", "Fiscal year (Cost Book)")}</Label>
@@ -974,11 +1137,20 @@ function ProfitsPage() {
               ))}
             </select>
           </div>
-          <div className="flex flex-col justify-end text-[11px] text-muted-foreground">
-            <div>{t("سعر افتراضي", "Fallback rate")}: <span className="tabular-nums font-semibold text-foreground">{costBook.default_rate?.toFixed?.(2) ?? "50.00"}</span></div>
-            <div>{t("منتجات في الدفتر", "Products in book")}: <span className="tabular-nums font-semibold text-foreground">{Object.keys(costBook.products).length}</span></div>
+          <div className="flex flex-col justify-end gap-1 text-[11px]">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 self-start">
+              <span className="text-muted-foreground">{t("سعر افتراضي", "Fallback rate")}</span>
+              <span className="tabular-nums font-bold text-primary">${costBook.default_rate?.toFixed?.(2) ?? "50.00"}</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 self-start">
+              <BookOpen className="h-3 w-3 text-muted-foreground" />
+              <span className="tabular-nums font-semibold">{Object.keys(costBook.products).length}</span>
+              <span className="text-muted-foreground">{t("منتج في الدفتر", "in book")}</span>
+            </div>
           </div>
         </div>
+
+
 
         {costBookOpen && (
           <div className="border-t">
@@ -989,6 +1161,19 @@ function ProfitsPage() {
                 placeholder={t("بحث اسم / كولكشن / لون / سيريال", "Search name / collection / color / serial")}
                 className="h-8 max-w-xs text-xs"
               />
+              <div className="inline-flex items-center gap-1 text-[10px]">
+                <span className="text-muted-foreground">{t("ترتيب:", "Sort:")}</span>
+                <select
+                  value={cbSort}
+                  onChange={(e) => setCbSort(e.target.value as any)}
+                  className="h-7 rounded-md border bg-background px-2 text-[11px]"
+                >
+                  <option value="qty">{t("الأكثر كمية", "Highest qty")}</option>
+                  <option value="cost">{t("الأعلى تكلفة", "Highest cost")}</option>
+                  <option value="recent">{t("أحدث PO", "Most recent PO")}</option>
+                  <option value="name">{t("اسم أبجدي", "Name A-Z")}</option>
+                </select>
+              </div>
               <span className="text-[10px] text-muted-foreground ms-auto">
                 {t("انقر على منتج لعرض دفعات PO", "Click a product to expand PO lots")}
               </span>
@@ -1020,9 +1205,16 @@ function ProfitsPage() {
                       );
                     })
                     .sort((a, b) => {
-                      const ea = costBook.products[a.id]?.total_qty ?? 0;
-                      const eb = costBook.products[b.id]?.total_qty ?? 0;
-                      return eb - ea;
+                      const ea = costBook.products[a.id];
+                      const eb = costBook.products[b.id];
+                      if (cbSort === "name") return a.name.localeCompare(b.name);
+                      if (cbSort === "cost") return (costOf(b.id) || 0) - (costOf(a.id) || 0);
+                      if (cbSort === "recent") {
+                        const la = ea?.lots?.[0]?.shipment_date ?? "";
+                        const lb = eb?.lots?.[0]?.shipment_date ?? "";
+                        return lb.localeCompare(la);
+                      }
+                      return (eb?.total_qty ?? 0) - (ea?.total_qty ?? 0);
                     })
                     .slice(0, 300)
                     .map((p) => {
@@ -1032,14 +1224,23 @@ function ProfitsPage() {
                       const isOpen = !!expandedCB[p.id];
                       return (
                         <Fragment key={p.id}>
-                          <tr className="hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedCB((c) => ({ ...c, [p.id]: !c[p.id] }))}>
+                          <tr className={`hover:bg-muted/30 cursor-pointer ${ov ? "bg-amber-500/5" : ""}`} onClick={() => setExpandedCB((c) => ({ ...c, [p.id]: !c[p.id] }))}>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2 min-w-0">
                                 {isOpen ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
+                                {p.image_url ? (
+                                  <img src={p.image_url} alt="" className="h-9 w-9 rounded-md object-cover border shrink-0" loading="lazy" />
+                                ) : (
+                                  <div className="h-9 w-9 rounded-md border bg-muted/40 grid place-items-center shrink-0">
+                                    <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </div>
+                                )}
                                 <div className="min-w-0">
                                   <div className="font-medium truncate flex items-center gap-1.5">
                                     {p.name}
                                     {p.collection && (
+
+
                                       <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold ${collectionBadgeClass(p.collection)}`}>
                                         <span className={`inline-block h-1 w-1 rounded-full ${collectionDotClass(p.collection)}`} />
                                         {p.collection}
@@ -1167,18 +1368,49 @@ function ProfitsPage() {
 
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard icon={<Wallet className="h-5 w-5" />} label={t("إجمالي البيع", "Revenue")} value={fmtMoney(rows.totals.revenue, "EGP", lang)} className="from-sky-500/15 to-sky-500/5 text-sky-600" />
-        <KpiCard icon={<Coins className="h-5 w-5" />} label={t("إجمالي التكلفة", "Cost")} value={fmtMoney(rows.totals.cost, "EGP", lang)} className="from-amber-500/15 to-amber-500/5 text-amber-600" />
-        <KpiCard icon={<TrendingUp className="h-5 w-5" />} label={t("صافي الربح", "Net Profit")} value={fmtMoney(rows.totals.profit, "EGP", lang)} className="from-emerald-500/20 to-emerald-500/5 text-emerald-600" />
-        <KpiCard icon={<Percent className="h-5 w-5" />} label={t("هامش الربح", "Margin")} value={`${rows.totals.margin.toFixed(1)}%`} className="from-violet-500/15 to-violet-500/5 text-violet-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
-          icon={<Coins className="h-5 w-5" />}
-          label={t("شحن/خدمة (مستبعد)", "Shipping/Fees (excluded)")}
-          value={fmtMoney(shippingTotals.amount, "EGP", lang)}
-          className="from-slate-500/15 to-slate-500/5 text-slate-600"
+          icon={<Wallet className="h-4 w-4 text-sky-600" />}
+          iconRing="bg-sky-500/15 ring-1 ring-sky-500/30"
+          label={t("إجمالي البيع", "Revenue")}
+          value={fmtMoney(rows.totals.revenue, "EGP", lang)}
+          hint={t(`${rows.totals.lines} بند مبيعات`, `${rows.totals.lines} sold line(s)`)}
+          className="from-sky-500/10 to-sky-500/[0.03] text-sky-700"
+        />
+        <KpiCard
+          icon={<Coins className="h-4 w-4 text-amber-600" />}
+          iconRing="bg-amber-500/15 ring-1 ring-amber-500/30"
+          label={t("إجمالي التكلفة", "Cost")}
+          value={fmtMoney(rows.totals.cost, "EGP", lang)}
+          hint={t(`مصدر: ${costSourceLabel(costSource, t)}`, `Source: ${costSourceLabel(costSource, t)}`)}
+          className="from-amber-500/10 to-amber-500/[0.03] text-amber-700"
+        />
+        <KpiCard
+          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+          iconRing="bg-emerald-500/15 ring-1 ring-emerald-500/30"
+          label={t("صافي الربح", "Net Profit")}
+          value={fmtMoney(rows.totals.profit, "EGP", lang)}
+          hint={t("إيراد − تكلفة (بدون شحن)", "Revenue − Cost (ex. shipping)")}
+          className="from-emerald-500/15 to-emerald-500/[0.03] text-emerald-700"
+        />
+        <KpiCard
+          icon={<Percent className="h-4 w-4 text-primary" />}
+          iconRing="bg-primary/15 ring-1 ring-primary/30"
+          label={t("هامش الربح", "Margin")}
+          value={`${rows.totals.margin.toFixed(1)}%`}
+          hint={rows.totals.margin >= 30 ? t("ممتاز", "Excellent") : rows.totals.margin >= 15 ? t("جيد", "Good") : t("يحتاج مراجعة", "Needs review")}
+          className="from-primary/10 to-primary/[0.03] text-primary"
         />
       </div>
+      <div className="flex flex-wrap items-center gap-2 -mt-1">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[11px] text-slate-700 dark:text-slate-300">
+          <Coins className="h-3 w-3" />
+          {t("شحن/خدمة (مستبعد)", "Shipping/Fees (excluded)")}:
+          <span className="tabular-nums font-bold">{fmtMoney(shippingTotals.amount, "EGP", lang)}</span>
+          <span className="opacity-60">· {shippingTotals.lines} {t("بند", "line(s)")}</span>
+        </span>
+      </div>
+
       {totalsMatch && (
         <div className={`rounded-2xl border px-4 py-3 text-sm ${totalsMatch.ok ? "border-emerald-500/30 bg-emerald-500/8 text-emerald-700" : "border-destructive/30 bg-destructive/8 text-destructive"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1814,17 +2046,23 @@ function ProfitsPage() {
   );
 }
 
-function KpiCard({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
+function KpiCard({ icon, label, value, className, hint, iconRing }: { icon: React.ReactNode; label: string; value: string; className?: string; hint?: string; iconRing?: string }) {
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${className ?? ""}`}>
-      <div className="flex items-center gap-2 text-xs font-semibold opacity-80">
-        {icon}
-        <span>{label}</span>
+    <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition hover:shadow-md ${className ?? ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-wider opacity-70">{label}</div>
+          <div className="mt-1.5 text-lg sm:text-2xl font-extrabold tabular-nums text-foreground leading-tight">{value}</div>
+          {hint && <div className="mt-1 text-[10px] opacity-70">{hint}</div>}
+        </div>
+        <div className={`grid place-items-center h-9 w-9 rounded-full shrink-0 ${iconRing ?? "bg-background/60 border"}`}>
+          {icon}
+        </div>
       </div>
-      <div className="mt-1.5 text-lg sm:text-xl font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );
 }
+
 
 function RowLine({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
