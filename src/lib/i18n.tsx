@@ -14,6 +14,7 @@ const ar: Dict = {
 
   fulfillment: "اقتراحات الإقفال الذكية",
   inventory: "تحليل المخزون",
+  inventory_traceability: "متتبع المخزون والمستويات",
   stock_intake: "المخزون",
   stock_intake_desc: "تسجيل القطع الواردة من الموردين والشحنات وتحديث الكميات والتكاليف",
   new_intake: "استلام شحنة جديدة",
@@ -328,6 +329,7 @@ const en: Dict = {
 
   fulfillment: "Smart Fulfillment",
   inventory: "Inventory Analysis",
+  inventory_traceability: "Inventory Traceability & Levels",
   stock_intake: "Inventory",
   stock_intake_desc: "Record incoming units from suppliers, update quantities and costs",
   new_intake: "New stock intake",

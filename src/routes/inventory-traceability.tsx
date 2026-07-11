@@ -18,7 +18,14 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { RouteErrorBoundary } from "@/components/error-boundary";
 
 
+const VALID_TABS = ["lines", "per-product", "validate", "timeline", "stock"] as const;
+type TabValue = typeof VALID_TABS[number];
+
 export const Route = createFileRoute("/inventory-traceability")({
+  validateSearch: (search: Record<string, unknown>): { tab?: TabValue } => {
+    const raw = typeof search.tab === "string" ? search.tab : undefined;
+    return { tab: (VALID_TABS as readonly string[]).includes(raw ?? "") ? (raw as TabValue) : undefined };
+  },
   component: () => (
     <AppShell>
       <RouteErrorBoundary label="متتبع المخزون">
@@ -65,6 +72,8 @@ type LineRow = {
 function Traceability() {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const searchParams = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -77,7 +86,10 @@ function Traceability() {
   const [logs, setLogs] = useState<Log[]>([]);
 
   // Filters
-  const [tab, setTab] = useState<string>("lines");
+  const tab: TabValue = searchParams.tab ?? "lines";
+  const setTab = (next: string) => {
+    navigate({ search: (prev: { tab?: TabValue }) => ({ ...prev, tab: next as TabValue }), replace: true });
+  };
   const [search, setSearch] = useState("");
   const [poFilter, setPoFilter] = useState("");
   const [drFilter, setDrFilter] = useState("");
