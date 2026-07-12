@@ -733,7 +733,7 @@ function ProfitsPage() {
       const p = productById.get(productId);
       const current = Number(p?.cost_price ?? 0);
       if (!entry) return current;
-      if (costSource === "wac") return Number(entry.wac_egp) || current;
+      if (costSource === "wac") return Number(entry.wac_landed_egp) || Number(entry.wac_egp) || current;
       if (costSource === "latest_po") return Number(entry.latest_egp) || current;
       return current; // "current"
     };
@@ -749,7 +749,7 @@ function ProfitsPage() {
       if (ov) return "override";
       const entry = costBook.products[productId];
       if (!entry) return "current";
-      if (costSource === "wac") return Number(entry.wac_egp) > 0 ? "wac" : "current";
+      if (costSource === "wac") return (Number(entry.wac_landed_egp) || Number(entry.wac_egp)) > 0 ? "wac" : "current";
       if (costSource === "latest_po") return Number(entry.latest_egp) > 0 ? "latest_po" : "current";
       return "current";
     };
@@ -1720,7 +1720,18 @@ function ProfitsPage() {
                             </td>
                             <td className="px-3 py-2 text-end tabular-nums">{entry ? fmtNumber(entry.total_qty, lang) : "—"}</td>
                             <td className="px-3 py-2 text-end tabular-nums">{entry ? `$${entry.wac_usd.toFixed(2)}` : "—"}</td>
-                            <td className="px-3 py-2 text-end tabular-nums font-semibold">{entry ? fmtMoney(entry.wac_egp, "EGP", lang) : "—"}</td>
+                            <td className="px-3 py-2 text-end tabular-nums font-semibold" title={entry ? t("التكلفة الفعلية شاملة كل الرسوم (صرف/جمارك/ضرائب/شحن/إضافية)", "Landed cost incl. FX/customs/taxes/shipping/extra") : ""}>
+                              {entry ? (
+                                <div className="flex flex-col items-end leading-tight">
+                                  <span>{fmtMoney(Number(entry.wac_landed_egp) || Number(entry.wac_egp), "EGP", lang)}</span>
+                                  {Number(entry.wac_landed_egp) > 0 && Number(entry.wac_egp) > 0 && Number(entry.wac_landed_egp) !== Number(entry.wac_egp) && (
+                                    <span className="text-[9px] text-muted-foreground font-normal">
+                                      {t("خام", "base")}: {fmtMoney(entry.wac_egp, "EGP", lang)}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : "—"}
+                            </td>
                             <td className="px-3 py-2 text-end tabular-nums">{entry ? `$${entry.latest_usd.toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2 text-end tabular-nums text-[10px]">{entry ? `$${entry.min_usd.toFixed(2)} / $${entry.max_usd.toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2 text-end tabular-nums font-bold text-primary">{fmtMoney(eff, "EGP", lang)}</td>
