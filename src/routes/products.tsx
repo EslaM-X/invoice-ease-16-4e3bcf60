@@ -544,19 +544,19 @@ function Products() {
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_products")}</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-sm table-auto">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-3 py-3 w-10">
+                  <th className="px-2 py-3 w-8 sm:px-3">
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label={t("select_all")} />
                   </th>
-                  <th className="px-4 py-3 text-start font-medium">{t("product_name")}</th>
-                  <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("serial_number")}</th>
-                  <th className="px-4 py-3 text-start font-medium hidden md:table-cell">{t("color")}</th>
-                  <th className="px-4 py-3 text-start font-medium hidden lg:table-cell">{t("collection")}</th>
-                  <th className="px-4 py-3 text-start font-medium">{t("price")}</th>
-                  <th className="px-4 py-3 text-start font-medium">{t("stock")}</th>
-                  <th className="px-4 py-3" />
+                  <th className="px-2 py-3 text-start font-medium sm:px-4">{t("product_name")}</th>
+                  <th className="px-2 py-3 text-start font-medium hidden md:table-cell sm:px-4">{t("serial_number")}</th>
+                  <th className="px-2 py-3 text-start font-medium hidden lg:table-cell sm:px-4">{t("color")}</th>
+                  <th className="px-2 py-3 text-start font-medium hidden xl:table-cell sm:px-4">{t("collection")}</th>
+                  <th className="px-2 py-3 text-start font-medium whitespace-nowrap sm:px-4">{t("price")}</th>
+                  <th className="px-2 py-3 text-start font-medium sm:px-4">{t("stock")}</th>
+                  <th className="px-2 py-3 sm:px-4" />
                 </tr>
               </thead>
               <tbody className="divide-y">
