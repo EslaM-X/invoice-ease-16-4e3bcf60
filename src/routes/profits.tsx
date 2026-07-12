@@ -1810,7 +1810,8 @@ function ProfitsPage() {
         )}
       </div>
 
-
+      {/* Product Cost History across POs */}
+      <ProductCostHistoryPanel costBook={costBook} products={products} t={t} lang={lang} />
 
       {/* KPIs */}
       {loading && items.length === 0 ? (
