@@ -36,6 +36,17 @@ function etaShort(iso: string, lang: string): string {
   return lang === "ar" ? `بعد ${days} يوم` : `in ${days}d`;
 }
 
+function fmtWeight(grams: number | null | undefined): string | null {
+  const g = Number(grams);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  if (g >= 1000) {
+    const kg = g / 1000;
+    // Trim trailing zeros; keep up to 3 decimals for precision
+    return `${kg.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg`;
+  }
+  return `${g.toLocaleString(undefined, { maximumFractionDigits: 3 })} g`;
+}
+
 function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
@@ -566,7 +577,21 @@ function Products() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-medium">{p.name}</div>
+                            <div className="font-medium flex items-center gap-2 flex-wrap">
+                              <span className="truncate">{p.name}</span>
+                              {(() => {
+                                const w = fmtWeight((p as any).weight_grams);
+                                if (!w) return null;
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-yellow-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 tabular-nums shadow-sm"
+                                    title={lang === "ar" ? "وزن الوحدة — يُستخدم لتوزيع الشحن" : "Unit weight — used for shipping allocation"}
+                                  >
+                                    <span aria-hidden>⚖️</span>{w}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                             <AuthorBadge email={p.created_by_email} label="created by" className="mt-0.5" />
                           </div>
                         </div>

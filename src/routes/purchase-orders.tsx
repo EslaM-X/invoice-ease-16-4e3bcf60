@@ -1026,6 +1026,18 @@ function CreatePODialog({
                                 {p.color}
                               </span>
                             )}
+                            {Number((p as any).weight_grams ?? 0) > 0 && (() => {
+                              const g = Number((p as any).weight_grams);
+                              const label = g >= 1000 ? `${(g / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${g.toLocaleString(undefined, { maximumFractionDigits: 3 })} g`;
+                              return (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 font-bold text-amber-700 dark:text-amber-300 tabular-nums"
+                                  title={isAr ? "وزن الوحدة — يُستخدم لتوزيع الشحن" : "Unit weight — used for shipping allocation"}
+                                >
+                                  ⚖️ {label}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1099,6 +1111,26 @@ function CreatePODialog({
             <div className="mt-1 flex justify-between">
               <span className="text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</span>
               <span className="font-bold tabular-nums text-primary">${totalUsd.toFixed(2)}</span>
+            </div>
+            {(() => {
+              const totalG = selected.reduce((s, p) => s + (Number((p as any).weight_grams ?? 0) * (rows[p.id]?.qty ?? 0)), 0);
+              const anyWeight = selected.some((p) => Number((p as any).weight_grams ?? 0) > 0);
+              const label = totalG >= 1000 ? `${(totalG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${totalG.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+              return (
+                <div className="mt-1 flex justify-between">
+                  <span className="text-muted-foreground">⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}</span>
+                  <span className="font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    {totalG > 0 ? label : (isAr ? "بدون وزن" : "no weight")}
+                  </span>
+                </div>
+              );
+              void anyWeight;
+            })()}
+            <div className="mt-2 rounded border border-amber-400/30 bg-amber-500/5 p-2 text-[10px] leading-snug text-amber-800 dark:text-amber-200">
+              <div className="font-semibold mb-0.5">{isAr ? "كيف تُوزَّع التكلفة؟" : "How costs are allocated"}</div>
+              <div>• {isAr ? "الشحن يوزَّع حسب الوزن (المنتج الأثقل يحمل نصيباً أكبر)." : "Shipping is allocated by weight (heavier lines carry more)."}</div>
+              <div>• {isAr ? "الجمارك والضرائب والإضافي حسب قيمة المنتج بالدولار." : "Customs, taxes and extras are allocated by USD value."}</div>
+              <div>• {isAr ? "لو مفيش أوزان، الشحن يرجع تلقائياً للتوزيع بالقيمة." : "If no weights are set, shipping falls back to value share."}</div>
             </div>
             <div className="mt-2 text-[10px] text-muted-foreground">
               {isAr
@@ -1688,11 +1720,24 @@ function PODetailDialog({
                 </div>
                 {(() => {
                   const totalG = items.reduce((s, it) => s + (Number(it.unit_weight_grams ?? 0) * Number(it.quantity ?? 0)), 0);
-                  if (totalG <= 0) return null;
-                  const label = totalG >= 1000 ? `${(totalG / 1000).toFixed(2)} kg` : `${totalG.toFixed(0)} g`;
+                  const anyWeight = items.some((it) => Number(it.unit_weight_grams ?? 0) > 0);
+                  if (totalG <= 0) {
+                    return (
+                      <div className="text-[10px] text-muted-foreground mt-0.5" title={isAr ? "أدخل الوزن في صفحة المنتجات لتوزيع الشحن بالوزن" : "Enter unit weights on the Products page to allocate shipping by weight"}>
+                        ⚖️ {isAr ? "بدون أوزان — الشحن سيوزَّع بالقيمة" : "No weights — shipping falls back to value share"}
+                      </div>
+                    );
+                  }
+                  const label = totalG >= 1000 ? `${(totalG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${totalG.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
                   return (
-                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                      ⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}: <span className="tabular-nums font-semibold">{label}</span>
+                    <div className="mt-0.5 space-y-0.5">
+                      <div className="text-[10px] text-amber-600 dark:text-amber-400">
+                        ⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}: <span className="tabular-nums font-semibold">{label}</span>
+                      </div>
+                      <div className="text-[9px] leading-tight text-muted-foreground" title={isAr ? "الشحن يوزَّع حسب الوزن، والجمارك/الضرائب حسب قيمة المنتج" : "Shipping allocated by weight; customs/taxes by USD value"}>
+                        {isAr ? "الشحن ← بالوزن · الجمارك/الضرائب ← بالقيمة" : "Shipping → by weight · Customs/Taxes → by value"}
+                      </div>
+                      {!anyWeight && null}
                     </div>
                   );
                 })()}
@@ -1883,6 +1928,25 @@ function PODetailDialog({
                                       {it.collection}
                                     </span>
                                   )}
+                                  {Number(it.unit_weight_grams ?? 0) > 0 && (() => {
+                                    const uG = Number(it.unit_weight_grams);
+                                    const q = Number((itemEdits[it.id]?.qty) ?? it.quantity) || 0;
+                                    const totalG = uG * q;
+                                    const uL = uG >= 1000 ? `${(uG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${uG.toLocaleString(undefined, { maximumFractionDigits: 3 })} g`;
+                                    const tL = totalG >= 1000 ? `${(totalG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${totalG.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+                                    return (
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 font-bold text-amber-700 dark:text-amber-300 tabular-nums"
+                                        title={
+                                          isAr
+                                            ? `وزن الوحدة ${uL} × ${q} = ${tL} — يُستخدم لحساب نصيب هذا البند من الشحن`
+                                            : `Unit ${uL} × ${q} = ${tL} — used to compute this line's share of shipping`
+                                        }
+                                      >
+                                        ⚖️ {uL} × {q} = {tL}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </div>
