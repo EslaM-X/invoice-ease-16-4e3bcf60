@@ -1,0 +1,146 @@
+// Pure helpers for the "Cost history per product across POs" section
+// on the Profits page. Fully unit-testable — no React, no Supabase.
+
+export type PoCostLot = {
+  po_id: string;
+  po_number?: string | null;
+  shipment_code?: string | null;
+  shipment_date?: string | null;
+  status?: string | null;
+  qty: number;
+  unit_usd: number;
+  usd_rate: number;
+  unit_egp: number;
+  line_total_egp: number;
+};
+
+export type ProductCostSummary = {
+  productId: string;
+  totalQty: number;
+  totalSpendEgp: number;
+  totalSpendUsd: number;
+  wacUsd: number; // Σ qty*usd / Σ qty
+  wacEgp: number; // Σ qty*egp / Σ qty
+  simpleAvgUsd: number; // mean of unit prices (ignores qty)
+  minUsd: number;
+  maxUsd: number;
+  minLot: PoCostLot | null;
+  maxLot: PoCostLot | null;
+  poCount: number;
+  firstDate: string | null;
+  lastDate: string | null;
+};
+
+const EXCLUDED_STATUSES = new Set(["cancelled", "canceled"]);
+
+export function filterLots(lots: PoCostLot[], includeCancelled: boolean): PoCostLot[] {
+  if (includeCancelled) return lots;
+  return lots.filter((l) => !EXCLUDED_STATUSES.has((l.status ?? "").toLowerCase()));
+}
+
+export function summarizeProduct(productId: string, lots: PoCostLot[]): ProductCostSummary {
+  if (!lots.length) {
+    return {
+      productId,
+      totalQty: 0,
+      totalSpendEgp: 0,
+      totalSpendUsd: 0,
+      wacUsd: 0,
+      wacEgp: 0,
+      simpleAvgUsd: 0,
+      minUsd: 0,
+      maxUsd: 0,
+      minLot: null,
+      maxLot: null,
+      poCount: 0,
+      firstDate: null,
+      lastDate: null,
+    };
+  }
+  let totalQty = 0;
+  let sumQtyUsd = 0;
+  let sumQtyEgp = 0;
+  let sumUsd = 0;
+  let spendEgp = 0;
+  let spendUsd = 0;
+  let minLot: PoCostLot = lots[0];
+  let maxLot: PoCostLot = lots[0];
+  const dates: string[] = [];
+  const pos = new Set<string>();
+  for (const l of lots) {
+    const q = Number(l.qty) || 0;
+    const u = Number(l.unit_usd) || 0;
+    const e = Number(l.unit_egp) || 0;
+    totalQty += q;
+    sumQtyUsd += q * u;
+    sumQtyEgp += q * e;
+    sumUsd += u;
+    spendEgp += Number(l.line_total_egp) || q * e;
+    spendUsd += q * u;
+    if (u < (Number(minLot.unit_usd) || 0)) minLot = l;
+    if (u > (Number(maxLot.unit_usd) || 0)) maxLot = l;
+    if (l.shipment_date) dates.push(l.shipment_date);
+    pos.add(l.po_id);
+  }
+  dates.sort();
+  return {
+    productId,
+    totalQty,
+    totalSpendEgp: spendEgp,
+    totalSpendUsd: spendUsd,
+    wacUsd: totalQty > 0 ? sumQtyUsd / totalQty : 0,
+    wacEgp: totalQty > 0 ? sumQtyEgp / totalQty : 0,
+    simpleAvgUsd: sumUsd / lots.length,
+    minUsd: Number(minLot.unit_usd) || 0,
+    maxUsd: Number(maxLot.unit_usd) || 0,
+    minLot,
+    maxLot,
+    poCount: pos.size,
+    firstDate: dates[0] ?? null,
+    lastDate: dates[dates.length - 1] ?? null,
+  };
+}
+
+export type GrandSummary = {
+  productCount: number;
+  totalQty: number;
+  totalSpendUsd: number;
+  totalSpendEgp: number;
+  overallWacUsd: number;
+  overallWacEgp: number;
+  poCount: number;
+};
+
+export function summarizeMany(entries: ProductCostSummary[]): GrandSummary {
+  let totalQty = 0;
+  let spendUsd = 0;
+  let spendEgp = 0;
+  let sumQtyUsd = 0;
+  let sumQtyEgp = 0;
+  const posByProduct = entries.reduce((n, e) => n + e.poCount, 0);
+  for (const e of entries) {
+    totalQty += e.totalQty;
+    spendUsd += e.totalSpendUsd;
+    spendEgp += e.totalSpendEgp;
+    sumQtyUsd += e.wacUsd * e.totalQty;
+    sumQtyEgp += e.wacEgp * e.totalQty;
+  }
+  return {
+    productCount: entries.length,
+    totalQty,
+    totalSpendUsd: spendUsd,
+    totalSpendEgp: spendEgp,
+    overallWacUsd: totalQty > 0 ? sumQtyUsd / totalQty : 0,
+    overallWacEgp: totalQty > 0 ? sumQtyEgp / totalQty : 0,
+    poCount: posByProduct,
+  };
+}
+
+export function sortLotsByDateDesc(lots: PoCostLot[]): PoCostLot[] {
+  return [...lots].sort((a, b) => {
+    const da = a.shipment_date ?? "";
+    const db = b.shipment_date ?? "";
+    if (da === db) return 0;
+    return da < db ? 1 : -1;
+  });
+}
