@@ -4192,24 +4192,61 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                   filteredForPicker.map((p) => {
                     const entry = costBook.products[p.id];
                     const picked = selectedIds.has(p.id);
+                    const lowStock = (p.stock_quantity ?? 0) <= (p.low_stock_threshold ?? 0);
                     return (
                       <button
                         key={p.id}
                         onClick={() => toggle(p.id)}
-                        className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-start text-[12px] hover:bg-muted/40 ${
+                        className={`flex w-full items-start gap-2.5 px-2.5 py-2 text-start text-[12px] hover:bg-muted/40 transition ${
                           picked ? "bg-primary/10" : ""
                         }`}
                       >
-                        <input type="checkbox" readOnly checked={picked} className="h-3.5 w-3.5" />
+                        <input type="checkbox" readOnly checked={picked} className="mt-1 h-3.5 w-3.5 shrink-0" />
                         {p.image_url ? (
-                          <img src={p.image_url} alt="" className="h-6 w-6 rounded object-cover" />
+                          <img src={p.image_url} alt="" className="h-10 w-10 shrink-0 rounded-md object-cover border" />
                         ) : (
-                          <div className="h-6 w-6 rounded bg-muted" />
+                          <div className="h-10 w-10 shrink-0 rounded-md bg-muted border" />
                         )}
-                        <span className="flex-1 truncate font-medium">{p.name}</span>
-                        <span className="text-muted-foreground tabular-nums">
-                          {entry?.lots?.length ?? 0} {t("سطر", "lot(s)")}
-                        </span>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="flex-1 truncate font-semibold text-[12.5px]">{p.name}</span>
+                            <span className="shrink-0 rounded-full border bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                              {entry?.lots?.length ?? 0} {t("سطر", "lot(s)")}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                            {p.serial_number && (
+                              <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-1.5 py-0.5 font-mono text-muted-foreground">
+                                <span className="opacity-60">SN</span>
+                                <span className="text-foreground">{p.serial_number}</span>
+                              </span>
+                            )}
+                            {p.color && (
+                              <span className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5">
+                                <ColorSwatch value={p.color} size="sm" />
+                                <span className="text-foreground">{p.color}</span>
+                              </span>
+                            )}
+                            {p.collection && (
+                              <span className="inline-flex items-center gap-1 rounded-md border bg-primary/10 px-1.5 py-0.5 text-primary font-medium">
+                                {p.collection}
+                              </span>
+                            )}
+                            {p.is_spare_part && (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-400 font-medium">
+                                {t("قطعة غيار", "Spare")}
+                              </span>
+                            )}
+                            <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 tabular-nums ${
+                              lowStock ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400" : "bg-muted/40 text-muted-foreground"
+                            }`}>
+                              {t("مخزون", "Stock")}: {p.stock_quantity ?? 0}
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-1.5 py-0.5 tabular-nums text-muted-foreground">
+                              {t("سعر", "Price")}: {fmtMoney(p.price ?? 0, "EGP", lang)}
+                            </span>
+                          </div>
+                        </div>
                       </button>
                     );
                   })
