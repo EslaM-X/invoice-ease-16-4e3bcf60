@@ -96,16 +96,40 @@ describe("summarizeMany", () => {
 describe("landed cost", () => {
   it("uses landed_line_egp when provided", () => {
     const s = summarizeProduct("p1", [
-      lot({ qty: 10, unit_egp: 5000, line_total_egp: 50000, landed_line_egp: 60000, line_share: 0.5, customs_egp: 20000 }),
+      lot({ qty: 10, unit_egp: 5000, line_total_egp: 50000, landed_line_egp: 60000, line_share: 0.5, value_share: 0.5, weight_share: 0.5, customs_egp: 20000 }),
     ]);
     expect(s.totalLandedEgp).toBe(60000);
     expect(s.wacLandedEgp).toBe(6000);
-    // customs allocated to this line = 20000 * 0.5 = 10000
+    // customs allocated to this line = 20000 * value_share(0.5) = 10000
     expect(s.totalCustomsEgp).toBe(10000);
   });
   it("falls back to raw line total when landed missing", () => {
     const s = summarizeProduct("p1", [lot({ qty: 10, line_total_egp: 50000 })]);
     expect(s.wacLandedEgp).toBe(s.wacEgp);
+  });
+  it("allocates shipping by weight_share and customs by value_share independently", () => {
+    // A heavy-but-cheap line: value_share=0.2 (small dollar share), weight_share=0.8 (heavy)
+    // PO-wide totals: shipping_egp=1000 EGP, customs_egp=500 EGP
+    const s = summarizeProduct("p1", [
+      lot({
+        qty: 5, unit_usd: 10, unit_egp: 500, line_total_egp: 2500,
+        value_share: 0.2, weight_share: 0.8, line_share: 0.2,
+        shipping_egp: 1000, customs_egp: 500, taxes_egp: 0, other_egp: 0,
+        landed_line_egp: 2500 + 0.8 * 1000 + 0.2 * 500, // 2500 + 800 + 100 = 3400
+      }),
+    ]);
+    // Shipping share = 1000 * 0.8 = 800  (weight-based, not value)
+    expect(s.totalShippingEgp).toBe(800);
+    // Customs share = 500 * 0.2 = 100    (value-based)
+    expect(s.totalCustomsEgp).toBe(100);
+    expect(s.totalLandedEgp).toBe(3400);
+  });
+  it("falls back to value_share for shipping when weight_share missing (legacy PO)", () => {
+    const s = summarizeProduct("p1", [
+      lot({ qty: 10, line_total_egp: 50000, line_share: 0.5, shipping_egp: 2000 }),
+    ]);
+    // No value_share/weight_share provided → falls back to line_share for both
+    expect(s.totalShippingEgp).toBe(1000);
   });
 });
 

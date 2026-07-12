@@ -109,6 +109,7 @@ type POItem = {
   quantity: number;
   unit_cost_usd: number;
   line_total_usd: number;
+  unit_weight_grams?: number | null;
 };
 
 type Mode = "percent" | "fixed";
@@ -635,6 +636,7 @@ function CreatePODialog({
           quantity: r.qty,
           unit_cost_usd: r.unitUsd,
           line_total_usd: r.qty * r.unitUsd,
+          unit_weight_grams: (p as any).weight_grams ?? null,
         };
       });
       const { error: e2 } = await supabase.from("purchase_order_items").insert(itemsPayload as any);
@@ -1504,6 +1506,7 @@ function PODetailDialog({
         quantity: qty,
         unit_cost_usd: unitUsd,
         line_total_usd: qty * unitUsd,
+        unit_weight_grams: (p as any).weight_grams ?? null,
       } as any);
       if (error) throw error;
       await audit("po_item_added", { product_id: p.id, name: p.name, qty, unit_cost_usd: unitUsd });
@@ -1683,6 +1686,16 @@ function PODetailDialog({
                 <div className="text-[10px] text-muted-foreground">
                   {liveTotalQty} {isAr ? "قطعة" : "units"}
                 </div>
+                {(() => {
+                  const totalG = items.reduce((s, it) => s + (Number(it.unit_weight_grams ?? 0) * Number(it.quantity ?? 0)), 0);
+                  if (totalG <= 0) return null;
+                  const label = totalG >= 1000 ? `${(totalG / 1000).toFixed(2)} kg` : `${totalG.toFixed(0)} g`;
+                  return (
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                      ⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}: <span className="tabular-nums font-semibold">{label}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">

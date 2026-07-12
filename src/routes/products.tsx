@@ -47,7 +47,7 @@ function Products() {
   const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "", is_spare_part: false, parent_product_id: "" as string });
+  const [form, setForm] = useState({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "" as string | null | "", collection: "", is_spare_part: false, parent_product_id: "" as string, weight: "" as string, weight_unit: "g" as "g" | "kg" });
   const [qrPreview, setQrPreview] = useState<{ name: string; data: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelData, setLabelData] = useState<{ p: Product; data: string }[] | null>(null);
@@ -197,16 +197,21 @@ function Products() {
     setSelected(next);
   };
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "", is_spare_part: false, parent_product_id: "" }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", serial_number: "", color: "", price: "0", cost_price_usd: "0", stock_quantity: "0", low_stock_threshold: "5", image_url: "", collection: "", is_spare_part: false, parent_product_id: "", weight: "", weight_unit: "g" }); setOpen(true); };
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), cost_price_usd: String((p as any).cost_price_usd ?? 0), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "", is_spare_part: !!(p as any).is_spare_part, parent_product_id: (p as any).parent_product_id ?? "" });
+    const wg = Number((p as any).weight_grams ?? 0);
+    const unit: "g" | "kg" = wg >= 1000 ? "kg" : "g";
+    const wDisplay = wg > 0 ? (unit === "kg" ? String(wg / 1000) : String(wg)) : "";
+    setForm({ name: p.name, serial_number: p.serial_number ?? "", color: p.color ?? "", price: String(p.price), cost_price_usd: String((p as any).cost_price_usd ?? 0), stock_quantity: String(p.stock_quantity), low_stock_threshold: String(p.low_stock_threshold), image_url: p.image_url ?? "", collection: p.collection ?? "", is_spare_part: !!(p as any).is_spare_part, parent_product_id: (p as any).parent_product_id ?? "", weight: wDisplay, weight_unit: unit });
     setOpen(true);
   };
 
   const save = async () => {
     if (!user) return;
     if (!form.name.trim()) return toast.error(t("required"));
+    const wNum = Number(form.weight);
+    const weightGrams = Number.isFinite(wNum) && wNum > 0 ? (form.weight_unit === "kg" ? wNum * 1000 : wNum) : null;
     const payload = {
       name: form.name,
       serial_number: form.serial_number || null,
@@ -219,6 +224,7 @@ function Products() {
       collection: form.collection ? form.collection.toUpperCase() : null,
       is_spare_part: !!form.is_spare_part,
       parent_product_id: form.parent_product_id || null,
+      weight_grams: weightGrams,
     };
     if (editing) {
       const { data: updated, error } = await supabase.from("products").update(payload).eq("id", editing.id).select("*").single();
@@ -405,6 +411,25 @@ function Products() {
                 )}
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
                 <div><Label>{t("low_stock_threshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                <div className="col-span-2">
+                  <Label>{lang === "ar" ? "وزن الوحدة" : "Unit weight"}</Label>
+                  <div className="flex gap-2">
+                    <Input type="number" step="0.001" min="0" placeholder="0" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} className="flex-1" />
+                    <select
+                      value={form.weight_unit}
+                      onChange={(e) => setForm({ ...form, weight_unit: e.target.value as "g" | "kg" })}
+                      className="rounded-md border bg-background px-3 py-2 text-sm h-9 min-w-[90px]"
+                    >
+                      <option value="g">{lang === "ar" ? "جرام" : "grams"}</option>
+                      <option value="kg">{lang === "ar" ? "كيلو" : "kg"}</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {lang === "ar"
+                      ? "يُستخدم لتوزيع تكلفة الشحن في أوامر الشراء (المنتجات الأثقل تحمل نصيباً أكبر)."
+                      : "Used to allocate PO shipping cost (heavier products carry more of the freight)."}
+                  </p>
+                </div>
                 <div>
                   <Label>{t("collection")}</Label>
                   <select
