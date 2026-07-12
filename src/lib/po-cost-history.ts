@@ -12,6 +12,16 @@ export type PoCostLot = {
   usd_rate: number;
   unit_egp: number;
   line_total_egp: number;
+  // Landed cost components (optional — populated by upgraded RPC)
+  customs_egp?: number | null;
+  taxes_egp?: number | null;
+  shipping_egp?: number | null;
+  other_egp?: number | null;
+  overheads_egp?: number | null;
+  line_share?: number | null;
+  landed_unit_usd?: number | null;
+  landed_unit_egp?: number | null;
+  landed_line_egp?: number | null;
 };
 
 export type ProductCostSummary = {
