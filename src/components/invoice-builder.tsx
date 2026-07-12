@@ -320,7 +320,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   /** Try to add 1 unit of a product. Returns true if added, false if blocked by stock. */
   const addProduct = (p: Product): boolean => {
     const remaining = remainingFor(p.id);
-    if (remaining <= 0) {
+    if (!isDraft && remaining <= 0) {
       const msg = remaining === 0
         ? t("out_of_stock_now")
         : t("insufficient_stock_remaining").replace("{n}", String(remaining));
@@ -333,9 +333,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(p.id) ?? 0;
     const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
-    if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
+    if (!isDraft && stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
       toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
     }
+
     let newQty = 1;
     setItems((prev) => {
       const idx = prev.findIndex((it) => it.product_id === p.id);
@@ -1174,20 +1175,20 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                            onChange={(e) => {
                              const v = e.target.value;
                              let next = v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1);
-                             // Cap to available stock for catalog products
-                             if (it.product_id) {
-                               const p = products.find((x) => x.id === it.product_id);
-                               if (p) {
-                                 const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
-                                 const maxAllowed = (p.stock_quantity ?? 0) + baseline;
-                                 if (next > maxAllowed) {
-                                   toast.error(
-                                     `${p.name} — ${t("insufficient_stock_remaining").replace("{n}", String(maxAllowed))}`,
-                                   );
-                                   next = Math.max(1, maxAllowed);
-                                 }
-                               }
-                             }
+                              // Cap to available stock for catalog products (skip for drafts)
+                              if (!isDraft && it.product_id) {
+                                const p = products.find((x) => x.id === it.product_id);
+                                if (p) {
+                                  const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
+                                  const maxAllowed = (p.stock_quantity ?? 0) + baseline;
+                                  if (next > maxAllowed) {
+                                    toast.error(
+                                      `${p.name} — ${t("insufficient_stock_remaining").replace("{n}", String(maxAllowed))}`,
+                                    );
+                                    next = Math.max(1, maxAllowed);
+                                  }
+                                }
+                              }
                              updateItem(idx, { quantity: next });
                            }}
                          />
