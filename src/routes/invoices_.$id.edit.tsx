@@ -34,6 +34,7 @@ function EditInvoice() {
     customer_category?: string | null;
     sales_channel?: string | null;
     sales_event_id?: string | null;
+    delivery_days?: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -97,6 +98,7 @@ function EditInvoice() {
       customer_category: invAny.customer_category ?? null,
       sales_channel: invAny.sales_channel ?? null,
       sales_event_id: invAny.sales_event_id ?? null,
+      delivery_days: invAny.delivery_days != null ? Number(invAny.delivery_days) : null,
     });
     setSnapshotKey((k) => k + 1);
     setLoading(false);

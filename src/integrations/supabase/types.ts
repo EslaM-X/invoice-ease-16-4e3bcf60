@@ -1544,6 +1544,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_days: number | null
           delivery_status: string
           discount: number
           distributor_commission_amount: number
@@ -1584,6 +1585,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivery_days?: number | null
           delivery_status?: string
           discount?: number
           distributor_commission_amount?: number
@@ -1624,6 +1626,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivery_days?: number | null
           delivery_status?: string
           discount?: number
           distributor_commission_amount?: number
@@ -3913,6 +3916,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_days: number | null
           delivery_status: string
           discount: number
           distributor_commission_amount: number
@@ -4319,6 +4323,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_days: number | null
           delivery_status: string
           discount: number
           distributor_commission_amount: number

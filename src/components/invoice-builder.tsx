@@ -54,6 +54,7 @@ type Props = {
     customer_category?: string | null;
     sales_channel?: string | null;
     sales_event_id?: string | null;
+    delivery_days?: number | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
@@ -98,6 +99,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [subject, setSubject] = useState<string>(initial?.subject ?? "");
   const [systemNotes, setSystemNotes] = useState<string>(initial?.system_notes ?? "");
+  const DELIVERY_DAYS_OPTIONS = [7, 21, 30, 45, 60] as const;
+  const [deliveryDays, setDeliveryDays] = useState<number>(
+    initial?.delivery_days && DELIVERY_DAYS_OPTIONS.includes(initial.delivery_days as any)
+      ? (initial.delivery_days as number)
+      : 21,
+  );
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
@@ -673,6 +680,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           notes: notes || null,
           system_notes: systemNotes || null,
           subject: subject.trim() || null,
+          delivery_days: deliveryDays,
           paid_amount: paidMode === "custom" ? paidAmount : null,
           language: lang,
           customer_category: invoiceCategory || customer?.category || null,
@@ -715,6 +723,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         notes: notes || null,
         system_notes: systemNotes || null,
         subject: subject.trim() || null,
+        delivery_days: deliveryDays,
         paid_amount: paidMode === "custom" ? paidAmount : null,
         language: lang,
         customer_category: invoiceCategory || customer?.category || null,
@@ -821,7 +830,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         // Save subject (not part of RPC signature).
         await supabase
           .from("invoices")
-          .update({ subject: subject.trim() || null } as any)
+          .update({ subject: subject.trim() || null, delivery_days: deliveryDays } as any)
           .eq("id", newId as string);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: newId as string } });
@@ -851,6 +860,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           .update({
             delivery_status: delivered ? "delivered" : "pending",
             subject: subject.trim() || null,
+            delivery_days: deliveryDays,
           } as any)
           .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
@@ -881,7 +891,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         if (subject.trim()) {
           await supabase
             .from("invoices")
-            .update({ subject: subject.trim() } as any)
+            .update({ subject: subject.trim(), delivery_days: deliveryDays } as any)
+            .eq("id", invoiceIdRet as string);
+        } else {
+          await supabase
+            .from("invoices")
+            .update({ delivery_days: deliveryDays } as any)
             .eq("id", invoiceIdRet as string);
         }
         if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
@@ -1277,6 +1292,40 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             <Label>{t("notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1.5" />
           </div>
+
+          <div className="rounded-2xl border bg-card p-3 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <Label>{lang === "ar" ? "شروط التسليم" : "Delivery terms"}</Label>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {lang === "ar" ? "أيام عمل" : "Working days"}
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DELIVERY_DAYS_OPTIONS.map((d) => {
+                const active = deliveryDays === d;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDeliveryDays(d)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums transition ${
+                      active
+                        ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300 shadow-sm"
+                        : "border-input bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {d} {lang === "ar" ? "يوم" : "days"}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {lang === "ar"
+                ? `يظهر في الـ PDF كـ "${deliveryDays} يوم عمل من تاريخ الفاتورة".`
+                : `Shown in the PDF as "${deliveryDays} working days from invoice date".`}
+            </p>
+          </div>
+
 
           <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between gap-2">

@@ -40,6 +40,7 @@ function InvoicesList() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [deliveryDaysFilter, setDeliveryDaysFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
   const [hideClosed, setHideClosed] = useState(true);
   const navigate = useNavigate();
@@ -156,6 +157,10 @@ function InvoicesList() {
       if (categoryFilter !== "all" && (i.customer_category ?? "") !== categoryFilter) return false;
       if (channelFilter !== "all" && (i.sales_channel ?? "") !== channelFilter) return false;
       if (eventFilter !== "all" && (i.sales_event_id ?? "") !== eventFilter) return false;
+      if (deliveryDaysFilter !== "all") {
+        const d = i.delivery_days != null ? String(i.delivery_days) : "21";
+        if (d !== deliveryDaysFilter) return false;
+      }
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
         const paid = Number(i.paid_amount ?? 0);
@@ -385,6 +390,12 @@ function InvoicesList() {
         <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
           <option value="all">{lang === "ar" ? "كل المعارض والأحداث" : "All events"}</option>
           {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
+        </select>
+        <select value={deliveryDaysFilter} onChange={(e) => setDeliveryDaysFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "كل شروط التسليم" : "All delivery terms"}</option>
+          {[7, 21, 30, 45, 60].map((d) => (
+            <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
+          ))}
         </select>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">

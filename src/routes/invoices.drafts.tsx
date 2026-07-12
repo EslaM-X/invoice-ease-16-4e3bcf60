@@ -36,6 +36,7 @@ function DraftsPage() {
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [deliveryDaysFilter, setDeliveryDaysFilter] = useState("all");
   const navigate = useNavigate();
 
   const load = async () => {
@@ -150,10 +151,24 @@ function DraftsPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs text-muted-foreground">{lang === "ar" ? "شروط التسليم:" : "Delivery terms:"}</label>
+        <select value={deliveryDaysFilter} onChange={(e) => setDeliveryDaysFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "الكل" : "All"}</option>
+          {[7, 21, 30, 45, 60].map((d) => (
+            <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
-        {loading ? (
+        {(() => {
+          const filtered = deliveryDaysFilter === "all"
+            ? list
+            : list.filter((i) => String(i.delivery_days ?? 21) === deliveryDaysFilter);
+          return loading ? (
           <TableSkeleton rows={5} cols={5} />
-        ) : list.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">
             <FileEdit className="mx-auto mb-3 h-10 w-10 opacity-40" />
             {lang === "ar" ? "لا توجد مسودات حالياً" : "No drafts yet"}
@@ -173,7 +188,7 @@ function DraftsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {list.map((i) => (
+                {filtered.map((i) => (
                   <tr key={i.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium">
                       <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">
@@ -244,7 +259,8 @@ function DraftsPage() {
               </tbody>
             </table>
           </div>
-        )}
+        );
+        })()}
       </div>
     </div>
   );
