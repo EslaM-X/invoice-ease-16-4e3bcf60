@@ -1129,7 +1129,9 @@ function CreatePODialog({
             <div className="mt-2 rounded border border-amber-400/30 bg-amber-500/5 p-2 text-[10px] leading-snug text-amber-800 dark:text-amber-200">
               <div className="font-semibold mb-0.5">{isAr ? "كيف تُوزَّع التكلفة؟" : "How costs are allocated"}</div>
               <div>• {isAr ? "الشحن يوزَّع حسب الوزن (المنتج الأثقل يحمل نصيباً أكبر)." : "Shipping is allocated by weight (heavier lines carry more)."}</div>
-              <div>• {isAr ? "الجمارك والضرائب والإضافي حسب قيمة المنتج بالدولار." : "Customs, taxes and extras are allocated by USD value."}</div>
+              <div>• {isAr ? "الجمارك والإضافي حسب قيمة المنتج بالدولار." : "Customs and extras are allocated by USD value."}</div>
+              <div>• <span className="font-semibold">{isAr ? "الضرائب خارج التكلفة تمامًا" : "Taxes are excluded from cost"}</span> — {isAr ? "تظهر للمرجعية فقط ولا تدخل في تسعير المنتج أو صافي الربح." : "shown for reference only, never in product cost or net profit."}</div>
+
               <div>• {isAr ? "لو مفيش أوزان، الشحن يرجع تلقائياً للتوزيع بالقيمة." : "If no weights are set, shipping falls back to value share."}</div>
             </div>
             <div className="mt-2 text-[10px] text-muted-foreground">
