@@ -680,6 +680,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           notes: notes || null,
           system_notes: systemNotes || null,
           subject: subject.trim() || null,
+          delivery_days: deliveryDays,
           paid_amount: paidMode === "custom" ? paidAmount : null,
           language: lang,
           customer_category: invoiceCategory || customer?.category || null,
