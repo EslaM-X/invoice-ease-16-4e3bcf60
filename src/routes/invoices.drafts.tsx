@@ -259,7 +259,8 @@ function DraftsPage() {
               </tbody>
             </table>
           </div>
-        )}
+        );
+        })()}
       </div>
     </div>
   );
