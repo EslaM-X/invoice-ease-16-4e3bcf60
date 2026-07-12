@@ -20,6 +20,7 @@ import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
 import type { SalesEvent } from "@/lib/data";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
+import { addBusinessDays } from "@/lib/delivery-terms";
 
 export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
 
@@ -41,6 +42,8 @@ function InvoicesList() {
   const [channelFilter, setChannelFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [deliveryDaysFilter, setDeliveryDaysFilter] = useState("all");
+  const [deliveryFromFilter, setDeliveryFromFilter] = useState("");
+  const [deliveryToFilter, setDeliveryToFilter] = useState("");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
   const [hideClosed, setHideClosed] = useState(true);
   const navigate = useNavigate();
@@ -160,6 +163,12 @@ function InvoicesList() {
       if (deliveryDaysFilter !== "all") {
         const d = i.delivery_days != null ? String(i.delivery_days) : "21";
         if (d !== deliveryDaysFilter) return false;
+      }
+      if (deliveryFromFilter || deliveryToFilter) {
+        const days = Number(i.delivery_days ?? 21);
+        const due = addBusinessDays(i.created_at, days).getTime();
+        if (deliveryFromFilter && due < new Date(deliveryFromFilter).setHours(0, 0, 0, 0)) return false;
+        if (deliveryToFilter && due > new Date(deliveryToFilter).setHours(23, 59, 59, 999)) return false;
       }
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
@@ -397,6 +406,17 @@ function InvoicesList() {
             <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
           ))}
         </select>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground whitespace-nowrap">{lang === "ar" ? "تسليم من" : "Delivery from"}</span>
+          <input type="date" value={deliveryFromFilter} onChange={(e) => setDeliveryFromFilter(e.target.value)} className="h-10 flex-1 min-w-0 rounded-md border border-input bg-background px-2 text-sm" />
+          <span className="text-muted-foreground">{lang === "ar" ? "إلى" : "to"}</span>
+          <input type="date" value={deliveryToFilter} onChange={(e) => setDeliveryToFilter(e.target.value)} className="h-10 flex-1 min-w-0 rounded-md border border-input bg-background px-2 text-sm" />
+          {(deliveryFromFilter || deliveryToFilter) && (
+            <button type="button" onClick={() => { setDeliveryFromFilter(""); setDeliveryToFilter(""); }} className="text-muted-foreground underline whitespace-nowrap">
+              {lang === "ar" ? "مسح" : "Clear"}
+            </button>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">
             <input

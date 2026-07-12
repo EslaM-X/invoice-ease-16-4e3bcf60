@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useRealtimeTable } from "@/lib/realtime";
 import { TableSkeleton } from "@/components/skeletons";
+import { addBusinessDays } from "@/lib/delivery-terms";
 
 export const Route = createFileRoute("/invoices/drafts")({
   component: () => (
@@ -37,6 +38,8 @@ function DraftsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deliveryDaysFilter, setDeliveryDaysFilter] = useState("all");
+  const [deliveryFromFilter, setDeliveryFromFilter] = useState("");
+  const [deliveryToFilter, setDeliveryToFilter] = useState("");
   const navigate = useNavigate();
 
   const load = async () => {
@@ -159,13 +162,31 @@ function DraftsPage() {
             <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
           ))}
         </select>
+        <label className="text-xs text-muted-foreground">{lang === "ar" ? "تاريخ التسليم من:" : "Delivery from:"}</label>
+        <input type="date" value={deliveryFromFilter} onChange={(e) => setDeliveryFromFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm" />
+        <label className="text-xs text-muted-foreground">{lang === "ar" ? "إلى:" : "to:"}</label>
+        <input type="date" value={deliveryToFilter} onChange={(e) => setDeliveryToFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm" />
+        {(deliveryFromFilter || deliveryToFilter) && (
+          <button type="button" onClick={() => { setDeliveryFromFilter(""); setDeliveryToFilter(""); }} className="text-xs text-muted-foreground underline">
+            {lang === "ar" ? "مسح" : "Clear"}
+          </button>
+        )}
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {(() => {
-          const filtered = deliveryDaysFilter === "all"
-            ? list
-            : list.filter((i) => String(i.delivery_days ?? 21) === deliveryDaysFilter);
+          const fromTs = deliveryFromFilter ? new Date(deliveryFromFilter).setHours(0, 0, 0, 0) : null;
+          const toTs = deliveryToFilter ? new Date(deliveryToFilter).setHours(23, 59, 59, 999) : null;
+          const filtered = list.filter((i) => {
+            if (deliveryDaysFilter !== "all" && String(i.delivery_days ?? 21) !== deliveryDaysFilter) return false;
+            if (fromTs !== null || toTs !== null) {
+              const days = Number(i.delivery_days ?? 21);
+              const due = addBusinessDays(i.created_at, days).getTime();
+              if (fromTs !== null && due < fromTs) return false;
+              if (toTs !== null && due > toTs) return false;
+            }
+            return true;
+          });
           return loading ? (
           <TableSkeleton rows={5} cols={5} />
         ) : filtered.length === 0 ? (

@@ -23,6 +23,7 @@ import { DesktopPairWidget } from "@/components/desktop-pair-widget";
 import type { ScanEvent } from "@/lib/scan-link";
 import { fetchProductCached, setCachedProduct } from "@/lib/product-cache";
 import { decodeProductQR } from "@/lib/qr-codec";
+import { DELIVERY_DAYS_OPTIONS as VALID_DELIVERY_DAYS, formatDeliveryWindowText, isValidDeliveryDays } from "@/lib/delivery-terms";
 
 export type BuilderItem = {
   product_id: string | null;
@@ -99,11 +100,9 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [subject, setSubject] = useState<string>(initial?.subject ?? "");
   const [systemNotes, setSystemNotes] = useState<string>(initial?.system_notes ?? "");
-  const DELIVERY_DAYS_OPTIONS = [7, 21, 30, 45, 60] as const;
+  const DELIVERY_DAYS_OPTIONS = VALID_DELIVERY_DAYS;
   const [deliveryDays, setDeliveryDays] = useState<number>(
-    initial?.delivery_days && DELIVERY_DAYS_OPTIONS.includes(initial.delivery_days as any)
-      ? (initial.delivery_days as number)
-      : 21,
+    isValidDeliveryDays(initial?.delivery_days) ? (initial!.delivery_days as number) : 21,
   );
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
@@ -1319,12 +1318,30 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 );
               })}
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {lang === "ar"
-                ? `يظهر في الـ PDF كـ "${deliveryDays} يوم عمل من تاريخ الفاتورة".`
-                : `Shown in the PDF as "${deliveryDays} working days from invoice date".`}
-            </p>
+            {(() => {
+              const initialCreatedAt = (initial as { created_at?: string } | undefined)?.created_at;
+              const baseDate = mode === "edit" && initialCreatedAt ? new Date(initialCreatedAt) : new Date();
+              const preview = formatDeliveryWindowText(baseDate, deliveryDays, lang === "ar" ? "ar" : "en");
+              return (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                  <div className="text-[10px] uppercase tracking-wider text-amber-700/80 dark:text-amber-400/80">
+                    {lang === "ar" ? "معاينة نافذة التسليم" : "Delivery window preview"}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">{preview.line}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                    {lang === "ar" ? "التاريخ المتوقع: " : "Expected date: "}
+                    <span className="font-medium text-foreground">{preview.dateLabel}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {lang === "ar"
+                      ? `يظهر في الـ PDF كـ "${preview.line}".`
+                      : `Shown in the PDF as "${preview.line}".`}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
+
 
 
           <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
