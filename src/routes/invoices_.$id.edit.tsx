@@ -98,6 +98,7 @@ function EditInvoice() {
       customer_category: invAny.customer_category ?? null,
       sales_channel: invAny.sales_channel ?? null,
       sales_event_id: invAny.sales_event_id ?? null,
+      delivery_days: invAny.delivery_days != null ? Number(invAny.delivery_days) : null,
     });
     setSnapshotKey((k) => k + 1);
     setLoading(false);
