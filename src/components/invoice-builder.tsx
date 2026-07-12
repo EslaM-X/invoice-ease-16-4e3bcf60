@@ -320,7 +320,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   /** Try to add 1 unit of a product. Returns true if added, false if blocked by stock. */
   const addProduct = (p: Product): boolean => {
     const remaining = remainingFor(p.id);
-    if (remaining <= 0) {
+    if (!isDraft && remaining <= 0) {
       const msg = remaining === 0
         ? t("out_of_stock_now")
         : t("insufficient_stock_remaining").replace("{n}", String(remaining));
@@ -333,9 +333,10 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(p.id) ?? 0;
     const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
-    if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
+    if (!isDraft && stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
       toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
     }
+
     let newQty = 1;
     setItems((prev) => {
       const idx = prev.findIndex((it) => it.product_id === p.id);
