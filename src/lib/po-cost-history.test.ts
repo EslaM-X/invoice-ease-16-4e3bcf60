@@ -93,6 +93,22 @@ describe("summarizeMany", () => {
   });
 });
 
+describe("landed cost", () => {
+  it("uses landed_line_egp when provided", () => {
+    const s = summarizeProduct("p1", [
+      lot({ qty: 10, unit_egp: 5000, line_total_egp: 50000, landed_line_egp: 60000, line_share: 0.5, customs_egp: 20000 }),
+    ]);
+    expect(s.totalLandedEgp).toBe(60000);
+    expect(s.wacLandedEgp).toBe(6000);
+    // customs allocated to this line = 20000 * 0.5 = 10000
+    expect(s.totalCustomsEgp).toBe(10000);
+  });
+  it("falls back to raw line total when landed missing", () => {
+    const s = summarizeProduct("p1", [lot({ qty: 10, line_total_egp: 50000 })]);
+    expect(s.wacLandedEgp).toBe(s.wacEgp);
+  });
+});
+
 describe("sortLotsByDateDesc", () => {
   it("puts newest first, nulls last", () => {
     const out = sortLotsByDateDesc([
