@@ -22,6 +22,7 @@ import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
 import { List, type RowComponentProps } from "react-window";
 
 import type { Product } from "@/lib/data";
+import { summarizeProduct, summarizeMany, sortLotsByDateDesc, filterLots, type PoCostLot } from "@/lib/po-cost-history";
 import { useRole } from "@/lib/use-role";
 
 type CostSource = "wac" | "latest_po" | "current" | "override";
