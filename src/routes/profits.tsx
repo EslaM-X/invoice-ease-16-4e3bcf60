@@ -749,7 +749,7 @@ function ProfitsPage() {
       if (ov) return "override";
       const entry = costBook.products[productId];
       if (!entry) return "current";
-      if (costSource === "wac") return Number(entry.wac_egp) > 0 ? "wac" : "current";
+      if (costSource === "wac") return (Number(entry.wac_landed_egp) || Number(entry.wac_egp)) > 0 ? "wac" : "current";
       if (costSource === "latest_po") return Number(entry.latest_egp) > 0 ? "latest_po" : "current";
       return "current";
     };
