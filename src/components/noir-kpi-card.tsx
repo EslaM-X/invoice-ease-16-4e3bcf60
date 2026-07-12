@@ -15,6 +15,8 @@ const toneMap: Record<NoirTone, { icon: string; text: string; glow: string; bar:
 export function NoirKpiCard({
   label,
   value,
+  fullValue,
+  subValue,
   Icon,
   tone = "neutral",
   hidden = false,
@@ -23,6 +25,10 @@ export function NoirKpiCard({
 }: {
   label: string;
   value: ReactNode;
+  /** Exact/full value string used for tooltip + aria when `value` is compacted. */
+  fullValue?: string;
+  /** Optional secondary line (e.g. "≈ EGP 2,779,517.50" under a compact value). */
+  subValue?: ReactNode;
   Icon: LucideIcon;
   tone?: NoirTone;
   hidden?: boolean;
@@ -30,12 +36,15 @@ export function NoirKpiCard({
   trailing?: ReactNode;
 }) {
   const t = toneMap[tone];
-  const ariaValue = hidden ? "hidden" : (typeof value === "string" || typeof value === "number" ? String(value) : undefined);
+  const ariaValue = hidden
+    ? "hidden"
+    : (fullValue ?? (typeof value === "string" || typeof value === "number" ? String(value) : undefined));
   return (
     <div
       role="group"
       tabIndex={0}
       aria-label={ariaValue ? `${label}: ${ariaValue}` : label}
+      title={!hidden ? fullValue : undefined}
       className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5"
     >
       {/* animated shimmering top gold hairline */}
@@ -63,8 +72,18 @@ export function NoirKpiCard({
             ))}
           </div>
         ) : (
-          <div className={`ltr-nums font-display text-2xl font-bold tracking-tight tabular-nums transition-colors duration-300 sm:text-3xl ${t.text}`}>
-            {value}
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div
+              className={`ltr-nums font-display font-bold tracking-tight tabular-nums leading-tight break-words transition-colors duration-300 ${t.text}`}
+              style={{ fontSize: "clamp(1.35rem, 4.6vw, 1.875rem)" }}
+            >
+              {value}
+            </div>
+            {subValue && (
+              <div className="ltr-nums mt-1 text-[10px] tabular-nums text-white/45 truncate">
+                {subValue}
+              </div>
+            )}
           </div>
         )}
         {trailing}

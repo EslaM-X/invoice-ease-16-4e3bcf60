@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtMoney, fmtDate } from "@/lib/utils-money";
+import { fmtMoney, fmtMoneyAdaptive, fmtDate } from "@/lib/utils-money";
 import { Users, FileText, TrendingUp, AlertTriangle, Plus, ScanLine, Eye, EyeOff, CheckCircle2, Truck, Clock, Package, Sparkles, Coins } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,10 @@ import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
 import { cachedListFetch } from "@/lib/list-cache";
+import { LazyMount } from "@/components/lazy-mount";
 import { toast } from "sonner";
+
+const DASH_CACHE_KEY = "dashboard:stats:v1";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -35,16 +38,34 @@ function Dashboard() {
   const { t, lang } = useI18n();
   const { hidden, toggle } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0, inventoryStock: 0, sampleStock: 0, costValueEgp: 0, salesValueEgp: 0, latestUsdRate: 50 });
+  const [loaded, setLoaded] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
   const [fxInput, setFxInput] = useState("50.5");
   const [savingFx, setSavingFx] = useState(false);
   const avatar = useCurrentAvatar();
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
   const navigate = useNavigate();
   const [avatarImgLoaded, setAvatarImgLoaded] = useState(false);
 
+  // Hydrate instantly from session cache so numbers don't flash 0.
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+    try {
+      const raw = sessionStorage.getItem(`${DASH_CACHE_KEY}:${user.id}`);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached?.stats) { setStats(cached.stats); setLoaded(true); }
+        if (cached?.recent) setRecent(cached.recent);
+        if (cached?.stats?.latestUsdRate) setFxInput(String(cached.stats.latestUsdRate));
+      }
+    } catch { /* ignore */ }
+  }, [user?.id]);
 
   const load = async (forceRefresh = false) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
     const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
@@ -108,7 +129,7 @@ function Dashboard() {
       else open++;
     });
 
-    setStats({
+    const nextStats = {
       sales,
       invoices: invs?.length ?? 0,
       closed,
@@ -122,9 +143,24 @@ function Dashboard() {
       costValueEgp,
       salesValueEgp,
       latestUsdRate,
-    });
+    };
+    setStats(nextStats);
     setFxInput(String(latestUsdRate));
-    setRecent((invs ?? []).slice(0, 5));
+    const nextRecent = (invs ?? []).slice(0, 5);
+    setRecent(nextRecent);
+    // Persist for instant next paint
+    try {
+      if (typeof window !== "undefined" && user) {
+        sessionStorage.setItem(
+          `${DASH_CACHE_KEY}:${user.id}`,
+          JSON.stringify({ stats: nextStats, recent: nextRecent, ts: Date.now() }),
+        );
+      }
+    } catch { /* ignore */ }
+    } finally {
+      inFlightRef.current = false;
+      setLoaded(true);
+    }
   };
 
   const saveFxRate = async () => {
@@ -161,10 +197,19 @@ function Dashboard() {
     }, 300);
   };
 
-  useBatchedRealtimeTables(["invoices", "products", "customers", "defective_items", "purchase_orders"], scheduleRealtimeRefresh, [user?.id]);
+  useBatchedRealtimeTables(
+    ["invoices", "products", "customers", "defective_items", "purchase_orders"],
+    scheduleRealtimeRefresh,
+    [user?.id],
+    { debounceMs: 800, maxWaitMs: 2500 },
+  );
 
-  const cards: Array<{ label: string; value: any; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
-    { label: t("total_sales"),               value: fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp,   tone: "gold",    sensitive: true },
+  const salesAdaptive = fmtMoneyAdaptive(stats.sales, "EGP", lang);
+  const costAdaptive = fmtMoneyAdaptive(stats.costValueEgp, "EGP", lang);
+  const salesValueAdaptive = fmtMoneyAdaptive(stats.salesValueEgp, "EGP", lang);
+
+  const cards: Array<{ label: string; value: any; fullValue?: string; subValue?: string; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
+    { label: t("total_sales"),               value: salesAdaptive.short, fullValue: salesAdaptive.full, subValue: salesAdaptive.compact ? `≈ ${salesAdaptive.full}` : undefined, Icon: TrendingUp,   tone: "gold",    sensitive: true },
     { label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
     { label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
     { label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
@@ -324,15 +369,18 @@ function Dashboard() {
 
 
 
-      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ label, value, Icon, tone, sensitive }) => (
+      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded ? "done" : "loading"}>
+        {cards.map(({ label, value, fullValue, subValue, Icon, tone, sensitive }) => (
           <NoirKpiCard
             key={label}
             label={label}
             value={value}
+            fullValue={fullValue}
+            subValue={subValue}
             Icon={Icon}
             tone={tone}
             hidden={!!sensitive && hidden}
+            loading={!loaded}
           />
         ))}
       </div>
@@ -345,24 +393,31 @@ function Dashboard() {
       <IncomingShipmentsStrip />
 
 
-      <PoShipmentsTracker />
+      <LazyMount rootMargin="800px" minHeight={220}>
+        <PoShipmentsTracker />
+      </LazyMount>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <InventoryValueCard
           label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
-          value={stats.inventoryStock}
+          value={loaded ? stats.inventoryStock : ""}
+          loading={!loaded}
           sub={lang === "ar" ? `${stats.products} صنف نشط` : `${stats.products} active SKUs`}
           Icon={Package}
         />
         <InventoryValueCard
           label={lang === "ar" ? "منتجات في العيانات" : "Samples out"}
-          value={stats.sampleStock}
+          value={loaded ? stats.sampleStock : ""}
+          loading={!loaded}
           sub={lang === "ar" ? "عينات خارج المخزون" : "Sample units outside stock"}
           Icon={Sparkles}
         />
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
-          value={hidden ? "•••••" : fmtMoney(stats.costValueEgp, "EGP", lang)}
+          value={hidden ? "•••••" : costAdaptive.short}
+          fullValue={costAdaptive.full}
+          subValue={costAdaptive.compact && !hidden ? `≈ ${costAdaptive.full}` : undefined}
+          loading={!loaded}
           sub={lang === "ar" ? `سعر الدولار المستخدم: ${stats.latestUsdRate}` : `USD rate used: ${stats.latestUsdRate}`}
           Icon={Coins}
           sensitive
@@ -385,48 +440,57 @@ function Dashboard() {
         />
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
-          value={hidden ? "•••••" : fmtMoney(stats.salesValueEgp, "EGP", lang)}
+          value={hidden ? "•••••" : salesValueAdaptive.short}
+          fullValue={salesValueAdaptive.full}
+          subValue={salesValueAdaptive.compact && !hidden ? `≈ ${salesValueAdaptive.full}` : undefined}
+          loading={!loaded}
           sub={lang === "ar" ? "إجمالي سعر البيع للكمية المتاحة" : "Total sale value of available stock"}
           Icon={TrendingUp}
           sensitive
         />
       </section>
 
-      <SalesOverview />
+      <LazyMount rootMargin="800px" minHeight={280}>
+        <SalesOverview />
+      </LazyMount>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="ios-card p-5 sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="eyebrow">{t("recent_invoices")}</h3>
-            <div className="h-px flex-1 mx-4 bg-border" />
-          </div>
-          {recent.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {recent.map((r) => (
-                <Link
-                  key={r.id}
-                  to="/invoices/$id"
-                  params={{ id: r.id }}
-                  aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
-                  className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{r.invoice_number}</div>
-                    <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
-                  </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
-                </Link>
-              ))}
-
+      <LazyMount rootMargin="800px" minHeight={320}>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="ios-card p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="eyebrow">{t("recent_invoices")}</h3>
+              <div className="h-px flex-1 mx-4 bg-border" />
             </div>
-          )}
-        </div>
-        <TopProductsInteractive rangeDays={30} limit={8} />
-      </div>
+            {recent.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {recent.map((r) => (
+                  <Link
+                    key={r.id}
+                    to="/invoices/$id"
+                    params={{ id: r.id }}
+                    aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
+                    className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{r.invoice_number}</div>
+                      <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
+                    </div>
+                    <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
+                  </Link>
+                ))}
 
-      <ActivityFeed limit={10} />
+              </div>
+            )}
+          </div>
+          <TopProductsInteractive rangeDays={30} limit={8} />
+        </div>
+      </LazyMount>
+
+      <LazyMount rootMargin="600px" minHeight={240}>
+        <ActivityFeed limit={10} />
+      </LazyMount>
     </div>
   );
 }
@@ -434,33 +498,54 @@ function Dashboard() {
 function InventoryValueCard({
   label,
   value,
+  fullValue,
+  subValue,
   sub,
   Icon,
   footer,
+  loading,
 }: {
   label: string;
   value: number | string;
+  fullValue?: string;
+  subValue?: string;
   sub: string;
   Icon: typeof Package;
   sensitive?: boolean;
   footer?: ReactNode;
+  loading?: boolean;
 }) {
-  const ariaValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
+  const ariaValue = fullValue ?? (typeof value === "string" || typeof value === "number" ? String(value) : "");
   return (
     <div
       role="group"
       tabIndex={0}
       aria-label={ariaValue ? `${label}: ${ariaValue}. ${sub}` : label}
+      title={fullValue}
       className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 sm:p-5"
     >
       <div aria-hidden="true" className="gold-hairline-live absolute inset-x-0 top-0" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full bg-[#c9a84c]/10 blur-3xl opacity-40 transition-all duration-500 group-hover:opacity-80 group-hover:w-56 motion-reduce:transition-none" />
       <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45 truncate sm:text-[11px]">{label}</div>
-          <div className="ltr-nums mt-3 font-display text-2xl font-bold tracking-tight tabular-nums text-[#f5e7b8] sm:text-3xl break-words">
-            {value}
-          </div>
+          {loading ? (
+            <div aria-hidden="true" className="skeleton-noir mt-3 h-8 w-24 rounded-md sm:h-10 sm:w-32" />
+          ) : (
+            <>
+              <div
+                className="ltr-nums mt-3 font-display font-bold tracking-tight tabular-nums leading-tight break-words text-[#f5e7b8]"
+                style={{ fontSize: "clamp(1.35rem, 4.6vw, 1.875rem)" }}
+              >
+                {value}
+              </div>
+              {subValue && (
+                <div className="ltr-nums mt-1 text-[10px] tabular-nums text-white/45 truncate">
+                  {subValue}
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#c9a84c]/30 bg-[#c9a84c]/12 text-[#c9a84c] transition-transform duration-300 group-hover:scale-110">
           <Icon className="h-4 w-4" />

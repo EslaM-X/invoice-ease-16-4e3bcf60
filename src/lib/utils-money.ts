@@ -17,6 +17,40 @@ export function fmtMoney(n: number, currency = "EGP", lang: "ar" | "en" = "ar") 
   }
 }
 
+/**
+ * Adaptive money formatter — returns { short, full, compact }.
+ * - `full` is always the exact currency-formatted number.
+ * - When the absolute value is ≥ 1,000,000, `short` becomes a compact form
+ *   (e.g. "EGP 2.78M", "EGP 1.23B") so KPI cards never clip on billions.
+ *   Arabic UI gets localized suffixes: م (million), ب (billion), ت (trillion).
+ * - `compact` is true when we actually shortened, so the caller can decide
+ *   whether to show a muted "≈ full" underneath.
+ */
+export function fmtMoneyAdaptive(
+  n: number,
+  currency = "EGP",
+  lang: "ar" | "en" = "ar",
+): { short: string; full: string; compact: boolean } {
+  const full = fmtMoney(n, currency, lang);
+  const abs = Math.abs(Number(n) || 0);
+  if (abs < 1_000_000) return { short: full, full, compact: false };
+
+  const suffixes = lang === "ar"
+    ? { T: "ت", B: "ب", M: "م" }
+    : { T: "T", B: "B", M: "M" };
+  let val = n;
+  let suf = suffixes.M;
+  if (abs >= 1_000_000_000_000) { val = n / 1_000_000_000_000; suf = suffixes.T; }
+  else if (abs >= 1_000_000_000) { val = n / 1_000_000_000; suf = suffixes.B; }
+  else { val = n / 1_000_000; suf = suffixes.M; }
+
+  const num = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: val >= 100 ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(val);
+  return { short: `${currency} ${num}${suf}`, full, compact: true };
+}
+
 export function fmtNumber(n: number, _lang: "ar" | "en" = "ar") {
   // Always Latin digits, regardless of UI language.
   return new Intl.NumberFormat("en-US").format(n || 0);
