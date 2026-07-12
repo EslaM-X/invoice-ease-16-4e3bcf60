@@ -3981,8 +3981,8 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
   // Products passing color + collection filters (applies to picker AND "all")
   const eligibleProducts = useMemo(() => {
     return productsWithLots.filter((p) => {
-      if (colorFilter !== "all" && (p.color ?? "") !== colorFilter) return false;
-      if (collectionFilter !== "all" && (p.collection ?? "") !== collectionFilter) return false;
+      if (colorFilter.size > 0 && !colorFilter.has((p.color ?? "").trim())) return false;
+      if (collectionFilter.size > 0 && !collectionFilter.has((p.collection ?? "").trim())) return false;
       return true;
     });
   }, [productsWithLots, colorFilter, collectionFilter]);
