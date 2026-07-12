@@ -4571,7 +4571,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                             {money(summary.wacEgp, "EGP")}
                           </td>
                           <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10">{money(summary.totalCustomsEgp, "EGP")}</td>
-                          <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10">{money(summary.totalTaxesEgp, "EGP")}</td>
+                          <td className="px-2 py-2 text-end tabular-nums text-muted-foreground bg-muted/30" title={t("خارج التكلفة", "excluded from cost")}>{money(summary.totalTaxesEgp, "EGP")}</td>
                           <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10">{money(summary.totalShippingEgp, "EGP")}</td>
                           <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10 border-e-2 border-e-primary/40">{money(summary.totalOtherEgp, "EGP")}</td>
                           <td className="px-2 py-2 text-end tabular-nums font-bold text-primary bg-primary/10">{money(summary.wacLandedEgp, "EGP")}</td>
