@@ -4371,8 +4371,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                         {lots.map((l, i) => {
                           const isMin = l.unit_usd === summary.minUsd;
                           const isMax = l.unit_usd === summary.maxUsd;
-                          const openPo = () =>
-                            navigate({ to: "/po-tracking", search: { open: l.po_id } });
+                          const openPo = () => setPoDialogId(l.po_id);
                           return (
                             <tr
                               key={`${l.po_id}-${i}`}
