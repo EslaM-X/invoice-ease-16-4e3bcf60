@@ -38,6 +38,8 @@ function DraftsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deliveryDaysFilter, setDeliveryDaysFilter] = useState("all");
+  const [deliveryFromFilter, setDeliveryFromFilter] = useState("");
+  const [deliveryToFilter, setDeliveryToFilter] = useState("");
   const navigate = useNavigate();
 
   const load = async () => {
