@@ -1275,6 +1275,21 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory_logs: {
         Row: {
           actor_email: string | null
@@ -4109,10 +4124,27 @@ export type Database = {
           product_id: string
         }[]
       }
+      get_my_approval_state: {
+        Args: never
+        Returns: {
+          account_type: string
+          approval_notes: string
+          approval_status: string
+        }[]
+      }
       get_my_role: { Args: never; Returns: string }
       get_product_cost_book: {
         Args: { p_fy_end?: string; p_fy_start?: string }
         Returns: Json
+      }
+      get_profile_approval_admin: {
+        Args: { _user_id: string }
+        Returns: {
+          approval_notes: string
+          approval_status: string
+          approved_at: string
+          approved_by: string
+        }[]
       }
       get_public_price_list: {
         Args: never
