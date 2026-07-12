@@ -42,6 +42,8 @@ function InvoicesList() {
   const [channelFilter, setChannelFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [deliveryDaysFilter, setDeliveryDaysFilter] = useState("all");
+  const [deliveryFromFilter, setDeliveryFromFilter] = useState("");
+  const [deliveryToFilter, setDeliveryToFilter] = useState("");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "total_desc" | "total_asc">("date_desc");
   const [hideClosed, setHideClosed] = useState(true);
   const navigate = useNavigate();
