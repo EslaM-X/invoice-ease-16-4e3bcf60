@@ -23,6 +23,7 @@ import { List, type RowComponentProps } from "react-window";
 
 import type { Product } from "@/lib/data";
 import { summarizeProduct, summarizeMany, sortLotsByDateDesc, filterLots, type PoCostLot } from "@/lib/po-cost-history";
+import { POTrackerDialog } from "@/components/po-tracker-dialog";
 import { useRole } from "@/lib/use-role";
 
 type CostSource = "wac" | "latest_po" | "current" | "override";
