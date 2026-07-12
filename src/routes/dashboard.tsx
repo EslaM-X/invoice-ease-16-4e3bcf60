@@ -129,7 +129,7 @@ function Dashboard() {
       else open++;
     });
 
-    setStats({
+    const nextStats = {
       sales,
       invoices: invs?.length ?? 0,
       closed,
@@ -143,9 +143,24 @@ function Dashboard() {
       costValueEgp,
       salesValueEgp,
       latestUsdRate,
-    });
+    };
+    setStats(nextStats);
     setFxInput(String(latestUsdRate));
-    setRecent((invs ?? []).slice(0, 5));
+    const nextRecent = (invs ?? []).slice(0, 5);
+    setRecent(nextRecent);
+    // Persist for instant next paint
+    try {
+      if (typeof window !== "undefined" && user) {
+        sessionStorage.setItem(
+          `${DASH_CACHE_KEY}:${user.id}`,
+          JSON.stringify({ stats: nextStats, recent: nextRecent, ts: Date.now() }),
+        );
+      }
+    } catch { /* ignore */ }
+    } finally {
+      inFlightRef.current = false;
+      setLoaded(true);
+    }
   };
 
   const saveFxRate = async () => {
