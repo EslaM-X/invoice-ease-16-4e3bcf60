@@ -577,10 +577,23 @@ function Products() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-medium">{p.name}</div>
+                            <div className="font-medium flex items-center gap-2 flex-wrap">
+                              <span className="truncate">{p.name}</span>
+                              {(() => {
+                                const w = fmtWeight((p as any).weight_grams);
+                                if (!w) return null;
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-yellow-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 tabular-nums shadow-sm"
+                                    title={lang === "ar" ? "وزن الوحدة — يُستخدم لتوزيع الشحن" : "Unit weight — used for shipping allocation"}
+                                  >
+                                    <span aria-hidden>⚖️</span>{w}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                             <AuthorBadge email={p.created_by_email} label="created by" className="mt-0.5" />
                           </div>
-                        </div>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
