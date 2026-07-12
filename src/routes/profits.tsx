@@ -4109,79 +4109,130 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
           </div>
 
           {/* Advanced filters: color · collection · date range */}
-          <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/20 p-2">
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("اللون", "Color")}
-              </label>
-              <select
-                value={colorFilter}
-                onChange={(e) => setColorFilter(e.target.value)}
-                className="h-8 rounded-md border bg-background px-2 text-[12px]"
-              >
-                <option value="all">{t("كل الألوان", "All colors")}</option>
-                {colorOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("الكولكشن", "Collection")}
-              </label>
-              <select
-                value={collectionFilter}
-                onChange={(e) => setCollectionFilter(e.target.value)}
-                className="h-8 rounded-md border bg-background px-2 text-[12px]"
-              >
-                <option value="all">{t("كل الكولكشنز", "All collections")}</option>
-                {collectionOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("من تاريخ", "From date")}
-              </label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-8 text-[12px] w-[150px]"
-              />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("إلى تاريخ", "To date")}
-              </label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-8 text-[12px] w-[150px]"
-              />
-            </div>
-            {(colorFilter !== "all" || collectionFilter !== "all" || dateFrom || dateTo) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-[11px] gap-1"
-                onClick={() => {
-                  setColorFilter("all");
-                  setCollectionFilter("all");
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-              >
-                <X className="h-3 w-3" /> {t("مسح الفلاتر", "Reset filters")}
-              </Button>
+          <div className="flex flex-col gap-2.5 rounded-xl border bg-muted/20 p-2.5">
+            {/* Colors row */}
+            {colorOptions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground me-1">
+                  {t("اللون", "Color")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setColorFilter(new Set())}
+                  className={`text-[11px] rounded-full border px-2.5 py-1 transition-colors ${
+                    colorFilter.size === 0
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  {t("الكل", "All")}
+                </button>
+                {colorOptions.map((c) => {
+                  const active = colorFilter.has(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => toggleInSet(setColorFilter, c)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] transition-all ${
+                        active
+                          ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
+                          : "bg-background hover:bg-muted border-border"
+                      }`}
+                      title={c}
+                    >
+                      <span
+                        className="inline-block h-3 w-3 rounded-full border border-border/60 shadow-sm"
+                        style={swatchStyle(c)}
+                      />
+                      <span className="max-w-[110px] truncate">{c}</span>
+                    </button>
+                  );
+                })}
+              </div>
             )}
+
+            {/* Collections row */}
+            {collectionOptions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground me-1">
+                  {t("الكولكشن", "Collection")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCollectionFilter(new Set())}
+                  className={`text-[11px] rounded-full border px-2.5 py-1 transition-colors ${
+                    collectionFilter.size === 0
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  {t("الكل", "All")}
+                </button>
+                {collectionOptions.map((c) => {
+                  const active = collectionFilter.has(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => toggleInSet(setCollectionFilter, c)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-bold transition-all ${
+                        active
+                          ? collectionBadgeClass(c) + " ring-1 ring-primary/50"
+                          : "bg-background hover:bg-muted border-border"
+                      }`}
+                    >
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(c)}`} />
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Dates + reset */}
+            <div className="flex flex-wrap items-end gap-2 pt-1 border-t border-border/40">
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {t("من تاريخ", "From date")}
+                </label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-8 text-[12px] w-[150px]"
+                />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {t("إلى تاريخ", "To date")}
+                </label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-8 text-[12px] w-[150px]"
+                />
+              </div>
+              {(colorFilter.size > 0 || collectionFilter.size > 0 || dateFrom || dateTo) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-[11px] gap-1"
+                  onClick={() => {
+                    setColorFilter(new Set());
+                    setCollectionFilter(new Set());
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                >
+                  <X className="h-3 w-3" /> {t("مسح الفلاتر", "Reset filters")}
+                </Button>
+              )}
+            </div>
           </div>
+
+
 
 
           {/* Product picker */}
