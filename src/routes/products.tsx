@@ -36,6 +36,17 @@ function etaShort(iso: string, lang: string): string {
   return lang === "ar" ? `بعد ${days} يوم` : `in ${days}d`;
 }
 
+function fmtWeight(grams: number | null | undefined): string | null {
+  const g = Number(grams);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  if (g >= 1000) {
+    const kg = g / 1000;
+    // Trim trailing zeros; keep up to 3 decimals for precision
+    return `${kg.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg`;
+  }
+  return `${g.toLocaleString(undefined, { maximumFractionDigits: 3 })} g`;
+}
+
 function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
