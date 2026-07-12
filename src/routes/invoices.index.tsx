@@ -391,6 +391,12 @@ function InvoicesList() {
           <option value="all">{lang === "ar" ? "كل المعارض والأحداث" : "All events"}</option>
           {salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}
         </select>
+        <select value={deliveryDaysFilter} onChange={(e) => setDeliveryDaysFilter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "كل شروط التسليم" : "All delivery terms"}</option>
+          {[7, 21, 30, 45, 60].map((d) => (
+            <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
+          ))}
+        </select>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">
             <input
