@@ -162,9 +162,13 @@ function DraftsPage() {
       </div>
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
-        {loading ? (
+        {(() => {
+          const filtered = deliveryDaysFilter === "all"
+            ? list
+            : list.filter((i) => String(i.delivery_days ?? 21) === deliveryDaysFilter);
+          return loading ? (
           <TableSkeleton rows={5} cols={5} />
-        ) : list.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">
             <FileEdit className="mx-auto mb-3 h-10 w-10 opacity-40" />
             {lang === "ar" ? "لا توجد مسودات حالياً" : "No drafts yet"}
