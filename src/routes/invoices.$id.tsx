@@ -455,8 +455,8 @@ function InvoiceView() {
               </div>
             </DialogTitle>
           </DialogHeader>
-          <div className="rounded-2xl border bg-card p-6 shadow-sm" dir={dir}>
-            <div className="flex items-start justify-between gap-3 pb-5 border-b">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-black shadow-sm [color-scheme:light]" dir={dir}>
+            <div className="flex items-start justify-between gap-3 border-b border-neutral-200 pb-5">
               <div className="flex items-center gap-3 min-w-0">
                 <img
                   src={logoUrl || steinheimLogo}
@@ -464,30 +464,30 @@ function InvoiceView() {
                   className="h-12 w-auto max-w-[140px] object-contain shrink-0"
                 />
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">{settings?.company_name || "Steinheim"}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{settings?.company_phone}</div>
+                  <div className="text-sm font-semibold truncate text-black">{settings?.company_name || "Steinheim"}</div>
+                  <div className="text-[11px] truncate text-neutral-500">{settings?.company_phone}</div>
                 </div>
               </div>
               <div className="text-end">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{isAr ? "فاتورة" : "Invoice"}</div>
-                <div className="text-lg font-semibold tabular-nums">{inv.invoice_number}</div>
-                {inv.receipt_number != null && <div className="text-[10px] text-muted-foreground">#{inv.receipt_number}</div>}
+                <div className="text-[10px] uppercase tracking-widest text-neutral-500">{isAr ? "فاتورة" : "Invoice"}</div>
+                <div className="text-lg font-semibold tabular-nums text-black">{inv.invoice_number}</div>
+                {inv.receipt_number != null && <div className="text-[10px] text-neutral-500">#{inv.receipt_number}</div>}
               </div>
             </div>
             <div className="mt-4 text-sm">
-              <div className="text-muted-foreground text-xs">{t("bill_to")}</div>
-              <div className="font-semibold">{inv.customer_name || "—"}</div>
+              <div className="text-xs text-neutral-500">{t("bill_to")}</div>
+              <div className="font-semibold text-black">{inv.customer_name || "—"}</div>
             </div>
-            <table className="mt-4 w-full text-xs">
-              <thead className="text-muted-foreground">
-                <tr className="border-b">
+            <table className="mt-4 w-full text-xs text-black">
+              <thead className="text-neutral-500">
+                <tr className="border-b border-neutral-200">
                   <th className="pb-1.5 text-start">{isAr ? "المنتج" : "Item"}</th>
                   <th className="pb-1.5 text-end">{t("quantity")}</th>
                   <th className="pb-1.5 text-end">{t("unit_price")}</th>
                   <th className="pb-1.5 text-end">{t("line_total")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-neutral-200">
                 {items.map((it) => (
                   <tr key={it.id}>
                     <td className="py-1.5">{it.product_name}</td>
@@ -498,17 +498,18 @@ function InvoiceView() {
                 ))}
               </tbody>
             </table>
-            <div className="mt-4 ms-auto w-56 space-y-1 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
+            <div className="mt-4 ms-auto w-56 space-y-1 text-sm text-black">
+              <div className="flex justify-between"><span className="text-neutral-500">{t("subtotal")}</span><span className="tabular-nums">{fmtMoney(Number(inv.subtotal), settings?.currency || "EGP", lang)}</span></div>
               {Number(inv.discount) > 0 && (
-                <div className="flex justify-between"><span className="text-muted-foreground">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
+                <div className="flex justify-between"><span className="text-neutral-500">{t("discount")}</span><span className="tabular-nums">-{fmtMoney(Number(inv.discount), settings?.currency || "EGP", lang)}</span></div>
               )}
-              <div className="mt-1 flex justify-between border-t pt-2 text-base font-semibold">
+              <div className="mt-1 flex justify-between border-t border-neutral-200 pt-2 text-base font-semibold">
                 <span>{t("total")}</span>
                 <span className="tabular-nums">{fmtMoney(Number(inv.total), settings?.currency || "EGP", lang)}</span>
               </div>
             </div>
           </div>
+
         </DialogContent>
       </Dialog>
     </div>
