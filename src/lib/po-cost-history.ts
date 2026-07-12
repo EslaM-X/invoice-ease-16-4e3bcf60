@@ -31,6 +31,14 @@ export type ProductCostSummary = {
   totalSpendUsd: number;
   wacUsd: number; // Σ qty*usd / Σ qty
   wacEgp: number; // Σ qty*egp / Σ qty
+  // Landed weighted averages (include customs/taxes/shipping/extra)
+  wacLandedUsd: number;
+  wacLandedEgp: number;
+  totalLandedEgp: number;
+  totalCustomsEgp: number;
+  totalTaxesEgp: number;
+  totalShippingEgp: number;
+  totalOtherEgp: number;
   simpleAvgUsd: number; // mean of unit prices (ignores qty)
   minUsd: number;
   maxUsd: number;
