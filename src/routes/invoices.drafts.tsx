@@ -151,6 +151,16 @@ function DraftsPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs text-muted-foreground">{lang === "ar" ? "شروط التسليم:" : "Delivery terms:"}</label>
+        <select value={deliveryDaysFilter} onChange={(e) => setDeliveryDaysFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <option value="all">{lang === "ar" ? "الكل" : "All"}</option>
+          {[7, 21, 30, 45, 60].map((d) => (
+            <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {loading ? (
           <TableSkeleton rows={5} cols={5} />
