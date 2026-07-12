@@ -3939,7 +3939,7 @@ type ProductCostHistoryPanelProps = {
 };
 
 function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHistoryPanelProps) {
-  const navigate = useNavigate();
+  
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"all" | "select">("select");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
