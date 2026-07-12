@@ -4373,6 +4373,16 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
               <GrandStat label={t("سطور PO", "PO lines")} value={String(grand.poCount)} />
             </div>
           )}
+          {rows.length > 0 && (
+            <div className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/5 px-3 py-2 text-[11px] leading-snug text-amber-800 dark:text-amber-200">
+              <span className="font-semibold">{t("ملاحظة:", "Note:")}</span>{" "}
+              {t(
+                "الضرائب تظهر للمرجعية فقط ولا تدخل في التكلفة الفعلية للوحدة ولا في متوسط التكلفة المُحمَّل (Landed WAC) ولا في صافي الربح. الحساب يُعاد تلقائيًا لكل أوامر الشراء القديمة والجديدة.",
+                "Taxes are shown for reference only — never included in unit cost, Landed WAC, or net profit. Recalculated on-the-fly for all POs (historical and new).",
+              )}
+            </div>
+          )}
+
 
           {/* Per-product breakdown */}
           {rows.length === 0 ? (
