@@ -2124,7 +2124,7 @@ function PODetailDialog({
                   lang={lang}
                 />
                 <PricingRow
-                  label={isAr ? "الضرائب" : "Taxes"}
+                  label={isAr ? "الضرائب (خارج التكلفة)" : "Taxes (excluded from cost)"}
                   mode={taxesMode}
                   setMode={setTaxesMode}
                   value={taxesValue}
