@@ -4338,15 +4338,27 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
               <GrandStat
                 label={t("متوسط التكلفة (USD)", "Avg Cost (USD)")}
                 value={money(grand.overallWacUsd, "USD")}
-                highlight
               />
               <GrandStat
                 label={t("متوسط التكلفة (EGP)", "Avg Cost (EGP)")}
                 value={money(grand.overallWacEgp, "EGP")}
+              />
+              <GrandStat
+                label={t("متوسط مُحمَّل (USD)", "Landed Avg (USD)")}
+                value={money(grand.overallWacLandedUsd, "USD")}
                 highlight
               />
+              <GrandStat
+                label={t("متوسط مُحمَّل (EGP)", "Landed Avg (EGP)")}
+                value={money(grand.overallWacLandedEgp, "EGP")}
+                highlight
+              />
+              <GrandStat label={t("جمارك", "Customs")} value={money(grand.totalCustomsEgp, "EGP")} />
+              <GrandStat label={t("ضرائب", "Taxes")} value={money(grand.totalTaxesEgp, "EGP")} />
+              <GrandStat label={t("شحن", "Shipping")} value={money(grand.totalShippingEgp, "EGP")} />
+              <GrandStat label={t("تكلفة إضافية", "Extra")} value={money(grand.totalOtherEgp, "EGP")} />
               <GrandStat label={t("إجمالي الإنفاق (USD)", "Spend (USD)")} value={money(grand.totalSpendUsd, "USD")} />
-              <GrandStat label={t("إجمالي الإنفاق (EGP)", "Spend (EGP)")} value={money(grand.totalSpendEgp, "EGP")} />
+              <GrandStat label={t("إجمالي مُحمَّل (EGP)", "Landed Spend (EGP)")} value={money(grand.totalLandedEgp, "EGP")} />
               <GrandStat label={t("سطور PO", "PO lines")} value={String(grand.poCount)} />
             </div>
           )}
