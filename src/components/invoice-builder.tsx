@@ -1319,7 +1319,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
               })}
             </div>
             {(() => {
-              const baseDate = mode === "edit" && initial?.created_at ? new Date(initial.created_at) : new Date();
+              const initialCreatedAt = (initial as { created_at?: string } | undefined)?.created_at;
+              const baseDate = mode === "edit" && initialCreatedAt ? new Date(initialCreatedAt) : new Date();
               const preview = formatDeliveryWindowText(baseDate, deliveryDays, lang === "ar" ? "ar" : "en");
               return (
                 <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
