@@ -891,7 +891,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         if (subject.trim()) {
           await supabase
             .from("invoices")
-            .update({ subject: subject.trim() } as any)
+            .update({ subject: subject.trim(), delivery_days: deliveryDays } as any)
+            .eq("id", invoiceIdRet as string);
+        } else {
+          await supabase
+            .from("invoices")
+            .update({ delivery_days: deliveryDays } as any)
             .eq("id", invoiceIdRet as string);
         }
         if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
