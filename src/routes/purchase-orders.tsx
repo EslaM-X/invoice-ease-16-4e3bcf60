@@ -635,6 +635,7 @@ function CreatePODialog({
           quantity: r.qty,
           unit_cost_usd: r.unitUsd,
           line_total_usd: r.qty * r.unitUsd,
+          unit_weight_grams: (p as any).weight_grams ?? null,
         };
       });
       const { error: e2 } = await supabase.from("purchase_order_items").insert(itemsPayload as any);
