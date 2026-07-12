@@ -1,6 +1,6 @@
 import { swatchStyle } from "@/lib/color-swatch";
 import { ColorSwatch } from "@/components/color-swatch";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React, { Fragment, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -3938,11 +3938,16 @@ type ProductCostHistoryPanelProps = {
 };
 
 function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHistoryPanelProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"all" | "select">("select");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [includeCancelled, setIncludeCancelled] = useState(false);
+  const [colorFilter, setColorFilter] = useState<string>("all");
+  const [collectionFilter, setCollectionFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   // Products that actually have PO lots
   const productsWithLots = useMemo(
@@ -3950,18 +3955,51 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
     [products, costBook],
   );
 
+  // Unique colors + collections drawn from products-with-lots (so filters
+  // never show a value that can't match anything on this panel).
+  const colorOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of productsWithLots) if (p.color) s.add(p.color);
+    return Array.from(s).sort();
+  }, [productsWithLots]);
+  const collectionOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of productsWithLots) if (p.collection) s.add(p.collection);
+    return Array.from(s).sort();
+  }, [productsWithLots]);
+
+  // Products passing color + collection filters (applies to picker AND "all")
+  const eligibleProducts = useMemo(() => {
+    return productsWithLots.filter((p) => {
+      if (colorFilter !== "all" && (p.color ?? "") !== colorFilter) return false;
+      if (collectionFilter !== "all" && (p.collection ?? "") !== collectionFilter) return false;
+      return true;
+    });
+  }, [productsWithLots, colorFilter, collectionFilter]);
+
   const filteredForPicker = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return productsWithLots;
-    return productsWithLots.filter((p) =>
+    const base = eligibleProducts;
+    if (!q) return base;
+    return base.filter((p) =>
       p.name.toLowerCase().includes(q) || (p.serial_number ?? "").toLowerCase().includes(q),
     );
-  }, [productsWithLots, search]);
+  }, [eligibleProducts, search]);
 
   const effectiveIds = useMemo(() => {
-    if (mode === "all") return productsWithLots.map((p) => p.id);
-    return Array.from(selectedIds);
-  }, [mode, selectedIds, productsWithLots]);
+    const allowed = new Set(eligibleProducts.map((p) => p.id));
+    if (mode === "all") return Array.from(allowed);
+    return Array.from(selectedIds).filter((id) => allowed.has(id));
+  }, [mode, selectedIds, eligibleProducts]);
+
+  // Date range: inclusive on both ends. Empty strings = no bound.
+  const inDateRange = (d: string | null | undefined): boolean => {
+    if (!dateFrom && !dateTo) return true;
+    if (!d) return false; // any range set → lots with no date are excluded
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  };
 
   const rows = useMemo(() => {
     return effectiveIds
@@ -3969,7 +4007,8 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
         const product = products.find((p) => p.id === pid);
         const entry = costBook.products[pid];
         const rawLots: PoCostLot[] = (entry?.lots ?? []) as PoCostLot[];
-        const lots = sortLotsByDateDesc(filterLots(rawLots, includeCancelled));
+        const filtered = filterLots(rawLots, includeCancelled).filter((l) => inDateRange(l.shipment_date));
+        const lots = sortLotsByDateDesc(filtered);
         const summary = summarizeProduct(pid, lots);
         return { product, lots, summary };
       })
@@ -4058,6 +4097,82 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
               </Button>
             )}
           </div>
+
+          {/* Advanced filters: color · collection · date range */}
+          <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/20 p-2">
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("اللون", "Color")}
+              </label>
+              <select
+                value={colorFilter}
+                onChange={(e) => setColorFilter(e.target.value)}
+                className="h-8 rounded-md border bg-background px-2 text-[12px]"
+              >
+                <option value="all">{t("كل الألوان", "All colors")}</option>
+                {colorOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("الكولكشن", "Collection")}
+              </label>
+              <select
+                value={collectionFilter}
+                onChange={(e) => setCollectionFilter(e.target.value)}
+                className="h-8 rounded-md border bg-background px-2 text-[12px]"
+              >
+                <option value="all">{t("كل الكولكشنز", "All collections")}</option>
+                {collectionOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("من تاريخ", "From date")}
+              </label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 text-[12px] w-[150px]"
+              />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("إلى تاريخ", "To date")}
+              </label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 text-[12px] w-[150px]"
+              />
+            </div>
+            {(colorFilter !== "all" || collectionFilter !== "all" || dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-[11px] gap-1"
+                onClick={() => {
+                  setColorFilter("all");
+                  setCollectionFilter("all");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                <X className="h-3 w-3" /> {t("مسح الفلاتر", "Reset filters")}
+              </Button>
+            )}
+          </div>
+
 
           {/* Product picker */}
           {mode === "select" && (
@@ -4183,9 +4298,26 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                         {lots.map((l, i) => {
                           const isMin = l.unit_usd === summary.minUsd;
                           const isMax = l.unit_usd === summary.maxUsd;
+                          const openPo = () =>
+                            navigate({ to: "/po-tracking", search: { open: l.po_id } });
                           return (
-                            <tr key={`${l.po_id}-${i}`} className="hover:bg-muted/20">
-                              <td className="px-3 py-1.5 font-medium">{l.shipment_code || l.po_id.slice(0, 8)}</td>
+                            <tr
+                              key={`${l.po_id}-${i}`}
+                              onClick={openPo}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openPo();
+                                }
+                              }}
+                              tabIndex={0}
+                              role="button"
+                              title={t("افتح تفاصيل أمر الشراء", "Open PO details")}
+                              className="cursor-pointer hover:bg-primary/5 focus:bg-primary/10 focus:outline-none transition"
+                            >
+                              <td className="px-3 py-1.5 font-medium text-primary underline-offset-2 hover:underline">
+                                {l.shipment_code || l.po_id.slice(0, 8)}
+                              </td>
                               <td className="px-3 py-1.5 text-muted-foreground">
                                 {l.shipment_date ? fmtDate(l.shipment_date, lang) : "—"}
                               </td>

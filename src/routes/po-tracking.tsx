@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +21,11 @@ import { toast } from "sonner";
 import { ExecutiveGate } from "@/components/executive-gate";
 
 export const Route = createFileRoute("/po-tracking")({
+  validateSearch: zodValidator(
+    z.object({
+      open: fallback(z.string(), "").default(""),
+    }),
+  ),
   component: () => (
     <AppShell>
       <ExecutiveGate>
@@ -46,6 +53,14 @@ function POTrackingPage() {
   const [receiptFilter, setReceiptFilter] = useState<"all" | "fully" | "partial" | "none">("all");
   const [trackId, setTrackId] = useState<string | null>(null);
   const [poReceipts, setPoReceipts] = useState<Record<string, any[]>>({});
+
+  // Auto-open a PO when arriving with ?open=<po_id> (e.g. from Cost History)
+  const { open: openParam } = Route.useSearch();
+  useEffect(() => {
+    if (openParam) setTrackId(openParam);
+  }, [openParam]);
+
+
 
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isPurchasing && !isCFO) {
