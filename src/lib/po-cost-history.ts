@@ -65,6 +65,13 @@ export function summarizeProduct(productId: string, lots: PoCostLot[]): ProductC
       totalSpendUsd: 0,
       wacUsd: 0,
       wacEgp: 0,
+      wacLandedUsd: 0,
+      wacLandedEgp: 0,
+      totalLandedEgp: 0,
+      totalCustomsEgp: 0,
+      totalTaxesEgp: 0,
+      totalShippingEgp: 0,
+      totalOtherEgp: 0,
       simpleAvgUsd: 0,
       minUsd: 0,
       maxUsd: 0,
@@ -81,6 +88,12 @@ export function summarizeProduct(productId: string, lots: PoCostLot[]): ProductC
   let sumUsd = 0;
   let spendEgp = 0;
   let spendUsd = 0;
+  let landedEgp = 0;
+  let sumQtyRate = 0; // Σ qty*usd_rate — used to convert landedEgp back to landed USD
+  let customsEgpTotal = 0;
+  let taxesEgpTotal = 0;
+  let shippingEgpTotal = 0;
+  let otherEgpTotal = 0;
   let minLot: PoCostLot = lots[0];
   let maxLot: PoCostLot = lots[0];
   const dates: string[] = [];
@@ -89,18 +102,33 @@ export function summarizeProduct(productId: string, lots: PoCostLot[]): ProductC
     const q = Number(l.qty) || 0;
     const u = Number(l.unit_usd) || 0;
     const e = Number(l.unit_egp) || 0;
+    const r = Number(l.usd_rate) || 0;
     totalQty += q;
     sumQtyUsd += q * u;
     sumQtyEgp += q * e;
     sumUsd += u;
     spendEgp += Number(l.line_total_egp) || q * e;
     spendUsd += q * u;
+    sumQtyRate += q * r;
+    // Landed line: prefer RPC-supplied value; fall back to raw line EGP
+    const landedLine =
+      l.landed_line_egp != null && Number.isFinite(Number(l.landed_line_egp))
+        ? Number(l.landed_line_egp)
+        : Number(l.line_total_egp) || q * e;
+    landedEgp += landedLine;
+    const share = Number(l.line_share) || 0;
+    customsEgpTotal += (Number(l.customs_egp) || 0) * share;
+    taxesEgpTotal += (Number(l.taxes_egp) || 0) * share;
+    shippingEgpTotal += (Number(l.shipping_egp) || 0) * share;
+    otherEgpTotal += (Number(l.other_egp) || 0) * share;
     if (u < (Number(minLot.unit_usd) || 0)) minLot = l;
     if (u > (Number(maxLot.unit_usd) || 0)) maxLot = l;
     if (l.shipment_date) dates.push(l.shipment_date);
     pos.add(l.po_id);
   }
   dates.sort();
+  const wacLandedEgp = totalQty > 0 ? landedEgp / totalQty : 0;
+  const wacLandedUsd = sumQtyRate > 0 ? landedEgp / sumQtyRate : 0;
   return {
     productId,
     totalQty,
@@ -108,6 +136,13 @@ export function summarizeProduct(productId: string, lots: PoCostLot[]): ProductC
     totalSpendUsd: spendUsd,
     wacUsd: totalQty > 0 ? sumQtyUsd / totalQty : 0,
     wacEgp: totalQty > 0 ? sumQtyEgp / totalQty : 0,
+    wacLandedUsd,
+    wacLandedEgp,
+    totalLandedEgp: landedEgp,
+    totalCustomsEgp: customsEgpTotal,
+    totalTaxesEgp: taxesEgpTotal,
+    totalShippingEgp: shippingEgpTotal,
+    totalOtherEgp: otherEgpTotal,
     simpleAvgUsd: sumUsd / lots.length,
     minUsd: Number(minLot.unit_usd) || 0,
     maxUsd: Number(maxLot.unit_usd) || 0,
@@ -126,6 +161,13 @@ export type GrandSummary = {
   totalSpendEgp: number;
   overallWacUsd: number;
   overallWacEgp: number;
+  overallWacLandedUsd: number;
+  overallWacLandedEgp: number;
+  totalLandedEgp: number;
+  totalCustomsEgp: number;
+  totalTaxesEgp: number;
+  totalShippingEgp: number;
+  totalOtherEgp: number;
   poCount: number;
 };
 
