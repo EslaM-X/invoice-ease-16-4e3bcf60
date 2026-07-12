@@ -164,6 +164,12 @@ function InvoicesList() {
         const d = i.delivery_days != null ? String(i.delivery_days) : "21";
         if (d !== deliveryDaysFilter) return false;
       }
+      if (deliveryFromFilter || deliveryToFilter) {
+        const days = Number(i.delivery_days ?? 21);
+        const due = addBusinessDays(i.created_at, days).getTime();
+        if (deliveryFromFilter && due < new Date(deliveryFromFilter).setHours(0, 0, 0, 0)) return false;
+        if (deliveryToFilter && due > new Date(deliveryToFilter).setHours(23, 59, 59, 999)) return false;
+      }
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
         const paid = Number(i.paid_amount ?? 0);
