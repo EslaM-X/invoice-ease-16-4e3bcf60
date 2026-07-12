@@ -210,6 +210,8 @@ function Products() {
   const save = async () => {
     if (!user) return;
     if (!form.name.trim()) return toast.error(t("required"));
+    const wNum = Number(form.weight);
+    const weightGrams = Number.isFinite(wNum) && wNum > 0 ? (form.weight_unit === "kg" ? wNum * 1000 : wNum) : null;
     const payload = {
       name: form.name,
       serial_number: form.serial_number || null,
@@ -222,6 +224,7 @@ function Products() {
       collection: form.collection ? form.collection.toUpperCase() : null,
       is_spare_part: !!form.is_spare_part,
       parent_product_id: form.parent_product_id || null,
+      weight_grams: weightGrams,
     };
     if (editing) {
       const { data: updated, error } = await supabase.from("products").update(payload).eq("id", editing.id).select("*").single();
