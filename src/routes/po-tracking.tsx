@@ -21,6 +21,11 @@ import { toast } from "sonner";
 import { ExecutiveGate } from "@/components/executive-gate";
 
 export const Route = createFileRoute("/po-tracking")({
+  validateSearch: zodValidator(
+    z.object({
+      open: fallback(z.string(), "").default(""),
+    }),
+  ),
   component: () => (
     <AppShell>
       <ExecutiveGate>
