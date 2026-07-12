@@ -30,6 +30,7 @@ type CostSource = "wac" | "latest_po" | "current" | "override";
 
 type CostBookLot = {
   po_id: string;
+  po_number?: string | null;
   shipment_code: string | null;
   shipment_date: string | null;
   status: string;
@@ -38,11 +39,24 @@ type CostBookLot = {
   usd_rate: number;
   unit_egp: number;
   line_total_egp: number;
+  // Landed cost fields (new)
+  customs_egp?: number | null;
+  taxes_egp?: number | null;
+  shipping_egp?: number | null;
+  other_egp?: number | null;
+  overheads_egp?: number | null;
+  line_share?: number | null;
+  landed_unit_usd?: number | null;
+  landed_unit_egp?: number | null;
+  landed_line_egp?: number | null;
 };
 type CostBookEntry = {
   total_qty: number;
   wac_usd: number;
   wac_egp: number;
+  wac_landed_usd?: number | null;
+  wac_landed_egp?: number | null;
+  total_landed_egp?: number | null;
   min_usd: number;
   max_usd: number;
   latest_usd: number;
