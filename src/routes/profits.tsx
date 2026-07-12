@@ -3949,6 +3949,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
   const [collectionFilter, setCollectionFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [poDialogId, setPoDialogId] = useState<string | null>(null);
 
   // Products that actually have PO lots
   const productsWithLots = useMemo(
