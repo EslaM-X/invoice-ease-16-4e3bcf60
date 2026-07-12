@@ -4097,6 +4097,82 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
             )}
           </div>
 
+          {/* Advanced filters: color · collection · date range */}
+          <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/20 p-2">
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("اللون", "Color")}
+              </label>
+              <select
+                value={colorFilter}
+                onChange={(e) => setColorFilter(e.target.value)}
+                className="h-8 rounded-md border bg-background px-2 text-[12px]"
+              >
+                <option value="all">{t("كل الألوان", "All colors")}</option>
+                {colorOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("الكولكشن", "Collection")}
+              </label>
+              <select
+                value={collectionFilter}
+                onChange={(e) => setCollectionFilter(e.target.value)}
+                className="h-8 rounded-md border bg-background px-2 text-[12px]"
+              >
+                <option value="all">{t("كل الكولكشنز", "All collections")}</option>
+                {collectionOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("من تاريخ", "From date")}
+              </label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 text-[12px] w-[150px]"
+              />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("إلى تاريخ", "To date")}
+              </label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 text-[12px] w-[150px]"
+              />
+            </div>
+            {(colorFilter !== "all" || collectionFilter !== "all" || dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-[11px] gap-1"
+                onClick={() => {
+                  setColorFilter("all");
+                  setCollectionFilter("all");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                <X className="h-3 w-3" /> {t("مسح الفلاتر", "Reset filters")}
+              </Button>
+            )}
+          </div>
+
+
           {/* Product picker */}
           {mode === "select" && (
             <div className="rounded-xl border bg-muted/20 p-2 space-y-2">
