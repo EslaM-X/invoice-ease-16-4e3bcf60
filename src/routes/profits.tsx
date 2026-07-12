@@ -23,6 +23,7 @@ import { List, type RowComponentProps } from "react-window";
 
 import type { Product } from "@/lib/data";
 import { summarizeProduct, summarizeMany, sortLotsByDateDesc, filterLots, type PoCostLot } from "@/lib/po-cost-history";
+import { POTrackerDialog } from "@/components/po-tracker-dialog";
 import { useRole } from "@/lib/use-role";
 
 type CostSource = "wac" | "latest_po" | "current" | "override";
@@ -3938,7 +3939,7 @@ type ProductCostHistoryPanelProps = {
 };
 
 function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHistoryPanelProps) {
-  const navigate = useNavigate();
+  
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"all" | "select">("select");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -3948,6 +3949,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
   const [collectionFilter, setCollectionFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [poDialogId, setPoDialogId] = useState<string | null>(null);
 
   // Products that actually have PO lots
   const productsWithLots = useMemo(
@@ -4013,7 +4015,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
         return { product, lots, summary };
       })
       .filter((r) => r.product && r.summary.totalQty > 0);
-  }, [effectiveIds, products, costBook, includeCancelled]);
+  }, [effectiveIds, products, costBook, includeCancelled, dateFrom, dateTo]);
 
   const grand = useMemo(() => summarizeMany(rows.map((r) => r.summary)), [rows]);
 
@@ -4287,15 +4289,49 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
             <div className="space-y-3">
               {rows.map(({ product, lots, summary }) => (
                 <div key={summary.productId} className="rounded-xl border bg-card overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/20 px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2 border-b bg-muted/20 px-3 py-2.5">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
                       {product!.image_url ? (
-                        <img src={product!.image_url} alt="" className="h-8 w-8 rounded object-cover" />
+                        <img src={product!.image_url} alt="" className="h-12 w-12 shrink-0 rounded-md border object-cover" />
                       ) : (
-                        <div className="h-8 w-8 rounded bg-muted" />
+                        <div className="h-12 w-12 shrink-0 rounded-md border bg-muted" />
                       )}
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1 space-y-1">
                         <div className="text-[13px] font-semibold truncate">{product!.name}</div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                          {product!.serial_number && (
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-1.5 py-0.5 font-mono text-muted-foreground">
+                              <span className="opacity-60">SN</span>
+                              <span className="text-foreground">{product!.serial_number}</span>
+                            </span>
+                          )}
+                          {product!.color && (
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5">
+                              <ColorSwatch value={product!.color} size="sm" />
+                              <span className="text-foreground">{product!.color}</span>
+                            </span>
+                          )}
+                          {product!.collection && (
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-primary/10 px-1.5 py-0.5 text-primary font-medium">
+                              {product!.collection}
+                            </span>
+                          )}
+                          {product!.is_spare_part && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-400 font-medium">
+                              {t("قطعة غيار", "Spare")}
+                            </span>
+                          )}
+                          <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 tabular-nums ${
+                            (product!.stock_quantity ?? 0) <= (product!.low_stock_threshold ?? 0)
+                              ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                              : "bg-muted/40 text-muted-foreground"
+                          }`}>
+                            {t("مخزون", "Stock")}: {product!.stock_quantity ?? 0}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-1.5 py-0.5 tabular-nums text-muted-foreground">
+                            {t("سعر البيع", "Price")}: {money(product!.price ?? 0, "EGP")}
+                          </span>
+                        </div>
                         <div className="text-[10px] text-muted-foreground truncate">
                           {summary.poCount} {t("أمر شراء", "PO(s)")} · {t("كمية", "qty")}{" "}
                           <span className="tabular-nums font-medium">{fmtNumber(summary.totalQty, lang)}</span>
@@ -4335,8 +4371,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                         {lots.map((l, i) => {
                           const isMin = l.unit_usd === summary.minUsd;
                           const isMax = l.unit_usd === summary.maxUsd;
-                          const openPo = () =>
-                            navigate({ to: "/po-tracking", search: { open: l.po_id } });
+                          const openPo = () => setPoDialogId(l.po_id);
                           return (
                             <tr
                               key={`${l.po_id}-${i}`}
@@ -4407,6 +4442,13 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
             </div>
           )}
         </div>
+      )}
+      {poDialogId && (
+        <POTrackerDialog
+          poId={poDialogId}
+          open={!!poDialogId}
+          onOpenChange={(v) => { if (!v) setPoDialogId(null); }}
+        />
       )}
     </div>
   );
