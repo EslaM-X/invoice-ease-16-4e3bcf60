@@ -594,6 +594,7 @@ function Products() {
                             </div>
                             <AuthorBadge email={p.created_by_email} label="created by" className="mt-0.5" />
                           </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
