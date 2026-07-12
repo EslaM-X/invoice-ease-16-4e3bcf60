@@ -21,14 +21,11 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false);
   const [picked, setPicked] = useState<"employee" | "distributor" | null>(null);
 
-  const load = async (uid: string) => {
+  const load = async (_uid: string) => {
     setLoading(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("account_type, approval_status, approval_notes")
-      .eq("user_id", uid)
-      .maybeSingle();
-    setProfile((data as Profile | null) ?? null);
+    const { data } = await (supabase.rpc as any)("get_my_approval_state");
+    const row = Array.isArray(data) ? data[0] : null;
+    setProfile((row as Profile | null) ?? null);
     setLoading(false);
   };
 
