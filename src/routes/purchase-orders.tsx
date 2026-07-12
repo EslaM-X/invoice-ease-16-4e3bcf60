@@ -1505,6 +1505,7 @@ function PODetailDialog({
         quantity: qty,
         unit_cost_usd: unitUsd,
         line_total_usd: qty * unitUsd,
+        unit_weight_grams: (p as any).weight_grams ?? null,
       } as any);
       if (error) throw error;
       await audit("po_item_added", { product_id: p.id, name: p.name, qty, unit_cost_usd: unitUsd });
