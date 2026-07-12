@@ -540,7 +540,7 @@ function InventoryValueCard({
                 {value}
               </div>
               {subValue && (
-                <div className="ltr-nums mt-1 text-[10px] tabular-nums text-white/45 truncate">
+                <div className="ltr-nums mt-1.5 text-sm font-medium tabular-nums text-[#c9a84c]/75 truncate sm:text-[15px]">
                   {subValue}
                 </div>
               )}
