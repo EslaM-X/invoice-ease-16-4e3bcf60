@@ -54,6 +54,7 @@ type Props = {
     customer_category?: string | null;
     sales_channel?: string | null;
     sales_event_id?: string | null;
+    delivery_days?: number | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
