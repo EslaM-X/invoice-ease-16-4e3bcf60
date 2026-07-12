@@ -4365,7 +4365,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                 highlight
               />
               <GrandStat label={t("جمارك", "Customs")} value={money(grand.totalCustomsEgp, "EGP")} />
-              <GrandStat label={t("ضرائب", "Taxes")} value={money(grand.totalTaxesEgp, "EGP")} />
+              <GrandStat label={t("ضرائب (خارج التكلفة)", "Taxes (excl. from cost)")} value={money(grand.totalTaxesEgp, "EGP")} />
               <GrandStat label={t("شحن", "Shipping")} value={money(grand.totalShippingEgp, "EGP")} />
               <GrandStat label={t("تكلفة إضافية", "Extra")} value={money(grand.totalOtherEgp, "EGP")} />
               <GrandStat label={t("إجمالي الإنفاق (USD)", "Spend (USD)")} value={money(grand.totalSpendUsd, "USD")} />
