@@ -4453,8 +4453,6 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
     </div>
   );
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _keepNavigate(_: ReturnType<typeof useNavigate>) { return _; }
 
 function GrandStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
