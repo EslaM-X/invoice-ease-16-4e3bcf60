@@ -38,16 +38,34 @@ function Dashboard() {
   const { t, lang } = useI18n();
   const { hidden, toggle } = useHideNumbers();
   const [stats, setStats] = useState({ sales: 0, invoices: 0, closed: 0, partial: 0, open: 0, customers: 0, products: 0, lowStock: 0, inventoryStock: 0, sampleStock: 0, costValueEgp: 0, salesValueEgp: 0, latestUsdRate: 50 });
+  const [loaded, setLoaded] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
   const [fxInput, setFxInput] = useState("50.5");
   const [savingFx, setSavingFx] = useState(false);
   const avatar = useCurrentAvatar();
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
   const navigate = useNavigate();
   const [avatarImgLoaded, setAvatarImgLoaded] = useState(false);
 
+  // Hydrate instantly from session cache so numbers don't flash 0.
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+    try {
+      const raw = sessionStorage.getItem(`${DASH_CACHE_KEY}:${user.id}`);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached?.stats) { setStats(cached.stats); setLoaded(true); }
+        if (cached?.recent) setRecent(cached.recent);
+        if (cached?.stats?.latestUsdRate) setFxInput(String(cached.stats.latestUsdRate));
+      }
+    } catch { /* ignore */ }
+  }, [user?.id]);
 
   const load = async (forceRefresh = false) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
     const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
