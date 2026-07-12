@@ -1686,6 +1686,16 @@ function PODetailDialog({
                 <div className="text-[10px] text-muted-foreground">
                   {liveTotalQty} {isAr ? "قطعة" : "units"}
                 </div>
+                {(() => {
+                  const totalG = items.reduce((s, it) => s + (Number(it.unit_weight_grams ?? 0) * Number(it.quantity ?? 0)), 0);
+                  if (totalG <= 0) return null;
+                  const label = totalG >= 1000 ? `${(totalG / 1000).toFixed(2)} kg` : `${totalG.toFixed(0)} g`;
+                  return (
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                      ⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}: <span className="tabular-nums font-semibold">{label}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">
