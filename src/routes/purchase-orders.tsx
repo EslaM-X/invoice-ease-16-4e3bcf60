@@ -2183,6 +2183,12 @@ function PODetailDialog({
                       </span>
                     </div>
                   )}
+                  {taxesInfoEgp > 0 && (
+                    <div className="mt-2 flex justify-between text-[11px] border-t pt-1 text-amber-700 dark:text-amber-400">
+                      <span>{isAr ? "ضرائب (خارج التكلفة — للعرض فقط)" : "Taxes (excluded from cost — reference only)"}</span>
+                      <span className="font-semibold tabular-nums">{fmtMoney(taxesInfoEgp, "EGP", lang)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
