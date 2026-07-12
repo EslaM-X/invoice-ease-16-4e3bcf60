@@ -131,6 +131,24 @@ describe("landed cost", () => {
     // No value_share/weight_share provided → falls back to line_share for both
     expect(s.totalShippingEgp).toBe(1000);
   });
+  it("EXCLUDES taxes from landed cost — taxes tracked as informational only", () => {
+    // RPC now returns landed_line_egp WITHOUT taxes. Client sums landed_line_egp
+    // directly, so totalLandedEgp must not include the tax component even if the
+    // per-lot taxes_egp field is present for display.
+    const s = summarizeProduct("p1", [
+      lot({
+        qty: 10, unit_usd: 100, unit_egp: 5000, line_total_egp: 50000,
+        value_share: 1, weight_share: 1, line_share: 1,
+        customs_egp: 5000, taxes_egp: 9999, shipping_egp: 2000, other_egp: 1000,
+        // landed_line_egp from RPC = 50000 + customs(5000) + shipping(2000) + other(1000) = 58000  (taxes excluded)
+        landed_line_egp: 58000,
+      }),
+    ]);
+    expect(s.totalLandedEgp).toBe(58000);
+    // Taxes still reported for display, but never merged into landed
+    expect(s.totalTaxesEgp).toBe(9999);
+    expect(s.wacLandedEgp).toBe(5800); // 58000 / 10 qty
+  });
 });
 
 describe("sortLotsByDateDesc", () => {

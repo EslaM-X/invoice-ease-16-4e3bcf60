@@ -1386,7 +1386,10 @@ function PODetailDialog({
   const taxesEgp = calc(taxesMode, taxesValue);
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
-  const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
+  // Taxes are intentionally EXCLUDED from landed cost (per business rule).
+  // They remain visible on the PO for reference but never enter product cost / WAC / profit.
+  const totalEgp = baseEgp + customsEgp + shippingEgp + otherEgp;
+  const taxesInfoEgp = taxesEgp;
 
   const audit = async (action: string, details: any) => {
     try {
@@ -2121,7 +2124,7 @@ function PODetailDialog({
                   lang={lang}
                 />
                 <PricingRow
-                  label={isAr ? "الضرائب" : "Taxes"}
+                  label={isAr ? "الضرائب (خارج التكلفة)" : "Taxes (excluded from cost)"}
                   mode={taxesMode}
                   setMode={setTaxesMode}
                   value={taxesValue}
@@ -2178,6 +2181,12 @@ function PODetailDialog({
                       <span className="font-semibold tabular-nums">
                         {fmtMoney(totalEgp / liveTotalQty, "EGP", lang)}
                       </span>
+                    </div>
+                  )}
+                  {taxesInfoEgp > 0 && (
+                    <div className="mt-2 flex justify-between text-[11px] border-t pt-1 text-amber-700 dark:text-amber-400">
+                      <span>{isAr ? "ضرائب (خارج التكلفة — للعرض فقط)" : "Taxes (excluded from cost — reference only)"}</span>
+                      <span className="font-semibold tabular-nums">{fmtMoney(taxesInfoEgp, "EGP", lang)}</span>
                     </div>
                   )}
                 </div>

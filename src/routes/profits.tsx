@@ -4468,13 +4468,13 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                           <th className="px-2 py-2 text-end font-semibold border-b">{t("سعر $", "FX")}</th>
                           <th className="px-2 py-2 text-end font-semibold border-b border-e-2 border-e-amber-500/30">{t("EGP/وحدة", "Unit EGP")}</th>
                           <th className="px-2 py-2 text-end font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/5 border-b" title={t("حصة هذا السطر من إجمالي الجمارك", "Line share of customs")}>{t("جمارك", "Cust.")}</th>
-                          <th className="px-2 py-2 text-end font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/5 border-b" title={t("حصة هذا السطر من إجمالي الضرائب", "Line share of taxes")}>{t("ضرائب", "Tax")}</th>
+                          <th className="px-2 py-2 text-end font-semibold text-muted-foreground bg-muted/30 border-b" title={t("الضرائب مستبعدة من التكلفة وعرض للمعلومية فقط", "Taxes excluded from cost — informational only")}>{t("ضرائب*", "Tax*")}</th>
                           <th className="px-2 py-2 text-end font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/5 border-b" title={t("حصة هذا السطر من إجمالي الشحن", "Line share of shipping")}>{t("شحن", "Ship")}</th>
                           <th className="px-2 py-2 text-end font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/5 border-b border-e-2 border-e-primary/40" title={t("تكاليف أخرى مثل عمولات، تخليص، تأمين", "Extra costs")}>{t("إضافي", "Extra")}</th>
-                          <th className="px-2 py-2 text-end font-bold text-primary bg-primary/5 border-b" title={t("التكلفة النهائية لوحدة واحدة بعد إضافة كل الرسوم والمصاريف", "Final cost of a single unit after adding customs, taxes, shipping, and extras")}>
+                          <th className="px-2 py-2 text-end font-bold text-primary bg-primary/5 border-b" title={t("التكلفة النهائية لوحدة واحدة بعد إضافة الجمارك والشحن والإضافي (الضرائب مستبعدة)", "Final unit cost incl. customs, shipping, extras (taxes excluded)")}>
                             <div className="leading-tight">
                               <div>{t("تكلفة الوحدة الفعلية", "True Unit Cost")}</div>
-                              <div className="text-[9px] font-normal text-muted-foreground normal-case tracking-normal">{t("شامل كل الرسوم", "all-in per unit")}</div>
+                              <div className="text-[9px] font-normal text-muted-foreground normal-case tracking-normal">{t("بدون ضرائب", "excl. taxes")}</div>
                             </div>
                           </th>
                           <th className="px-2 py-2 text-end font-bold text-primary bg-primary/5 border-b" title={t("إجمالي تكلفة السطر بالكامل بعد إضافة كل الرسوم والمصاريف", "Full line total after all overheads")}>
@@ -4539,7 +4539,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                               </td>
                               <td className="px-2 py-1.5 text-end tabular-nums border-e-2 border-e-amber-500/20">{money(l.unit_egp, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5">{money(custShare, "EGP")}</td>
-                              <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5">{money(taxShare, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums text-muted-foreground bg-muted/20" title={t("خارج التكلفة", "excluded from cost")}>{money(taxShare, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5">{money(shipShare, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5 border-e-2 border-e-primary/30">{money(otherShare, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums font-bold text-primary bg-primary/5">
@@ -4571,7 +4571,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                             {money(summary.wacEgp, "EGP")}
                           </td>
                           <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10">{money(summary.totalCustomsEgp, "EGP")}</td>
-                          <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10">{money(summary.totalTaxesEgp, "EGP")}</td>
+                          <td className="px-2 py-2 text-end tabular-nums text-muted-foreground bg-muted/30" title={t("خارج التكلفة", "excluded from cost")}>{money(summary.totalTaxesEgp, "EGP")}</td>
                           <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10">{money(summary.totalShippingEgp, "EGP")}</td>
                           <td className="px-2 py-2 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/10 border-e-2 border-e-primary/40">{money(summary.totalOtherEgp, "EGP")}</td>
                           <td className="px-2 py-2 text-end tabular-nums font-bold text-primary bg-primary/10">{money(summary.wacLandedEgp, "EGP")}</td>
