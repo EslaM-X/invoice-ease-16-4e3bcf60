@@ -99,6 +99,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
   const [subject, setSubject] = useState<string>(initial?.subject ?? "");
   const [systemNotes, setSystemNotes] = useState<string>(initial?.system_notes ?? "");
+  const DELIVERY_DAYS_OPTIONS = [7, 21, 30, 45, 60] as const;
+  const [deliveryDays, setDeliveryDays] = useState<number>(
+    initial?.delivery_days && DELIVERY_DAYS_OPTIONS.includes(initial.delivery_days as any)
+      ? (initial.delivery_days as number)
+      : 21,
+  );
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
