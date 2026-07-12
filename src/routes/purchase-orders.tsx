@@ -109,6 +109,7 @@ type POItem = {
   quantity: number;
   unit_cost_usd: number;
   line_total_usd: number;
+  unit_weight_grams?: number | null;
 };
 
 type Mode = "percent" | "fixed";
