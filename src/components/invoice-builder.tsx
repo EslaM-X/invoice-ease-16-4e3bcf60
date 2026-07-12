@@ -23,6 +23,7 @@ import { DesktopPairWidget } from "@/components/desktop-pair-widget";
 import type { ScanEvent } from "@/lib/scan-link";
 import { fetchProductCached, setCachedProduct } from "@/lib/product-cache";
 import { decodeProductQR } from "@/lib/qr-codec";
+import { DELIVERY_DAYS_OPTIONS as VALID_DELIVERY_DAYS, formatDeliveryWindowText, isValidDeliveryDays } from "@/lib/delivery-terms";
 
 export type BuilderItem = {
   product_id: string | null;
