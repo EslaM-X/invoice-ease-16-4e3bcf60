@@ -22,7 +22,10 @@ import { PoShipmentsTracker } from "@/components/po-shipments-tracker";
 import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
 import { cachedListFetch } from "@/lib/list-cache";
+import { LazyMount } from "@/components/lazy-mount";
 import { toast } from "sonner";
+
+const DASH_CACHE_KEY = "dashboard:stats:v1";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
