@@ -4539,7 +4539,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                               </td>
                               <td className="px-2 py-1.5 text-end tabular-nums border-e-2 border-e-amber-500/20">{money(l.unit_egp, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5">{money(custShare, "EGP")}</td>
-                              <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5">{money(taxShare, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums text-muted-foreground bg-muted/20" title={t("خارج التكلفة", "excluded from cost")}>{money(taxShare, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5">{money(shipShare, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400 bg-amber-500/5 border-e-2 border-e-primary/30">{money(otherShare, "EGP")}</td>
                               <td className="px-2 py-1.5 text-end tabular-nums font-bold text-primary bg-primary/5">
