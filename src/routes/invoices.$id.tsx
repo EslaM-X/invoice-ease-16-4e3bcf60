@@ -188,7 +188,7 @@ function InvoiceView() {
         </div>
       </div>
 
-      <div className="print-area mx-auto max-w-3xl rounded-3xl border border-border/60 bg-card shadow-elegant relative print:rounded-none print:border-0 print:shadow-none" dir={dir}>
+      <div className="print-area mx-auto max-w-3xl rounded-3xl border border-border/60 bg-white text-black shadow-elegant relative print:rounded-none print:border-0 print:shadow-none [color-scheme:light]" dir={dir}>
         {isVoided && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
             <span className="rotate-[-20deg] rounded-lg border-4 border-destructive px-8 py-2 text-5xl font-black tracking-widest text-destructive opacity-30">
