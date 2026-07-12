@@ -860,6 +860,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           .update({
             delivery_status: delivered ? "delivered" : "pending",
             subject: subject.trim() || null,
+            delivery_days: deliveryDays,
           } as any)
           .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
