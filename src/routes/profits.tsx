@@ -3943,6 +3943,10 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [includeCancelled, setIncludeCancelled] = useState(false);
+  const [colorFilter, setColorFilter] = useState<string>("all");
+  const [collectionFilter, setCollectionFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   // Products that actually have PO lots
   const productsWithLots = useMemo(
@@ -3950,18 +3954,51 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
     [products, costBook],
   );
 
+  // Unique colors + collections drawn from products-with-lots (so filters
+  // never show a value that can't match anything on this panel).
+  const colorOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of productsWithLots) if (p.color) s.add(p.color);
+    return Array.from(s).sort();
+  }, [productsWithLots]);
+  const collectionOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of productsWithLots) if (p.collection) s.add(p.collection);
+    return Array.from(s).sort();
+  }, [productsWithLots]);
+
+  // Products passing color + collection filters (applies to picker AND "all")
+  const eligibleProducts = useMemo(() => {
+    return productsWithLots.filter((p) => {
+      if (colorFilter !== "all" && (p.color ?? "") !== colorFilter) return false;
+      if (collectionFilter !== "all" && (p.collection ?? "") !== collectionFilter) return false;
+      return true;
+    });
+  }, [productsWithLots, colorFilter, collectionFilter]);
+
   const filteredForPicker = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return productsWithLots;
-    return productsWithLots.filter((p) =>
+    const base = eligibleProducts;
+    if (!q) return base;
+    return base.filter((p) =>
       p.name.toLowerCase().includes(q) || (p.serial_number ?? "").toLowerCase().includes(q),
     );
-  }, [productsWithLots, search]);
+  }, [eligibleProducts, search]);
 
   const effectiveIds = useMemo(() => {
-    if (mode === "all") return productsWithLots.map((p) => p.id);
-    return Array.from(selectedIds);
-  }, [mode, selectedIds, productsWithLots]);
+    const allowed = new Set(eligibleProducts.map((p) => p.id));
+    if (mode === "all") return Array.from(allowed);
+    return Array.from(selectedIds).filter((id) => allowed.has(id));
+  }, [mode, selectedIds, eligibleProducts]);
+
+  // Date range: inclusive on both ends. Empty strings = no bound.
+  const inDateRange = (d: string | null | undefined): boolean => {
+    if (!dateFrom && !dateTo) return true;
+    if (!d) return false; // any range set → lots with no date are excluded
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  };
 
   const rows = useMemo(() => {
     return effectiveIds
@@ -3969,7 +4006,8 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
         const product = products.find((p) => p.id === pid);
         const entry = costBook.products[pid];
         const rawLots: PoCostLot[] = (entry?.lots ?? []) as PoCostLot[];
-        const lots = sortLotsByDateDesc(filterLots(rawLots, includeCancelled));
+        const filtered = filterLots(rawLots, includeCancelled).filter((l) => inDateRange(l.shipment_date));
+        const lots = sortLotsByDateDesc(filtered);
         const summary = summarizeProduct(pid, lots);
         return { product, lots, summary };
       })
