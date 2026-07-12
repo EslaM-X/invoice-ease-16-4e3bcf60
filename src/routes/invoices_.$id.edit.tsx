@@ -34,6 +34,7 @@ function EditInvoice() {
     customer_category?: string | null;
     sales_channel?: string | null;
     sales_event_id?: string | null;
+    delivery_days?: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
