@@ -210,8 +210,13 @@ function Products() {
   const save = async () => {
     if (!user) return;
     if (!form.name.trim()) return toast.error(t("required"));
-    const wNum = Number(form.weight);
-    const weightGrams = Number.isFinite(wNum) && wNum > 0 ? (form.weight_unit === "kg" ? wNum * 1000 : wNum) : null;
+    const wNum = Number(String(form.weight).replace(",", "."));
+    // Multiply as integers to avoid FP drift (e.g. 0.285 * 1000 = 284.9999…),
+    // then round to milligrams (3 decimals of a gram) — more than enough precision.
+    const rawGrams = Number.isFinite(wNum) && wNum > 0
+      ? (form.weight_unit === "kg" ? Math.round(wNum * 1_000_000) / 1000 : Math.round(wNum * 1000) / 1000)
+      : null;
+    const weightGrams = rawGrams;
     const payload = {
       name: form.name,
       serial_number: form.serial_number || null,
