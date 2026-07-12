@@ -4223,7 +4223,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                             )}
                             {p.color && (
                               <span className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5">
-                                <ColorSwatchInline value={p.color} />
+                                <ColorSwatch value={p.color} size="sm" />
                                 <span className="text-foreground">{p.color}</span>
                               </span>
                             )}
