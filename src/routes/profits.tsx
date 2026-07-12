@@ -4424,18 +4424,19 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                      <span className="rounded-full border border-primary/20 bg-muted/40 px-2 py-0.5 tabular-nums">
+                      <span className="rounded-full border border-primary/20 bg-muted/40 px-2 py-0.5 tabular-nums" title={t("قبل الجمارك والضرائب والشحن", "Before customs/tax/shipping")}>
                         {t("خام", "Base")} {money(summary.wacUsd, "USD")}
                       </span>
-                      <span className="rounded-full border border-primary/20 bg-muted/40 px-2 py-0.5 tabular-nums">
+                      <span className="rounded-full border border-primary/20 bg-muted/40 px-2 py-0.5 tabular-nums" title={t("قبل الجمارك والضرائب والشحن", "Before customs/tax/shipping")}>
                         {t("خام", "Base")} {money(summary.wacEgp, "EGP")}
                       </span>
-                      <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-primary font-bold tabular-nums">
-                        {t("مُحمَّل", "Landed")} {money(summary.wacLandedUsd, "USD")}
+                      <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-primary font-bold tabular-nums" title={t("التكلفة الفعلية للوحدة بعد إضافة كل الرسوم", "True unit cost after all overheads")}>
+                        {t("تكلفة فعلية", "All-in")} {money(summary.wacLandedUsd, "USD")}
                       </span>
-                      <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-primary font-bold tabular-nums">
-                        {t("مُحمَّل", "Landed")} {money(summary.wacLandedEgp, "EGP")}
+                      <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-primary font-bold tabular-nums" title={t("التكلفة الفعلية للوحدة بعد إضافة كل الرسوم", "True unit cost after all overheads")}>
+                        {t("تكلفة فعلية", "All-in")} {money(summary.wacLandedEgp, "EGP")}
                       </span>
+
                       <span className="rounded-full border bg-muted/40 px-2 py-0.5 tabular-nums">
                         {t("أدنى", "Min")} {money(summary.minUsd, "USD")}
                       </span>
