@@ -119,11 +119,14 @@ export function summarizeProduct(productId: string, lots: PoCostLot[]): ProductC
         ? Number(l.landed_line_egp)
         : Number(l.line_total_egp) || q * e;
     landedEgp += landedLine;
-    const share = Number(l.line_share) || 0;
-    customsEgpTotal += (Number(l.customs_egp) || 0) * share;
-    taxesEgpTotal += (Number(l.taxes_egp) || 0) * share;
-    shippingEgpTotal += (Number(l.shipping_egp) || 0) * share;
-    otherEgpTotal += (Number(l.other_egp) || 0) * share;
+    // customs/taxes/other are allocated by USD value_share; shipping by weight_share.
+    // Fall back to legacy line_share when the RPC hasn't supplied the split yet.
+    const valueShare = l.value_share != null ? Number(l.value_share) : Number(l.line_share) || 0;
+    const weightShare = l.weight_share != null ? Number(l.weight_share) : valueShare;
+    customsEgpTotal += (Number(l.customs_egp) || 0) * valueShare;
+    taxesEgpTotal += (Number(l.taxes_egp) || 0) * valueShare;
+    shippingEgpTotal += (Number(l.shipping_egp) || 0) * weightShare;
+    otherEgpTotal += (Number(l.other_egp) || 0) * valueShare;
     if (u < (Number(minLot.unit_usd) || 0)) minLot = l;
     if (u > (Number(maxLot.unit_usd) || 0)) maxLot = l;
     if (l.shipment_date) dates.push(l.shipment_date);
