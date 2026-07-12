@@ -188,7 +188,7 @@ function DraftsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {list.map((i) => (
+                {filtered.map((i) => (
                   <tr key={i.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium">
                       <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">
