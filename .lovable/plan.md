@@ -1,27 +1,33 @@
-## الهدف
-تحويل كارتَي "لا توجد ... بانتظار الموافقة" من كارتات بيضاء عامة إلى لوحات Noir & Gold فاخرة متسقة مع باقي التطبيق — اتجاه **Noir Panels** الذي اخترته.
 
-## الملفات المعدَّلة
-- `src/components/pending-accounts-card.tsx` — استبدال فرع `rows.length === 0`.
-- `src/components/distributor-approvals-card.tsx` — استبدال فرع `rows.length === 0`.
+## Goal
+Replace the hardcoded "21 يوم عمل" delivery term with a per-invoice selectable value (7 / 21 / 30 / 45 / 60 working days), editable when creating or editing any invoice (draft or real), reflected on the printed invoice, and filterable from the invoices lists.
 
-## البنية البصرية (لكلا الكارتين)
-- **الحاوية**: `noir-surface` بحواف `rounded-xl`، خط ذهبي بحدود `border-[hsl(var(--gold))]/20`، وظل داخلي فاخر.
-- **هالة ذهبية خارجية**: طبقة `absolute -inset-0.5 blur` بلون ذهبي خفيف تشتعل عند hover.
-- **شريط تدرّج ذهبي** يمين الكارت (RTL) بعمق ناعم `from-gold/5 to-transparent`.
-- **ميدالية أيقونة 56px**: دائرة noir بحد ذهبي + `blur` هالة خلفية + أيقونة ذهبية:
-  - كارت الحسابات → `BadgeCheck` (lucide).
-  - كارت فواتير الموزعين → `ReceiptText` (lucide).
-- **العنوان**: `text-foreground` بحجم `text-base sm:text-lg` — يحافظ على نص الـ Arabic كما هو (لا توجد طلبات حسابات بانتظار الموافقة / لا توجد فواتير موزّعين بانتظار الموافقة).
-- **السطر الفرعي**: نقطة ذهبية نابضة `1px` + النص الحالي عن الـ realtime.
-- **شارة الحالة** (مخفية على الموبايل، `hidden md:inline-flex`): كبسولة صغيرة بحد ذهبي شفاف ونص uppercase tracking-widest — "Realtime Sync" للحسابات و "Verified" للموزعين، مع نسخة عربية عبر `isAr` (مزامنة فورية / موثّق).
+## 1. Database
+Add a new column on `invoices`:
+- `delivery_days integer NULL` (allowed values 7, 21, 30, 45, 60; enforced by a CHECK constraint that also allows NULL for legacy rows).
+- No default — legacy invoices stay NULL and render as "21 working days" for backward compatibility.
 
-## Motion & A11y
-- انتقالات `duration-500` على الهالة والحد.
-- النقطة النابضة تستخدم `animate-pulse` — يحترمها `prefers-reduced-motion` تلقائيًا في Tailwind config الحالي (بدون keyframes مخصصة).
-- ألوان ذهبية من متغيرات `--gold` الموجودة في `styles.css` (لا ألوان مبرمجة hex في JSX — نستخدم `hsl(var(--gold))` وopacity utilities).
+No RLS changes; existing policies already cover the column.
 
-## Guardrails
-- ارتفاع الكارت ~88–96px — يظل صف حالة مضغوطًا لا hero.
-- بدون تغيير في المنطق أو الاستعلامات أو النصوص العربية الأصلية.
-- الكارتان متطابقان بصريًا (variant واحد بأيقونة مختلفة) للحفاظ على الاتساق.
+## 2. Invoice Builder (`src/components/invoice-builder.tsx`)
+- Add `deliveryDays` state (default `21`, initialized from `initial.delivery_days` in edit mode).
+- Add a segmented select (chips: 7 / 21 / 30 / 45 / 60) inside the "Notes / Subject" section, labeled "شروط التسليم (أيام عمل) / Delivery term (working days)".
+- Persist the value: since the create/update RPCs don't accept the new field, write it via a follow-up `supabase.from('invoices').update({ delivery_days }).eq('id', …)` right after the existing `subject` update (same pattern already used for `subject`). Applies to both new and edit paths, drafts and real invoices.
+
+## 3. Edit page loader (`src/routes/invoices_.$id.edit.tsx`)
+- Pass `delivery_days` through the `initial` object so the builder pre-selects the correct chip.
+
+## 4. Printed invoice (`src/routes/invoices.$id.tsx`)
+- Replace the hardcoded "21 يوم عمل من تاريخ الفاتورة" line with a dynamic string using `invoice.delivery_days ?? 21`:
+  - AR: `"{n} يوم عمل من تاريخ الفاتورة"`
+  - EN: `"{n} working days from invoice date"`
+
+## 5. Filter on invoice lists
+- `src/routes/invoices.index.tsx` and `src/routes/invoices.drafts.tsx`: add a "شروط التسليم / Delivery term" dropdown filter alongside the existing filters with options: All / 7 / 21 / 30 / 45 / 60. When a value is chosen, filter the fetched list by `delivery_days === value` (client-side filter to match the pattern of other filters on these pages).
+
+## 6. Types
+Regenerated Supabase types will pick up `delivery_days` automatically after the migration runs, so the `as any` casts in the update calls can be dropped in a follow-up.
+
+## Out of scope
+- Global default in Settings (kept as free-text `delivery_terms` for header block).
+- Business-day date computation / due-date display (only the term label is requested).
