@@ -1026,6 +1026,18 @@ function CreatePODialog({
                                 {p.color}
                               </span>
                             )}
+                            {Number((p as any).weight_grams ?? 0) > 0 && (() => {
+                              const g = Number((p as any).weight_grams);
+                              const label = g >= 1000 ? `${(g / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${g.toLocaleString(undefined, { maximumFractionDigits: 3 })} g`;
+                              return (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 font-bold text-amber-700 dark:text-amber-300 tabular-nums"
+                                  title={isAr ? "وزن الوحدة — يُستخدم لتوزيع الشحن" : "Unit weight — used for shipping allocation"}
+                                >
+                                  ⚖️ {label}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
