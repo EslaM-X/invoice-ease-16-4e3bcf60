@@ -4490,11 +4490,12 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                           const isMin = l.unit_usd === summary.minUsd;
                           const isMax = l.unit_usd === summary.maxUsd;
                           const openPo = () => setPoDialogId(l.po_id);
-                          const share = Number(l.line_share) || 0;
-                          const custShare = (Number(l.customs_egp) || 0) * share;
-                          const taxShare = (Number(l.taxes_egp) || 0) * share;
-                          const shipShare = (Number(l.shipping_egp) || 0) * share;
-                          const otherShare = (Number(l.other_egp) || 0) * share;
+                          const valueShare = (l as any).value_share != null ? Number((l as any).value_share) : Number(l.line_share) || 0;
+                          const weightShare = (l as any).weight_share != null ? Number((l as any).weight_share) : valueShare;
+                          const custShare = (Number(l.customs_egp) || 0) * valueShare;
+                          const taxShare = (Number(l.taxes_egp) || 0) * valueShare;
+                          const shipShare = (Number(l.shipping_egp) || 0) * weightShare;
+                          const otherShare = (Number(l.other_egp) || 0) * valueShare;
                           const landedUnit = Number(l.landed_unit_egp) || Number(l.unit_egp) || 0;
                           const landedLine = Number(l.landed_line_egp) || Number(l.line_total_egp) || 0;
                           const baseUnit = Number(l.unit_egp) || 0;
