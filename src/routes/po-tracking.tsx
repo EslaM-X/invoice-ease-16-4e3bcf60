@@ -54,6 +54,14 @@ function POTrackingPage() {
   const [trackId, setTrackId] = useState<string | null>(null);
   const [poReceipts, setPoReceipts] = useState<Record<string, any[]>>({});
 
+  // Auto-open a PO when arriving with ?open=<po_id> (e.g. from Cost History)
+  const { open: openParam } = Route.useSearch();
+  useEffect(() => {
+    if (openParam) setTrackId(openParam);
+  }, [openParam]);
+
+
+
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isPurchasing && !isCFO) {
       toast.error(isAr ? "غير مصرح" : "Not authorized");
