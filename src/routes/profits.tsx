@@ -3945,8 +3945,16 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [includeCancelled, setIncludeCancelled] = useState(false);
-  const [colorFilter, setColorFilter] = useState<string>("all");
-  const [collectionFilter, setCollectionFilter] = useState<string>("all");
+  const [colorFilter, setColorFilter] = useState<Set<string>>(new Set());
+  const [collectionFilter, setCollectionFilter] = useState<Set<string>>(new Set());
+  const toggleInSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [poDialogId, setPoDialogId] = useState<string | null>(null);
