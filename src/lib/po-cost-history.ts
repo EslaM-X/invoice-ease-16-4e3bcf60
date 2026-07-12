@@ -177,6 +177,11 @@ export function summarizeMany(entries: ProductCostSummary[]): GrandSummary {
   let spendEgp = 0;
   let sumQtyUsd = 0;
   let sumQtyEgp = 0;
+  let landedEgp = 0;
+  let customsEgp = 0;
+  let taxesEgp = 0;
+  let shippingEgp = 0;
+  let otherEgp = 0;
   const posByProduct = entries.reduce((n, e) => n + e.poCount, 0);
   for (const e of entries) {
     totalQty += e.totalQty;
@@ -184,7 +189,18 @@ export function summarizeMany(entries: ProductCostSummary[]): GrandSummary {
     spendEgp += e.totalSpendEgp;
     sumQtyUsd += e.wacUsd * e.totalQty;
     sumQtyEgp += e.wacEgp * e.totalQty;
+    landedEgp += e.totalLandedEgp;
+    customsEgp += e.totalCustomsEgp;
+    taxesEgp += e.totalTaxesEgp;
+    shippingEgp += e.totalShippingEgp;
+    otherEgp += e.totalOtherEgp;
   }
+  const overallWacLandedEgp = totalQty > 0 ? landedEgp / totalQty : 0;
+  // Approximate landed USD: landedEgp ÷ (spendUsd worth of qty*rate) → fall back to base ratio
+  const overallWacLandedUsd =
+    spendUsd > 0 && spendEgp > 0
+      ? overallWacLandedEgp * (spendUsd / spendEgp)
+      : 0;
   return {
     productCount: entries.length,
     totalQty,
@@ -192,6 +208,13 @@ export function summarizeMany(entries: ProductCostSummary[]): GrandSummary {
     totalSpendEgp: spendEgp,
     overallWacUsd: totalQty > 0 ? sumQtyUsd / totalQty : 0,
     overallWacEgp: totalQty > 0 ? sumQtyEgp / totalQty : 0,
+    overallWacLandedUsd,
+    overallWacLandedEgp,
+    totalLandedEgp: landedEgp,
+    totalCustomsEgp: customsEgp,
+    totalTaxesEgp: taxesEgp,
+    totalShippingEgp: shippingEgp,
+    totalOtherEgp: otherEgp,
     poCount: posByProduct,
   };
 }
