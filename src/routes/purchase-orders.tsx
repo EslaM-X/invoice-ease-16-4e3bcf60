@@ -1896,6 +1896,25 @@ function PODetailDialog({
                                       {it.collection}
                                     </span>
                                   )}
+                                  {Number(it.unit_weight_grams ?? 0) > 0 && (() => {
+                                    const uG = Number(it.unit_weight_grams);
+                                    const q = Number((itemEdits[it.id]?.qty) ?? it.quantity) || 0;
+                                    const totalG = uG * q;
+                                    const uL = uG >= 1000 ? `${(uG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${uG.toLocaleString(undefined, { maximumFractionDigits: 3 })} g`;
+                                    const tL = totalG >= 1000 ? `${(totalG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${totalG.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+                                    return (
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 font-bold text-amber-700 dark:text-amber-300 tabular-nums"
+                                        title={
+                                          isAr
+                                            ? `وزن الوحدة ${uL} × ${q} = ${tL} — يُستخدم لحساب نصيب هذا البند من الشحن`
+                                            : `Unit ${uL} × ${q} = ${tL} — used to compute this line's share of shipping`
+                                        }
+                                      >
+                                        ⚖️ {uL} × {q} = {tL}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </div>
