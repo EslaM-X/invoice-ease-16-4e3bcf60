@@ -494,33 +494,54 @@ function Dashboard() {
 function InventoryValueCard({
   label,
   value,
+  fullValue,
+  subValue,
   sub,
   Icon,
   footer,
+  loading,
 }: {
   label: string;
   value: number | string;
+  fullValue?: string;
+  subValue?: string;
   sub: string;
   Icon: typeof Package;
   sensitive?: boolean;
   footer?: ReactNode;
+  loading?: boolean;
 }) {
-  const ariaValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
+  const ariaValue = fullValue ?? (typeof value === "string" || typeof value === "number" ? String(value) : "");
   return (
     <div
       role="group"
       tabIndex={0}
       aria-label={ariaValue ? `${label}: ${ariaValue}. ${sub}` : label}
+      title={fullValue}
       className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 sm:p-5"
     >
       <div aria-hidden="true" className="gold-hairline-live absolute inset-x-0 top-0" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 left-1/2 h-24 w-40 -translate-x-1/2 rounded-full bg-[#c9a84c]/10 blur-3xl opacity-40 transition-all duration-500 group-hover:opacity-80 group-hover:w-56 motion-reduce:transition-none" />
       <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45 truncate sm:text-[11px]">{label}</div>
-          <div className="ltr-nums mt-3 font-display text-2xl font-bold tracking-tight tabular-nums text-[#f5e7b8] sm:text-3xl break-words">
-            {value}
-          </div>
+          {loading ? (
+            <div aria-hidden="true" className="skeleton-noir mt-3 h-8 w-24 rounded-md sm:h-10 sm:w-32" />
+          ) : (
+            <>
+              <div
+                className="ltr-nums mt-3 font-display font-bold tracking-tight tabular-nums leading-tight break-words text-[#f5e7b8]"
+                style={{ fontSize: "clamp(1.35rem, 4.6vw, 1.875rem)" }}
+              >
+                {value}
+              </div>
+              {subValue && (
+                <div className="ltr-nums mt-1 text-[10px] tabular-nums text-white/45 truncate">
+                  {subValue}
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#c9a84c]/30 bg-[#c9a84c]/12 text-[#c9a84c] transition-transform duration-300 group-hover:scale-110">
           <Icon className="h-4 w-4" />
