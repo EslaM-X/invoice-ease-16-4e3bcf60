@@ -733,7 +733,7 @@ function ProfitsPage() {
       const p = productById.get(productId);
       const current = Number(p?.cost_price ?? 0);
       if (!entry) return current;
-      if (costSource === "wac") return Number(entry.wac_egp) || current;
+      if (costSource === "wac") return Number(entry.wac_landed_egp) || Number(entry.wac_egp) || current;
       if (costSource === "latest_po") return Number(entry.latest_egp) || current;
       return current; // "current"
     };
