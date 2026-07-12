@@ -3925,6 +3925,339 @@ function costSourceLabel(s: CostSource, t: (ar: string, en: string) => string): 
   return t("تعديل يدوي", "Manual override");
 }
 
+
+// ────────────────────────────────────────────────────────────────────────────
+// Product Cost History across POs — new section on the Profits page.
+// Reuses the already-loaded costBook.lots so no extra fetches are needed.
+// ────────────────────────────────────────────────────────────────────────────
+type ProductCostHistoryPanelProps = {
+  costBook: CostBook;
+  products: Product[];
+  t: (ar: string, en: string) => string;
+  lang: "ar" | "en";
+};
+
+function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHistoryPanelProps) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"all" | "select">("select");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [includeCancelled, setIncludeCancelled] = useState(false);
+
+  // Products that actually have PO lots
+  const productsWithLots = useMemo(
+    () => products.filter((p) => (costBook.products[p.id]?.lots?.length ?? 0) > 0),
+    [products, costBook],
+  );
+
+  const filteredForPicker = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return productsWithLots;
+    return productsWithLots.filter((p) =>
+      p.name.toLowerCase().includes(q) || (p.serial_number ?? "").toLowerCase().includes(q),
+    );
+  }, [productsWithLots, search]);
+
+  const effectiveIds = useMemo(() => {
+    if (mode === "all") return productsWithLots.map((p) => p.id);
+    return Array.from(selectedIds);
+  }, [mode, selectedIds, productsWithLots]);
+
+  const rows = useMemo(() => {
+    return effectiveIds
+      .map((pid) => {
+        const product = products.find((p) => p.id === pid);
+        const entry = costBook.products[pid];
+        const rawLots: PoCostLot[] = (entry?.lots ?? []) as PoCostLot[];
+        const lots = sortLotsByDateDesc(filterLots(rawLots, includeCancelled));
+        const summary = summarizeProduct(pid, lots);
+        return { product, lots, summary };
+      })
+      .filter((r) => r.product && r.summary.totalQty > 0);
+  }, [effectiveIds, products, costBook, includeCancelled]);
+
+  const grand = useMemo(() => summarizeMany(rows.map((r) => r.summary)), [rows]);
+
+  const toggle = (id: string) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+    setMode("select");
+  };
+
+  const clearAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const money = (v: number, ccy: "USD" | "EGP") => fmtMoney(v, ccy, lang);
+
+  return (
+    <div className="rounded-2xl border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 sm:px-4 py-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <History className="h-4 w-4 shrink-0 text-primary" />
+          <h3 className="font-semibold text-sm truncate">
+            {t("تاريخ التكلفة عبر أوامر الشراء", "Cost History across POs")}
+          </h3>
+          <span className="hidden sm:inline text-[10px] rounded-full border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+            {t("لكل منتج · متوسط مرجّح", "Per product · Weighted average")}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {open && rows.length > 0 && (
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {rows.length} {t("منتج", "product(s)")} · {grand.poCount} {t("سطر PO", "PO line(s)")}
+            </span>
+          )}
+          <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => setOpen((v) => !v)}>
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {open ? t("إخفاء", "Hide") : t("عرض", "Show")}
+          </Button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="p-3 sm:p-4 space-y-4">
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-[11px]">
+              <button
+                onClick={() => setMode("all")}
+                className={`rounded-full px-3 py-1 font-semibold transition ${
+                  mode === "all" ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
+                }`}
+              >
+                {t("كل المنتجات", "All products")}
+              </button>
+              <button
+                onClick={() => setMode("select")}
+                className={`rounded-full px-3 py-1 font-semibold transition ${
+                  mode === "select" ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
+                }`}
+              >
+                {t("منتجات محددة", "Selected")} {selectedIds.size > 0 && `(${selectedIds.size})`}
+              </button>
+            </div>
+
+            <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeCancelled}
+                onChange={(e) => setIncludeCancelled(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              {t("تضمين الأوامر الملغاة", "Include cancelled POs")}
+            </label>
+
+            {selectedIds.size > 0 && (
+              <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={clearAll}>
+                <X className="h-3 w-3" /> {t("مسح التحديد", "Clear")}
+              </Button>
+            )}
+          </div>
+
+          {/* Product picker */}
+          {mode === "select" && (
+            <div className="rounded-xl border bg-muted/20 p-2 space-y-2">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("ابحث عن منتج…", "Search product…")}
+                className="h-8 text-[13px]"
+              />
+              <div className="max-h-52 overflow-auto rounded-lg border bg-background divide-y">
+                {filteredForPicker.length === 0 ? (
+                  <div className="p-3 text-center text-[12px] text-muted-foreground">
+                    {t("لا توجد منتجات بأوامر شراء", "No products with POs")}
+                  </div>
+                ) : (
+                  filteredForPicker.map((p) => {
+                    const entry = costBook.products[p.id];
+                    const picked = selectedIds.has(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => toggle(p.id)}
+                        className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-start text-[12px] hover:bg-muted/40 ${
+                          picked ? "bg-primary/10" : ""
+                        }`}
+                      >
+                        <input type="checkbox" readOnly checked={picked} className="h-3.5 w-3.5" />
+                        {p.image_url ? (
+                          <img src={p.image_url} alt="" className="h-6 w-6 rounded object-cover" />
+                        ) : (
+                          <div className="h-6 w-6 rounded bg-muted" />
+                        )}
+                        <span className="flex-1 truncate font-medium">{p.name}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {entry?.lots?.length ?? 0} {t("سطر", "lot(s)")}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Grand summary */}
+          {rows.length > 1 && (
+            <div className="grid gap-2 grid-cols-2 md:grid-cols-4 rounded-xl border bg-gradient-to-l from-primary/5 to-transparent p-3">
+              <GrandStat label={t("منتجات", "Products")} value={String(grand.productCount)} />
+              <GrandStat label={t("إجمالي الكمية", "Total Qty")} value={fmtNumber(grand.totalQty, lang)} />
+              <GrandStat
+                label={t("متوسط التكلفة (USD)", "Avg Cost (USD)")}
+                value={money(grand.overallWacUsd, "USD")}
+                highlight
+              />
+              <GrandStat
+                label={t("متوسط التكلفة (EGP)", "Avg Cost (EGP)")}
+                value={money(grand.overallWacEgp, "EGP")}
+                highlight
+              />
+              <GrandStat label={t("إجمالي الإنفاق (USD)", "Spend (USD)")} value={money(grand.totalSpendUsd, "USD")} />
+              <GrandStat label={t("إجمالي الإنفاق (EGP)", "Spend (EGP)")} value={money(grand.totalSpendEgp, "EGP")} />
+              <GrandStat label={t("سطور PO", "PO lines")} value={String(grand.poCount)} />
+            </div>
+          )}
+
+          {/* Per-product breakdown */}
+          {rows.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-6 text-center text-[12px] text-muted-foreground">
+              {mode === "all"
+                ? t("لا توجد بيانات أوامر شراء بعد", "No PO data yet")
+                : t("اختر منتج أو أكثر لعرض تاريخ التكلفة", "Pick one or more products to see cost history")}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map(({ product, lots, summary }) => (
+                <div key={summary.productId} className="rounded-xl border bg-card overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/20 px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {product!.image_url ? (
+                        <img src={product!.image_url} alt="" className="h-8 w-8 rounded object-cover" />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-muted" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold truncate">{product!.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          {summary.poCount} {t("أمر شراء", "PO(s)")} · {t("كمية", "qty")}{" "}
+                          <span className="tabular-nums font-medium">{fmtNumber(summary.totalQty, lang)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-primary font-semibold tabular-nums">
+                        WAC {money(summary.wacUsd, "USD")}
+                      </span>
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-primary font-semibold tabular-nums">
+                        WAC {money(summary.wacEgp, "EGP")}
+                      </span>
+                      <span className="rounded-full border bg-muted/40 px-2 py-0.5 tabular-nums">
+                        {t("أدنى", "Min")} {money(summary.minUsd, "USD")}
+                      </span>
+                      <span className="rounded-full border bg-muted/40 px-2 py-0.5 tabular-nums">
+                        {t("أعلى", "Max")} {money(summary.maxUsd, "USD")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[12px]">
+                      <thead className="bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-1.5 text-start">{t("أمر الشراء", "PO")}</th>
+                          <th className="px-3 py-1.5 text-start">{t("التاريخ", "Date")}</th>
+                          <th className="px-3 py-1.5 text-start">{t("الحالة", "Status")}</th>
+                          <th className="px-3 py-1.5 text-end">{t("الكمية", "Qty")}</th>
+                          <th className="px-3 py-1.5 text-end">{t("USD/وحدة", "Unit USD")}</th>
+                          <th className="px-3 py-1.5 text-end">{t("سعر الدولار", "Rate")}</th>
+                          <th className="px-3 py-1.5 text-end">{t("EGP/وحدة", "Unit EGP")}</th>
+                          <th className="px-3 py-1.5 text-end">{t("الإجمالي EGP", "Line EGP")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {lots.map((l, i) => {
+                          const isMin = l.unit_usd === summary.minUsd;
+                          const isMax = l.unit_usd === summary.maxUsd;
+                          return (
+                            <tr key={`${l.po_id}-${i}`} className="hover:bg-muted/20">
+                              <td className="px-3 py-1.5 font-medium">{l.shipment_code || l.po_id.slice(0, 8)}</td>
+                              <td className="px-3 py-1.5 text-muted-foreground">
+                                {l.shipment_date ? fmtDate(l.shipment_date, lang) : "—"}
+                              </td>
+                              <td className="px-3 py-1.5">
+                                <span className="text-[10px] rounded-full border bg-muted/40 px-2 py-0.5">
+                                  {l.status ?? "—"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-1.5 text-end tabular-nums">{fmtNumber(l.qty, lang)}</td>
+                              <td
+                                className={`px-3 py-1.5 text-end tabular-nums font-semibold ${
+                                  isMin ? "text-emerald-600" : isMax ? "text-rose-600" : ""
+                                }`}
+                              >
+                                {money(l.unit_usd, "USD")}
+                              </td>
+                              <td className="px-3 py-1.5 text-end tabular-nums text-muted-foreground">
+                                {Number(l.usd_rate).toFixed(2)}
+                              </td>
+                              <td className="px-3 py-1.5 text-end tabular-nums">{money(l.unit_egp, "EGP")}</td>
+                              <td className="px-3 py-1.5 text-end tabular-nums font-medium">
+                                {money(l.line_total_egp, "EGP")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-primary/5 font-semibold">
+                        <tr>
+                          <td className="px-3 py-1.5" colSpan={3}>
+                            {t("المتوسط المرجّح", "Weighted average")}
+                          </td>
+                          <td className="px-3 py-1.5 text-end tabular-nums">{fmtNumber(summary.totalQty, lang)}</td>
+                          <td className="px-3 py-1.5 text-end tabular-nums text-primary">
+                            {money(summary.wacUsd, "USD")}
+                          </td>
+                          <td className="px-3 py-1.5 text-end text-muted-foreground text-[10px]">
+                            {t("متوسط بسيط", "simple")} {money(summary.simpleAvgUsd, "USD")}
+                          </td>
+                          <td className="px-3 py-1.5 text-end tabular-nums text-primary">
+                            {money(summary.wacEgp, "EGP")}
+                          </td>
+                          <td className="px-3 py-1.5 text-end tabular-nums">{money(summary.totalSpendEgp, "EGP")}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GrandStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div
+        className={`mt-0.5 truncate tabular-nums ${
+          highlight ? "text-primary font-bold text-[14px]" : "font-semibold text-[13px]"
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 import { ExecutiveGate } from "@/components/executive-gate";
 import { RouteErrorBoundary } from "@/components/error-boundary";
 
