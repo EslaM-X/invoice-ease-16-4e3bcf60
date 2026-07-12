@@ -4298,9 +4298,26 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                         {lots.map((l, i) => {
                           const isMin = l.unit_usd === summary.minUsd;
                           const isMax = l.unit_usd === summary.maxUsd;
+                          const openPo = () =>
+                            navigate({ to: "/po-tracking", search: { open: l.po_id } });
                           return (
-                            <tr key={`${l.po_id}-${i}`} className="hover:bg-muted/20">
-                              <td className="px-3 py-1.5 font-medium">{l.shipment_code || l.po_id.slice(0, 8)}</td>
+                            <tr
+                              key={`${l.po_id}-${i}`}
+                              onClick={openPo}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openPo();
+                                }
+                              }}
+                              tabIndex={0}
+                              role="button"
+                              title={t("افتح تفاصيل أمر الشراء", "Open PO details")}
+                              className="cursor-pointer hover:bg-primary/5 focus:bg-primary/10 focus:outline-none transition"
+                            >
+                              <td className="px-3 py-1.5 font-medium text-primary underline-offset-2 hover:underline">
+                                {l.shipment_code || l.po_id.slice(0, 8)}
+                              </td>
                               <td className="px-3 py-1.5 text-muted-foreground">
                                 {l.shipment_date ? fmtDate(l.shipment_date, lang) : "—"}
                               </td>
