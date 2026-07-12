@@ -30,6 +30,7 @@ type CostSource = "wac" | "latest_po" | "current" | "override";
 
 type CostBookLot = {
   po_id: string;
+  po_number?: string | null;
   shipment_code: string | null;
   shipment_date: string | null;
   status: string;
@@ -38,11 +39,24 @@ type CostBookLot = {
   usd_rate: number;
   unit_egp: number;
   line_total_egp: number;
+  // Landed cost fields (new)
+  customs_egp?: number | null;
+  taxes_egp?: number | null;
+  shipping_egp?: number | null;
+  other_egp?: number | null;
+  overheads_egp?: number | null;
+  line_share?: number | null;
+  landed_unit_usd?: number | null;
+  landed_unit_egp?: number | null;
+  landed_line_egp?: number | null;
 };
 type CostBookEntry = {
   total_qty: number;
   wac_usd: number;
   wac_egp: number;
+  wac_landed_usd?: number | null;
+  wac_landed_egp?: number | null;
+  total_landed_egp?: number | null;
   min_usd: number;
   max_usd: number;
   latest_usd: number;
@@ -4324,15 +4338,27 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
               <GrandStat
                 label={t("متوسط التكلفة (USD)", "Avg Cost (USD)")}
                 value={money(grand.overallWacUsd, "USD")}
-                highlight
               />
               <GrandStat
                 label={t("متوسط التكلفة (EGP)", "Avg Cost (EGP)")}
                 value={money(grand.overallWacEgp, "EGP")}
+              />
+              <GrandStat
+                label={t("متوسط مُحمَّل (USD)", "Landed Avg (USD)")}
+                value={money(grand.overallWacLandedUsd, "USD")}
                 highlight
               />
+              <GrandStat
+                label={t("متوسط مُحمَّل (EGP)", "Landed Avg (EGP)")}
+                value={money(grand.overallWacLandedEgp, "EGP")}
+                highlight
+              />
+              <GrandStat label={t("جمارك", "Customs")} value={money(grand.totalCustomsEgp, "EGP")} />
+              <GrandStat label={t("ضرائب", "Taxes")} value={money(grand.totalTaxesEgp, "EGP")} />
+              <GrandStat label={t("شحن", "Shipping")} value={money(grand.totalShippingEgp, "EGP")} />
+              <GrandStat label={t("تكلفة إضافية", "Extra")} value={money(grand.totalOtherEgp, "EGP")} />
               <GrandStat label={t("إجمالي الإنفاق (USD)", "Spend (USD)")} value={money(grand.totalSpendUsd, "USD")} />
-              <GrandStat label={t("إجمالي الإنفاق (EGP)", "Spend (EGP)")} value={money(grand.totalSpendEgp, "EGP")} />
+              <GrandStat label={t("إجمالي مُحمَّل (EGP)", "Landed Spend (EGP)")} value={money(grand.totalLandedEgp, "EGP")} />
               <GrandStat label={t("سطور PO", "PO lines")} value={String(grand.poCount)} />
             </div>
           )}
@@ -4398,11 +4424,17 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-primary font-semibold tabular-nums">
-                        WAC {money(summary.wacUsd, "USD")}
+                      <span className="rounded-full border border-primary/20 bg-muted/40 px-2 py-0.5 tabular-nums">
+                        {t("خام", "Base")} {money(summary.wacUsd, "USD")}
                       </span>
-                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-primary font-semibold tabular-nums">
-                        WAC {money(summary.wacEgp, "EGP")}
+                      <span className="rounded-full border border-primary/20 bg-muted/40 px-2 py-0.5 tabular-nums">
+                        {t("خام", "Base")} {money(summary.wacEgp, "EGP")}
+                      </span>
+                      <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-primary font-bold tabular-nums">
+                        {t("مُحمَّل", "Landed")} {money(summary.wacLandedUsd, "USD")}
+                      </span>
+                      <span className="rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-primary font-bold tabular-nums">
+                        {t("مُحمَّل", "Landed")} {money(summary.wacLandedEgp, "EGP")}
                       </span>
                       <span className="rounded-full border bg-muted/40 px-2 py-0.5 tabular-nums">
                         {t("أدنى", "Min")} {money(summary.minUsd, "USD")}
@@ -4413,17 +4445,22 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-[12px]">
+                    <table className="w-full text-[12px] min-w-[980px]">
                       <thead className="bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
                         <tr>
-                          <th className="px-3 py-1.5 text-start">{t("أمر الشراء", "PO")}</th>
-                          <th className="px-3 py-1.5 text-start">{t("التاريخ", "Date")}</th>
-                          <th className="px-3 py-1.5 text-start">{t("الحالة", "Status")}</th>
-                          <th className="px-3 py-1.5 text-end">{t("الكمية", "Qty")}</th>
-                          <th className="px-3 py-1.5 text-end">{t("USD/وحدة", "Unit USD")}</th>
-                          <th className="px-3 py-1.5 text-end">{t("سعر الدولار", "Rate")}</th>
-                          <th className="px-3 py-1.5 text-end">{t("EGP/وحدة", "Unit EGP")}</th>
-                          <th className="px-3 py-1.5 text-end">{t("الإجمالي EGP", "Line EGP")}</th>
+                          <th className="px-2 py-1.5 text-start">{t("أمر الشراء", "PO")}</th>
+                          <th className="px-2 py-1.5 text-start">{t("التاريخ", "Date")}</th>
+                          <th className="px-2 py-1.5 text-start">{t("الحالة", "Status")}</th>
+                          <th className="px-2 py-1.5 text-end">{t("الكمية", "Qty")}</th>
+                          <th className="px-2 py-1.5 text-end">{t("USD/وحدة", "Unit USD")}</th>
+                          <th className="px-2 py-1.5 text-end">{t("سعر $", "FX")}</th>
+                          <th className="px-2 py-1.5 text-end">{t("EGP/وحدة", "Unit EGP")}</th>
+                          <th className="px-2 py-1.5 text-end text-amber-700 dark:text-amber-400" title={t("الحصة من الجمارك", "Line share of customs")}>{t("جمارك", "Cust.")}</th>
+                          <th className="px-2 py-1.5 text-end text-amber-700 dark:text-amber-400" title={t("الحصة من الضرائب", "Line share of taxes")}>{t("ضرائب", "Tax")}</th>
+                          <th className="px-2 py-1.5 text-end text-amber-700 dark:text-amber-400" title={t("الحصة من الشحن", "Line share of shipping")}>{t("شحن", "Ship")}</th>
+                          <th className="px-2 py-1.5 text-end text-amber-700 dark:text-amber-400" title={t("تكاليف أخرى", "Extra costs")}>{t("إضافي", "Extra")}</th>
+                          <th className="px-2 py-1.5 text-end text-primary font-bold" title={t("تكلفة الوحدة بعد كل الرسوم", "Landed unit cost")}>{t("مُحمَّل/وحدة", "Landed/Unit")}</th>
+                          <th className="px-2 py-1.5 text-end text-primary font-bold">{t("مُحمَّل/سطر", "Landed EGP")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -4431,6 +4468,13 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                           const isMin = l.unit_usd === summary.minUsd;
                           const isMax = l.unit_usd === summary.maxUsd;
                           const openPo = () => setPoDialogId(l.po_id);
+                          const share = Number(l.line_share) || 0;
+                          const custShare = (Number(l.customs_egp) || 0) * share;
+                          const taxShare = (Number(l.taxes_egp) || 0) * share;
+                          const shipShare = (Number(l.shipping_egp) || 0) * share;
+                          const otherShare = (Number(l.other_egp) || 0) * share;
+                          const landedUnit = Number(l.landed_unit_egp) || Number(l.unit_egp) || 0;
+                          const landedLine = Number(l.landed_line_egp) || Number(l.line_total_egp) || 0;
                           return (
                             <tr
                               key={`${l.po_id}-${i}`}
@@ -4446,52 +4490,60 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
                               title={t("افتح تفاصيل أمر الشراء", "Open PO details")}
                               className="cursor-pointer hover:bg-primary/5 focus:bg-primary/10 focus:outline-none transition"
                             >
-                              <td className="px-3 py-1.5 font-medium text-primary underline-offset-2 hover:underline">
-                                {l.shipment_code || l.po_id.slice(0, 8)}
+                              <td className="px-2 py-1.5 font-medium text-primary underline-offset-2 hover:underline whitespace-nowrap">
+                                {l.shipment_code || l.po_number || l.po_id.slice(0, 8)}
                               </td>
-                              <td className="px-3 py-1.5 text-muted-foreground">
+                              <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">
                                 {l.shipment_date ? fmtDate(l.shipment_date, lang) : "—"}
                               </td>
-                              <td className="px-3 py-1.5">
+                              <td className="px-2 py-1.5">
                                 <span className="text-[10px] rounded-full border bg-muted/40 px-2 py-0.5">
                                   {l.status ?? "—"}
                                 </span>
                               </td>
-                              <td className="px-3 py-1.5 text-end tabular-nums">{fmtNumber(l.qty, lang)}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums">{fmtNumber(l.qty, lang)}</td>
                               <td
-                                className={`px-3 py-1.5 text-end tabular-nums font-semibold ${
+                                className={`px-2 py-1.5 text-end tabular-nums font-semibold ${
                                   isMin ? "text-emerald-600" : isMax ? "text-rose-600" : ""
                                 }`}
                               >
                                 {money(l.unit_usd, "USD")}
                               </td>
-                              <td className="px-3 py-1.5 text-end tabular-nums text-muted-foreground">
+                              <td className="px-2 py-1.5 text-end tabular-nums text-muted-foreground">
                                 {Number(l.usd_rate).toFixed(2)}
                               </td>
-                              <td className="px-3 py-1.5 text-end tabular-nums">{money(l.unit_egp, "EGP")}</td>
-                              <td className="px-3 py-1.5 text-end tabular-nums font-medium">
-                                {money(l.line_total_egp, "EGP")}
-                              </td>
+                              <td className="px-2 py-1.5 text-end tabular-nums">{money(l.unit_egp, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(custShare, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(taxShare, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(shipShare, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(otherShare, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums font-bold text-primary">{money(landedUnit, "EGP")}</td>
+                              <td className="px-2 py-1.5 text-end tabular-nums font-bold text-primary">{money(landedLine, "EGP")}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                       <tfoot className="bg-primary/5 font-semibold">
                         <tr>
-                          <td className="px-3 py-1.5" colSpan={3}>
+                          <td className="px-2 py-1.5" colSpan={3}>
                             {t("المتوسط المرجّح", "Weighted average")}
                           </td>
-                          <td className="px-3 py-1.5 text-end tabular-nums">{fmtNumber(summary.totalQty, lang)}</td>
-                          <td className="px-3 py-1.5 text-end tabular-nums text-primary">
+                          <td className="px-2 py-1.5 text-end tabular-nums">{fmtNumber(summary.totalQty, lang)}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums">
                             {money(summary.wacUsd, "USD")}
                           </td>
-                          <td className="px-3 py-1.5 text-end text-muted-foreground text-[10px]">
-                            {t("متوسط بسيط", "simple")} {money(summary.simpleAvgUsd, "USD")}
+                          <td className="px-2 py-1.5 text-end text-muted-foreground text-[10px]">
+                            {t("بسيط", "simple")} {money(summary.simpleAvgUsd, "USD")}
                           </td>
-                          <td className="px-3 py-1.5 text-end tabular-nums text-primary">
+                          <td className="px-2 py-1.5 text-end tabular-nums">
                             {money(summary.wacEgp, "EGP")}
                           </td>
-                          <td className="px-3 py-1.5 text-end tabular-nums">{money(summary.totalSpendEgp, "EGP")}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(summary.totalCustomsEgp, "EGP")}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(summary.totalTaxesEgp, "EGP")}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(summary.totalShippingEgp, "EGP")}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-amber-700 dark:text-amber-400">{money(summary.totalOtherEgp, "EGP")}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums font-bold text-primary">{money(summary.wacLandedEgp, "EGP")}</td>
+                          <td className="px-2 py-1.5 text-end tabular-nums font-bold text-primary">{money(summary.totalLandedEgp, "EGP")}</td>
                         </tr>
                       </tfoot>
                     </table>
