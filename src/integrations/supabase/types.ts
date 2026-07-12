@@ -2156,6 +2156,7 @@ export type Database = {
           updated_by: string | null
           updated_by_email: string | null
           user_id: string
+          weight_grams: number | null
         }
         Insert: {
           collection?: string | null
@@ -2180,6 +2181,7 @@ export type Database = {
           updated_by?: string | null
           updated_by_email?: string | null
           user_id: string
+          weight_grams?: number | null
         }
         Update: {
           collection?: string | null
@@ -2204,6 +2206,7 @@ export type Database = {
           updated_by?: string | null
           updated_by_email?: string | null
           user_id?: string
+          weight_grams?: number | null
         }
         Relationships: [
           {
@@ -2360,6 +2363,7 @@ export type Database = {
           received_qty: number
           serial_number: string | null
           unit_cost_usd: number
+          unit_weight_grams: number | null
         }
         Insert: {
           color?: string | null
@@ -2374,6 +2378,7 @@ export type Database = {
           received_qty?: number
           serial_number?: string | null
           unit_cost_usd?: number
+          unit_weight_grams?: number | null
         }
         Update: {
           color?: string | null
@@ -2388,6 +2393,7 @@ export type Database = {
           received_qty?: number
           serial_number?: string | null
           unit_cost_usd?: number
+          unit_weight_grams?: number | null
         }
         Relationships: [
           {
