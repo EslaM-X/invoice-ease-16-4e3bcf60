@@ -564,21 +564,21 @@ function Products() {
                   const low = p.stock_quantity <= p.low_stock_threshold;
                   return (
                     <tr key={p.id} className="hover:bg-muted/30">
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-3 sm:px-3">
                         <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={p.name} />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                      <td className="px-2 py-3 sm:px-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="hidden xs:flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted sm:flex">
                             {p.image_url ? (
                               <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                             ) : (
                               <ImagePlus className="h-4 w-4 text-muted-foreground/40" />
                             )}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div className="font-medium flex items-center gap-2 flex-wrap">
-                              <span className="truncate">{p.name}</span>
+                              <span className="break-words">{p.name}</span>
                               {(() => {
                                 const w = fmtWeight((p as any).weight_grams);
                                 if (!w) return null;
@@ -593,20 +593,30 @@ function Products() {
                               })()}
                             </div>
                             <AuthorBadge email={p.created_by_email} label="created by" className="mt-0.5" />
+                            {/* Mobile-only inline meta */}
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 md:hidden text-[11px] text-muted-foreground">
+                              {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
+                              {p.color && <span className="lg:hidden">• {p.color}</span>}
+                              {p.collection && (
+                                <span className={`xl:hidden inline-flex items-center gap-1 rounded-md border px-1.5 py-0 text-[10px] font-bold ${collectionBadgeClass(p.collection)}`}>
+                                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{p.serial_number || "—"}</td>
-                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{p.color || "—"}</td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
+                      <td className="px-2 py-3 hidden md:table-cell text-muted-foreground sm:px-4">{p.serial_number || "—"}</td>
+                      <td className="px-2 py-3 hidden lg:table-cell text-muted-foreground sm:px-4">{p.color || "—"}</td>
+                      <td className="px-2 py-3 hidden xl:table-cell sm:px-4">
                         {p.collection ? (
                           <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">{fmtMoney(Number(p.price), "EGP", lang)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-3 whitespace-nowrap sm:px-4">{fmtMoney(Number(p.price), "EGP", lang)}</td>
+                      <td className="px-2 py-3 sm:px-4">
                         <div className="flex flex-col items-start gap-1">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
                             {p.stock_quantity}
@@ -625,16 +635,16 @@ function Products() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => showQr(p)} title="QR"><QrCode className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => { setAdjustFor(p); setAdjustAmt("0"); setAdjustReason(""); }} title={t("adjust_stock")}>
+                      <td className="px-2 py-3 sm:px-4">
+                        <div className="flex flex-wrap justify-end gap-0.5 sm:gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => showQr(p)} title="QR"><QrCode className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => { setAdjustFor(p); setAdjustAmt("0"); setAdjustReason(""); }} title={t("adjust_stock")}>
                             <Sliders className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
