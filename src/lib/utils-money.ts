@@ -35,14 +35,14 @@ export function fmtMoneyAdaptive(
   const abs = Math.abs(Number(n) || 0);
   if (abs < 1_000_000) return { short: full, full, compact: false };
 
-  const suffixes = lang === "ar"
-    ? { T: "ت", B: "ب", M: "م" }
-    : { T: "T", B: "B", M: "M" };
+  // Always use Latin suffixes (K/M/B/T) regardless of UI language so
+  // Arabic cards don't render "م/ب/ت" — user request.
+  void lang;
   let val = n;
-  let suf = suffixes.M;
-  if (abs >= 1_000_000_000_000) { val = n / 1_000_000_000_000; suf = suffixes.T; }
-  else if (abs >= 1_000_000_000) { val = n / 1_000_000_000; suf = suffixes.B; }
-  else { val = n / 1_000_000; suf = suffixes.M; }
+  let suf = "M";
+  if (abs >= 1_000_000_000_000) { val = n / 1_000_000_000_000; suf = "T"; }
+  else if (abs >= 1_000_000_000) { val = n / 1_000_000_000; suf = "B"; }
+  else { val = n / 1_000_000; suf = "M"; }
 
   const num = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: val >= 100 ? 0 : 2,
