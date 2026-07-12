@@ -4289,15 +4289,49 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
             <div className="space-y-3">
               {rows.map(({ product, lots, summary }) => (
                 <div key={summary.productId} className="rounded-xl border bg-card overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/20 px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2 border-b bg-muted/20 px-3 py-2.5">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
                       {product!.image_url ? (
-                        <img src={product!.image_url} alt="" className="h-8 w-8 rounded object-cover" />
+                        <img src={product!.image_url} alt="" className="h-12 w-12 shrink-0 rounded-md border object-cover" />
                       ) : (
-                        <div className="h-8 w-8 rounded bg-muted" />
+                        <div className="h-12 w-12 shrink-0 rounded-md border bg-muted" />
                       )}
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1 space-y-1">
                         <div className="text-[13px] font-semibold truncate">{product!.name}</div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                          {product!.serial_number && (
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-1.5 py-0.5 font-mono text-muted-foreground">
+                              <span className="opacity-60">SN</span>
+                              <span className="text-foreground">{product!.serial_number}</span>
+                            </span>
+                          )}
+                          {product!.color && (
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5">
+                              <ColorSwatch value={product!.color} size="sm" />
+                              <span className="text-foreground">{product!.color}</span>
+                            </span>
+                          )}
+                          {product!.collection && (
+                            <span className="inline-flex items-center gap-1 rounded-md border bg-primary/10 px-1.5 py-0.5 text-primary font-medium">
+                              {product!.collection}
+                            </span>
+                          )}
+                          {product!.is_spare_part && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-400 font-medium">
+                              {t("قطعة غيار", "Spare")}
+                            </span>
+                          )}
+                          <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 tabular-nums ${
+                            (product!.stock_quantity ?? 0) <= (product!.low_stock_threshold ?? 0)
+                              ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                              : "bg-muted/40 text-muted-foreground"
+                          }`}>
+                            {t("مخزون", "Stock")}: {product!.stock_quantity ?? 0}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-1.5 py-0.5 tabular-nums text-muted-foreground">
+                            {t("سعر البيع", "Price")}: {money(product!.price ?? 0, "EGP")}
+                          </span>
+                        </div>
                         <div className="text-[10px] text-muted-foreground truncate">
                           {summary.poCount} {t("أمر شراء", "PO(s)")} · {t("كمية", "qty")}{" "}
                           <span className="tabular-nums font-medium">{fmtNumber(summary.totalQty, lang)}</span>
