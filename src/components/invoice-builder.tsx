@@ -1318,12 +1318,29 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 );
               })}
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {lang === "ar"
-                ? `يظهر في الـ PDF كـ "${deliveryDays} يوم عمل من تاريخ الفاتورة".`
-                : `Shown in the PDF as "${deliveryDays} working days from invoice date".`}
-            </p>
+            {(() => {
+              const baseDate = mode === "edit" && initial?.created_at ? new Date(initial.created_at) : new Date();
+              const preview = formatDeliveryWindowText(baseDate, deliveryDays, lang === "ar" ? "ar" : "en");
+              return (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                  <div className="text-[10px] uppercase tracking-wider text-amber-700/80 dark:text-amber-400/80">
+                    {lang === "ar" ? "معاينة نافذة التسليم" : "Delivery window preview"}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">{preview.line}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                    {lang === "ar" ? "التاريخ المتوقع: " : "Expected date: "}
+                    <span className="font-medium text-foreground">{preview.dateLabel}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {lang === "ar"
+                      ? `يظهر في الـ PDF كـ "${preview.line}".`
+                      : `Shown in the PDF as "${preview.line}".`}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
+
 
 
           <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
