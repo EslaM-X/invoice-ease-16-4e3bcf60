@@ -197,10 +197,19 @@ function Dashboard() {
     }, 300);
   };
 
-  useBatchedRealtimeTables(["invoices", "products", "customers", "defective_items", "purchase_orders"], scheduleRealtimeRefresh, [user?.id]);
+  useBatchedRealtimeTables(
+    ["invoices", "products", "customers", "defective_items", "purchase_orders"],
+    scheduleRealtimeRefresh,
+    [user?.id],
+    { debounceMs: 800, maxWaitMs: 2500 },
+  );
 
-  const cards: Array<{ label: string; value: any; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
-    { label: t("total_sales"),               value: fmtMoney(stats.sales, "EGP", lang), Icon: TrendingUp,   tone: "gold",    sensitive: true },
+  const salesAdaptive = fmtMoneyAdaptive(stats.sales, "EGP", lang);
+  const costAdaptive = fmtMoneyAdaptive(stats.costValueEgp, "EGP", lang);
+  const salesValueAdaptive = fmtMoneyAdaptive(stats.salesValueEgp, "EGP", lang);
+
+  const cards: Array<{ label: string; value: any; fullValue?: string; subValue?: string; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
+    { label: t("total_sales"),               value: salesAdaptive.short, fullValue: salesAdaptive.full, subValue: salesAdaptive.compact ? `≈ ${salesAdaptive.full}` : undefined, Icon: TrendingUp,   tone: "gold",    sensitive: true },
     { label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
     { label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
     { label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
