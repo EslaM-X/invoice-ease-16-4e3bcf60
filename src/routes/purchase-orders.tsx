@@ -1386,7 +1386,10 @@ function PODetailDialog({
   const taxesEgp = calc(taxesMode, taxesValue);
   const shippingEgp = calc(shippingMode, shippingValue);
   const otherEgp = calc(otherMode, otherValue);
-  const totalEgp = baseEgp + customsEgp + taxesEgp + shippingEgp + otherEgp;
+  // Taxes are intentionally EXCLUDED from landed cost (per business rule).
+  // They remain visible on the PO for reference but never enter product cost / WAC / profit.
+  const totalEgp = baseEgp + customsEgp + shippingEgp + otherEgp;
+  const taxesInfoEgp = taxesEgp;
 
   const audit = async (action: string, details: any) => {
     try {
