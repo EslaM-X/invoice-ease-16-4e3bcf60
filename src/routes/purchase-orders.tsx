@@ -1688,11 +1688,24 @@ function PODetailDialog({
                 </div>
                 {(() => {
                   const totalG = items.reduce((s, it) => s + (Number(it.unit_weight_grams ?? 0) * Number(it.quantity ?? 0)), 0);
-                  if (totalG <= 0) return null;
-                  const label = totalG >= 1000 ? `${(totalG / 1000).toFixed(2)} kg` : `${totalG.toFixed(0)} g`;
+                  const anyWeight = items.some((it) => Number(it.unit_weight_grams ?? 0) > 0);
+                  if (totalG <= 0) {
+                    return (
+                      <div className="text-[10px] text-muted-foreground mt-0.5" title={isAr ? "أدخل الوزن في صفحة المنتجات لتوزيع الشحن بالوزن" : "Enter unit weights on the Products page to allocate shipping by weight"}>
+                        ⚖️ {isAr ? "بدون أوزان — الشحن سيوزَّع بالقيمة" : "No weights — shipping falls back to value share"}
+                      </div>
+                    );
+                  }
+                  const label = totalG >= 1000 ? `${(totalG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${totalG.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
                   return (
-                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                      ⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}: <span className="tabular-nums font-semibold">{label}</span>
+                    <div className="mt-0.5 space-y-0.5">
+                      <div className="text-[10px] text-amber-600 dark:text-amber-400">
+                        ⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}: <span className="tabular-nums font-semibold">{label}</span>
+                      </div>
+                      <div className="text-[9px] leading-tight text-muted-foreground" title={isAr ? "الشحن يوزَّع حسب الوزن، والجمارك/الضرائب حسب قيمة المنتج" : "Shipping allocated by weight; customs/taxes by USD value"}>
+                        {isAr ? "الشحن ← بالوزن · الجمارك/الضرائب ← بالقيمة" : "Shipping → by weight · Customs/Taxes → by value"}
+                      </div>
+                      {!anyWeight && null}
                     </div>
                   );
                 })()}
