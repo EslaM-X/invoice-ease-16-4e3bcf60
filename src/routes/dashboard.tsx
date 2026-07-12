@@ -369,15 +369,18 @@ function Dashboard() {
 
 
 
-      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ label, value, Icon, tone, sensitive }) => (
+      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded ? "done" : "loading"}>
+        {cards.map(({ label, value, fullValue, subValue, Icon, tone, sensitive }) => (
           <NoirKpiCard
             key={label}
             label={label}
             value={value}
+            fullValue={fullValue}
+            subValue={subValue}
             Icon={Icon}
             tone={tone}
             hidden={!!sensitive && hidden}
+            loading={!loaded}
           />
         ))}
       </div>
@@ -390,24 +393,31 @@ function Dashboard() {
       <IncomingShipmentsStrip />
 
 
-      <PoShipmentsTracker />
+      <LazyMount rootMargin="800px" minHeight={220}>
+        <PoShipmentsTracker />
+      </LazyMount>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <InventoryValueCard
           label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
-          value={stats.inventoryStock}
+          value={loaded ? stats.inventoryStock : ""}
+          loading={!loaded}
           sub={lang === "ar" ? `${stats.products} صنف نشط` : `${stats.products} active SKUs`}
           Icon={Package}
         />
         <InventoryValueCard
           label={lang === "ar" ? "منتجات في العيانات" : "Samples out"}
-          value={stats.sampleStock}
+          value={loaded ? stats.sampleStock : ""}
+          loading={!loaded}
           sub={lang === "ar" ? "عينات خارج المخزون" : "Sample units outside stock"}
           Icon={Sparkles}
         />
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
-          value={hidden ? "•••••" : fmtMoney(stats.costValueEgp, "EGP", lang)}
+          value={hidden ? "•••••" : costAdaptive.short}
+          fullValue={costAdaptive.full}
+          subValue={costAdaptive.compact && !hidden ? `≈ ${costAdaptive.full}` : undefined}
+          loading={!loaded}
           sub={lang === "ar" ? `سعر الدولار المستخدم: ${stats.latestUsdRate}` : `USD rate used: ${stats.latestUsdRate}`}
           Icon={Coins}
           sensitive
@@ -430,14 +440,19 @@ function Dashboard() {
         />
         <InventoryValueCard
           label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
-          value={hidden ? "•••••" : fmtMoney(stats.salesValueEgp, "EGP", lang)}
+          value={hidden ? "•••••" : salesValueAdaptive.short}
+          fullValue={salesValueAdaptive.full}
+          subValue={salesValueAdaptive.compact && !hidden ? `≈ ${salesValueAdaptive.full}` : undefined}
+          loading={!loaded}
           sub={lang === "ar" ? "إجمالي سعر البيع للكمية المتاحة" : "Total sale value of available stock"}
           Icon={TrendingUp}
           sensitive
         />
       </section>
 
-      <SalesOverview />
+      <LazyMount rootMargin="800px" minHeight={280}>
+        <SalesOverview />
+      </LazyMount>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="ios-card p-5 sm:p-6">
