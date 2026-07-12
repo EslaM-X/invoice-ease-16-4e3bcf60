@@ -19,6 +19,9 @@ export type PoCostLot = {
   other_egp?: number | null;
   overheads_egp?: number | null;
   line_share?: number | null;
+  value_share?: number | null;
+  weight_share?: number | null;
+  unit_weight_g?: number | null;
   landed_unit_usd?: number | null;
   landed_unit_egp?: number | null;
   landed_line_egp?: number | null;
