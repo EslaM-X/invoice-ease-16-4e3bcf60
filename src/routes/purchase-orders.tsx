@@ -1112,6 +1112,26 @@ function CreatePODialog({
               <span className="text-muted-foreground">{isAr ? "إجمالي USD" : "Total USD"}</span>
               <span className="font-bold tabular-nums text-primary">${totalUsd.toFixed(2)}</span>
             </div>
+            {(() => {
+              const totalG = selected.reduce((s, p) => s + (Number((p as any).weight_grams ?? 0) * (rows[p.id]?.qty ?? 0)), 0);
+              const anyWeight = selected.some((p) => Number((p as any).weight_grams ?? 0) > 0);
+              const label = totalG >= 1000 ? `${(totalG / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : `${totalG.toLocaleString(undefined, { maximumFractionDigits: 0 })} g`;
+              return (
+                <div className="mt-1 flex justify-between">
+                  <span className="text-muted-foreground">⚖️ {isAr ? "إجمالي الوزن" : "Total weight"}</span>
+                  <span className="font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    {totalG > 0 ? label : (isAr ? "بدون وزن" : "no weight")}
+                  </span>
+                </div>
+              );
+              void anyWeight;
+            })()}
+            <div className="mt-2 rounded border border-amber-400/30 bg-amber-500/5 p-2 text-[10px] leading-snug text-amber-800 dark:text-amber-200">
+              <div className="font-semibold mb-0.5">{isAr ? "كيف تُوزَّع التكلفة؟" : "How costs are allocated"}</div>
+              <div>• {isAr ? "الشحن يوزَّع حسب الوزن (المنتج الأثقل يحمل نصيباً أكبر)." : "Shipping is allocated by weight (heavier lines carry more)."}</div>
+              <div>• {isAr ? "الجمارك والضرائب والإضافي حسب قيمة المنتج بالدولار." : "Customs, taxes and extras are allocated by USD value."}</div>
+              <div>• {isAr ? "لو مفيش أوزان، الشحن يرجع تلقائياً للتوزيع بالقيمة." : "If no weights are set, shipping falls back to value share."}</div>
+            </div>
             <div className="mt-2 text-[10px] text-muted-foreground">
               {isAr
                 ? "سيتم إرسال إشعار تلقائي للمدير المالي لإدخال سعر الصرف والجمارك."
