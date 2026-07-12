@@ -157,6 +157,10 @@ function InvoicesList() {
       if (categoryFilter !== "all" && (i.customer_category ?? "") !== categoryFilter) return false;
       if (channelFilter !== "all" && (i.sales_channel ?? "") !== channelFilter) return false;
       if (eventFilter !== "all" && (i.sales_event_id ?? "") !== eventFilter) return false;
+      if (deliveryDaysFilter !== "all") {
+        const d = i.delivery_days != null ? String(i.delivery_days) : "21";
+        if (d !== deliveryDaysFilter) return false;
+      }
       if (paymentFilter !== "all") {
         const total = Number(i.total ?? 0);
         const paid = Number(i.paid_amount ?? 0);
