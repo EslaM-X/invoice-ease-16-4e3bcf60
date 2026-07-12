@@ -454,39 +454,43 @@ function Dashboard() {
         <SalesOverview />
       </LazyMount>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="ios-card p-5 sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="eyebrow">{t("recent_invoices")}</h3>
-            <div className="h-px flex-1 mx-4 bg-border" />
-          </div>
-          {recent.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {recent.map((r) => (
-                <Link
-                  key={r.id}
-                  to="/invoices/$id"
-                  params={{ id: r.id }}
-                  aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
-                  className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{r.invoice_number}</div>
-                    <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
-                  </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
-                </Link>
-              ))}
-
+      <LazyMount rootMargin="800px" minHeight={320}>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="ios-card p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="eyebrow">{t("recent_invoices")}</h3>
+              <div className="h-px flex-1 mx-4 bg-border" />
             </div>
-          )}
-        </div>
-        <TopProductsInteractive rangeDays={30} limit={8} />
-      </div>
+            {recent.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {recent.map((r) => (
+                  <Link
+                    key={r.id}
+                    to="/invoices/$id"
+                    params={{ id: r.id }}
+                    aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
+                    className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{r.invoice_number}</div>
+                      <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
+                    </div>
+                    <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
+                  </Link>
+                ))}
 
-      <ActivityFeed limit={10} />
+              </div>
+            )}
+          </div>
+          <TopProductsInteractive rangeDays={30} limit={8} />
+        </div>
+      </LazyMount>
+
+      <LazyMount rootMargin="600px" minHeight={240}>
+        <ActivityFeed limit={10} />
+      </LazyMount>
     </div>
   );
 }
