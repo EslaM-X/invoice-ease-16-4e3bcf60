@@ -406,6 +406,17 @@ function InvoicesList() {
             <option key={d} value={String(d)}>{lang === "ar" ? `${d} يوم` : `${d} days`}</option>
           ))}
         </select>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground whitespace-nowrap">{lang === "ar" ? "تسليم من" : "Delivery from"}</span>
+          <input type="date" value={deliveryFromFilter} onChange={(e) => setDeliveryFromFilter(e.target.value)} className="h-10 flex-1 min-w-0 rounded-md border border-input bg-background px-2 text-sm" />
+          <span className="text-muted-foreground">{lang === "ar" ? "إلى" : "to"}</span>
+          <input type="date" value={deliveryToFilter} onChange={(e) => setDeliveryToFilter(e.target.value)} className="h-10 flex-1 min-w-0 rounded-md border border-input bg-background px-2 text-sm" />
+          {(deliveryFromFilter || deliveryToFilter) && (
+            <button type="button" onClick={() => { setDeliveryFromFilter(""); setDeliveryToFilter(""); }} className="text-muted-foreground underline whitespace-nowrap">
+              {lang === "ar" ? "مسح" : "Clear"}
+            </button>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:col-span-2 lg:col-span-6">
           <label className="inline-flex items-center gap-2 text-foreground">
             <input
