@@ -4015,7 +4015,7 @@ function ProductCostHistoryPanel({ costBook, products, t, lang }: ProductCostHis
         return { product, lots, summary };
       })
       .filter((r) => r.product && r.summary.totalQty > 0);
-  }, [effectiveIds, products, costBook, includeCancelled]);
+  }, [effectiveIds, products, costBook, includeCancelled, dateFrom, dateTo]);
 
   const grand = useMemo(() => summarizeMany(rows.map((r) => r.summary)), [rows]);
 
