@@ -1,46 +1,54 @@
-## Add "Cost History per Product across POs" section to Profits page
+## Goal
+Show the true **landed unit cost** per PO line in "Cost History across POs" — include USD FX rate, customs, taxes, shipping, and extra/other cost — then compute a proper weighted average across selected products/POs. Reactive to any PO change or repricing.
 
-### What the user will see
-A new section inside `src/routes/profits.tsx` titled **"تاريخ التكلفة عبر أوامر الشراء / Cost History across POs"**, added as a first-class tab-style card at the top of the page (using a segmented switch consistent with the existing Noir & Gold theme).
+## Landed cost formula (per PO line)
+For each PO, overheads are already stored as EGP amounts (mode = "percent" of `total_usd * usd_rate`, or "fixed" EGP):
 
-Inside the section:
-1. **Product picker** (multi-select with search):
-   - Options: "كل المنتجات / All products", single product, or multi-select any subset.
-   - Uses the products already loaded on the page (no extra fetch).
-2. **Per-product breakdown table** (one block per selected product):
-   - Product name + image thumbnail + collection chip.
-   - Rows = every PO that contains this product, sorted newest → oldest:
-     - PO number + status pill + order date
-     - Quantity received in that PO
-     - `unit_cost_usd` at that PO (original USD price)
-     - `unit_cost_egp` (USD × the PO's exchange rate) 
-     - Line total
-   - Footer per product:
-     - **Weighted average cost** (Σ qty×unit_cost ÷ Σ qty) in both USD and EGP
-     - Simple average of unit prices
-     - Min / Max unit price seen + which PO
-     - Total quantity purchased across all POs
-     - Trend sparkline of unit cost over time
-3. **Grand summary** (when multiple/all products selected):
-   - Total spend across selected products
-   - Overall weighted-average cost per unit weighted by quantity across all selected items
-   - Count of POs involved
+```text
+overheadsEgp = customs + taxes + shipping + other   (all in EGP, per PO)
+baseEgp      = total_usd * usd_rate                 (per PO)
+share_i      = (qty_i * unit_usd_i) / total_usd     (line share by USD value)
+landed_line_egp_i = (qty_i * unit_usd_i * usd_rate) + share_i * overheadsEgp
+landed_unit_egp_i = landed_line_egp_i / qty_i
+landed_unit_usd_i = landed_unit_egp_i / usd_rate    (for display parity)
+```
 
-### Technical notes
-- Data source: `purchase_order_items` joined to `purchase_orders` (for po_number, status, order_date, usd_to_egp_rate), filtered by `product_id IN (selected)` and excluding `cancelled` POs (unless user toggles "Include cancelled").
-- Fetch on demand when the section is expanded and when the product selection changes (React Query with key `["po-cost-history", productIds, includeCancelled]`, `staleTime: 60_000`). Cached in memory to avoid refetch when toggling.
-- Realtime already subscribes to `purchase_order_items` in this page — invalidate this query on those events too.
-- Pure calculation helpers extracted to a new file `src/lib/po-cost-history.ts` with unit tests `src/lib/po-cost-history.test.ts` covering weighted average, min/max, empty state, cancelled-PO exclusion.
-- Formatting reuses `fmtMoneyAdaptive` and existing money utilities.
-- Fully bilingual (AR/EN) using the page's existing `t(ar, en)` helper.
-- Respects existing Noir & Gold styling: `noir-surface`, `gold-hairline`, gold accent for weighted average, muted for raw rows.
+Fallback if `total_usd = 0`: allocate by qty share.
 
-### Files
-- Modify: `src/routes/profits.tsx` — add the section + product multi-select + data hook.
-- Create: `src/lib/po-cost-history.ts` (pure logic).
-- Create: `src/lib/po-cost-history.test.ts`.
+Weighted average across lots (existing rule, but on landed values):
+`WAC_egp = Σ(qty_i * landed_unit_egp_i) / Σ qty_i`
 
-### Out of scope
-- No schema changes.
-- No changes to how profits are computed elsewhere on the page.
-- No editing of PO costs from this view (read-only history).
+## Changes
+
+### 1. Backend RPC `get_product_cost_book`
+Extend it to return per-lot landed cost fields so the frontend doesn't refetch every PO. Add to each lot:
+- `usd_rate`, `customs_egp`, `taxes_egp`, `shipping_egp`, `other_egp` (PO totals),
+- `line_share` (0-1),
+- `landed_unit_usd`, `landed_unit_egp`, `landed_line_egp`.
+
+The RPC computes overheadsEgp using stored mode/value against `total_usd*usd_rate` and the per-line share by USD value (fallback qty). No schema change — pure SQL migration replacing the function.
+
+### 2. `src/lib/po-cost-history.ts`
+- Extend `PoCostLot` with the new landed fields (optional to keep back-compat).
+- Update `summarizeProduct` / `summarizeMany` to weight on **landed** unit cost when available (falls back to raw `unit_egp` if RPC not yet upgraded). Add fields `wacLandedUsd`, `wacLandedEgp`, `totalLandedEgp`, and per-lot breakdown getters.
+- Extend unit tests for landed weighting + share allocation.
+
+### 3. `src/routes/profits.tsx` — Cost History panel
+- Extend `CostBookLot` type with new fields.
+- Per-product header badges: show base WAC, landed WAC, and Δ overhead %.
+- PO rows table: add columns **FX**, **Customs**, **Taxes**, **Shipping**, **Extra**, **Landed unit EGP**, **Landed line EGP** (compact, scroll-x on mobile). Clicking a row still opens `POTrackerDialog`.
+- Grand totals row: landed WAC across selected products.
+- Small legend/tooltip explaining allocation method.
+- Already reactive to `purchase_orders`/`purchase_order_items` realtime → no extra wiring needed; any PO edit/repricing triggers `loadCostBook()` and re-renders.
+
+### 4. i18n
+Arabic + English strings for: سعر الصرف / FX, الجمارك / Customs, الضرائب / Taxes, الشحن / Shipping, تكلفة إضافية / Extra, التكلفة المُحمَّلة للوحدة / Landed unit cost, متوسط مرجّح مُحمَّل / Landed weighted average.
+
+## Out of scope
+- No change to how POs are entered or how overheads are stored.
+- No change to `profits.tsx` main table WAC (kept as-is unless you also want it landed — say the word).
+
+## Technical notes
+- The RPC change is backwards compatible: old callers still get the fields they read.
+- All arithmetic guards against division by zero.
+- Deterministic sort of lots by shipment date (already done via `sortLotsByDateDesc`).
