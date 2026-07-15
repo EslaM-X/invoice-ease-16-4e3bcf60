@@ -1212,6 +1212,7 @@ function PODetailDialog({
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const COLLECTIONS = useCollectionCodes();
   const canEditPricing = isCFO || isAdmin;
   const canEditItems = isAdmin || isPurchasing;
   const canDeleteItems = isAdmin;
