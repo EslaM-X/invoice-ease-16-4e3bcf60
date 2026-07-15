@@ -21,7 +21,9 @@ import {
   partLabel,
   parsePartFromNote,
   buildNoteWithPart,
-  remainingPartsLabel,
+  type PartKey,
+} from "@/lib/product-parts";
+// (remainingPartsLabel removed — replaced by inline per-part breakdown)
   type PartKey,
 } from "@/lib/product-parts";
 import { DEFAULT_DELIVERY_MODE, buildEffectiveDelivered, type FDeliveredRow, type FInvItem } from "@/lib/fulfillment-engine";
