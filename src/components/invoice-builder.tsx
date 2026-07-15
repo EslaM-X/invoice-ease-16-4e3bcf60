@@ -323,25 +323,22 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     return Math.max(0, (p.stock_quantity ?? 0) + transit + baseline - allocatedNow);
   };
 
-  /** Try to add 1 unit of a product. Returns true if added, false if blocked by stock. */
+  /** Add 1 unit of a product. Never blocked — shortage is auto-tracked. */
   const addProduct = (p: Product): boolean => {
     const remaining = remainingFor(p.id);
-    if (!isDraft && remaining <= 0) {
-      const msg = remaining === 0
-        ? t("out_of_stock_now")
-        : t("insufficient_stock_remaining").replace("{n}", String(remaining));
-      toast.error(`${p.name} — ${msg}`);
-      return false;
-    }
-    // Notify when this unit is coming from the in-transit pool (stock fully consumed).
     const allocatedNow = items
       .filter((it) => it.product_id === p.id)
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(p.id) ?? 0;
     const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
-    if (!isDraft && stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
+    if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0 && remaining > 0) {
       toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
+    } else if (remaining <= 0) {
+      toast.warning(
+        `${p.name} — ${lang === "ar" ? "غير متوفر — سيُضاف كنقص وسيظهر في تقرير النواقص" : "Shortage — will be tracked in the shortages report"}`,
+      );
     }
+
 
     let newQty = 1;
     setItems((prev) => {
