@@ -519,6 +519,42 @@ export type Database = {
         }
         Relationships: []
       }
+      collections: {
+        Row: {
+          code: string
+          color_hex: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number
+          updated_at: string
+          updated_by_email: string | null
+        }
+        Insert: {
+          code: string
+          color_hex?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Update: {
+          code?: string
+          color_hex?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Relationships: []
+      }
       company_counters: {
         Row: {
           id: string
