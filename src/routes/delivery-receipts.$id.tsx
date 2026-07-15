@@ -9,7 +9,7 @@ import { Printer, ArrowLeft, Pencil, Plus, FileDown, History } from "lucide-reac
 import { fmtDateTime } from "@/lib/utils-money";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
-import { elementToPdf } from "@/lib/delivery-receipts";
+import { elementToPdf, fetchInvoiceItemsForPrint, type PrintRow } from "@/lib/delivery-receipts";
 import { toast } from "sonner";
 import { DeliveryReceiptTracker } from "@/components/delivery-receipt-tracker";
 
@@ -31,6 +31,7 @@ function ReceiptView() {
   const navigate = useNavigate();
   const [r, setR] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [printRows, setPrintRows] = useState<PrintRow[] | null>(null);
   const [invoice, setInvoice] = useState<any>(null);
   const [, setSettings] = useState<Settings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -49,6 +50,21 @@ function ReceiptView() {
       if ((rec as any)?.invoice_id) {
         const { data: inv } = await supabase.from("invoices").select("*").eq("id", (rec as any).invoice_id).single();
         setInvoice(inv);
+        // v2 layout: fetch merged rows so PDF shows ALL invoice items
+        if ((rec as any)?.layout_version && (rec as any).layout_version >= 2) {
+          try {
+            const rows = await fetchInvoiceItemsForPrint(
+              (rec as any).invoice_id,
+              id,
+              (rec as any).created_at,
+            );
+            setPrintRows(rows);
+          } catch {
+            setPrintRows(null);
+          }
+        } else {
+          setPrintRows(null);
+        }
       }
       const { data: audit } = await supabase
         .from("delivery_receipt_audit_log" as any)
@@ -193,18 +209,42 @@ function ReceiptView() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id}>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
-                    <td className="border border-gray-400 px-2 py-2 align-middle">
-                      <div className="font-medium">{it.product_name}</div>
-                      {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.quantity}</td>
-                    <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{it.note || ""}</td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
+                {printRows ? (
+                  printRows.map((it) => {
+                    const priorNote = it.prior_qty > 0
+                      ? (isAr ? `مسلَّمة مسبقًا: ${it.prior_qty}` : `Previously delivered: ${it.prior_qty}`)
+                      : "";
+                    const emptyNote = it.this_qty === 0 && it.prior_qty === 0 && it.later_qty === 0
+                      ? (isAr ? "لم تُسلَّم بعد" : "Not delivered yet")
+                      : "";
+                    const combinedNote = [it.this_note, priorNote, emptyNote].filter(Boolean).join(" — ");
+                    const dim = it.this_qty === 0;
+                    return (
+                      <tr key={it.invoice_item_id} className={dim ? "text-gray-500" : ""}>
+                        <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
+                        <td className="border border-gray-400 px-2 py-2 align-middle">
+                          <div className={dim ? "font-normal" : "font-medium"}>{it.product_name}</div>
+                          {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.this_qty}</td>
+                        <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{combinedNote}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  items.map((it) => (
+                    <tr key={it.id}>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
+                      <td className="border border-gray-400 px-2 py-2 align-middle">
+                        <div className="font-medium">{it.product_name}</div>
+                        {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
+                      </td>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.quantity}</td>
+                      <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{it.note || ""}</td>
+                    </tr>
+                  ))
+                )}
+                {(printRows ? printRows.length === 0 : items.length === 0) && (
                   <tr><td colSpan={4} className="border border-gray-400 px-2 py-4 text-center text-gray-500">—</td></tr>
                 )}
                 {shipping != null && shipping > 0 && (

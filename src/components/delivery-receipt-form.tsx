@@ -202,6 +202,9 @@ export function DeliveryReceiptForm({
         const multi = isMultiPartProduct(it.product_name);
         const parsed = parsePartFromNote(ex?.note ?? "");
         const sp = it.product_id ? sparePartInfo.get(it.product_id) : undefined;
+        // New-mode default: pre-select EVERY row so all invoice lines appear on the
+        // printed receipt. Rows with 0 remaining stay visible but their qty is 0.
+        const preselectAll = mode === "new";
         return {
           invoice_item_id: it.id,
           product_id: it.product_id ?? null,
@@ -212,7 +215,7 @@ export function DeliveryReceiptForm({
           delivered_other: multi ? strictDelivered : it.delivered_qty,
           qty: ex ? ex.qty : remainingForThisReceipt,
           note: ex ? parsed.cleanNote : "",
-          selected: ex ? true : remainingForThisReceipt > 0,
+          selected: ex ? true : (preselectAll ? true : remainingForThisReceipt > 0),
           isMultiPart: multi,
           part: ex ? parsed.part : "full",
           priorNotes: priorNotesMap.get(it.id) ?? [],
@@ -243,11 +246,11 @@ export function DeliveryReceiptForm({
         note: r.isMultiPart ? buildNoteWithPart(r.part, r.note) : (r.note || null),
       }));
     if (items.length === 0) {
-      toast.error(isAr ? "اختر بنداً واحداً على الأقل" : "Select at least one item");
+      toast.error(isAr ? "أدخل كمية لبند واحد على الأقل" : "Enter a quantity on at least one item");
       return;
     }
     // client-side validation against remaining
-    for (const r of rows.filter((x) => x.selected)) {
+    for (const r of rows.filter((x) => x.selected && x.qty > 0)) {
       const maxAllowed = r.invoice_qty - r.delivered_other;
       if (r.qty > maxAllowed) {
         toast.error(
@@ -363,11 +366,43 @@ export function DeliveryReceiptForm({
       </div>
 
       <div className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between p-4 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-4 pb-2">
           <h3 className="text-sm font-semibold">{isAr ? "بنود التسليم" : "Items to deliver"}</h3>
-          <div className="text-xs text-muted-foreground">
-            {isAr ? "إجمالي الكميات المسلَّمة الآن:" : "Total qty being delivered:"}{" "}
-            <span className="font-semibold text-foreground">{totalQty}</span>
+          <div className="flex items-center gap-2">
+            {mode === "new" && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    setRows((prev) =>
+                      prev.map((r) => ({
+                        ...r,
+                        selected: true,
+                        qty: Math.max(0, r.invoice_qty - r.delivered_other),
+                      })),
+                    )
+                  }
+                >
+                  {isAr ? "املأ كل المتبقي" : "Fill all remaining"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setRows((prev) => prev.map((r) => ({ ...r, qty: 0 })))}
+                >
+                  {isAr ? "صفّر الكل" : "Clear all"}
+                </Button>
+              </>
+            )}
+            <div className="text-xs text-muted-foreground">
+              {isAr ? "الإجمالي:" : "Total:"}{" "}
+              <span className="font-semibold text-foreground">{totalQty}</span>
+            </div>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -386,10 +421,15 @@ export function DeliveryReceiptForm({
             <tbody className="divide-y">
               {rows.map((r, idx) => {
                 const remaining = r.invoice_qty - r.delivered_other;
+                const fullyDelivered = remaining <= 0 && r.delivered_other > 0;
                 return (
-                  <tr key={r.invoice_item_id} className={remaining <= 0 && !r.selected ? "opacity-50" : ""}>
+                  <tr key={r.invoice_item_id} className={fullyDelivered ? "bg-emerald-500/5" : ""}>
                     <td className="px-3 py-2">
-                      <Checkbox checked={r.selected} onCheckedChange={(v) => setRow(idx, { selected: !!v })} />
+                      <Checkbox
+                        checked={r.selected}
+                        disabled={fullyDelivered}
+                        onCheckedChange={(v) => setRow(idx, { selected: !!v })}
+                      />
                     </td>
                     <td className="px-3 py-2">
                       <div className="font-medium flex items-center gap-1.5 flex-wrap">
@@ -402,12 +442,17 @@ export function DeliveryReceiptForm({
                             size="xs"
                           />
                         )}
+                        {fullyDelivered && (
+                          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                            {isAr ? "مسلَّمة مسبقًا" : "Previously delivered"}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
                         {r.serial_number && <span className="me-2">SN: {r.serial_number}</span>}
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
                       </div>
-                      {r.isMultiPart && (() => {
+                      {r.isMultiPart && !fullyDelivered && (() => {
                         const pendingParts = remainingPartsLabel(r.invoice_qty, r.priorNotes, isAr);
                         return (
                           <div className="mt-2 flex flex-col gap-1.5">
@@ -449,7 +494,7 @@ export function DeliveryReceiptForm({
                         min={0}
                         max={remaining}
                         value={r.qty}
-                        disabled={!r.selected}
+                        disabled={!r.selected || fullyDelivered}
                         onChange={(e) =>
                           setRow(idx, { qty: Math.max(0, Math.min(remaining, parseInt(e.target.value || "0", 10))) })
                         }
@@ -459,7 +504,7 @@ export function DeliveryReceiptForm({
                     <td className="px-3 py-2">
                       <Input
                         value={r.note}
-                        disabled={!r.selected}
+                        disabled={!r.selected || fullyDelivered}
                         onChange={(e) => setRow(idx, { note: e.target.value })}
                         placeholder={isAr ? "مثال: نصف الكمية…" : "e.g. half quantity…"}
                         className="h-8"
@@ -470,6 +515,7 @@ export function DeliveryReceiptForm({
               })}
             </tbody>
           </table>
+
         </div>
       </div>
 

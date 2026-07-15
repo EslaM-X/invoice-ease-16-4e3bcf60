@@ -129,6 +129,90 @@ export function deliveryStatusColor(status: string | null | undefined) {
   }
 }
 
+export type PrintRow = {
+  invoice_item_id: string;
+  product_id: string | null;
+  product_name: string;
+  serial_number: string | null;
+  color: string | null;
+  invoice_qty: number;
+  this_qty: number;             // qty delivered in THIS receipt
+  this_note: string | null;     // note stored in THIS receipt
+  prior_qty: number;            // qty delivered in EARLIER receipts (before this one)
+  later_qty: number;            // qty delivered in LATER receipts (after this one)
+};
+
+/**
+ * Build a merged list of ALL invoice items with per-receipt delivery breakdown,
+ * used by the new (layout_version >= 2) receipt view / PDF.
+ */
+export async function fetchInvoiceItemsForPrint(
+  invoiceId: string,
+  receiptId: string,
+  receiptCreatedAt: string,
+): Promise<PrintRow[]> {
+  const { data: items } = await supabase
+    .from("invoice_items")
+    .select("id, product_id, product_name, serial_number, color, quantity, created_at")
+    .eq("invoice_id", invoiceId)
+    .order("created_at", { ascending: true });
+
+  const itemIds = (items ?? []).map((i: any) => i.id);
+  if (itemIds.length === 0) return [];
+
+  // Pull all sibling delivery_receipt_items across ALL receipts of this invoice
+  const { data: dris } = await supabase
+    .from("delivery_receipt_items" as any)
+    .select("invoice_item_id, quantity, note, receipt_id")
+    .in("invoice_item_id", itemIds);
+
+  // Fetch created_at for all sibling receipts to classify prior/later
+  const otherReceiptIds = Array.from(
+    new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter((rid) => rid !== receiptId)),
+  );
+  const receiptCreatedAtMap = new Map<string, string>();
+  if (otherReceiptIds.length > 0) {
+    const { data: recs } = await supabase
+      .from("delivery_receipts" as any)
+      .select("id, created_at")
+      .in("id", otherReceiptIds);
+    for (const rec of (recs ?? []) as any[]) receiptCreatedAtMap.set(rec.id, rec.created_at);
+  }
+
+  const thisMap = new Map<string, { qty: number; note: string | null }>();
+  const priorMap = new Map<string, number>();
+  const laterMap = new Map<string, number>();
+  for (const r of (dris ?? []) as any[]) {
+    if (r.receipt_id === receiptId) {
+      const cur = thisMap.get(r.invoice_item_id) ?? { qty: 0, note: null };
+      cur.qty += r.quantity || 0;
+      if (!cur.note && r.note) cur.note = r.note;
+      thisMap.set(r.invoice_item_id, cur);
+    } else {
+      const otherCreatedAt = receiptCreatedAtMap.get(r.receipt_id);
+      const isPrior = otherCreatedAt ? otherCreatedAt < receiptCreatedAt : false;
+      const m = isPrior ? priorMap : laterMap;
+      m.set(r.invoice_item_id, (m.get(r.invoice_item_id) || 0) + (r.quantity || 0));
+    }
+  }
+
+  return (items ?? []).map((it: any) => {
+    const t = thisMap.get(it.id);
+    return {
+      invoice_item_id: it.id,
+      product_id: it.product_id ?? null,
+      product_name: it.product_name,
+      serial_number: it.serial_number,
+      color: it.color,
+      invoice_qty: it.quantity,
+      this_qty: t?.qty ?? 0,
+      this_note: t?.note ?? null,
+      prior_qty: priorMap.get(it.id) ?? 0,
+      later_qty: laterMap.get(it.id) ?? 0,
+    };
+  });
+}
+
 /** Render an HTML element to a single multi-page A4 PDF. Returns a jsPDF instance. */
 export async function elementToPdf(el: HTMLElement) {
   const { default: html2canvas } = await import("html2canvas");
