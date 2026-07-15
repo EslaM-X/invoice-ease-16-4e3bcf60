@@ -73,7 +73,7 @@ import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-recei
 import { Route as DeliveryReceiptsArchiveRouteImport } from './routes/delivery-receipts.archive'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
-import { Route as AdminAccessStudioRouteImport } from './routes/admin.access-studio'
+import { Route as AdminAccessStudioRouteImport } from './routes/admin_.access-studio'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -411,9 +411,9 @@ const ApiXChatRoute = ApiXChatRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAccessStudioRoute = AdminAccessStudioRouteImport.update({
-  id: '/access-studio',
-  path: '/access-studio',
-  getParentRoute: () => AdminRoute,
+  id: '/admin_/access-studio',
+  path: '/admin/access-studio',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
@@ -503,7 +503,7 @@ const ApiPublicHooksDailyBackupRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
+  '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/back-deduction-report': typeof BackDeductionReportRoute
@@ -585,7 +585,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
+  '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/back-deduction-report': typeof BackDeductionReportRoute
@@ -668,7 +668,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
+  '/admin': typeof AdminRoute
   '/audit-log': typeof AuditLogRoute
   '/auth': typeof AuthRoute
   '/back-deduction-report': typeof BackDeductionReportRoute
@@ -722,7 +722,7 @@ export interface FileRoutesById {
   '/whatsapp': typeof WhatsappRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/admin/access-studio': typeof AdminAccessStudioRoute
+  '/admin_/access-studio': typeof AdminAccessStudioRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -970,7 +970,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/admin/access-studio'
+    | '/admin_/access-studio'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -999,7 +999,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
+  AdminRoute: typeof AdminRoute
   AuditLogRoute: typeof AuditLogRoute
   AuthRoute: typeof AuthRoute
   BackDeductionReportRoute: typeof BackDeductionReportRoute
@@ -1053,6 +1053,7 @@ export interface RootRouteChildren {
   WhatsappRoute: typeof WhatsappRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AdminAccessStudioRoute: typeof AdminAccessStudioRoute
   ApiXChatRoute: typeof ApiXChatRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsArchiveRoute: typeof DeliveryReceiptsArchiveRoute
@@ -1529,12 +1530,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiXChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/access-studio': {
-      id: '/admin/access-studio'
-      path: '/access-studio'
+    '/admin_/access-studio': {
+      id: '/admin_/access-studio'
+      path: '/admin/access-studio'
       fullPath: '/admin/access-studio'
       preLoaderRoute: typeof AdminAccessStudioRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
@@ -1644,19 +1645,9 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminRouteChildren {
-  AdminAccessStudioRoute: typeof AdminAccessStudioRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminAccessStudioRoute: AdminAccessStudioRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
+  AdminRoute: AdminRoute,
   AuditLogRoute: AuditLogRoute,
   AuthRoute: AuthRoute,
   BackDeductionReportRoute: BackDeductionReportRoute,
@@ -1711,6 +1702,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AdminAccessStudioRoute: AdminAccessStudioRoute,
   ApiXChatRoute: ApiXChatRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsArchiveRoute: DeliveryReceiptsArchiveRoute,
