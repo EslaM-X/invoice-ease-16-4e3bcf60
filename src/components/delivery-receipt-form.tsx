@@ -107,6 +107,9 @@ export function DeliveryReceiptForm({
   const [shippingFees, setShippingFees] = useState<string>(
     existing?.shipping_fees != null ? String(existing.shipping_fees) : "",
   );
+  const [taxEnabled, setTaxEnabled] = useState<boolean>(
+    (existing as any)?.tax_enabled === true,
+  );
 
   useEffect(() => {
     (async () => {
