@@ -1,72 +1,44 @@
-## الهدف
+## Goal
+Let users add new product collections (like JOY/UP/ART/QUATRO) from the Products page — each with its own distinct color — and reuse them everywhere collections appear (filters, badges, invoice/PO pickers).
 
-في محاضر الاستلام الجديدة فقط (layout_version ≥ 2) — كل شيء يظهر في العرض على الشاشة و PDF/الطباعة:
+## Approach
+Move collections from a hardcoded constant to a database-backed list, keep the four existing ones as defaults, and add a small manager on the Products page.
 
-### 1) عرض "الباقي" الذكي لكل بند
-- جمب كل بند تظهر شارة صغيرة بجانب الكمية مكتوب فيها:
-  - **"فاضل: N"** لو لسه في كميات متسلمتش (سواء من هذا المحضر أو مسبقًا).
-  - **"مكتمل ✓"** لو البند اتسلّم بالكامل (this + prior + later = invoice_qty).
-- في عمود الملاحظة سطر ذكي مختصر: "من أصل X — سُلِّم الآن: A، مسبقًا: B، لاحقًا: C، الباقي: R".
+## Backend
+- New table `public.collections`:
+  - `code` (unique, uppercase, e.g. `JOY`)
+  - `label` (display name)
+  - `color_hex` (accent color — used to derive pill/badge/dot styles)
+  - `sort_order`, `is_active`
+  - standard `created_at/updated_at` + updated-by trigger
+- GRANT + RLS:
+  - `SELECT` for `authenticated` (everyone in the app can see them)
+  - `INSERT / UPDATE / DELETE` restricted to admins (via existing `has_role`)
+- Seed the four existing values (`JOY` rose, `UP` sky, `ART` violet, `QUATRO` amber) so nothing visually changes on day one.
+- Products table already has a free-text `collection` column — no schema change there; we just validate against the list.
 
-### 2) تفصيل الأجزاء (Mixer / Trim / Full) لأي منتج متعدد الأجزاء
-لكل بند من نوع multi-part (mixer / concealed / free-standing / shower … كما هو معرّف في `product-parts.ts`) نعرض جدول صغير تحت اسم المنتج يوضح — بالتجميع من كل محاضر الفاتورة:
-- المنتج كامل (Full): سُلِّم X
-- الخلاط الدفن (MIXER): سُلِّم Y
-- الجزء الظاهر (Trim): سُلِّم Z
-- **الباقي**: mixer ناقص = invoice_qty − (Full + Mixer)، trim ناقص = invoice_qty − (Full + Trim).
-- في المحضر الحالي: يوضّح كل جزء اتسلّم فيه كام (5 mixer + 2 trim + 1 full = 8 قطع).
+## Frontend
+1. `src/lib/collection-styles.ts`
+   - Convert from a static map to a runtime style built from `color_hex` (inline styles for solid/soft/badge/dot). Keep the same exported function signatures so all existing callers keep working.
+2. New hook `src/lib/use-collections.ts`
+   - Loads `collections` once (cache-first via existing `cachedListFetch`), exposes `list`, `byCode`, `refresh`, and realtime updates.
+3. `src/lib/data.ts`
+   - Replace the exported `COLLECTIONS` constant with a helper that reads from the hook/cache; keep the type as `string` so existing code compiles.
+4. `src/routes/products.tsx`
+   - Filter chips + form dropdown + CSV import validation switch to the dynamic list.
+   - Add a "Manage collections" (إدارة الكولكشنات) button next to the filter chips → opens a dialog where admins can:
+     - Add a new collection (code, label, color picker with live preview swatch)
+     - Rename / recolor / deactivate existing ones
+     - Reorder
+   - Non-admins see the button disabled with a tooltip.
+5. Other consumers (`invoice-builder.tsx`, `qr-price-list.tsx`, `purchase-orders.tsx`, `in-transit.tsx`) — swap the `COLLECTIONS` import for the new hook. No UI redesign, same chips/pickers.
 
-المثال الي المستخدم كتبه (5 mixer، 2 trim، 1 full، الفاتورة 8) يظهر كـ:
-- الآن: Mixer 5 • Trim 2 • Full 1
-- الإجمالي المسلم: mixers=6/8، trims=3/8
-- الباقي: mixer 2 • trim 5
+## UX details
+- Color picker: native `<input type="color">` + 8 curated Noir & Gold-friendly presets (rose, sky, violet, amber, emerald, fuchsia, teal, orange).
+- Code is auto-uppercased and validated unique.
+- Deleting a collection that's still in use is blocked; offer "Deactivate" instead (hides it from pickers but keeps history intact).
+- Everything stays consistent with the existing Noir & Gold styling — no visual regression for the 4 seeded collections.
 
-### 3) ميزة الضرائب 14% (اختيارية لكل محضر)
-- في فورم إنشاء / تعديل المحضر: توجل "تطبيق ضريبة 14%" (افتراضي: مطفي).
-- لو مفعّل:
-  - يظهر أسفل جدول البنود (فوق التوقيعات) صف واضح:
-    - المجموع الفرعي (سعر الوحدة × الكمية المسلمة الآن) لكل بند من الفاتورة + رسوم الشحن.
-    - ضريبة القيمة المضافة 14%.
-    - الإجمالي شامل الضريبة.
-- لو مطفي: لا يظهر أي صف ضريبي إطلاقًا (زي دلوقتي بالظبط).
-- المحاضر القديمة (v1) ما تتأثرش.
-
-## القسم التقني
-
-### Migration جديدة
-```sql
-ALTER TABLE public.delivery_receipts
-  ADD COLUMN IF NOT EXISTS tax_enabled boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS tax_rate numeric(5,2) NOT NULL DEFAULT 14.00;
-```
-لا تغيير في RLS/GRANT. RPC `create_delivery_receipt` و `update_delivery_receipt` تتحدّث لقبول `_tax_enabled boolean DEFAULT false` (الافتراضي يخلي المحاضر القديمة من الكود القديم شغالة).
-
-### `src/lib/delivery-receipts.ts`
-- إضافة `tax_enabled?: boolean` لـ `DRPayload` وتمريره في `createDeliveryReceipt` / `updateDeliveryReceipt`.
-- توسيع `PrintRow` بحقول: `unit_price`, `part_totals: { full_this, mixer_this, trim_this, full_all, mixer_all, trim_all }` — يتم استخراجها من parsing لـ `note` (باستخدام `parsePartFromNote`) عبر كل محاضر الفاتورة (نفس الاستعلام الحالي، نضيف حساب per-part).
-- إرجاع `unit_price` من `invoice_items.unit_price`.
-
-### `src/components/delivery-receipt-form.tsx` (mode="new" و "edit")
-- إضافة Switch "تطبيق ضريبة 14%" جنب حقل رسوم الشحن.
-- تمرير `tax_enabled` في submit.
-- (بدون تغيير في منطق الأجزاء الحالي.)
-
-### `src/routes/delivery-receipts.$id.tsx` (العرض + PDF، v2 فقط)
-- بجانب رقم الكمية في الخلية: badge صغيرة "فاضل N" أو "مكتمل".
-- ملاحظة موسّعة: "من أصل X — الآن A، مسبقًا B، لاحقًا C، الباقي R".
-- لو `isMultiPartProduct(product_name)`: قسم مصغّر تحت اسم المنتج بشبكة 3 أعمدة (Full/Mixer/Trim) يعرض الأرقام الحالية والإجمالية والباقي، بتصميم أنيق (borders رفيعة، أرقام واضحة، ألوان محايدة تطبع كويس على الأبيض).
-- لو `r.tax_enabled`: بعد جدول البنود يظهر بلوك ملخّص مالي:
-  - Subtotal = Σ(this_qty × unit_price) + shipping
-  - VAT 14% = Subtotal × 0.14
-  - Total = Subtotal + VAT
-  - يظهر بأرقام واضحة، RTL/LTR حسب اللغة، بخطوط hairline ذهبية على الشاشة و بسيط أبيض/أسود عند الطباعة.
-
-### توافق رجعي
-- المحاضر القديمة (v1) تفضل كما هي — لا `tax_enabled` badge ولا part-breakdown، نفس العرض بالضبط.
-- المحاضر v2 الحالية بدون tax تفضل شغالة (default false).
-
-## Deliverables
-1. Migration: إضافة `tax_enabled` + `tax_rate` وتحديث RPCات create/update.
-2. تحديث `src/lib/delivery-receipts.ts` (payload + PrintRow موسّع + unit_price + part aggregates).
-3. تحديث `src/components/delivery-receipt-form.tsx` (Switch للضريبة).
-4. تحديث `src/routes/delivery-receipts.$id.tsx` (شارات الباقي + جدول الأجزاء + بلوك الضريبة).
+## Out of scope
+- No changes to profits/PO cost logic.
+- No migration of existing product rows (their `collection` text values stay as-is and match by code).
