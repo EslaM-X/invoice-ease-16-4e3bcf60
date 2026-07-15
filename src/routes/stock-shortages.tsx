@@ -59,6 +59,7 @@ function StockShortagesPage() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [rows, setRows] = useState<ShortageRow[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,6 +68,20 @@ function StockShortagesPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [sortBy, setSortBy] = useState<SortKey>("priority");
   const [urgencyOnly, setUrgencyOnly] = useState<"all" | "critical" | "waiting">("all");
+
+  // Existing open shortage requests, keyed by product_id — used to badge cards.
+  const [openReqs, setOpenReqs] = useState<Record<string, number>>({});
+  const [reqTarget, setReqTarget] = useState<null | {
+    product_id: string;
+    product_name: string;
+    invoice_id?: string;
+    invoice_number?: string;
+    quantity: number;
+  }>(null);
+  const [reqQty, setReqQty] = useState<number>(0);
+  const [reqNote, setReqNote] = useState("");
+  const [reqSaving, setReqSaving] = useState(false);
+
 
   const load = async () => {
     setLoading(true);
