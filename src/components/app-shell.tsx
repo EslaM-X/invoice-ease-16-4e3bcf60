@@ -412,6 +412,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </GroupNav>
         )}
+        {!ui.isNavHidden("communication_group") && (
         <GroupNav
           label={t("communication_group")}
           icon={MessagesSquare}
