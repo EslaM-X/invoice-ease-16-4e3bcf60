@@ -69,6 +69,7 @@ function InTransitPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const COLLECTIONS = useCollectionCodes();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<POItem[]>([]);
