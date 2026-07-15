@@ -220,7 +220,10 @@ function Dashboard() {
     { key: "kpi_open_invoices", label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
     { key: "kpi_customers", label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
-  const visibleCards = ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order);
+  const uiReady = ui.loaded || ui.bypass;
+  const visibleCards = uiReady
+    ? ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order)
+    : [];
 
   const now = new Date();
   const hour = now.getHours();
@@ -316,8 +319,9 @@ function Dashboard() {
       },
       { key: "section_activity_feed", node: <LazyMount rootMargin="600px" minHeight={240}><ActivityFeed limit={10} /></LazyMount> },
     ];
+    if (!uiReady) return [];
     return ui.sortByOrder(sections.filter((section) => section.node && !ui.isCardHidden(section.key)), ui.prefs.cards_order);
-  }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui]);
+  }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui, uiReady]);
 
   return (
     <div className="space-y-8 sm:space-y-10">
@@ -461,20 +465,24 @@ function Dashboard() {
 
 
 
-      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded ? "done" : "loading"}>
-        {visibleCards.map(({ key, label, value, fullValue, subValue, Icon, tone, sensitive }) => (
-          <NoirKpiCard
-            key={key}
-            label={label}
-            value={value}
-            fullValue={fullValue}
-            subValue={subValue}
-            Icon={Icon}
-            tone={tone}
-            hidden={!!sensitive && hidden}
-            loading={!loaded}
-          />
-        ))}
+      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded && uiReady ? "done" : "loading"}>
+        {!uiReady
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton-noir h-[120px] rounded-2xl sm:h-[140px]" aria-hidden="true" />
+            ))
+          : visibleCards.map(({ key, label, value, fullValue, subValue, Icon, tone, sensitive }) => (
+              <NoirKpiCard
+                key={key}
+                label={label}
+                value={value}
+                fullValue={fullValue}
+                subValue={subValue}
+                Icon={Icon}
+                tone={tone}
+                hidden={!!sensitive && hidden}
+                loading={!loaded}
+              />
+            ))}
       </div>
 
 
