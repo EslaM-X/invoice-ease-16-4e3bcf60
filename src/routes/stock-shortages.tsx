@@ -6,11 +6,18 @@ import { useI18n } from "@/lib/i18n";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertTriangle, Package, TruckIcon, RefreshCw, Search, Copy, Download,
   ShoppingCart, ChevronDown, ChevronUp, Flame, Clock, CheckSquare, Square,
+  ClipboardList, Send,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+
 
 export const Route = createFileRoute("/stock-shortages")({
   component: () => (
@@ -52,6 +59,7 @@ function StockShortagesPage() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [rows, setRows] = useState<ShortageRow[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +68,20 @@ function StockShortagesPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [sortBy, setSortBy] = useState<SortKey>("priority");
   const [urgencyOnly, setUrgencyOnly] = useState<"all" | "critical" | "waiting">("all");
+
+  // Existing open shortage requests, keyed by product_id — used to badge cards.
+  const [openReqs, setOpenReqs] = useState<Record<string, number>>({});
+  const [reqTarget, setReqTarget] = useState<null | {
+    product_id: string;
+    product_name: string;
+    invoice_id?: string;
+    invoice_number?: string;
+    quantity: number;
+  }>(null);
+  const [reqQty, setReqQty] = useState<number>(0);
+  const [reqNote, setReqNote] = useState("");
+  const [reqSaving, setReqSaving] = useState(false);
+
 
   const load = async () => {
     setLoading(true);
@@ -73,16 +95,30 @@ function StockShortagesPage() {
     setLoading(false);
   };
 
+  const loadRequests = async () => {
+    const { data } = await supabase
+      .from("shortage_requests" as any)
+      .select("product_id,status")
+      .in("status", ["open", "ordered"]);
+    const map: Record<string, number> = {};
+    for (const r of (data as any[]) ?? []) {
+      map[r.product_id] = (map[r.product_id] ?? 0) + 1;
+    }
+    setOpenReqs(map);
+  };
+
   useEffect(() => {
     load();
+    loadRequests();
   }, []);
 
   useBatchedRealtimeTables(
-    ["invoice_po_reservations", "purchase_order_items", "products"],
-    () => load(),
+    ["invoice_po_reservations", "purchase_order_items", "products", "shortage_requests"],
+    () => { load(); loadRequests(); },
     [],
     { debounceMs: 400 },
   );
+
 
   // ----- Derived priority / age -----
   const enriched = useMemo(() => {
@@ -188,6 +224,48 @@ function StockShortagesPage() {
     );
     navigate({ to: "/purchase-orders" });
   };
+
+  const openRequest = (
+    product_id: string,
+    product_name: string,
+    quantity: number,
+    invoice?: { id: string; number: string },
+  ) => {
+    setReqTarget({
+      product_id,
+      product_name,
+      invoice_id: invoice?.id,
+      invoice_number: invoice?.number,
+      quantity,
+    });
+    setReqQty(Math.max(1, quantity));
+    setReqNote("");
+  };
+
+  const submitRequest = async () => {
+    if (!reqTarget || !user) return;
+    if (!Number.isFinite(reqQty) || reqQty <= 0) {
+      toast.error(ar ? "الكمية غير صالحة" : "Invalid quantity");
+      return;
+    }
+    setReqSaving(true);
+    const { error } = await supabase.from("shortage_requests" as any).insert({
+      product_id: reqTarget.product_id,
+      invoice_id: reqTarget.invoice_id ?? null,
+      quantity: reqQty,
+      notes: reqNote || null,
+      requested_by: user.id,
+    } as any);
+    setReqSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(ar ? "تم تسجيل طلب النقص" : "Shortage request logged");
+    setReqTarget(null);
+    loadRequests();
+  };
+
 
   const copySummary = async () => {
     const lines = filtered.map((r) => {
@@ -344,19 +422,92 @@ function StockShortagesPage() {
                     onToggle={() => setExpanded((p) => ({ ...p, [r.product_id]: !p[r.product_id] }))}
                     selected={!!selected[r.product_id]}
                     onSelectChange={(v) => setSelected((p) => ({ ...p, [r.product_id]: v }))}
+                    openRequests={openReqs[r.product_id] ?? 0}
+                    onRequest={(inv) => openRequest(r.product_id, r.product_name, r.net, inv)}
                   />
                 ))}
+
               </div>
             </section>
           ))}
         </div>
       )}
+
+      <Dialog open={!!reqTarget} onOpenChange={(v) => { if (!v) setReqTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-200">
+              <ClipboardList className="h-5 w-5" />
+              {ar ? "طلب الكمية الناقصة" : "Request missing quantity"}
+            </DialogTitle>
+            <DialogDescription>
+              {ar
+                ? "سجّل طلبًا واضحًا للكمية الناقصة مع ربطه بالفاتورة لمتابعته في تقرير النواقص."
+                : "Log a clear request for the missing quantity, linked to its invoice for follow-up."}
+            </DialogDescription>
+          </DialogHeader>
+          {reqTarget && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-sm">
+                <div className="text-[10px] uppercase tracking-wider text-amber-500/80">
+                  {ar ? "المنتج" : "Product"}
+                </div>
+                <div className="mt-0.5 font-semibold text-amber-100">{reqTarget.product_name}</div>
+                {reqTarget.invoice_number && (
+                  <div className="mt-1.5 text-xs text-muted-foreground">
+                    {ar ? "مرتبطة بالفاتورة" : "Linked invoice"}:{" "}
+                    <span className="font-mono text-amber-300">{reqTarget.invoice_number}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {ar ? "الكمية المطلوبة" : "Requested quantity"}
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={reqQty}
+                  onChange={(e) => setReqQty(Math.max(0, parseInt(e.target.value || "0", 10)))}
+                  className="mt-1 tabular-nums"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {ar ? "ملاحظات (اختياري)" : "Notes (optional)"}
+                </label>
+                <Textarea
+                  rows={3}
+                  value={reqNote}
+                  onChange={(e) => setReqNote(e.target.value)}
+                  placeholder={ar ? "مثال: عاجل — العميل ينتظر التسليم…" : "e.g. urgent — customer awaiting delivery…"}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReqTarget(null)}>
+              {ar ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              onClick={submitRequest}
+              disabled={reqSaving || reqQty <= 0}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 text-black hover:from-amber-400 hover:to-amber-500"
+            >
+              <Send className="h-4 w-4 me-2" />
+              {ar ? "تسجيل الطلب" : "Submit request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
+
 function ShortageCard({
-  row, ar, isOpen, onToggle, selected, onSelectChange,
+  row, ar, isOpen, onToggle, selected, onSelectChange, openRequests, onRequest,
 }: {
   row: ShortageRow & { net: number; ageDays: number; urgency: "critical" | "waiting" | "covered" };
   ar: boolean;
@@ -364,7 +515,10 @@ function ShortageCard({
   onToggle: () => void;
   selected: boolean;
   onSelectChange: (v: boolean) => void;
+  openRequests: number;
+  onRequest: (invoice?: { id: string; number: string }) => void;
 }) {
+
   const urgencyRing =
     row.urgency === "critical"
       ? "border-red-500/40 bg-red-500/[0.03] hover:border-red-500/60"
@@ -419,45 +573,76 @@ function ShortageCard({
               <Chip label={ar ? "قادم" : "Incoming"} value={row.incoming_qty} tone="emerald" icon={<TruckIcon className="h-3 w-3" />} />
               <Chip label={ar ? "مطلوب" : "Needed"} value={row.needed_qty} tone="amber" />
               <Chip label={ar ? "نقص" : "Short"} value={row.net} tone={row.net > 0 ? "red" : "emerald"} bold />
+              {openRequests > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
+                  <ClipboardList className="h-3 w-3" />
+                  {ar ? `طلبات مفتوحة: ${openRequests}` : `Open reqs: ${openRequests}`}
+                </span>
+              )}
             </div>
           </div>
 
-          <button
-            className="mt-2.5 text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1"
-            onClick={onToggle}
-          >
-            {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {isOpen
-              ? ar ? "إخفاء الفواتير" : "Hide invoices"
-              : ar ? `عرض ${row.invoices.length} فاتورة` : `Show ${row.invoices.length} invoice${row.invoices.length === 1 ? "" : "s"}`}
-          </button>
+          <div className="mt-2.5 flex flex-wrap items-center gap-3">
+            <button
+              className="text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1"
+              onClick={onToggle}
+            >
+              {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {isOpen
+                ? ar ? "إخفاء الفواتير" : "Hide invoices"
+                : ar ? `عرض ${row.invoices.length} فاتورة` : `Show ${row.invoices.length} invoice${row.invoices.length === 1 ? "" : "s"}`}
+            </button>
+            {row.net > 0 && (
+              <button
+                onClick={() => onRequest()}
+                className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/5 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/10"
+              >
+                <Send className="h-3 w-3" />
+                {ar ? `طلب الكمية الناقصة (${row.net})` : `Request missing qty (${row.net})`}
+              </button>
+            )}
+          </div>
+
 
           {isOpen && (
             <div className="mt-2 rounded-lg border border-amber-500/15 divide-y divide-amber-500/10 overflow-hidden">
               {row.invoices.map((inv) => (
-                <Link
+                <div
                   key={inv.invoice_id}
-                  to="/invoices/$id"
-                  params={{ id: inv.invoice_id }}
                   className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-amber-500/5"
                 >
-                  <div className="min-w-0">
+                  <Link
+                    to="/invoices/$id"
+                    params={{ id: inv.invoice_id }}
+                    className="min-w-0 flex-1"
+                  >
                     <div className="font-medium text-amber-100 truncate">{inv.invoice_number}</div>
                     <div className="text-xs text-muted-foreground truncate">
                       {inv.customer_name ?? (ar ? "بدون عميل" : "No customer")} ·{" "}
                       {new Date(inv.created_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
                     </div>
-                  </div>
+                  </Link>
                   <div className="text-end shrink-0">
                     <div className="font-semibold text-rose-300 tabular-nums">
                       {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
                     </div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{inv.status}</div>
                   </div>
-                </Link>
+                  <button
+                    onClick={() =>
+                      onRequest({ id: inv.invoice_id, number: inv.invoice_number })
+                    }
+                    title={ar ? "طلب الكمية لهذه الفاتورة" : "Request qty for this invoice"}
+                    className="shrink-0 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 inline-flex items-center gap-1"
+                  >
+                    <Send className="h-3 w-3" />
+                    {ar ? "طلب" : "Request"}
+                  </button>
+                </div>
               ))}
             </div>
           )}
+
         </div>
       </div>
     </div>
