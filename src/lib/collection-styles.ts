@@ -1,20 +1,32 @@
 // Distinct color identity per product collection.
-// Used in filter chips, badges, and pickers across products & invoices.
+// Colors for the four seeded collections (JOY, UP, ART, QUATRO) keep their
+// original Tailwind classes for backward compatibility with pages that
+// don't yet pass inline styles. Custom collections added at runtime use
+// inline styles derived from `color_hex` in the DB registry.
 
-export type CollectionKey = "JOY" | "UP" | "ART" | "QUATRO";
+import { getCollectionEntry } from "@/lib/collection-registry";
+
+export type CollectionKey = string;
 
 type Style = {
-  // Solid (active filter pill / strong badge)
   solid: string;
-  // Soft (inactive filter pill background)
   soft: string;
-  // Badge (small pill on rows / picker)
   badge: string;
-  // Dot indicator
   dot: string;
+  solidStyle?: React.CSSProperties;
+  softStyle?: React.CSSProperties;
+  badgeStyle?: React.CSSProperties;
+  dotStyle?: React.CSSProperties;
 };
 
-const STYLES: Record<CollectionKey, Style> = {
+const FALLBACK: Style = {
+  solid: "bg-primary text-primary-foreground shadow",
+  soft: "bg-muted hover:bg-muted/70 text-foreground",
+  badge: "border-border bg-muted text-muted-foreground",
+  dot: "bg-muted-foreground",
+};
+
+const SEEDED: Record<string, Style> = {
   JOY: {
     solid: "bg-rose-500 text-white shadow-sm shadow-rose-500/30",
     soft: "bg-rose-500/10 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20",
@@ -41,28 +53,75 @@ const STYLES: Record<CollectionKey, Style> = {
   },
 };
 
-const FALLBACK: Style = {
-  solid: "bg-primary text-primary-foreground shadow",
-  soft: "bg-muted hover:bg-muted/70 text-foreground",
-  badge: "border-border bg-muted text-muted-foreground",
-  dot: "bg-muted-foreground",
-};
+function hexToRgb(hex: string): string {
+  const h = (hex || "#8b5cf6").replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const r = parseInt(full.slice(0, 2), 16) || 0;
+  const g = parseInt(full.slice(2, 4), 16) || 0;
+  const b = parseInt(full.slice(4, 6), 16) || 0;
+  return `${r} ${g} ${b}`;
+}
+
+function isLight(hex: string): boolean {
+  const [r, g, b] = hexToRgb(hex).split(" ").map(Number);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.65;
+}
+
+function dynamicStyle(hex: string): Style {
+  const rgb = hexToRgb(hex);
+  const textOnSolid = isLight(hex) ? "#0b0b0b" : "#ffffff";
+  return {
+    solid: "shadow-sm",
+    soft: "transition hover:brightness-110",
+    badge: "border",
+    dot: "",
+    solidStyle: {
+      backgroundColor: `rgb(${rgb})`,
+      color: textOnSolid,
+      boxShadow: `0 1px 2px rgba(${rgb} / 0.35)`,
+    },
+    softStyle: {
+      backgroundColor: `rgba(${rgb} / 0.12)`,
+      color: `rgb(${rgb})`,
+    },
+    badgeStyle: {
+      backgroundColor: `rgba(${rgb} / 0.15)`,
+      color: `rgb(${rgb})`,
+      borderColor: `rgba(${rgb} / 0.35)`,
+    },
+    dotStyle: {
+      backgroundColor: `rgb(${rgb})`,
+    },
+  };
+}
 
 export function collectionStyle(c?: string | null): Style {
   if (!c) return FALLBACK;
-  const key = c.toUpperCase() as CollectionKey;
-  return STYLES[key] ?? FALLBACK;
+  const key = c.toUpperCase();
+  if (SEEDED[key]) return SEEDED[key];
+  const entry = getCollectionEntry(key);
+  if (entry) return dynamicStyle(entry.color_hex);
+  return FALLBACK;
 }
 
 export function collectionPillClass(c: string | null | undefined, active: boolean) {
   const s = collectionStyle(c);
   return active ? s.solid : s.soft;
 }
-
+export function collectionPillStyle(c: string | null | undefined, active: boolean): React.CSSProperties | undefined {
+  const s = collectionStyle(c);
+  return active ? s.solidStyle : s.softStyle;
+}
 export function collectionBadgeClass(c: string | null | undefined) {
   return collectionStyle(c).badge;
 }
-
+export function collectionBadgeStyle(c: string | null | undefined): React.CSSProperties | undefined {
+  return collectionStyle(c).badgeStyle;
+}
 export function collectionDotClass(c: string | null | undefined) {
   return collectionStyle(c).dot;
+}
+export function collectionDotStyle(c: string | null | undefined): React.CSSProperties | undefined {
+  return collectionStyle(c).dotStyle;
 }

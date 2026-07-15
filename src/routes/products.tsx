@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus, PackagePlus, Truck } from "lucide-react";
-import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
+import { Plus, Pencil, Trash2, Search, Upload, Download, QrCode, Printer, Sliders, ImagePlus, PackagePlus, Truck, Palette } from "lucide-react";
+import { collectionPillClass, collectionPillStyle, collectionBadgeClass, collectionBadgeStyle, collectionDotClass, collectionDotStyle } from "@/lib/collection-styles";
 import { TableSkeleton } from "@/components/skeletons";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
-import { COLLECTIONS } from "@/lib/data";
+import { useCollections } from "@/lib/use-collections";
+import { ManageCollectionsDialog } from "@/components/manage-collections-dialog";
+import { useRole } from "@/lib/use-role";
 import { fmtMoney } from "@/lib/utils-money";
 import Papa from "papaparse";
 import QRCode from "qrcode";
@@ -51,6 +53,10 @@ function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const isExecutive = useIsExecutive();
+  const { isAdmin } = useRole();
+  const { items: collectionsList } = useCollections();
+  const COLLECTIONS = useMemo(() => collectionsList.map((c) => c.code), [collectionsList]);
+  const [manageOpen, setManageOpen] = useState(false);
   const [list, setList] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -195,7 +201,7 @@ function Products() {
       else if (!p.collection) counts.__none__++;
     }
     return counts;
-  }, [list]);
+  }, [list, COLLECTIONS]);
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
   const toggleAll = () => {
@@ -521,8 +527,9 @@ function Products() {
               key={c}
               onClick={() => setCollectionFilter(c)}
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
+              style={collectionPillStyle(c, collectionFilter === c)}
             >
-              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} style={collectionDotStyle(c)} aria-hidden />
               {c} ({collectionCounts[c] ?? 0})
             </button>
           ))}
@@ -534,8 +541,18 @@ function Products() {
               {t("no_collection")} ({collectionCounts.__none__})
             </button>
           )}
+          <button
+            onClick={() => setManageOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-700 dark:text-amber-300 hover:brightness-110 transition"
+            title={lang === "ar" ? "إدارة الكولكشنات" : "Manage collections"}
+          >
+            <Palette className="h-3.5 w-3.5" />
+            {lang === "ar" ? "إدارة" : "Manage"}
+          </button>
         </div>
       </div>
+      <ManageCollectionsDialog open={manageOpen} onOpenChange={setManageOpen} canEdit={isAdmin} />
+
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card no-print">
         {loading ? (
@@ -598,8 +615,8 @@ function Products() {
                               {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
                               {p.color && <span className="lg:hidden">• {p.color}</span>}
                               {p.collection && (
-                                <span className={`xl:hidden inline-flex items-center gap-1 rounded-md border px-1.5 py-0 text-[10px] font-bold ${collectionBadgeClass(p.collection)}`}>
-                                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}
+                                <span className={`xl:hidden inline-flex items-center gap-1 rounded-md border px-1.5 py-0 text-[10px] font-bold ${collectionBadgeClass(p.collection)}`} style={collectionBadgeStyle(p.collection)}>
+                                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} style={collectionDotStyle(p.collection)} aria-hidden />{p.collection}
                                 </span>
                               )}
                             </div>
@@ -610,7 +627,7 @@ function Products() {
                       <td className="px-2 py-3 hidden lg:table-cell text-muted-foreground sm:px-4">{p.color || "—"}</td>
                       <td className="px-2 py-3 hidden xl:table-cell sm:px-4">
                         {p.collection ? (
-                          <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
+                          <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${collectionBadgeClass(p.collection)}`} style={collectionBadgeStyle(p.collection)}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} style={collectionDotStyle(p.collection)} aria-hidden />{p.collection}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
