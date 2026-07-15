@@ -465,20 +465,24 @@ function Dashboard() {
 
 
 
-      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded ? "done" : "loading"}>
-        {visibleCards.map(({ key, label, value, fullValue, subValue, Icon, tone, sensitive }) => (
-          <NoirKpiCard
-            key={key}
-            label={label}
-            value={value}
-            fullValue={fullValue}
-            subValue={subValue}
-            Icon={Icon}
-            tone={tone}
-            hidden={!!sensitive && hidden}
-            loading={!loaded}
-          />
-        ))}
+      <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded && uiReady ? "done" : "loading"}>
+        {!uiReady
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton-noir h-[120px] rounded-2xl sm:h-[140px]" aria-hidden="true" />
+            ))
+          : visibleCards.map(({ key, label, value, fullValue, subValue, Icon, tone, sensitive }) => (
+              <NoirKpiCard
+                key={key}
+                label={label}
+                value={value}
+                fullValue={fullValue}
+                subValue={subValue}
+                Icon={Icon}
+                tone={tone}
+                hidden={!!sensitive && hidden}
+                loading={!loaded}
+              />
+            ))}
       </div>
 
 
