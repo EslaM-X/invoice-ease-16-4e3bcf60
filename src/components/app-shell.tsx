@@ -51,6 +51,7 @@ const items: NavEntry[] = [
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
       { to: "/inventory-reconcile", icon: ClipboardList, key: "inventory_reconcile" as const },
       { to: "/defective-items", icon: PackageOpen, key: "defective_items" as const },
+      { to: "/stock-shortages", icon: AlertTriangle, key: "stock_shortages" as const },
       { to: "/qr-price-list", icon: FileText, key: "qr_price_list" as const },
     ],
   },
