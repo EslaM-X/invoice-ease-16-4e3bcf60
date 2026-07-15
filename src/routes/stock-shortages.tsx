@@ -68,6 +68,8 @@ function StockShortagesPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [sortBy, setSortBy] = useState<SortKey>("priority");
   const [urgencyOnly, setUrgencyOnly] = useState<"all" | "critical" | "waiting">("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   // Existing open shortage requests, keyed by product_id — used to badge cards.
   const [openReqs, setOpenReqs] = useState<Record<string, number>>({});
@@ -140,6 +142,27 @@ function StockShortagesPage() {
     const needle = q.trim().toLowerCase();
     let list = enriched;
     if (urgencyOnly !== "all") list = list.filter((r) => r.urgency === urgencyOnly);
+
+    // Date range filter: keep only invoices within [from, to], drop rows with no matches.
+    const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
+    const toMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
+    if (fromMs !== null || toMs !== null) {
+      list = list
+        .map((r) => {
+          const invs = r.invoices.filter((i) => {
+            const t = new Date(i.created_at).getTime();
+            if (fromMs !== null && t < fromMs) return false;
+            if (toMs !== null && t > toMs) return false;
+            return true;
+          });
+          if (invs.length === 0) return null;
+          const needed = invs.reduce((s, i) => s + (i.quantity || 0), 0);
+          const net = Math.max(0, needed - r.incoming_qty);
+          return { ...r, invoices: invs, needed_qty: needed, net };
+        })
+        .filter(Boolean) as typeof list;
+    }
+
     if (needle) {
       list = list.filter(
         (r) =>
@@ -165,7 +188,7 @@ function StockShortagesPage() {
       }
     });
     return sorted;
-  }, [enriched, q, sortBy, urgencyOnly]);
+  }, [enriched, q, sortBy, urgencyOnly, dateFrom, dateTo]);
 
   // ----- Grouped by collection for smart display -----
   const grouped = useMemo(() => {
@@ -384,6 +407,32 @@ function StockShortagesPage() {
             <option value="oldest">{ar ? "الأقدم فاتورة" : "Oldest invoice"}</option>
             <option value="name">{ar ? "الاسم" : "Name"}</option>
           </select>
+          <div className="flex items-center gap-1.5 text-xs text-amber-100">
+            <span className="text-muted-foreground">{ar ? "من" : "From"}</span>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100"
+            />
+            <span className="text-muted-foreground">{ar ? "إلى" : "To"}</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100"
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setDateFrom(""); setDateTo(""); }}
+                className="h-8 px-2 text-amber-300 hover:text-amber-200"
+              >
+                {ar ? "مسح" : "Clear"}
+              </Button>
+            )}
+          </div>
           {filtered.filter((r) => r.net > 0).length > 0 && (
             <Button variant="ghost" size="sm" onClick={toggleSelectAllShort} className="text-amber-300 hover:text-amber-200">
               {selectedIds.length > 0 && filtered.filter((r) => r.net > 0).every((r) => selected[r.product_id])
