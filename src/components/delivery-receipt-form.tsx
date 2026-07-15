@@ -729,14 +729,29 @@ export function DeliveryReceiptForm({
                     <td className="px-3 py-2 text-center font-semibold tabular-nums">{remaining}</td>
                     <td className="px-3 py-2 text-center">
                       {r.isMultiPart ? (
-                        <div className="mx-auto inline-flex flex-col items-center gap-0.5">
-                          <span className="ltr-nums text-lg font-bold text-primary">
-                            {r.partsQty.full + r.partsQty.mixer + r.partsQty.trim}
-                          </span>
-                          <span className="text-[9px] text-muted-foreground">
-                            {isAr ? "من الأجزاء أعلاه" : "from parts above"}
-                          </span>
-                        </div>
+                        splitOpen[r.invoice_item_id] ? (
+                          <div className="mx-auto inline-flex flex-col items-center gap-0.5">
+                            <span className="ltr-nums text-lg font-bold text-primary">
+                              {r.partsQty.full + r.partsQty.mixer + r.partsQty.trim}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground">
+                              {isAr ? "من الأجزاء أعلاه" : "from parts above"}
+                            </span>
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={remaining}
+                            value={r.partsQty.full}
+                            disabled={!r.selected || fullyDelivered}
+                            onChange={(e) => {
+                              const v = Math.max(0, Math.min(remaining, parseInt(e.target.value || "0", 10)));
+                              setRow(idx, { partsQty: { full: v, mixer: 0, trim: 0 } });
+                            }}
+                            className="mx-auto h-8 w-20 text-center tabular-nums"
+                          />
+                        )
                       ) : (
                         <Input
                           type="number"
@@ -750,6 +765,7 @@ export function DeliveryReceiptForm({
                           className="mx-auto h-8 w-20 text-center tabular-nums"
                         />
                       )}
+
                     </td>
                     <td className="px-3 py-2">
                       <Input
