@@ -651,6 +651,19 @@ export function DeliveryReceiptForm({
                                 >
                                   {isAr ? "مسح" : "Clear"}
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Collapse: fold split back into full and hide panel.
+                                    const merged = r.partsQty.full + r.partsQty.mixer + r.partsQty.trim;
+                                    setRow(idx, { partsQty: { full: merged, mixer: 0, trim: 0 } });
+                                    setSplitOpen((m) => ({ ...m, [r.invoice_item_id]: false }));
+                                  }}
+                                  className="rounded-full border border-border bg-background px-2 py-[2px] text-[9.5px] font-medium text-muted-foreground transition hover:bg-muted/50"
+                                >
+                                  {isAr ? "إخفاء التقسيم" : "Hide split"}
+                                </button>
+
                                 <span className={`ltr-nums rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
                                   over ? "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
                                        : "border-primary/40 bg-background text-primary"
