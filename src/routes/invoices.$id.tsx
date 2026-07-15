@@ -168,6 +168,67 @@ function InvoiceView() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={shortageOpen} onOpenChange={setShortageOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <span className="text-amber-600">⚠</span>
+              {isAr ? "لا يمكن إقفال الفاتورة — يوجد نقص غير مُغطّى" : "Cannot close — uncovered shortage"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAr
+                ? "هذه الفاتورة بها منتجات مطلوبة أكثر من المتاح في المخزون. راجع الكميات الناقصة أدناه:"
+                : "This invoice has items where required qty exceeds available stock. Review the missing quantities below:"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-72 overflow-y-auto rounded-lg border divide-y">
+            {shortage.map((s) => {
+              const net = Math.max(0, s.quantity - s.stock_quantity - s.incoming_qty);
+              return (
+                <div key={s.product_id} className="flex items-center gap-3 p-2.5">
+                  <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded border bg-muted">
+                    {s.image_url
+                      ? <img src={s.image_url} alt={s.product_name} className="h-full w-full object-cover" />
+                      : <div className="h-full w-full" />}
+                  </div>
+                  <div className="min-w-0 flex-1 text-xs">
+                    <div className="truncate font-semibold">{s.product_name}</div>
+                    <div className="truncate text-muted-foreground">
+                      {s.serial_number && <span className="me-2 font-mono">{s.serial_number}</span>}
+                      {s.color && <span>{isAr ? "اللون" : "Color"}: {s.color}</span>}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 ltr-nums">
+                      <span className="font-bold text-destructive">{isAr ? "مطلوب" : "Needed"}: {s.quantity}</span>
+                      <span className="text-emerald-700 dark:text-emerald-400">{isAr ? "متاح" : "In stock"}: {s.stock_quantity}</span>
+                      <span className="text-sky-700 dark:text-sky-400">{isAr ? "قادم" : "Incoming"}: {s.incoming_qty}</span>
+                      {net > 0 && <span className="font-semibold text-amber-700 dark:text-amber-400">{isAr ? "صافي النقص" : "Net short"}: {net}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <AlertDialogCancel>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                className="rounded-full border-sky-500/40 text-sky-700 dark:text-sky-400"
+                onClick={() => { setShortageOpen(false); navigate({ to: "/stock-shortages" }); }}
+              >
+                {isAr ? "طلب الكمية الناقصة" : "Order missing qty"}
+              </Button>
+              <AlertDialogAction
+                onClick={markDeliveredNow}
+                className="rounded-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                {isAr ? "أكمل الإقفال بتأكيد" : "Close anyway"}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
         <Link to="/invoices"><Button variant="ghost" className="gap-2 rounded-full"><ArrowLeft className="h-4 w-4" />{t("invoices")}</Button></Link>
         <div className="flex flex-wrap gap-2">
