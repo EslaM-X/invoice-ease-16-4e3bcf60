@@ -142,6 +142,27 @@ function StockShortagesPage() {
     const needle = q.trim().toLowerCase();
     let list = enriched;
     if (urgencyOnly !== "all") list = list.filter((r) => r.urgency === urgencyOnly);
+
+    // Date range filter: keep only invoices within [from, to], drop rows with no matches.
+    const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
+    const toMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
+    if (fromMs !== null || toMs !== null) {
+      list = list
+        .map((r) => {
+          const invs = r.invoices.filter((i) => {
+            const t = new Date(i.created_at).getTime();
+            if (fromMs !== null && t < fromMs) return false;
+            if (toMs !== null && t > toMs) return false;
+            return true;
+          });
+          if (invs.length === 0) return null;
+          const needed = invs.reduce((s, i) => s + (i.quantity || 0), 0);
+          const net = Math.max(0, needed - r.incoming_qty);
+          return { ...r, invoices: invs, needed_qty: needed, net };
+        })
+        .filter(Boolean) as typeof list;
+    }
+
     if (needle) {
       list = list.filter(
         (r) =>
@@ -167,7 +188,7 @@ function StockShortagesPage() {
       }
     });
     return sorted;
-  }, [enriched, q, sortBy, urgencyOnly]);
+  }, [enriched, q, sortBy, urgencyOnly, dateFrom, dateTo]);
 
   // ----- Grouped by collection for smart display -----
   const grouped = useMemo(() => {
