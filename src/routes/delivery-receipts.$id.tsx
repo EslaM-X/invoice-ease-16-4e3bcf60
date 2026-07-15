@@ -5,13 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Pencil, Plus, FileDown, History } from "lucide-react";
+import { Printer, ArrowLeft, Pencil, Plus, FileDown, History, Trash2 } from "lucide-react";
 import { fmtDateTime } from "@/lib/utils-money";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
 import { elementToPdf, fetchInvoiceItemsForPrint, type PrintRow } from "@/lib/delivery-receipts";
 import { toast } from "sonner";
 import { DeliveryReceiptTracker } from "@/components/delivery-receipt-tracker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 type Search = { print?: boolean };
 
