@@ -605,8 +605,8 @@ function Products() {
                               {p.serial_number && <span className="font-mono">{p.serial_number}</span>}
                               {p.color && <span className="lg:hidden">• {p.color}</span>}
                               {p.collection && (
-                                <span className={`xl:hidden inline-flex items-center gap-1 rounded-md border px-1.5 py-0 text-[10px] font-bold ${collectionBadgeClass(p.collection)}`}>
-                                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}
+                                <span className={`xl:hidden inline-flex items-center gap-1 rounded-md border px-1.5 py-0 text-[10px] font-bold ${collectionBadgeClass(p.collection)}`} style={collectionBadgeStyle(p.collection)}>
+                                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} style={collectionDotStyle(p.collection)} aria-hidden />{p.collection}
                                 </span>
                               )}
                             </div>
