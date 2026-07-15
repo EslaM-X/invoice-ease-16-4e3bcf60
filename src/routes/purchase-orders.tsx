@@ -127,6 +127,12 @@ function PurchaseOrdersPage() {
   const [trackId, setTrackId] = useState<string | null>(null);
   const [editShipPo, setEditShipPo] = useState<PO | null>(null);
 
+  // Auto-open the create dialog when navigated here from Stock Shortages with a prefill
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("po_prefill_v1")) setCreateOpen(true);
+  }, []);
+
   // Access guard
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isPurchasing && !isCFO) {
