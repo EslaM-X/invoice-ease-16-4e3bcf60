@@ -844,7 +844,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         // Save subject (not part of RPC signature).
         await supabase
           .from("invoices")
-          .update({ subject: subject.trim() || null, delivery_days: deliveryDays } as any)
+          .update({ subject: subject.trim() || null, delivery_days: deliveryDays, tax_enabled: taxEnabled } as any)
           .eq("id", newId as string);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: newId as string } });
