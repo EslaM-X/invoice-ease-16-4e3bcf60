@@ -95,16 +95,30 @@ function StockShortagesPage() {
     setLoading(false);
   };
 
+  const loadRequests = async () => {
+    const { data } = await supabase
+      .from("shortage_requests" as any)
+      .select("product_id,status")
+      .in("status", ["open", "ordered"]);
+    const map: Record<string, number> = {};
+    for (const r of (data as any[]) ?? []) {
+      map[r.product_id] = (map[r.product_id] ?? 0) + 1;
+    }
+    setOpenReqs(map);
+  };
+
   useEffect(() => {
     load();
+    loadRequests();
   }, []);
 
   useBatchedRealtimeTables(
-    ["invoice_po_reservations", "purchase_order_items", "products"],
-    () => load(),
+    ["invoice_po_reservations", "purchase_order_items", "products", "shortage_requests"],
+    () => { load(); loadRequests(); },
     [],
     { debounceMs: 400 },
   );
+
 
   // ----- Derived priority / age -----
   const enriched = useMemo(() => {
