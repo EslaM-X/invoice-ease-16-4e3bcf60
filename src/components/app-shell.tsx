@@ -24,6 +24,7 @@ import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { XAssistant } from "@/components/x-assistant";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
 import { useChatNotifications } from "@/hooks/use-chat-notifications";
+import { useCollections } from "@/lib/use-collections";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
