@@ -437,7 +437,7 @@ function StockShortagesPage() {
 }
 
 function ShortageCard({
-  row, ar, isOpen, onToggle, selected, onSelectChange,
+  row, ar, isOpen, onToggle, selected, onSelectChange, openRequests, onRequest,
 }: {
   row: ShortageRow & { net: number; ageDays: number; urgency: "critical" | "waiting" | "covered" };
   ar: boolean;
@@ -445,7 +445,10 @@ function ShortageCard({
   onToggle: () => void;
   selected: boolean;
   onSelectChange: (v: boolean) => void;
+  openRequests: number;
+  onRequest: (invoice?: { id: string; number: string }) => void;
 }) {
+
   const urgencyRing =
     row.urgency === "critical"
       ? "border-red-500/40 bg-red-500/[0.03] hover:border-red-500/60"
