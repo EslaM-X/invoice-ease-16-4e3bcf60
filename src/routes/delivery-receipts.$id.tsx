@@ -51,6 +51,8 @@ function ReceiptView() {
   const [exporting, setExporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
 
 
   useEffect(() => {
