@@ -307,6 +307,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </GroupNav>
         )}
+        {!ui.isNavHidden("reports_group") && (
         <GroupNav
           label={t("reports")}
           icon={BarChart3}
