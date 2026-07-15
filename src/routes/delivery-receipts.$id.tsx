@@ -49,7 +49,9 @@ function ReceiptView() {
   const [auditLog, setAuditLog] = useState<any[]>([]);
   const [showAudit, setShowAudit] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
 
   useEffect(() => {
     (async () => {
