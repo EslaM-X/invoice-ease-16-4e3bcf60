@@ -186,16 +186,23 @@ function AccessStudio() {
   );
 }
 
+type Snapshot = {
+  navHidden: string[];
+  navOrder: string[];
+  cardsHidden: string[];
+  cardsOrder: string[];
+};
+
+const EMPTY_SNAPSHOT: Snapshot = { navHidden: [], navOrder: [], cardsHidden: [], cardsOrder: [] };
+
 function Inspector({ member, onReloadMembers }: { member: Member; onReloadMembers: () => void }) {
   const { lang } = useI18n();
   const loadFn = useServerFn(loadUserPrefs);
   const saveFn = useServerFn(saveUserPrefs);
   const applyRoleFn = useServerFn(applyPrefsToRole);
   const [loaded, setLoaded] = useState(false);
-  const [navHidden, setNavHidden] = useState<Set<string>>(new Set());
-  const [navOrder, setNavOrder] = useState<string[]>(NAV_TOP_ORDER);
-  const [cardsHidden, setCardsHidden] = useState<Set<string>>(new Set());
-  const [cardsOrder, setCardsOrder] = useState<string[]>(DASHBOARD_CARDS.map((c) => c.key));
+  const history = useHistoryState<Snapshot>(EMPTY_SNAPSHOT);
+  const { state: snap, set: setSnap, reset: resetSnap, undo, redo, canUndo, canRedo, pastCount, futureCount } = history;
   const [savingState, setSavingState] = useState<"idle" | "saving" | "saved">("idle");
   const [applyRoleOpen, setApplyRoleOpen] = useState(false);
   const [applyRole, setApplyRole] = useState<string>("cashier");
@@ -209,10 +216,13 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
       const no = Array.isArray((row as any).nav_order) ? (row as any).nav_order : [];
       const ch = Array.isArray((row as any).cards_hidden) ? (row as any).cards_hidden : [];
       const co = Array.isArray((row as any).cards_order) ? (row as any).cards_order : [];
-      setNavHidden(new Set(nh));
-      setNavOrder(no.length ? mergeOrder(no, NAV_TOP_ORDER) : NAV_TOP_ORDER);
-      setCardsHidden(new Set(ch));
-      setCardsOrder(co.length ? mergeOrder(co, DASHBOARD_CARDS.map((c) => c.key)) : DASHBOARD_CARDS.map((c) => c.key));
+      // resetSnap clears undo/redo history when switching users or reloading.
+      resetSnap({
+        navHidden: nh,
+        navOrder: no.length ? mergeOrder(no, NAV_TOP_ORDER) : NAV_TOP_ORDER,
+        cardsHidden: ch,
+        cardsOrder: co.length ? mergeOrder(co, DASHBOARD_CARDS.map((c) => c.key)) : DASHBOARD_CARDS.map((c) => c.key),
+      });
       setLoaded(true);
       setSavingState("idle");
     })();
@@ -227,10 +237,10 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
       try {
         await saveFn({ data: {
           user_id: member.user_id,
-          nav_hidden: Array.from(navHidden),
-          nav_order: navOrder,
-          cards_hidden: Array.from(cardsHidden),
-          cards_order: cardsOrder,
+          nav_hidden: snap.navHidden,
+          nav_order: snap.navOrder,
+          cards_hidden: snap.cardsHidden,
+          cards_order: snap.cardsOrder,
           mobile_tabs: [],
         } } as any);
         setSavingState("saved");
@@ -242,32 +252,47 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line
-  }, [navHidden, navOrder, cardsHidden, cardsOrder]);
+  }, [snap]);
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = redo.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || (e.target as HTMLElement | null)?.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
 
   const toggleNav = (key: string) => {
-    setNavHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
+    setSnap((s) => {
+      const has = s.navHidden.includes(key);
+      return { ...s, navHidden: has ? s.navHidden.filter((k) => k !== key) : [...s.navHidden, key] };
     });
   };
   const toggleCard = (key: string) => {
-    setCardsHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
+    setSnap((s) => {
+      const has = s.cardsHidden.includes(key);
+      return { ...s, cardsHidden: has ? s.cardsHidden.filter((k) => k !== key) : [...s.cardsHidden, key] };
     });
   };
+  const setNavOrder = (next: string[]) => setSnap((s) => ({ ...s, navOrder: next }));
+  const setCardsOrder = (next: string[]) => setSnap((s) => ({ ...s, cardsOrder: next }));
 
   const applyToRole = async () => {
     setApplyBusy(true);
     try {
       const res: any = await applyRoleFn({ data: {
         role: applyRole,
-        nav_hidden: Array.from(navHidden),
-        nav_order: navOrder,
-        cards_hidden: Array.from(cardsHidden),
-        cards_order: cardsOrder,
+        nav_hidden: snap.navHidden,
+        nav_order: snap.navOrder,
+        cards_hidden: snap.cardsHidden,
+        cards_order: snap.cardsOrder,
         overwrite: true,
       } } as any);
       toast.success(
@@ -292,6 +317,30 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SaveIndicator state={savingState} lang={lang} />
+          <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/30 p-0.5">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={undo}
+              disabled={!canUndo}
+              title={lang === "ar" ? `تراجع (Ctrl+Z) — ${pastCount}` : `Undo (Ctrl+Z) — ${pastCount}`}
+              className="h-7 px-2"
+            >
+              <Undo2 className="h-4 w-4" />
+              {pastCount > 0 && <span className="ms-1 text-[10px] tabular-nums">{pastCount}</span>}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={redo}
+              disabled={!canRedo}
+              title={lang === "ar" ? `إعادة (Ctrl+Shift+Z) — ${futureCount}` : `Redo (Ctrl+Shift+Z) — ${futureCount}`}
+              className="h-7 px-2"
+            >
+              <Redo2 className="h-4 w-4" />
+              {futureCount > 0 && <span className="ms-1 text-[10px] tabular-nums">{futureCount}</span>}
+            </Button>
+          </div>
           <Button
             size="sm"
             variant="outline"
@@ -340,6 +389,8 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
         </div>
       </div>
 
+      <PrecedencePanel lang={lang} />
+
       <Tabs defaultValue="nav" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="nav"><ListChecks className="me-1 h-4 w-4" />{lang === "ar" ? "التنقل" : "Navigation"}</TabsTrigger>
@@ -352,19 +403,19 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 {lang === "ar"
-                  ? "اسحب لإعادة الترتيب، وبدّل مفتاح الإظهار/الإخفاء — يُحفظ كل تغيير تلقائيًا. (الصلاحية الفعلية على البيانات تبقى محكومة بالـ Roles.)"
-                  : "Drag to reorder, toggle to hide/show — changes save automatically. (Data access is still governed by Roles.)"}
+                  ? "اسحب لإعادة الترتيب، وبدّل مفتاح الإظهار/الإخفاء — يُحفظ كل تغيير تلقائيًا. استخدم Ctrl+Z للتراجع."
+                  : "Drag to reorder, toggle to hide/show — changes save automatically. Use Ctrl+Z to undo."}
               </p>
 
               {/* Top-level order + toggles */}
               <DragList
-                items={navOrder}
+                items={snap.navOrder}
                 onReorder={setNavOrder}
                 renderRow={(key) => {
                   const grp = NAV_GROUP_BY_KEY[key];
                   const solo = NAV_ITEMS.find((n) => n.key === key && !n.group);
                   const label = grp ? labelOf(grp, lang) : solo ? labelOf(solo, lang) : key;
-                  const hidden = navHidden.has(key);
+                  const hidden = snap.navHidden.includes(key);
                   return (
                     <>
                       <div className="flex-1 truncate text-sm font-medium">
@@ -388,7 +439,7 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
                       {labelOf(g, lang)}
                     </div>
                     {children.map((c) => {
-                      const hidden = navHidden.has(c.key);
+                      const hidden = snap.navHidden.includes(c.key);
                       return (
                         <label key={c.key} className="flex items-center justify-between rounded-md border border-transparent p-2 hover:bg-muted/40">
                           <span className="text-sm">{labelOf(c, lang)}</span>
@@ -406,12 +457,12 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
         <TabsContent value="cards" className="mt-4 space-y-4">
           {!loaded ? <SkeletonBlock /> : (
             <DragList
-              items={cardsOrder}
+              items={snap.cardsOrder}
               onReorder={setCardsOrder}
               renderRow={(key) => {
                 const def = DASHBOARD_CARDS.find((c) => c.key === key);
                 if (!def) return null;
-                const hidden = cardsHidden.has(key);
+                const hidden = snap.cardsHidden.includes(key);
                 return (
                   <>
                     <div className="flex-1">
@@ -434,6 +485,57 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
     </Card>
   );
 }
+
+/** Explains the exact rule precedence used across the app. */
+function PrecedencePanel({ lang }: { lang: "ar" | "en" }) {
+  const rows = lang === "ar"
+    ? [
+        { tier: "1", name: "Super Admin", detail: "يتخطى كل القيود ويرى كل شيء دائمًا.", tone: "gold" as const },
+        { tier: "2", name: "تفضيلات المستخدم", detail: "الإظهار/الإخفاء والترتيب المحفوظ لهذا الحساب — أعلى أولوية بعد Super Admin.", tone: "user" as const },
+        { tier: "3", name: "قالب الدور (Apply to Role)", detail: "يُنسخ إلى تفضيلات كل مستخدم بنفس الدور. لا يوجد قالب حي — التطبيق يكتب فوق تفضيلات المستخدمين.", tone: "role" as const },
+        { tier: "4", name: "الافتراضي", detail: "كامل الكاتالوج (كل التابات والكروت) بالترتيب الأصلي عند غياب أي تفضيل.", tone: "default" as const },
+      ]
+    : [
+        { tier: "1", name: "Super Admin", detail: "Bypasses every restriction and always sees everything.", tone: "gold" as const },
+        { tier: "2", name: "User preferences", detail: "Per-account visibility & order saved here — highest priority after Super Admin.", tone: "user" as const },
+        { tier: "3", name: "Role template (Apply to Role)", detail: "Copied into each matching user's preferences. There is no live role rule — applying overwrites their preferences.", tone: "role" as const },
+        { tier: "4", name: "Default", detail: "Full catalog (all tabs & cards) in original order when no preference is set.", tone: "default" as const },
+      ];
+
+  const tone = {
+    gold: "border-[#c9a84c]/60 bg-[#c9a84c]/10 text-[#c9a84c]",
+    user: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600",
+    role: "border-sky-500/40 bg-sky-500/10 text-sky-600",
+    default: "border-border/60 bg-muted/40 text-muted-foreground",
+  };
+
+  return (
+    <div className="mb-4 rounded-xl border border-[#c9a84c]/25 bg-gradient-to-b from-[#c9a84c]/5 to-transparent p-3">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#c9a84c]">
+        <Layers className="h-3.5 w-3.5" />
+        {lang === "ar" ? "ترتيب الأولوية" : "Rule precedence"}
+        <span className="ms-auto inline-flex items-center gap-1 text-[10px] font-normal normal-case text-muted-foreground">
+          <Info className="h-3 w-3" />
+          {lang === "ar" ? "يُطبَّق الأول الذي يوجد له قاعدة" : "First tier with a rule wins"}
+        </span>
+      </div>
+      <ol className="grid gap-1.5 sm:grid-cols-2">
+        {rows.map((r) => (
+          <li key={r.tier} className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 p-2">
+            <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-bold ${tone[r.tone]}`}>
+              {r.tier}
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold">{r.name}</div>
+              <div className="text-[11px] leading-snug text-muted-foreground">{r.detail}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 
 function SaveIndicator({ state, lang }: { state: "idle" | "saving" | "saved"; lang: "ar" | "en" }) {
   if (state === "saving") {
