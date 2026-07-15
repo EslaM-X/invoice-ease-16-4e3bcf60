@@ -228,7 +228,7 @@ function ReceiptView() {
                     const combinedNote = [it.this_note, summary].filter(Boolean).join(" — ");
 
                     // Multi-part breakdown
-                    let partsBlock: JSX.Element | null = null;
+                    let partsBlock: React.ReactNode = null;
                     if (it.is_multi_part) {
                       const t = it.parts_this, p = it.parts_prior, l = it.parts_later;
                       const totalMixers = t.mixer + p.mixer + l.mixer + t.full + p.full + l.full;
