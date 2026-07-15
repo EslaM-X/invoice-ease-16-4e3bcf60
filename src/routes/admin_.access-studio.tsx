@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  Users, Search, Eye, ArrowUp, ArrowDown, Save, UserPlus, ShieldCheck,
-  Loader2, LayoutDashboard, ListChecks, Sparkles,
+  Users, Search, Eye, Save, UserPlus, ShieldCheck,
+  Loader2, LayoutDashboard, ListChecks, Sparkles, GripVertical, CheckCircle2, Copy,
 } from "lucide-react";
 import {
-  listCompanyMembers, loadUserPrefs, saveUserPrefs, createCompanyAccount,
+  listCompanyMembers, loadUserPrefs, saveUserPrefs, createCompanyAccount, applyPrefsToRole,
 } from "@/lib/access-studio.functions";
 import {
   NAV_TOP_ORDER, NAV_GROUPS, NAV_ITEMS, NAV_GROUP_BY_KEY, navChildrenOf,
@@ -188,13 +188,16 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
   const { lang } = useI18n();
   const loadFn = useServerFn(loadUserPrefs);
   const saveFn = useServerFn(saveUserPrefs);
+  const applyRoleFn = useServerFn(applyPrefsToRole);
   const [loaded, setLoaded] = useState(false);
   const [navHidden, setNavHidden] = useState<Set<string>>(new Set());
   const [navOrder, setNavOrder] = useState<string[]>(NAV_TOP_ORDER);
   const [cardsHidden, setCardsHidden] = useState<Set<string>>(new Set());
   const [cardsOrder, setCardsOrder] = useState<string[]>(DASHBOARD_CARDS.map((c) => c.key));
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const [savingState, setSavingState] = useState<"idle" | "saving" | "saved">("idle");
+  const [applyRoleOpen, setApplyRoleOpen] = useState(false);
+  const [applyRole, setApplyRole] = useState<string>("cashier");
+  const [applyBusy, setApplyBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -209,13 +212,37 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
       setCardsHidden(new Set(ch));
       setCardsOrder(co.length ? mergeOrder(co, DASHBOARD_CARDS.map((c) => c.key)) : DASHBOARD_CARDS.map((c) => c.key));
       setLoaded(true);
-      setDirty(false);
+      setSavingState("idle");
     })();
     // eslint-disable-next-line
   }, [member.user_id]);
 
+  // Debounced auto-save — fires 700ms after the last change.
+  useEffect(() => {
+    if (!loaded) return;
+    setSavingState("saving");
+    const t = setTimeout(async () => {
+      try {
+        await saveFn({ data: {
+          user_id: member.user_id,
+          nav_hidden: Array.from(navHidden),
+          nav_order: navOrder,
+          cards_hidden: Array.from(cardsHidden),
+          cards_order: cardsOrder,
+          mobile_tabs: [],
+        } } as any);
+        setSavingState("saved");
+        setTimeout(() => setSavingState((s) => (s === "saved" ? "idle" : s)), 1600);
+      } catch (e: any) {
+        toast.error(e?.message ?? "Failed to save");
+        setSavingState("idle");
+      }
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [navHidden, navOrder, cardsHidden, cardsOrder]);
+
   const toggleNav = (key: string) => {
-    setDirty(true);
     setNavHidden((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
@@ -223,7 +250,6 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
     });
   };
   const toggleCard = (key: string) => {
-    setDirty(true);
     setCardsHidden((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
@@ -231,34 +257,27 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
     });
   };
 
-  const move = (list: string[], setter: (l: string[]) => void, key: string, dir: -1 | 1) => {
-    const i = list.indexOf(key);
-    if (i < 0) return;
-    const j = i + dir;
-    if (j < 0 || j >= list.length) return;
-    const next = [...list];
-    [next[i], next[j]] = [next[j], next[i]];
-    setter(next);
-    setDirty(true);
-  };
-
-  const save = async () => {
-    setSaving(true);
+  const applyToRole = async () => {
+    setApplyBusy(true);
     try {
-      await saveFn({ data: {
-        user_id: member.user_id,
+      const res: any = await applyRoleFn({ data: {
+        role: applyRole,
         nav_hidden: Array.from(navHidden),
         nav_order: navOrder,
         cards_hidden: Array.from(cardsHidden),
         cards_order: cardsOrder,
-        mobile_tabs: [],
+        overwrite: true,
       } } as any);
-      toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
-      setDirty(false);
+      toast.success(
+        lang === "ar"
+          ? `تم تطبيق القالب على ${res?.applied ?? 0} مستخدم`
+          : `Applied template to ${res?.applied ?? 0} users`,
+      );
+      setApplyRoleOpen(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Failed");
     } finally {
-      setSaving(false);
+      setApplyBusy(false);
     }
   };
 
@@ -270,6 +289,7 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
           <div className="truncate text-xs text-muted-foreground">{member.email}</div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <SaveIndicator state={savingState} lang={lang} />
           <Button
             size="sm"
             variant="outline"
@@ -279,10 +299,42 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
             <Eye className="me-1 h-4 w-4" />
             {lang === "ar" ? "شاهد بعينَيه" : "Preview as user"}
           </Button>
-          <Button size="sm" onClick={save} disabled={!dirty || saving}>
-            {saving ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Save className="me-1 h-4 w-4" />}
-            {lang === "ar" ? "حفظ" : "Save"}
-          </Button>
+          <Dialog open={applyRoleOpen} onOpenChange={setApplyRoleOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Copy className="me-1 h-4 w-4" />
+                {lang === "ar" ? "طبّق على Role" : "Apply to role"}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{lang === "ar" ? "تطبيق القالب على كل المستخدمين بدور محدد" : "Apply template to all users with role"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  {lang === "ar"
+                    ? "ستُحفظ نفس إعدادات الإظهار/الإخفاء والترتيب لكل المستخدمين الذين يمتلكون هذا الدور. سيتم استبدال إعداداتهم السابقة."
+                    : "The same visibility and order settings will be saved for every user holding this role, overwriting their previous settings."}
+                </p>
+                <div>
+                  <label className="text-xs font-medium">{lang === "ar" ? "الدور" : "Role"}</label>
+                  <Select value={applyRole} onValueChange={setApplyRole}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setApplyRoleOpen(false)}>{lang === "ar" ? "إلغاء" : "Cancel"}</Button>
+                <Button onClick={applyToRole} disabled={applyBusy}>
+                  {applyBusy ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Save className="me-1 h-4 w-4" />}
+                  {lang === "ar" ? "تطبيق" : "Apply"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -298,39 +350,31 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 {lang === "ar"
-                  ? "أخفِ أو أظهر أي عنصر، أو غيّر ترتيب المجموعات العليا. (الصلاحية الفعلية على البيانات تبقى محكومة بالـ Roles.)"
-                  : "Hide/show any item and reorder top-level groups. (Actual data access is still governed by Roles.)"}
+                  ? "اسحب لإعادة الترتيب، وبدّل مفتاح الإظهار/الإخفاء — يُحفظ كل تغيير تلقائيًا. (الصلاحية الفعلية على البيانات تبقى محكومة بالـ Roles.)"
+                  : "Drag to reorder, toggle to hide/show — changes save automatically. (Data access is still governed by Roles.)"}
               </p>
 
               {/* Top-level order + toggles */}
-              <div className="space-y-2 rounded-lg border border-border/60 p-3">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {lang === "ar" ? "الترتيب والإخفاء" : "Order & visibility"}
-                </div>
-                {navOrder.map((key, idx) => {
+              <DragList
+                items={navOrder}
+                onReorder={setNavOrder}
+                renderRow={(key) => {
                   const grp = NAV_GROUP_BY_KEY[key];
                   const solo = NAV_ITEMS.find((n) => n.key === key && !n.group);
                   const label = grp ? labelOf(grp, lang) : solo ? labelOf(solo, lang) : key;
                   const hidden = navHidden.has(key);
                   return (
-                    <div key={key} className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/20 p-2">
-                      <div className="flex flex-col">
-                        <button className="rounded p-1 hover:bg-muted disabled:opacity-30" disabled={idx === 0} onClick={() => move(navOrder, setNavOrder, key, -1)}>
-                          <ArrowUp className="h-3 w-3" />
-                        </button>
-                        <button className="rounded p-1 hover:bg-muted disabled:opacity-30" disabled={idx === navOrder.length - 1} onClick={() => move(navOrder, setNavOrder, key, +1)}>
-                          <ArrowDown className="h-3 w-3" />
-                        </button>
-                      </div>
+                    <>
                       <div className="flex-1 truncate text-sm font-medium">
                         {label}
                         {grp && <span className="ms-2 text-[10px] uppercase text-muted-foreground">group</span>}
                       </div>
                       <Switch checked={!hidden} onCheckedChange={() => toggleNav(key)} />
-                    </div>
+                    </>
                   );
-                })}
-              </div>
+                }}
+                title={lang === "ar" ? "الترتيب والإخفاء" : "Order & visibility"}
+              />
 
               {/* Per-group children */}
               {NAV_GROUPS.map((g) => {
@@ -359,33 +403,25 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
 
         <TabsContent value="cards" className="mt-4 space-y-4">
           {!loaded ? <SkeletonBlock /> : (
-            <div className="space-y-2 rounded-lg border border-border/60 p-3">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {lang === "ar" ? "كروت لوحة التحكم — الترتيب والإخفاء" : "Dashboard cards — order & visibility"}
-              </div>
-              {cardsOrder.map((key, idx) => {
+            <DragList
+              items={cardsOrder}
+              onReorder={setCardsOrder}
+              renderRow={(key) => {
                 const def = DASHBOARD_CARDS.find((c) => c.key === key);
                 if (!def) return null;
                 const hidden = cardsHidden.has(key);
                 return (
-                  <div key={key} className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/20 p-2">
-                    <div className="flex flex-col">
-                      <button className="rounded p-1 hover:bg-muted disabled:opacity-30" disabled={idx === 0} onClick={() => move(cardsOrder, setCardsOrder, key, -1)}>
-                        <ArrowUp className="h-3 w-3" />
-                      </button>
-                      <button className="rounded p-1 hover:bg-muted disabled:opacity-30" disabled={idx === cardsOrder.length - 1} onClick={() => move(cardsOrder, setCardsOrder, key, +1)}>
-                        <ArrowDown className="h-3 w-3" />
-                      </button>
-                    </div>
+                  <>
                     <div className="flex-1">
                       <div className="text-sm font-medium">{labelOf(def, lang)}</div>
                       <div className="text-[10px] uppercase text-muted-foreground">{def.group}</div>
                     </div>
                     <Switch checked={!hidden} onCheckedChange={() => toggleCard(key)} />
-                  </div>
+                  </>
                 );
-              })}
-            </div>
+              }}
+              title={lang === "ar" ? "كروت لوحة التحكم — الترتيب والإخفاء" : "Dashboard cards — order & visibility"}
+            />
           )}
         </TabsContent>
 
@@ -394,6 +430,86 @@ function Inspector({ member, onReloadMembers }: { member: Member; onReloadMember
         </TabsContent>
       </Tabs>
     </Card>
+  );
+}
+
+function SaveIndicator({ state, lang }: { state: "idle" | "saving" | "saved"; lang: "ar" | "en" }) {
+  if (state === "saving") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        {lang === "ar" ? "جارٍ الحفظ..." : "Saving..."}
+      </span>
+    );
+  }
+  if (state === "saved") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600">
+        <CheckCircle2 className="h-3 w-3" />
+        {lang === "ar" ? "تم الحفظ" : "Saved"}
+      </span>
+    );
+  }
+  return null;
+}
+
+/** Reusable drag-and-drop list — HTML5 native, no deps. */
+function DragList({
+  items,
+  onReorder,
+  renderRow,
+  title,
+}: {
+  items: string[];
+  onReorder: (next: string[]) => void;
+  renderRow: (key: string, idx: number) => React.ReactNode;
+  title?: string;
+}) {
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+
+  const onDrop = (targetKey: string) => {
+    if (!dragKey || dragKey === targetKey) { setDragKey(null); setOverKey(null); return; }
+    const from = items.indexOf(dragKey);
+    const to = items.indexOf(targetKey);
+    if (from < 0 || to < 0) { setDragKey(null); setOverKey(null); return; }
+    const next = [...items];
+    next.splice(from, 1);
+    next.splice(to, 0, dragKey);
+    onReorder(next);
+    setDragKey(null);
+    setOverKey(null);
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border/60 p-3">
+      {title && (
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      )}
+      {items.map((key, idx) => {
+        const isDragging = dragKey === key;
+        const isOver = overKey === key && dragKey !== key;
+        return (
+          <div
+            key={key}
+            draggable
+            onDragStart={() => setDragKey(key)}
+            onDragEnd={() => { setDragKey(null); setOverKey(null); }}
+            onDragOver={(e) => { e.preventDefault(); if (overKey !== key) setOverKey(key); }}
+            onDragLeave={() => setOverKey((k) => (k === key ? null : k))}
+            onDrop={(e) => { e.preventDefault(); onDrop(key); }}
+            className={`flex items-center gap-2 rounded-md border p-2 transition ${
+              isDragging ? "border-[#c9a84c]/60 bg-[#c9a84c]/10 opacity-60"
+              : isOver ? "border-[#c9a84c] bg-[#c9a84c]/5"
+              : "border-border/50 bg-muted/20 hover:bg-muted/40"
+            }`}
+          >
+            <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" />
+            {renderRow(key, idx)}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
