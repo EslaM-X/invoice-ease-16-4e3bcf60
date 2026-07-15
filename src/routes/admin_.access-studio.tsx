@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  Users, Search, Eye, ArrowUp, ArrowDown, Save, UserPlus, ShieldCheck,
-  Loader2, LayoutDashboard, ListChecks, Sparkles,
+  Users, Search, Eye, Save, UserPlus, ShieldCheck,
+  Loader2, LayoutDashboard, ListChecks, Sparkles, GripVertical, CheckCircle2, Copy,
 } from "lucide-react";
 import {
-  listCompanyMembers, loadUserPrefs, saveUserPrefs, createCompanyAccount,
+  listCompanyMembers, loadUserPrefs, saveUserPrefs, createCompanyAccount, applyPrefsToRole,
 } from "@/lib/access-studio.functions";
 import {
   NAV_TOP_ORDER, NAV_GROUPS, NAV_ITEMS, NAV_GROUP_BY_KEY, navChildrenOf,
