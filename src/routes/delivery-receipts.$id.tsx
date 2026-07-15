@@ -209,18 +209,42 @@ function ReceiptView() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id}>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
-                    <td className="border border-gray-400 px-2 py-2 align-middle">
-                      <div className="font-medium">{it.product_name}</div>
-                      {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.quantity}</td>
-                    <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{it.note || ""}</td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
+                {printRows ? (
+                  printRows.map((it) => {
+                    const priorNote = it.prior_qty > 0
+                      ? (isAr ? `مسلَّمة مسبقًا: ${it.prior_qty}` : `Previously delivered: ${it.prior_qty}`)
+                      : "";
+                    const emptyNote = it.this_qty === 0 && it.prior_qty === 0 && it.later_qty === 0
+                      ? (isAr ? "لم تُسلَّم بعد" : "Not delivered yet")
+                      : "";
+                    const combinedNote = [it.this_note, priorNote, emptyNote].filter(Boolean).join(" — ");
+                    const dim = it.this_qty === 0;
+                    return (
+                      <tr key={it.invoice_item_id} className={dim ? "text-gray-500" : ""}>
+                        <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
+                        <td className="border border-gray-400 px-2 py-2 align-middle">
+                          <div className={dim ? "font-normal" : "font-medium"}>{it.product_name}</div>
+                          {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.this_qty}</td>
+                        <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{combinedNote}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  items.map((it) => (
+                    <tr key={it.id}>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
+                      <td className="border border-gray-400 px-2 py-2 align-middle">
+                        <div className="font-medium">{it.product_name}</div>
+                        {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
+                      </td>
+                      <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.quantity}</td>
+                      <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{it.note || ""}</td>
+                    </tr>
+                  ))
+                )}
+                {(printRows ? printRows.length === 0 : items.length === 0) && (
                   <tr><td colSpan={4} className="border border-gray-400 px-2 py-4 text-center text-gray-500">—</td></tr>
                 )}
                 {shipping != null && shipping > 0 && (
