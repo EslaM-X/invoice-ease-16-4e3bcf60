@@ -127,6 +127,12 @@ function PurchaseOrdersPage() {
   const [trackId, setTrackId] = useState<string | null>(null);
   const [editShipPo, setEditShipPo] = useState<PO | null>(null);
 
+  // Auto-open the create dialog when navigated here from Stock Shortages with a prefill
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("po_prefill_v1")) setCreateOpen(true);
+  }, []);
+
   // Access guard
   useEffect(() => {
     if (!roleLoading && !isAdmin && !isPurchasing && !isCFO) {
@@ -553,14 +559,34 @@ function CreatePODialog({
           };
         });
         setRows(initial);
+        // Apply optional prefill from Stock Shortages
+        try {
+          const raw = typeof window !== "undefined" ? localStorage.getItem("po_prefill_v1") : null;
+          if (raw) {
+            const pre = JSON.parse(raw) as Record<string, number>;
+            setRows((prev) => {
+              const next = { ...prev };
+              Object.entries(pre).forEach(([pid, qty]) => {
+                if (next[pid]) {
+                  next[pid] = { ...next[pid], selected: true, qty: Math.max(1, Number(qty) || next[pid].qty) };
+                }
+              });
+              return next;
+            });
+            localStorage.removeItem("po_prefill_v1");
+            toast.success(isAr ? "تم تعبئة المنتجات من تقرير النواقص" : "Prefilled from Stock Shortages");
+          }
+        } catch { /* noop */ }
       });
-  }, [open]);
+  }, [open, isAr]);
 
   const collections = useMemo(() => {
     const s = new Set<string>();
     for (const p of products) if (p.collection) s.add(p.collection);
     return Array.from(s).sort();
   }, [products]);
+
+
 
   const colors = useMemo(() => {
     const s = new Set<string>();
