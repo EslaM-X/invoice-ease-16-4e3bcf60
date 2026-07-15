@@ -130,6 +130,7 @@ export function DeliveryReceiptForm({
       if (mode === "new") {
         if (!deliveredName && inv?.customer_name) setDeliveredName(inv.customer_name);
         if (!deliveredPhone && inv?.customer_phone) setDeliveredPhone(inv.customer_phone);
+        if ((inv as any)?.tax_enabled === true) setTaxEnabled(true);
       }
 
       const items: InvoiceItemWithDelivered[] = await fetchInvoiceItemsWithDelivered(

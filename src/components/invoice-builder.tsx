@@ -56,6 +56,7 @@ type Props = {
     sales_channel?: string | null;
     sales_event_id?: string | null;
     delivery_days?: number | null;
+    tax_enabled?: boolean | null;
   } | null;
   /** open scanner immediately on mount */
   autoScan?: boolean;
@@ -104,6 +105,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [deliveryDays, setDeliveryDays] = useState<number>(
     isValidDeliveryDays(initial?.delivery_days) ? (initial!.delivery_days as number) : 21,
   );
+  const [taxEnabled, setTaxEnabled] = useState<boolean>(!!initial?.tax_enabled);
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
@@ -677,6 +679,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           system_notes: systemNotes || null,
           subject: subject.trim() || null,
           delivery_days: deliveryDays,
+          tax_enabled: taxEnabled,
           paid_amount: paidMode === "custom" ? paidAmount : null,
           language: lang,
           customer_category: invoiceCategory || customer?.category || null,
@@ -720,6 +723,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         system_notes: systemNotes || null,
         subject: subject.trim() || null,
         delivery_days: deliveryDays,
+        tax_enabled: taxEnabled,
         paid_amount: paidMode === "custom" ? paidAmount : null,
         language: lang,
         customer_category: invoiceCategory || customer?.category || null,
@@ -840,7 +844,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         // Save subject (not part of RPC signature).
         await supabase
           .from("invoices")
-          .update({ subject: subject.trim() || null, delivery_days: deliveryDays } as any)
+          .update({ subject: subject.trim() || null, delivery_days: deliveryDays, tax_enabled: taxEnabled } as any)
           .eq("id", newId as string);
         toast.success(t("invoice_saved"));
         navigate({ to: "/invoices/$id", params: { id: newId as string } });
@@ -871,6 +875,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             delivery_status: delivered ? "delivered" : "pending",
             subject: subject.trim() || null,
             delivery_days: deliveryDays,
+            tax_enabled: taxEnabled,
           } as any)
           .eq("id", invoiceId);
         toast.success(t("invoice_saved"));
@@ -901,12 +906,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         if (subject.trim()) {
           await supabase
             .from("invoices")
-            .update({ subject: subject.trim(), delivery_days: deliveryDays } as any)
+            .update({ subject: subject.trim(), delivery_days: deliveryDays, tax_enabled: taxEnabled } as any)
             .eq("id", invoiceIdRet as string);
         } else {
           await supabase
             .from("invoices")
-            .update({ delivery_days: deliveryDays } as any)
+            .update({ delivery_days: deliveryDays, tax_enabled: taxEnabled } as any)
             .eq("id", invoiceIdRet as string);
         }
         if (effectiveDraftKey) { localStorage.removeItem(effectiveDraftKey); dirtyRef.current = false; setAutosaveState("idle"); setLastSavedAt(null); }
@@ -1354,6 +1359,29 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
               );
             })()}
           </div>
+
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
+            <label className="flex items-center justify-between gap-2 cursor-pointer">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={taxEnabled}
+                  onChange={(e) => setTaxEnabled(e.target.checked)}
+                  className="h-4 w-4 accent-amber-600"
+                />
+                {lang === "ar" ? "تطبيق ضريبة القيمة المضافة 14%" : "Apply 14% VAT"}
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                {lang === "ar" ? "اختياري" : "Optional"}
+              </span>
+            </label>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {lang === "ar"
+                ? "لو مفعّلة تظهر في الفاتورة والطباعة كملخّص (الفرعي / ضريبة 14% / الإجمالي شامل الضريبة)، وتظهر أيضاً في محاضر الاستلام المرتبطة بها. لو مطفية لا يظهر أي شيء عن الضريبة."
+                : "If enabled, a subtotal / 14% VAT / total-with-VAT block appears on the invoice and PDF, and on linked delivery receipts. If off, nothing tax-related appears."}
+            </p>
+          </div>
+
 
 
 
