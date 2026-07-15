@@ -306,6 +306,10 @@ function InvoiceView() {
                   const subNum = Number(inv.subtotal ?? 0);
                   const discNum = Number(inv.discount ?? 0);
                   const totalNum = discNum > 0 ? +(subNum - discNum).toFixed(2) : subNum;
+                  const taxOn = (inv as any).tax_enabled === true;
+                  const taxRate = Number((inv as any).tax_rate ?? 0.14) || 0.14;
+                  const taxAmount = taxOn ? Math.round(totalNum * taxRate * 100) / 100 : 0;
+                  const grandTotal = totalNum + taxAmount;
                   return (
                     <>
                       <tr>
@@ -328,6 +332,22 @@ function InvoiceView() {
                           <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-semibold">{isAr ? "الإجمالي" : "Total"}</td>
                           <td className="border border-gray-400 px-2 py-2 text-center font-semibold ltr-nums">EGP {totalNum.toFixed(2)}</td>
                         </tr>
+                      )}
+                      {taxOn && (
+                        <>
+                          <tr>
+                            <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center">
+                              {isAr ? `ضريبة القيمة المضافة (${Math.round(taxRate * 100)}%)` : `VAT (${Math.round(taxRate * 100)}%)`}
+                            </td>
+                            <td className="border border-gray-400 px-2 py-2 text-center ltr-nums">EGP {taxAmount.toFixed(2)}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="border border-gray-400 px-2 py-2 text-center font-bold">
+                              {isAr ? "الإجمالي شامل الضريبة" : "Total incl. VAT"}
+                            </td>
+                            <td className="border border-gray-400 px-2 py-2 text-center font-bold ltr-nums">EGP {grandTotal.toFixed(2)}</td>
+                          </tr>
+                        </>
                       )}
                     </>
                   );
