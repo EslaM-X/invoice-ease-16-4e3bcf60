@@ -24,8 +24,6 @@ import {
   type PartKey,
 } from "@/lib/product-parts";
 // (remainingPartsLabel removed — replaced by inline per-part breakdown)
-  type PartKey,
-} from "@/lib/product-parts";
 import { DEFAULT_DELIVERY_MODE, buildEffectiveDelivered, type FDeliveredRow, type FInvItem } from "@/lib/fulfillment-engine";
 import { SignaturePad } from "@/components/signature-pad";
 import { SparePartBadge } from "@/components/spare-part-badge";
