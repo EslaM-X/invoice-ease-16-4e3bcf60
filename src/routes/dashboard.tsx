@@ -321,7 +321,7 @@ function Dashboard() {
     ];
     if (!uiReady) return [];
     return ui.sortByOrder(sections.filter((section) => section.node && !ui.isCardHidden(section.key)), ui.prefs.cards_order);
-  }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui]);
+  }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui, uiReady]);
 
   return (
     <div className="space-y-8 sm:space-y-10">
