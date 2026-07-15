@@ -5,13 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Pencil, Plus, FileDown, History } from "lucide-react";
+import { Printer, ArrowLeft, Pencil, Plus, FileDown, History, Trash2 } from "lucide-react";
 import { fmtDateTime } from "@/lib/utils-money";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
 import { elementToPdf, fetchInvoiceItemsForPrint, type PrintRow } from "@/lib/delivery-receipts";
 import { toast } from "sonner";
 import { DeliveryReceiptTracker } from "@/components/delivery-receipt-tracker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 type Search = { print?: boolean };
 
@@ -38,7 +49,11 @@ function ReceiptView() {
   const [auditLog, setAuditLog] = useState<any[]>([]);
   const [showAudit, setShowAudit] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+
+
 
   useEffect(() => {
     (async () => {
@@ -100,6 +115,23 @@ function ReceiptView() {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { error: itErr } = await supabase.from("delivery_receipt_items" as any).delete().eq("receipt_id", id);
+      if (itErr) throw itErr;
+      const { error: recErr } = await supabase.from("delivery_receipts" as any).delete().eq("id", id);
+      if (recErr) throw recErr;
+      toast.success(isAr ? "تم حذف المحضر" : "Receipt deleted");
+      navigate({ to: "/delivery-receipts" });
+    } catch (e: any) {
+      toast.error(e?.message || (isAr ? "تعذّر الحذف" : "Delete failed"));
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   if (!r) return <div className="text-muted-foreground">{isAr ? "جاري التحميل…" : "Loading…"}</div>;
 
   const shipping = r.shipping_fees != null ? Number(r.shipping_fees) : null;
@@ -132,7 +164,15 @@ function ReceiptView() {
           <Button variant="outline" className="gap-2 rounded-full" onClick={exportPdf} disabled={exporting}>
             <FileDown className="h-4 w-4" />{exporting ? "..." : "PDF"}
           </Button>
+          <Button
+            variant="outline"
+            className="gap-2 rounded-full border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="h-4 w-4" />{isAr ? "حذف" : "Delete"}
+          </Button>
           <Button onClick={() => window.print()} className="gap-2 rounded-full px-5 shadow-glow">
+
             <Printer className="h-4 w-4" />{isAr ? "طباعة" : "Print"}
           </Button>
         </div>
@@ -407,9 +447,33 @@ function ReceiptView() {
           </footer>
         </div>
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isAr ? "تأكيد حذف المحضر" : "Confirm receipt deletion"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAr
+                ? `هل أنت متأكد من حذف محضر الاستلام رقم ${r?.receipt_number ?? ""}؟ لا يمكن التراجع عن هذا الإجراء.`
+                : `Are you sure you want to delete receipt ${r?.receipt_number ?? ""}? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (isAr ? "جارٍ الحذف…" : "Deleting…") : (isAr ? "أكيد، احذف" : "Yes, delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
 
 function SignatureBlock({ title, name, sig }: { title: string; name?: string | null; sig?: string | null }) {
   return (
