@@ -103,6 +103,13 @@ function ReceiptView() {
   if (!r) return <div className="text-muted-foreground">{isAr ? "جاري التحميل…" : "Loading…"}</div>;
 
   const shipping = r.shipping_fees != null ? Number(r.shipping_fees) : null;
+  const taxEnabled = (r as any).tax_enabled === true;
+  const taxRate = Number((r as any).tax_rate ?? 0.14) || 0.14;
+  const taxSubtotal = taxEnabled && printRows
+    ? printRows.reduce((s, it) => s + (it.this_qty * (it.unit_price || 0)), 0)
+    : 0;
+  const taxAmount = taxEnabled ? Math.round(taxSubtotal * taxRate * 100) / 100 : 0;
+  const taxTotal = taxEnabled ? taxSubtotal + taxAmount + (shipping || 0) : 0;
 
   return (
     <div className="space-y-6">
@@ -211,22 +218,91 @@ function ReceiptView() {
               <tbody>
                 {printRows ? (
                   printRows.map((it) => {
-                    const priorNote = it.prior_qty > 0
-                      ? (isAr ? `مسلَّمة مسبقًا: ${it.prior_qty}` : `Previously delivered: ${it.prior_qty}`)
-                      : "";
-                    const emptyNote = it.this_qty === 0 && it.prior_qty === 0 && it.later_qty === 0
-                      ? (isAr ? "لم تُسلَّم بعد" : "Not delivered yet")
-                      : "";
-                    const combinedNote = [it.this_note, priorNote, emptyNote].filter(Boolean).join(" — ");
+                    const totalDelivered = it.this_qty + it.prior_qty + it.later_qty;
+                    const remaining = Math.max(0, it.invoice_qty - totalDelivered);
+                    const complete = remaining === 0;
                     const dim = it.this_qty === 0;
+                    // Build the smart summary line for the note column
+                    const summary = isAr
+                      ? `من أصل ${it.invoice_qty} — الآن: ${it.this_qty}` +
+                        (it.prior_qty > 0 ? ` • مسبقًا: ${it.prior_qty}` : "") +
+                        (it.later_qty > 0 ? ` • لاحقًا: ${it.later_qty}` : "") +
+                        (remaining > 0 ? ` • الباقي: ${remaining}` : " • مكتمل ✓")
+                      : `Of ${it.invoice_qty} — now: ${it.this_qty}` +
+                        (it.prior_qty > 0 ? ` • prior: ${it.prior_qty}` : "") +
+                        (it.later_qty > 0 ? ` • later: ${it.later_qty}` : "") +
+                        (remaining > 0 ? ` • remaining: ${remaining}` : " • complete ✓");
+                    const combinedNote = [it.this_note, summary].filter(Boolean).join(" — ");
+
+                    // Multi-part breakdown
+                    let partsBlock: React.ReactNode = null;
+                    if (it.is_multi_part) {
+                      const t = it.parts_this, p = it.parts_prior, l = it.parts_later;
+                      const totalMixers = t.mixer + p.mixer + l.mixer + t.full + p.full + l.full;
+                      const totalTrims = t.trim + p.trim + l.trim + t.full + p.full + l.full;
+                      const missMix = Math.max(0, it.invoice_qty - totalMixers);
+                      const missTrim = Math.max(0, it.invoice_qty - totalTrims);
+                      partsBlock = (
+                        <div className="mt-1 rounded border border-gray-300 bg-gray-50 p-1.5 text-[10px] leading-tight">
+                          <div className="mb-0.5 font-semibold text-gray-700">
+                            {isAr ? "تفصيل الأجزاء" : "Parts breakdown"}
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 ltr-nums">
+                            <div className="rounded border border-gray-300 bg-white px-1 py-0.5">
+                              <div className="text-[9px] text-gray-500">{isAr ? "كامل" : "Full"}</div>
+                              <div className="font-semibold">
+                                {t.full}<span className="text-gray-400"> / </span>{t.full + p.full + l.full}
+                              </div>
+                            </div>
+                            <div className="rounded border border-gray-300 bg-white px-1 py-0.5">
+                              <div className="text-[9px] text-gray-500">MIXER</div>
+                              <div className="font-semibold">
+                                {t.mixer}<span className="text-gray-400"> / </span>{t.mixer + p.mixer + l.mixer}
+                              </div>
+                            </div>
+                            <div className="rounded border border-gray-300 bg-white px-1 py-0.5">
+                              <div className="text-[9px] text-gray-500">{isAr ? "ظاهر" : "Trim"}</div>
+                              <div className="font-semibold">
+                                {t.trim}<span className="text-gray-400"> / </span>{t.trim + p.trim + l.trim}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-x-2 text-[9.5px] text-gray-700">
+                            <span>{isAr ? "المكسر:" : "Mixers:"} <b>{totalMixers}/{it.invoice_qty}</b></span>
+                            <span>{isAr ? "الظاهر:" : "Trims:"} <b>{totalTrims}/{it.invoice_qty}</b></span>
+                            {(missMix > 0 || missTrim > 0) && (
+                              <span className="text-red-600">
+                                {isAr ? "الباقي:" : "Missing:"}{" "}
+                                {missMix > 0 && <span>MIXER {missMix}</span>}
+                                {missMix > 0 && missTrim > 0 && " • "}
+                                {missTrim > 0 && <span>{isAr ? "ظاهر" : "Trim"} {missTrim}</span>}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <tr key={it.invoice_item_id} className={dim ? "text-gray-500" : ""}>
                         <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums text-[11px]">{it.serial_number || "—"}</td>
                         <td className="border border-gray-400 px-2 py-2 align-middle">
                           <div className={dim ? "font-normal" : "font-medium"}>{it.product_name}</div>
                           {it.color && <div className="text-[11px] text-gray-700">{isAr ? "اللون:" : "Color:"} {it.color}</div>}
+                          {partsBlock}
                         </td>
-                        <td className="border border-gray-400 px-2 py-2 text-center align-middle ltr-nums font-semibold">{it.this_qty}</td>
+                        <td className="border border-gray-400 px-2 py-2 text-center align-middle">
+                          <div className="ltr-nums text-base font-bold">{it.this_qty}</div>
+                          <div className={`mt-0.5 inline-block rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums ${
+                            complete
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                              : "border-amber-500 bg-amber-50 text-amber-700"
+                          }`}>
+                            {complete
+                              ? (isAr ? "مكتمل ✓" : "Complete ✓")
+                              : (isAr ? `فاضل ${remaining}` : `${remaining} left`)}
+                          </div>
+                        </td>
                         <td className="border border-gray-400 px-2 py-2 align-middle text-[11px]">{combinedNote}</td>
                       </tr>
                     );
@@ -257,7 +333,35 @@ function ReceiptView() {
                 )}
               </tbody>
             </table>
+
+            {taxEnabled && printRows && (
+              <div className="mt-3 flex justify-end" dir={isAr ? "rtl" : "ltr"}>
+                <table className="w-full max-w-sm border-collapse text-[12px]">
+                  <tbody>
+                    <tr>
+                      <td className="border border-gray-400 px-2 py-1.5">{isAr ? "الفرعي" : "Subtotal"}</td>
+                      <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-semibold">{taxSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                    {shipping != null && shipping > 0 && (
+                      <tr>
+                        <td className="border border-gray-400 px-2 py-1.5">{isAr ? "الشحن" : "Shipping"}</td>
+                        <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-semibold">{shipping.toLocaleString()}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td className="border border-gray-400 px-2 py-1.5">{isAr ? `ضريبة القيمة المضافة (${Math.round(taxRate * 100)}%)` : `VAT (${Math.round(taxRate * 100)}%)`}</td>
+                      <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-semibold">{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr className="bg-gray-100">
+                      <td className="border border-gray-400 px-2 py-1.5 font-bold">{isAr ? "الإجمالي شامل الضريبة" : "Total incl. VAT"}</td>
+                      <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-bold">{taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
+
 
           {r.notes && (
             <section className="mt-5 text-[12px]" dir={isAr ? "rtl" : "ltr"}>

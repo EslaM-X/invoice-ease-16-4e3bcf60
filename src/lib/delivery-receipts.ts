@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isMultiPartProduct, parsePartFromNote } from "@/lib/product-parts";
 
 export type DRItemInput = {
   invoice_item_id: string;
@@ -18,6 +19,7 @@ export type DRPayload = {
   signature_accountant?: string | null;
   status?: "draft" | "signed" | "out_for_delivery";
   shipping_fees?: number | null;
+  tax_enabled?: boolean | null;
   items: DRItemInput[];
 };
 
@@ -36,6 +38,7 @@ export async function createDeliveryReceipt(invoiceId: string, p: DRPayload) {
     _status: p.status ?? "draft",
     _items: p.items as any,
     _shipping_fees: p.shipping_fees ?? null,
+    _tax_enabled: p.tax_enabled ?? false,
   } as any);
   if (error) throw error;
   return data as string;
@@ -56,6 +59,7 @@ export async function updateDeliveryReceipt(receiptId: string, p: DRPayload) {
     _status: p.status ?? "draft",
     _items: p.items as any,
     _shipping_fees: p.shipping_fees ?? null,
+    _tax_enabled: p.tax_enabled ?? null,
   } as any);
   if (error) throw error;
   return data as string;
@@ -129,6 +133,12 @@ export function deliveryStatusColor(status: string | null | undefined) {
   }
 }
 
+export type PartAggregate = {
+  full: number;
+  mixer: number;
+  trim: number;
+};
+
 export type PrintRow = {
   invoice_item_id: string;
   product_id: string | null;
@@ -136,10 +146,16 @@ export type PrintRow = {
   serial_number: string | null;
   color: string | null;
   invoice_qty: number;
+  unit_price: number;           // from invoice_items, used for tax subtotal
   this_qty: number;             // qty delivered in THIS receipt
   this_note: string | null;     // note stored in THIS receipt
   prior_qty: number;            // qty delivered in EARLIER receipts (before this one)
   later_qty: number;            // qty delivered in LATER receipts (after this one)
+  is_multi_part: boolean;
+  // Per-part breakdown across the three buckets (each row represents one unit)
+  parts_this: PartAggregate;    // parts delivered in this receipt
+  parts_prior: PartAggregate;   // parts delivered in earlier receipts
+  parts_later: PartAggregate;   // parts delivered in later receipts
 };
 
 /**
@@ -153,7 +169,7 @@ export async function fetchInvoiceItemsForPrint(
 ): Promise<PrintRow[]> {
   const { data: items } = await supabase
     .from("invoice_items")
-    .select("id, product_id, product_name, serial_number, color, quantity, created_at")
+    .select("id, product_id, product_name, serial_number, color, quantity, unit_price, created_at")
     .eq("invoice_id", invoiceId)
     .order("created_at", { ascending: true });
 
@@ -179,25 +195,40 @@ export async function fetchInvoiceItemsForPrint(
     for (const rec of (recs ?? []) as any[]) receiptCreatedAtMap.set(rec.id, rec.created_at);
   }
 
+  const zeroParts = (): PartAggregate => ({ full: 0, mixer: 0, trim: 0 });
   const thisMap = new Map<string, { qty: number; note: string | null }>();
   const priorMap = new Map<string, number>();
   const laterMap = new Map<string, number>();
+  const partsThisMap = new Map<string, PartAggregate>();
+  const partsPriorMap = new Map<string, PartAggregate>();
+  const partsLaterMap = new Map<string, PartAggregate>();
+
   for (const r of (dris ?? []) as any[]) {
+    const qty = r.quantity || 0;
+    // Determine bucket: this / prior / later
+    let bucketParts: Map<string, PartAggregate>;
     if (r.receipt_id === receiptId) {
       const cur = thisMap.get(r.invoice_item_id) ?? { qty: 0, note: null };
-      cur.qty += r.quantity || 0;
+      cur.qty += qty;
       if (!cur.note && r.note) cur.note = r.note;
       thisMap.set(r.invoice_item_id, cur);
+      bucketParts = partsThisMap;
     } else {
       const otherCreatedAt = receiptCreatedAtMap.get(r.receipt_id);
       const isPrior = otherCreatedAt ? otherCreatedAt < receiptCreatedAt : false;
       const m = isPrior ? priorMap : laterMap;
-      m.set(r.invoice_item_id, (m.get(r.invoice_item_id) || 0) + (r.quantity || 0));
+      m.set(r.invoice_item_id, (m.get(r.invoice_item_id) || 0) + qty);
+      bucketParts = isPrior ? partsPriorMap : partsLaterMap;
     }
+    const { part } = parsePartFromNote(r.note);
+    const agg = bucketParts.get(r.invoice_item_id) ?? zeroParts();
+    agg[part] += qty;
+    bucketParts.set(r.invoice_item_id, agg);
   }
 
   return (items ?? []).map((it: any) => {
     const t = thisMap.get(it.id);
+    const multi = isMultiPartProduct(it.product_name);
     return {
       invoice_item_id: it.id,
       product_id: it.product_id ?? null,
@@ -205,10 +236,15 @@ export async function fetchInvoiceItemsForPrint(
       serial_number: it.serial_number,
       color: it.color,
       invoice_qty: it.quantity,
+      unit_price: Number(it.unit_price ?? 0),
       this_qty: t?.qty ?? 0,
       this_note: t?.note ?? null,
       prior_qty: priorMap.get(it.id) ?? 0,
       later_qty: laterMap.get(it.id) ?? 0,
+      is_multi_part: multi,
+      parts_this: partsThisMap.get(it.id) ?? zeroParts(),
+      parts_prior: partsPriorMap.get(it.id) ?? zeroParts(),
+      parts_later: partsLaterMap.get(it.id) ?? zeroParts(),
     };
   });
 }
