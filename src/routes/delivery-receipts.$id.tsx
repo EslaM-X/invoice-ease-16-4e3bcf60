@@ -251,42 +251,42 @@ function ReceiptView() {
                         { label: isAr ? "الجزء الظاهر (Trim)" : "External trim", now: t.trim, all: trimAll },
                       ];
                       partsBlock = (
-                        <div className="mt-1.5 rounded border border-gray-400 bg-white" dir={isAr ? "rtl" : "ltr"}>
-                          <div className="border-b border-gray-400 bg-gray-100 px-2 py-1 text-[10.5px] font-bold text-gray-800">
+                        <div className="mt-1.5 border border-gray-500 bg-white print:border-black" dir={isAr ? "rtl" : "ltr"}>
+                          <div className="border-b border-gray-500 px-2 py-0.5 text-[10px] font-bold text-gray-900 print:border-black">
                             {isAr ? "تفصيل الأجزاء لهذا البند" : "Parts breakdown for this line"}
                           </div>
-                          <table className="w-full border-collapse text-[10.5px]">
+                          <table className="w-full border-collapse text-[10px]">
                             <thead>
-                              <tr className="bg-gray-50">
-                                <th className="border border-gray-300 px-1.5 py-1 text-start font-semibold">{isAr ? "الجزء" : "Part"}</th>
-                                <th className="border border-gray-300 px-1.5 py-1 text-center font-semibold">{isAr ? "في هذا المحضر" : "This receipt"}</th>
-                                <th className="border border-gray-300 px-1.5 py-1 text-center font-semibold">{isAr ? "إجمالي كل المحاضر" : "All receipts total"}</th>
+                              <tr>
+                                <th className="border border-gray-500 px-1.5 py-0.5 text-start font-semibold text-gray-900 print:border-black">{isAr ? "الجزء" : "Part"}</th>
+                                <th className="border border-gray-500 px-1.5 py-0.5 text-center font-semibold text-gray-900 print:border-black">{isAr ? "في هذا المحضر" : "This receipt"}</th>
+                                <th className="border border-gray-500 px-1.5 py-0.5 text-center font-semibold text-gray-900 print:border-black">{isAr ? "الإجمالي" : "Total"}</th>
                               </tr>
                             </thead>
                             <tbody>
                               {rowsDef.map((rd, i) => (
                                 <tr key={i}>
-                                  <td className="border border-gray-300 px-1.5 py-1">{rd.label}</td>
-                                  <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums font-bold">{rd.now}</td>
-                                  <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums">{rd.all}</td>
+                                  <td className="border border-gray-500 px-1.5 py-0.5 text-gray-900 print:border-black">{rd.label}</td>
+                                  <td className="border border-gray-500 px-1.5 py-0.5 text-center ltr-nums font-bold text-gray-900 print:border-black">{rd.now}</td>
+                                  <td className="border border-gray-500 px-1.5 py-0.5 text-center ltr-nums text-gray-900 print:border-black">{rd.all}</td>
                                 </tr>
                               ))}
-                              <tr className="bg-gray-50">
-                                <td className="border border-gray-300 px-1.5 py-1 font-semibold">
+                              <tr>
+                                <td className="border border-gray-500 px-1.5 py-0.5 font-semibold text-gray-900 print:border-black">
                                   {isAr ? "إجمالي المكسر (كامل + دفن)" : "Total mixers (full + concealed)"}
                                 </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums" colSpan={2}>
+                                <td className="border border-gray-500 px-1.5 py-0.5 text-center ltr-nums text-gray-900 print:border-black" colSpan={2}>
                                   <b>{totalMixers}</b> / {it.invoice_qty}
-                                  {missMix > 0 && <span className="ms-1 text-red-600 font-semibold">— {isAr ? "ناقص" : "missing"} {missMix}</span>}
+                                  {missMix > 0 && <span className="ms-1 font-semibold">— {isAr ? "ناقص" : "missing"} {missMix}</span>}
                                 </td>
                               </tr>
-                              <tr className="bg-gray-50">
-                                <td className="border border-gray-300 px-1.5 py-1 font-semibold">
+                              <tr>
+                                <td className="border border-gray-500 px-1.5 py-0.5 font-semibold text-gray-900 print:border-black">
                                   {isAr ? "إجمالي الظاهر (كامل + Trim)" : "Total trims (full + trim)"}
                                 </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums" colSpan={2}>
+                                <td className="border border-gray-500 px-1.5 py-0.5 text-center ltr-nums text-gray-900 print:border-black" colSpan={2}>
                                   <b>{totalTrims}</b> / {it.invoice_qty}
-                                  {missTrim > 0 && <span className="ms-1 text-red-600 font-semibold">— {isAr ? "ناقص" : "missing"} {missTrim}</span>}
+                                  {missTrim > 0 && <span className="ms-1 font-semibold">— {isAr ? "ناقص" : "missing"} {missTrim}</span>}
                                 </td>
                               </tr>
                             </tbody>
@@ -312,10 +312,10 @@ function ReceiptView() {
                           <div className="ltr-nums text-base font-bold">{it.this_qty}</div>
                           <div
                             title={badgeTooltip}
-                            className={`mt-0.5 inline-block cursor-help rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums ${
+                            className={`mt-0.5 inline-block cursor-help rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums print:border-black print:bg-white print:text-black ${
                               complete
-                                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                                : "border-amber-500 bg-amber-50 text-amber-700"
+                                ? "border-emerald-600 bg-white text-emerald-700"
+                                : "border-amber-600 bg-white text-amber-700"
                             }`}
                           >
                             {complete
