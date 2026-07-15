@@ -105,6 +105,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const [deliveryDays, setDeliveryDays] = useState<number>(
     isValidDeliveryDays(initial?.delivery_days) ? (initial!.delivery_days as number) : 21,
   );
+  const [taxEnabled, setTaxEnabled] = useState<boolean>(!!initial?.tax_enabled);
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
