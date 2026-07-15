@@ -333,7 +333,35 @@ function ReceiptView() {
                 )}
               </tbody>
             </table>
+
+            {taxEnabled && printRows && (
+              <div className="mt-3 flex justify-end" dir={isAr ? "rtl" : "ltr"}>
+                <table className="w-full max-w-sm border-collapse text-[12px]">
+                  <tbody>
+                    <tr>
+                      <td className="border border-gray-400 px-2 py-1.5">{isAr ? "الفرعي" : "Subtotal"}</td>
+                      <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-semibold">{taxSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                    {shipping != null && shipping > 0 && (
+                      <tr>
+                        <td className="border border-gray-400 px-2 py-1.5">{isAr ? "الشحن" : "Shipping"}</td>
+                        <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-semibold">{shipping.toLocaleString()}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td className="border border-gray-400 px-2 py-1.5">{isAr ? `ضريبة القيمة المضافة (${Math.round(taxRate * 100)}%)` : `VAT (${Math.round(taxRate * 100)}%)`}</td>
+                      <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-semibold">{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr className="bg-gray-100">
+                      <td className="border border-gray-400 px-2 py-1.5 font-bold">{isAr ? "الإجمالي شامل الضريبة" : "Total incl. VAT"}</td>
+                      <td className="border border-gray-400 px-2 py-1.5 text-right ltr-nums font-bold">{taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
+
 
           {r.notes && (
             <section className="mt-5 text-[12px]" dir={isAr ? "rtl" : "ltr"}>
