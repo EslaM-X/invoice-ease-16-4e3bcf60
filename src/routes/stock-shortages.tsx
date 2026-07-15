@@ -6,11 +6,18 @@ import { useI18n } from "@/lib/i18n";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertTriangle, Package, TruckIcon, RefreshCw, Search, Copy, Download,
   ShoppingCart, ChevronDown, ChevronUp, Flame, Clock, CheckSquare, Square,
+  ClipboardList, Send,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+
 
 export const Route = createFileRoute("/stock-shortages")({
   component: () => (
