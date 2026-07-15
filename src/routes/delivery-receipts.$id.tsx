@@ -340,7 +340,9 @@ function ReceiptView() {
                           </table>
                         </div>
                       );
+                      }
                     }
+
 
                     // Detailed breakdown tooltip for the "فاضل N" badge
                     const badgeTooltip = isAr
