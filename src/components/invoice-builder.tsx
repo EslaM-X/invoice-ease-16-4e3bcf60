@@ -1585,7 +1585,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 {filteredProducts.map((p) => {
                   const transit = inTransitQty[p.id] ?? 0;
                   const out = p.stock_quantity <= 0;
-                  const blocked = out && transit <= 0;
                   const low = !out && p.stock_quantity <= p.low_stock_threshold;
                   const inCartQty = items
                     .filter((it) => it.product_id === p.id)
@@ -1596,8 +1595,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                       <button
                         type="button"
                         onClick={() => addProduct(p)}
-                        disabled={blocked}
-                        className={`relative flex w-full items-center gap-3 px-2.5 py-2 text-start transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`relative flex w-full items-center gap-3 px-2.5 py-2 text-start transition ${
                           justAdded
                             ? "bg-emerald-500/15 ring-1 ring-emerald-500/40"
                             : inCartQty > 0
@@ -1605,6 +1603,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                               : "hover:bg-muted/50"
                         }`}
                       >
+
                         <div className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
                           {p.image_url ? (
                             <img src={p.image_url} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
