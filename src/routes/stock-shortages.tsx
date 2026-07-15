@@ -604,44 +604,71 @@ function ShortageCard({
           </div>
 
 
-          {isOpen && (
-            <div className="mt-2 rounded-lg border border-amber-500/15 divide-y divide-amber-500/10 overflow-hidden">
-              {row.invoices.map((inv) => (
-                <div
-                  key={inv.invoice_id}
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-amber-500/5"
-                >
-                  <Link
-                    to="/invoices/$id"
-                    params={{ id: inv.invoice_id }}
-                    className="min-w-0 flex-1"
-                  >
-                    <div className="font-medium text-amber-100 truncate">{inv.invoice_number}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {inv.customer_name ?? (ar ? "بدون عميل" : "No customer")} ·{" "}
-                      {new Date(inv.created_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
-                    </div>
-                  </Link>
-                  <div className="text-end shrink-0">
-                    <div className="font-semibold text-rose-300 tabular-nums">
-                      {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{inv.status}</div>
+          {isOpen && (() => {
+            const totalAcross = row.invoices.reduce((s, i) => s + (i.quantity || 0), 0);
+            return (
+              <div className="mt-2 rounded-lg border border-amber-500/15 overflow-hidden">
+                {/* Header with grand total across all invoices */}
+                <div className="flex items-center justify-between gap-3 px-3 py-2 bg-amber-500/5 border-b border-amber-500/15">
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-amber-400/80 font-semibold">
+                    {ar ? "الإجمالي عبر كل الفواتير" : "Total across all invoices"}
                   </div>
-                  <button
-                    onClick={() =>
-                      onRequest({ id: inv.invoice_id, number: inv.invoice_number })
-                    }
-                    title={ar ? "طلب الكمية لهذه الفاتورة" : "Request qty for this invoice"}
-                    className="shrink-0 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 inline-flex items-center gap-1"
-                  >
-                    <Send className="h-3 w-3" />
-                    {ar ? "طلب" : "Request"}
-                  </button>
+                  <div className="text-sm font-bold text-amber-100 tabular-nums">
+                    {totalAcross} {ar ? "قطعة" : totalAcross === 1 ? "unit" : "units"}
+                    <span className="text-[11px] text-muted-foreground font-normal ms-2">
+                      · {row.invoices.length} {ar ? "فاتورة" : row.invoices.length === 1 ? "invoice" : "invoices"}
+                    </span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="divide-y divide-amber-500/10">
+                  {row.invoices.map((inv) => (
+                    <div
+                      key={inv.invoice_id}
+                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-amber-500/5"
+                    >
+                      <Link
+                        to="/invoices/$id"
+                        params={{ id: inv.invoice_id }}
+                        className="min-w-0 flex-1"
+                      >
+                        <div className="font-medium text-amber-100 truncate">{inv.invoice_number}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {inv.customer_name ?? (ar ? "بدون عميل" : "No customer")} ·{" "}
+                          {new Date(inv.created_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
+                        </div>
+                      </Link>
+                      <div className="text-end shrink-0">
+                        <div className="font-semibold text-rose-300 tabular-nums">
+                          {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{inv.status}</div>
+                      </div>
+                      <button
+                        onClick={() =>
+                          onRequest({ id: inv.invoice_id, number: inv.invoice_number })
+                        }
+                        title={ar ? "طلب الكمية لهذه الفاتورة" : "Request qty for this invoice"}
+                        className="shrink-0 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 inline-flex items-center gap-1"
+                      >
+                        <Send className="h-3 w-3" />
+                        {ar ? "طلب" : "Request"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Footer echo for long lists */}
+                {row.invoices.length > 4 && (
+                  <div className="flex items-center justify-between gap-3 px-3 py-2 bg-amber-500/[0.04] border-t border-amber-500/15 text-xs">
+                    <span className="text-muted-foreground">{ar ? "المجموع" : "Sum"}</span>
+                    <span className="font-bold text-amber-100 tabular-nums">
+                      {totalAcross} {ar ? "قطعة" : totalAcross === 1 ? "unit" : "units"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
 
         </div>
       </div>
