@@ -447,9 +447,33 @@ function ReceiptView() {
           </footer>
         </div>
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isAr ? "تأكيد حذف المحضر" : "Confirm receipt deletion"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAr
+                ? `هل أنت متأكد من حذف محضر الاستلام رقم ${r?.receipt_number ?? ""}؟ لا يمكن التراجع عن هذا الإجراء.`
+                : `Are you sure you want to delete receipt ${r?.receipt_number ?? ""}? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{isAr ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (isAr ? "جارٍ الحذف…" : "Deleting…") : (isAr ? "أكيد، احذف" : "Yes, delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
 
 function SignatureBlock({ title, name, sig }: { title: string; name?: string | null; sig?: string | null }) {
   return (
