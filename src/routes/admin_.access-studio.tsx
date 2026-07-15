@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import {
   Users, Search, Eye, Save, UserPlus, ShieldCheck,
   Loader2, LayoutDashboard, ListChecks, Sparkles, GripVertical, CheckCircle2, Copy,
+  Undo2, Redo2, Layers, Info,
 } from "lucide-react";
 import {
   listCompanyMembers, loadUserPrefs, saveUserPrefs, createCompanyAccount, applyPrefsToRole,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/nav-catalog";
 import { useI18n } from "@/lib/i18n";
 import { setImpersonateId } from "@/lib/use-ui-prefs";
+import { useHistoryState } from "@/lib/use-history-state";
 
 export const Route = createFileRoute("/admin_/access-studio")({
   component: () => (
