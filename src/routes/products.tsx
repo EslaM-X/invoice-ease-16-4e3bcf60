@@ -541,8 +541,18 @@ function Products() {
               {t("no_collection")} ({collectionCounts.__none__})
             </button>
           )}
+          <button
+            onClick={() => setManageOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-700 dark:text-amber-300 hover:brightness-110 transition"
+            title={lang === "ar" ? "إدارة الكولكشنات" : "Manage collections"}
+          >
+            <Palette className="h-3.5 w-3.5" />
+            {lang === "ar" ? "إدارة" : "Manage"}
+          </button>
         </div>
       </div>
+      <ManageCollectionsDialog open={manageOpen} onOpenChange={setManageOpen} canEdit={isAdmin} />
+
 
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card no-print">
         {loading ? (
