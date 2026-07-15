@@ -889,6 +889,7 @@ export type Database = {
           delivered_to_phone: string | null
           id: string
           invoice_id: string
+          layout_version: number
           manager_name: string | null
           notes: string | null
           receipt_number: string
@@ -915,6 +916,7 @@ export type Database = {
           delivered_to_phone?: string | null
           id?: string
           invoice_id: string
+          layout_version?: number
           manager_name?: string | null
           notes?: string | null
           receipt_number: string
@@ -941,6 +943,7 @@ export type Database = {
           delivered_to_phone?: string | null
           id?: string
           invoice_id?: string
+          layout_version?: number
           manager_name?: string | null
           notes?: string | null
           receipt_number?: string

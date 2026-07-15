@@ -1,48 +1,105 @@
-
 ## الهدف
-اقدر أعمل/أعدّل أي فاتورة حتى لو الكمية أكبر من المخزون + الشحنات القادمة، والنظام يفتكر كل نقص ويجمّعه في لوحة "نواقص المخزون" بكل تفاصيل المنتج والفواتير المرتبطة.
 
-## 1) قاعدة البيانات
-- تعديل RPC `create_invoice` و `update_invoice`:
-  - إزالة استثناء `OUT_OF_STOCK` نهائياً.
-  - نفس منطق التغطية الحالي: أولاً من المخزون الفعلي، ثم من `purchase_order_items` القادمة (حجز في `invoice_po_reservations` بحالة `active`).
-  - أي كمية باقية (uncovered) تُسجَّل في نفس جدول `invoice_po_reservations` مع `po_item_id = NULL` وحالة جديدة `needs_order` وحقل `quantity` = العجز الحقيقي. → يعني عمود `po_item_id` يصير nullable + توسيع CHECK للحالة.
-  - في `update_invoice` نفس المعالجة عند زيادة الكمية، وعند تقليلها نُحرّر أول من صف `needs_order` قبل الحجوزات النشطة.
-- إضافة view/RPC `get_stock_shortages()` يرجع لكل منتج:
-  - `product_id`, name, serial, color, collection, image_url, current stock, incoming qty, total needed, net shortage
-  - Array من الفواتير المرتبطة (invoice_number, customer_name, qty, created_at, status)
-- Migration بيعمل backfill لأي فاتورة قديمة عندها بنود ناقصة بدون حجز.
+في محاضر الاستلام **الجديدة من الآن فقط**:
+- يظهر في المحضر (على الشاشة و في PDF) **كل بنود الفاتورة** — مش بس الي بسلمه دلوقتي.
+- كل بند يظهر أمامه:
+  - الكمية الي بسلمها **في هذا المحضر** (رقم — ممكن يكون 0).
+  - أو "**مسلَّمة مسبقًا: N**" لو اتسلمت في محضر أقدم.
+  - أو "لم تُسلَّم بعد" لو 0 من كل محاضر الفاتورة.
+- الميزة الحالية (تسليم كامل / mixer / trim / خارجي) تفضل شغالة كما هي.
+- **المحاضر القديمة لا تتأثر** — تعرض نفس الشكل القديم بالضبط.
 
-## 2) واجهة إنشاء/تعديل الفاتورة (`src/components/invoice-builder.tsx`)
-- شيل الـ cap على input الكمية (السطر ~1193-1204) لكل الفواتير (مش بس draft).
-- شيل التحقق الحالي في `save()` اللي بيعرض confirm عن الحجز من القادم، واستبدله بـ:
-  - Badge أحمر تحت كل بند: "⚠ نقص: X — سيُطلب" لو الكمية > (stock + incoming − reservations).
-  - Sticky banner فوق الفاتورة يقول: "هذه الفاتورة بها N قطعة نقص إجمالي — سيتم إدراجها في نواقص المخزون".
-  - Confirm واحد قبل الحفظ يوضح كل الأصناف الناقصة والكميات المطلوب طلبها.
+---
 
-## 3) صفحة جديدة: نواقص المخزون
-- Route: `src/routes/stock-shortages.tsx` بمسار `/stock-shortages`.
-- Link في القائمة الجانبية + Badge على أيقونتها بعدد الأصناف الناقصة (realtime).
-- Cards فاخرة (Noir & Gold) لكل منتج ناقص:
-  - صورة المنتج + اسم + سيريال + لون (swatch) + كولكشن + spare-part badge
-  - رقم كبير: "محتاج تطلب: 10 قطع" مع breakdown: `المخزون: 5 | القادم: 3 | العجز الصافي: 2`
-  - قائمة قابلة للطي: كل فاتورة محتاجة القطعة (رقم الفاتورة، العميل، الكمية، التاريخ) — clickable
-  - زر "إضافة إلى أمر شراء" يفتح `restock-order-dialog` مع pre-fill بالمنتج والكمية المطلوبة
-- فلاتر: كولكشن / بحث بالاسم أو السيريال / ترتيب حسب أعلى نقص أو أقدم فاتورة.
-- Realtime updates عبر Supabase channel على `invoice_po_reservations` و `products`.
+## طريقة التمييز بين "قديم" و "جديد"
 
-## 4) الداشبورد
-- KPI card جديد "نواقص المخزون" في `src/routes/dashboard.tsx` بعدد الأصناف + الكميات + link للصفحة الجديدة.
+نضيف عمود `layout_version smallint` على `delivery_receipts`:
+- كل المحاضر الحالية تتحدّث لـ `layout_version = 1` (الشكل القديم).
+- الافتراضي الجديد `= 2` — أي محضر يُنشأ من الآن يحمل الشكل الجديد.
+- المنطق في الفورم / صفحة العرض / PDF يتفرّع بناءً على القيمة.
 
-## تفاصيل تقنية
-- الحفاظ على منطق `fulfill_reservations_on_po_received` بحيث ما يلمسش صفوف `needs_order` (لأنها بدون po_item_id) — لكن عند تأكيد PO جديد لنفس المنتج، ننقل صفوف `needs_order` إلى `active` مربوطة بالـ PO الجديد حسب أولوية أقدم فاتورة → داخل trigger `after po status = ordered/shipped`.
-- كل تغيير في المخزون/الحجوزات ينشر realtime notification فوري بحيث لوحة النواقص تتحدث لحظياً حتى مع 1000+ فاتورة.
-- Indexes: `(product_id, status)` على `invoice_po_reservations` موجود؛ نضيف partial index على `status='needs_order'`.
+القاعدة بتفضل صادقة تخزّن **فقط** البنود المُسلَّمة في المحضر ده (زي دلوقتي). العرض هو الي يجمّع الصورة الكاملة وقت الطباعة — عشان ما نتلخبطش مع الفواتير القديمة ومع RPCات التدقيق الموجودة.
 
-## الملفات المتأثرة
-- Migration جديدة (RPCs + reservations schema + view + backfill)
-- `src/components/invoice-builder.tsx`
-- `src/routes/stock-shortages.tsx` (جديد)
-- `src/router.tsx` + navigation menu
-- `src/routes/dashboard.tsx` (KPI)
-- `src/lib/data.ts` (helper types)
+---
+
+## ما سيتغير — تفصيل غير تقني
+
+**1) صفحة إنشاء محضر جديد (`/delivery-receipts/new`)**
+- الجدول يعرض كل بنود الفاتورة، مش المتبقي فقط.
+- كل صف فيه:
+  - كمية الفاتورة، الكمية المسلَّمة مسبقًا، المتبقي.
+  - خانة إدخال "كمية التسليم الآن" — قابلة للتصفير أو تعبئتها بالمتبقي بضغطة (زر مساعد "املأ المتبقي" / "صفّر").
+  - لو البند مسلَّم بالكامل مسبقًا: يظهر شارة واضحة **"مسلَّمة مسبقًا"** والحقل يكون 0 وغير قابل للتعديل.
+  - اختيار الجزء (كامل / mixer / trim) يفضل زي ما هو، ويظهر لأي بند متعدد الأجزاء.
+- زرار سريع أعلى الجدول: "املأ كل المتبقي" / "صفّر الكل" — يسهل الاستخدام.
+- ما تفضلش لازم تختار البند بتيك؛ الصف كله جاهز للكتابة، والصف الي كميته الآن = 0 يتبعت مع المحضر (لكن ما يتسجّلش كبند مُسلَّم في القاعدة — يظهر فقط عند الطباعة كـ "0" أو "مسلَّمة مسبقًا").
+
+**2) صفحة عرض المحضر + PDF (`/delivery-receipts/$id`)**
+- لو `layout_version = 1` (محضر قديم): نفس الشكل الحالي بالضبط — لا تغيير.
+- لو `layout_version = 2` (محضر جديد):
+  - الجدول المطبوع يعرض **كل بنود الفاتورة**.
+  - عمود الكمية يعرض:
+    - الرقم لو البند فعلاً مُسلَّم في هذا المحضر.
+    - **"0"** لو البند مش داخل في هذا المحضر ومش مُسلَّم في محاضر سابقة.
+    - **"مسلَّمة مسبقًا"** (مع رقم المحضر السابق أو التاريخ) في عمود الملاحظة لو اتسلمت في محضر أقدم.
+  - ملاحظة البند (mixer / trim / full …) تفضل تظهر كما هي.
+  - رسوم الشحن تظهر كما هي.
+
+**3) قائمة "محضر آخر لنفس الفاتورة"** تفضل شغالة — عادي تعمل عدة محاضر جزئية على نفس الفاتورة، والمحضر الأحدث يفهم أن الأقدم "مسلَّم مسبقًا".
+
+**4) لا تعديل على منطق المخزون / التدقيق / سجل التغييرات** — الي بيتخزّن هو نفس البنود المُسلَّمة فقط.
+
+---
+
+## Technical section (implementation details)
+
+### 1. Migration (`supabase--migration`)
+```sql
+ALTER TABLE public.delivery_receipts
+  ADD COLUMN IF NOT EXISTS layout_version smallint NOT NULL DEFAULT 2;
+
+-- Freeze every existing receipt to the legacy layout so their PDFs stay identical
+UPDATE public.delivery_receipts SET layout_version = 1 WHERE created_at < now();
+```
+No RLS/GRANT changes — new column inherits table-level grants. No RPC signature change: the RPC keeps inserting rows without touching the column, and the default (`2`) covers new receipts.
+
+### 2. `src/lib/delivery-receipts.ts`
+- Extend `InvoiceItemWithDelivered` with a `prior_delivered_qty` if useful, or add a new helper `fetchInvoiceItemsForPrint(invoiceId, receiptId)` that returns, for each invoice_item:
+  - `invoice_qty`, `this_receipt_qty`, `delivered_before_this`, `delivered_after_this`, `notes_from_this_receipt`.
+  Uses `created_at` ordering across sibling `delivery_receipt_items` joined on `receipt_id → delivery_receipts.created_at`.
+
+### 3. `src/components/delivery-receipt-form.tsx`
+- Only affects **`mode === "new"`**. `mode === "edit"` keeps current UX.
+- In `new` mode:
+  - Default `selected = true` for every row; keep the checkbox but pre-check all.
+  - Add "Fill all remaining" / "Clear all" quick buttons above the table.
+  - For rows where `remaining === 0 && delivered_other > 0`: render a badge "مسلَّمة مسبقًا"، disable the qty input, force `qty = 0`, keep the row visible.
+  - Client-side submit already tolerates rows with `qty > 0` only — no change; qty-0 rows are simply not persisted.
+
+### 4. `src/routes/delivery-receipts.$id.tsx` (view + PDF)
+- Read `r.layout_version`.
+- If `>= 2`: fetch `invoice_items` and all sibling `delivery_receipt_items` for the invoice; build a merged rows array (`allRows`) sorted by invoice item order; render the printable table from `allRows` instead of `items`, with:
+  - qty column: `this_qty` (0 if none in this receipt).
+  - note column: existing note; if `prior_qty > 0`, append `مسلَّمة مسبقًا: N (محضر #…)`.
+- Else: render exactly as today (`items`). This preserves every old receipt visually.
+- Shipping-fees row unchanged.
+
+### 5. Types
+- Regenerate `src/integrations/supabase/types.ts` implicitly after the migration (Lovable Cloud auto-regenerates). No code depends on the column name yet.
+
+### 6. Backward compatibility checks
+- Audit-log page still writes to `delivery_receipt_audit_log` unchanged — the new column is just data.
+- Fulfillment engine / closure detection still counts by summing `delivery_receipt_items.quantity` — unchanged.
+- Realtime subscriptions & existing dialogs (`DeliveryReceiptTracker`) — unchanged.
+
+### 7. Non-goals (deliberately not touched)
+- Old receipts' layout, storage schema of items, RPCs for create/update, mixer/trim/full logic, shipping fees, signatures, invoice statuses.
+
+---
+
+## Deliverables
+
+1. New migration adding `layout_version` + backfilling existing receipts to `1`.
+2. Updated `delivery-receipt-form.tsx` (new-mode UX only).
+3. New helper `fetchInvoiceItemsForPrint` in `src/lib/delivery-receipts.ts`.
+4. Updated `delivery-receipts.$id.tsx` view/PDF to switch on `layout_version`.
