@@ -617,7 +617,7 @@ function Products() {
                       <td className="px-2 py-3 hidden lg:table-cell text-muted-foreground sm:px-4">{p.color || "—"}</td>
                       <td className="px-2 py-3 hidden xl:table-cell sm:px-4">
                         {p.collection ? (
-                          <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${collectionBadgeClass(p.collection)}`}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} aria-hidden />{p.collection}</span>
+                          <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${collectionBadgeClass(p.collection)}`} style={collectionBadgeStyle(p.collection)}><span className={`inline-block h-1.5 w-1.5 rounded-full ${collectionDotClass(p.collection)}`} style={collectionDotStyle(p.collection)} aria-hidden />{p.collection}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
