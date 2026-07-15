@@ -760,29 +760,43 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       discount: it.discount,
     }));
 
-    // Confirm reservation from in-transit if any line exceeds physical stock
+    // Inform (don't block) when lines will consume incoming shipments or generate a shortage.
     if (!isDraft) {
       const reservedLines: string[] = [];
+      const shortageLines: string[] = [];
       for (const it of items) {
         if (!it.product_id) continue;
         const p = products.find((x) => x.id === it.product_id);
         if (!p) continue;
         const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
         const stockAvail = Math.max(0, (p.stock_quantity ?? 0) + baseline);
+        const transit = inTransitQty[it.product_id] ?? 0;
         if (it.quantity > stockAvail) {
-          const short = it.quantity - stockAvail;
-          reservedLines.push(`• ${p.name} — ${lang === "ar" ? `حجز ${short} من القادم` : `reserve ${short} from incoming`}`);
+          const gap = it.quantity - stockAvail;
+          const fromTransit = Math.min(gap, transit);
+          const shortage = gap - fromTransit;
+          if (fromTransit > 0) {
+            reservedLines.push(`• ${p.name} — ${lang === "ar" ? `حجز ${fromTransit} من القادم` : `reserve ${fromTransit} from incoming`}`);
+          }
+          if (shortage > 0) {
+            shortageLines.push(`• ${p.name} — ${lang === "ar" ? `نقص ${shortage} (يظهر في تقرير النواقص)` : `shortage of ${shortage} (added to shortages report)`}`);
+          }
         }
       }
-      if (reservedLines.length > 0) {
-        const msg = (lang === "ar"
-          ? "المخزن غير كافٍ لبعض المنتجات. سيتم حجز الكميات التالية من شحنات قادمة:\n\n"
-          : "Stock is insufficient for some products. The following quantities will be reserved from incoming shipments:\n\n")
-          + reservedLines.join("\n")
-          + (lang === "ar" ? "\n\nهل تريد المتابعة؟" : "\n\nProceed?");
-        if (!window.confirm(msg)) return;
+      if (reservedLines.length > 0 || shortageLines.length > 0) {
+        const parts: string[] = [];
+        if (reservedLines.length > 0) {
+          parts.push((lang === "ar" ? "سيتم حجز الكميات التالية من شحنات قادمة:\n" : "The following will be reserved from incoming shipments:\n") + reservedLines.join("\n"));
+        }
+        if (shortageLines.length > 0) {
+          parts.push((lang === "ar" ? "الكميات التالية أكثر من المخزون والقادم وسيتم تتبعها كنواقص:\n" : "The following exceed stock + incoming and will be tracked as shortages:\n") + shortageLines.join("\n"));
+        }
+        parts.push(lang === "ar" ? "هل تريد المتابعة؟" : "Proceed?");
+        if (!window.confirm(parts.join("\n\n"))) return;
       }
     }
+
+
 
     setSaving(true);
     try {
