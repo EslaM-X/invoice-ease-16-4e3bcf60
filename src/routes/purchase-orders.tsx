@@ -2481,6 +2481,7 @@ function AddItemPicker({
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const COLLECTIONS = useCollectionCodes();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [collectionFilter, setCollectionFilter] = useState("");
