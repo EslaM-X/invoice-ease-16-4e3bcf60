@@ -164,7 +164,15 @@ function ReceiptView() {
           <Button variant="outline" className="gap-2 rounded-full" onClick={exportPdf} disabled={exporting}>
             <FileDown className="h-4 w-4" />{exporting ? "..." : "PDF"}
           </Button>
+          <Button
+            variant="outline"
+            className="gap-2 rounded-full border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="h-4 w-4" />{isAr ? "حذف" : "Delete"}
+          </Button>
           <Button onClick={() => window.print()} className="gap-2 rounded-full px-5 shadow-glow">
+
             <Printer className="h-4 w-4" />{isAr ? "طباعة" : "Print"}
           </Button>
         </div>
