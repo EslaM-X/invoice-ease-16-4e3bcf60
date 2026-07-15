@@ -3398,6 +3398,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ui_preferences: {
+        Row: {
+          cards_hidden: Json
+          cards_order: Json
+          created_at: string
+          mobile_tabs: Json
+          nav_hidden: Json
+          nav_order: Json
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          cards_hidden?: Json
+          cards_order?: Json
+          created_at?: string
+          mobile_tabs?: Json
+          nav_hidden?: Json
+          nav_order?: Json
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          cards_hidden?: Json
+          cards_order?: Json
+          created_at?: string
+          mobile_tabs?: Json
+          nav_hidden?: Json
+          nav_order?: Json
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       warranty_outbox_events: {
         Row: {
           attempts: number
@@ -4392,6 +4428,7 @@ export type Database = {
       is_company_member: { Args: never; Returns: boolean }
       is_distributor: { Args: { _user_id?: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       is_task_manager: { Args: never; Returns: boolean }
       list_distributor_products: {

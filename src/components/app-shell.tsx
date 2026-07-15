@@ -18,6 +18,7 @@ import { LowStockAlerts } from "@/components/low-stock-alerts";
 import { ReservationAlertsBell } from "@/components/reservation-alerts-bell";
 import { useRole } from "@/lib/use-role";
 import { useIsExecutive } from "@/lib/use-executive";
+import { useIsSuperAdmin } from "@/lib/super-admin";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { InvoiceEditsBell } from "@/components/invoice-edits-bell";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
@@ -25,6 +26,8 @@ import { XAssistant } from "@/components/x-assistant";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
 import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { useCollections } from "@/lib/use-collections";
+import { useUiPrefs } from "@/lib/use-ui-prefs";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
@@ -75,11 +78,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, toggle } = useTheme();
   const { isAdmin, isCallCenter, isPurchasing, isCFO } = useRole();
   const isExecutive = useIsExecutive();
+  const isSuperAdmin = useIsSuperAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   useReminderPoller();
   useCollections(); // hydrate collections registry app-wide
+  const ui = useUiPrefs();
   const { unreadTotal: chatUnread } = useChatNotifications();
 
   const handleSignOut = async () => {
@@ -170,8 +175,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         {items.map((it) => {
           if ("group" in it) {
+            if (ui.isNavHidden(it.key)) return null;
             const GroupIcon = it.icon;
-            const anyActive = it.children.some(
+            const visibleChildren = it.children.filter(
+              (c) => (isExecutive || c.to !== "/stock-intake") && !ui.isNavHidden(c.key),
+            );
+            if (visibleChildren.length === 0) return null;
+            const anyActive = visibleChildren.some(
               (c) => location.pathname === c.to || location.pathname.startsWith(c.to + "/"),
             );
             return (
@@ -181,7 +191,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 icon={GroupIcon}
                 defaultOpen={anyActive}
               >
-                {it.children.filter((c) => isExecutive || c.to !== "/stock-intake").map((c) => {
+                {visibleChildren.map((c) => {
                   const active = location.pathname === c.to || location.pathname.startsWith(c.to + "/");
                   const Icon = c.icon;
                   return (
@@ -205,6 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </GroupNav>
             );
           }
+          if (ui.isNavHidden(it.key)) return null;
           const active = location.pathname === it.to || location.pathname.startsWith(it.to + "/");
           const Icon = it.icon;
           return (
@@ -225,7 +236,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {isExecutive && (isPurchasing || isCFO) && (
+        {isExecutive && (isPurchasing || isCFO) && !ui.isNavHidden("procurement_group") && (
           <GroupNav
             label={lang === "ar" ? "المشتريات والربح" : "Procurement & Profit"}
             icon={ShoppingCart}
@@ -298,6 +309,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </GroupNav>
         )}
+        {!ui.isNavHidden("reports_group") && (
         <GroupNav
           label={t("reports")}
           icon={BarChart3}
@@ -368,7 +380,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           )}
         </GroupNav>
-        {isCallCenter && (
+        )}
+        {isCallCenter && !ui.isNavHidden("call_center_group") && (
           <GroupNav
             label={t("call_center_group")}
             icon={Phone}
@@ -401,6 +414,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </GroupNav>
         )}
+        {!ui.isNavHidden("communication_group") && (
         <GroupNav
           label={t("communication_group")}
           icon={MessagesSquare}
@@ -438,6 +452,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Phone className="h-4 w-4" /> {t("whatsapp_inbox")}
           </Link>
         </GroupNav>
+        )}
+        {!ui.isNavHidden("settings_group") && (
         <GroupNav
           label={t("settings")}
           icon={Settings}
@@ -510,7 +526,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               to="/admin"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
-                location.pathname.startsWith("/admin")
+                location.pathname === "/admin"
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
@@ -518,7 +534,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               <ShieldCheck className="h-4 w-4" /> {t("admin_panel")}
             </Link>
           )}
+          {isSuperAdmin && (
+            <Link
+              to="/admin/access-studio"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+                location.pathname.startsWith("/admin/access-studio")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-[#c9a84c]" /> {lang === "ar" ? "استوديو الصلاحيات" : "Access Studio"}
+            </Link>
+          )}
         </GroupNav>
+        )}
       </nav>
       <div className="border-t border-sidebar-border p-3">
         <div className="mb-2 truncate px-2 text-[11px] tracking-wide text-sidebar-foreground/55">{user.email}</div>
@@ -586,6 +616,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </header>
+        <ImpersonationBanner />
         <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-visible px-3 py-6 pb-tabbar sm:px-6 sm:py-8 lg:px-8 lg:pb-safe">
           <PageTransition>{children}</PageTransition>
         </main>
