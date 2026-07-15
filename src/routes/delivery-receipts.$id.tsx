@@ -238,50 +238,67 @@ function ReceiptView() {
                     let partsBlock: React.ReactNode = null;
                     if (it.is_multi_part) {
                       const t = it.parts_this, p = it.parts_prior, l = it.parts_later;
-                      const totalMixers = t.mixer + p.mixer + l.mixer + t.full + p.full + l.full;
-                      const totalTrims = t.trim + p.trim + l.trim + t.full + p.full + l.full;
+                      const fullAll = t.full + p.full + l.full;
+                      const mixerAll = t.mixer + p.mixer + l.mixer;
+                      const trimAll = t.trim + p.trim + l.trim;
+                      const totalMixers = mixerAll + fullAll;
+                      const totalTrims = trimAll + fullAll;
                       const missMix = Math.max(0, it.invoice_qty - totalMixers);
                       const missTrim = Math.max(0, it.invoice_qty - totalTrims);
+                      const rowsDef = [
+                        { label: isAr ? "المنتج كامل" : "Full product", now: t.full, all: fullAll },
+                        { label: isAr ? "الخلاط الدفن (MIXER)" : "Mixer (concealed)", now: t.mixer, all: mixerAll },
+                        { label: isAr ? "الجزء الظاهر (Trim)" : "External trim", now: t.trim, all: trimAll },
+                      ];
                       partsBlock = (
-                        <div className="mt-1 rounded border border-gray-300 bg-gray-50 p-1.5 text-[10px] leading-tight">
-                          <div className="mb-0.5 font-semibold text-gray-700">
-                            {isAr ? "تفصيل الأجزاء" : "Parts breakdown"}
+                        <div className="mt-1.5 rounded border border-gray-400 bg-white" dir={isAr ? "rtl" : "ltr"}>
+                          <div className="border-b border-gray-400 bg-gray-100 px-2 py-1 text-[10.5px] font-bold text-gray-800">
+                            {isAr ? "تفصيل الأجزاء لهذا البند" : "Parts breakdown for this line"}
                           </div>
-                          <div className="grid grid-cols-3 gap-1 ltr-nums">
-                            <div className="rounded border border-gray-300 bg-white px-1 py-0.5">
-                              <div className="text-[9px] text-gray-500">{isAr ? "كامل" : "Full"}</div>
-                              <div className="font-semibold">
-                                {t.full}<span className="text-gray-400"> / </span>{t.full + p.full + l.full}
-                              </div>
-                            </div>
-                            <div className="rounded border border-gray-300 bg-white px-1 py-0.5">
-                              <div className="text-[9px] text-gray-500">MIXER</div>
-                              <div className="font-semibold">
-                                {t.mixer}<span className="text-gray-400"> / </span>{t.mixer + p.mixer + l.mixer}
-                              </div>
-                            </div>
-                            <div className="rounded border border-gray-300 bg-white px-1 py-0.5">
-                              <div className="text-[9px] text-gray-500">{isAr ? "ظاهر" : "Trim"}</div>
-                              <div className="font-semibold">
-                                {t.trim}<span className="text-gray-400"> / </span>{t.trim + p.trim + l.trim}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-x-2 text-[9.5px] text-gray-700">
-                            <span>{isAr ? "المكسر:" : "Mixers:"} <b>{totalMixers}/{it.invoice_qty}</b></span>
-                            <span>{isAr ? "الظاهر:" : "Trims:"} <b>{totalTrims}/{it.invoice_qty}</b></span>
-                            {(missMix > 0 || missTrim > 0) && (
-                              <span className="text-red-600">
-                                {isAr ? "الباقي:" : "Missing:"}{" "}
-                                {missMix > 0 && <span>MIXER {missMix}</span>}
-                                {missMix > 0 && missTrim > 0 && " • "}
-                                {missTrim > 0 && <span>{isAr ? "ظاهر" : "Trim"} {missTrim}</span>}
-                              </span>
-                            )}
-                          </div>
+                          <table className="w-full border-collapse text-[10.5px]">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="border border-gray-300 px-1.5 py-1 text-start font-semibold">{isAr ? "الجزء" : "Part"}</th>
+                                <th className="border border-gray-300 px-1.5 py-1 text-center font-semibold">{isAr ? "في هذا المحضر" : "This receipt"}</th>
+                                <th className="border border-gray-300 px-1.5 py-1 text-center font-semibold">{isAr ? "إجمالي كل المحاضر" : "All receipts total"}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rowsDef.map((rd, i) => (
+                                <tr key={i}>
+                                  <td className="border border-gray-300 px-1.5 py-1">{rd.label}</td>
+                                  <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums font-bold">{rd.now}</td>
+                                  <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums">{rd.all}</td>
+                                </tr>
+                              ))}
+                              <tr className="bg-gray-50">
+                                <td className="border border-gray-300 px-1.5 py-1 font-semibold">
+                                  {isAr ? "إجمالي المكسر (كامل + دفن)" : "Total mixers (full + concealed)"}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums" colSpan={2}>
+                                  <b>{totalMixers}</b> / {it.invoice_qty}
+                                  {missMix > 0 && <span className="ms-1 text-red-600 font-semibold">— {isAr ? "ناقص" : "missing"} {missMix}</span>}
+                                </td>
+                              </tr>
+                              <tr className="bg-gray-50">
+                                <td className="border border-gray-300 px-1.5 py-1 font-semibold">
+                                  {isAr ? "إجمالي الظاهر (كامل + Trim)" : "Total trims (full + trim)"}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center ltr-nums" colSpan={2}>
+                                  <b>{totalTrims}</b> / {it.invoice_qty}
+                                  {missTrim > 0 && <span className="ms-1 text-red-600 font-semibold">— {isAr ? "ناقص" : "missing"} {missTrim}</span>}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </div>
                       );
                     }
+
+                    // Detailed breakdown tooltip for the "فاضل N" badge
+                    const badgeTooltip = isAr
+                      ? `الفاتورة: ${it.invoice_qty}\nهذا المحضر: ${it.this_qty}\nمحاضر سابقة: ${it.prior_qty}\nمحاضر لاحقة: ${it.later_qty}\nالمتبقي: ${remaining}`
+                      : `Invoice: ${it.invoice_qty}\nThis receipt: ${it.this_qty}\nPrior receipts: ${it.prior_qty}\nLater receipts: ${it.later_qty}\nRemaining: ${remaining}`;
 
                     return (
                       <tr key={it.invoice_item_id} className={dim ? "text-gray-500" : ""}>
@@ -293,11 +310,14 @@ function ReceiptView() {
                         </td>
                         <td className="border border-gray-400 px-2 py-2 text-center align-middle">
                           <div className="ltr-nums text-base font-bold">{it.this_qty}</div>
-                          <div className={`mt-0.5 inline-block rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums ${
-                            complete
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                              : "border-amber-500 bg-amber-50 text-amber-700"
-                          }`}>
+                          <div
+                            title={badgeTooltip}
+                            className={`mt-0.5 inline-block cursor-help rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums ${
+                              complete
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                                : "border-amber-500 bg-amber-50 text-amber-700"
+                            }`}
+                          >
                             {complete
                               ? (isAr ? "مكتمل ✓" : "Complete ✓")
                               : (isAr ? `فاضل ${remaining}` : `${remaining} left`)}
