@@ -73,26 +73,45 @@ export function ManageCollectionsDialog({ open, onOpenChange, canEdit }: Props) 
 
   const remove = async (item: CollectionEntry) => {
     if (!item.id) return;
-    // Check usage first
+    const reason = window.prompt(
+      ar
+        ? "لا يمكن حذف أي كولكشن إلا بسبب واضح. اكتب سبب الحذف:"
+        : "A collection can only be removed with a clear reason. Enter the reason:"
+    );
+    if (!reason || reason.trim().length < 3) {
+      return toast.error(ar ? "لازم تكتب سبب واضح للحذف" : "A clear reason is required");
+    }
+    // Check usage first — if in use, deactivate instead of hard delete.
     const { count } = await supabase
       .from("products")
       .select("id", { count: "exact", head: true })
       .eq("collection", item.code);
-    if ((count ?? 0) > 0) {
-      const proceed = window.confirm(
-        ar
-          ? `يوجد ${count} منتج مرتبط بهذا الكولكشن. سيتم إخفاؤه فقط (تعطيل) بدلاً من الحذف. متابعة؟`
-          : `${count} products still use this collection. It will be deactivated instead of deleted. Continue?`
-      );
-      if (!proceed) return;
+    const inUse = (count ?? 0) > 0;
+    const confirmMsg = inUse
+      ? (ar
+          ? `يوجد ${count} منتج مرتبط بهذا الكولكشن. سيتم تعطيله فقط (بدون حذف) مع تسجيل السبب. متابعة؟`
+          : `${count} products still use this collection. It will be deactivated (not deleted) and the reason will be logged. Continue?`)
+      : (ar ? "تأكيد حذف الكولكشن نهائيًا؟" : "Confirm permanent deletion of this collection?");
+    if (!window.confirm(confirmMsg)) return;
+
+    // Log the reason to audit_log (best-effort; ignore if table not accessible).
+    try {
+      await supabase.from("audit_log").insert({
+        action: inUse ? "collection_deactivated" : "collection_deleted",
+        entity_type: "collection",
+        entity_id: item.id,
+        details: { code: item.code, label: item.label, reason: reason.trim() },
+      } as never);
+    } catch {}
+
+    if (inUse) {
       await patch(item.id, { is_active: false });
-      toast.success(ar ? "تم التعطيل" : "Deactivated");
+      toast.success(ar ? "تم التعطيل مع تسجيل السبب" : "Deactivated with reason logged");
       return;
     }
-    if (!window.confirm(ar ? "حذف هذا الكولكشن؟" : "Delete this collection?")) return;
     const { error } = await supabase.from("collections").delete().eq("id", item.id);
     if (error) return toast.error(error.message);
-    toast.success(ar ? "تم الحذف" : "Deleted");
+    toast.success(ar ? "تم الحذف مع تسجيل السبب" : "Deleted with reason logged");
     await refreshCollections();
   };
 
