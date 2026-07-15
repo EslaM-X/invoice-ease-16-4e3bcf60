@@ -559,14 +559,26 @@ function CreatePODialog({
           };
         });
         setRows(initial);
+        // Apply optional prefill from Stock Shortages
+        try {
+          const raw = typeof window !== "undefined" ? localStorage.getItem("po_prefill_v1") : null;
+          if (raw) {
+            const pre = JSON.parse(raw) as Record<string, number>;
+            setRows((prev) => {
+              const next = { ...prev };
+              Object.entries(pre).forEach(([pid, qty]) => {
+                if (next[pid]) {
+                  next[pid] = { ...next[pid], selected: true, qty: Math.max(1, Number(qty) || next[pid].qty) };
+                }
+              });
+              return next;
+            });
+            localStorage.removeItem("po_prefill_v1");
+            toast.success(isAr ? "تم تعبئة المنتجات من تقرير النواقص" : "Prefilled from Stock Shortages");
+          }
+        } catch { /* noop */ }
       });
-  }, [open]);
-
-  const collections = useMemo(() => {
-    const s = new Set<string>();
-    for (const p of products) if (p.collection) s.add(p.collection);
-    return Array.from(s).sort();
-  }, [products]);
+  }, [open, isAr]);
 
   const colors = useMemo(() => {
     const s = new Set<string>();
