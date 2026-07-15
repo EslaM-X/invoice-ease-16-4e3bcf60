@@ -266,7 +266,20 @@ export function DeliveryReceiptForm({
         };
       });
       setRows(next);
+      // Auto-open the split panel only for rows that actually contain a
+      // mixer/trim split (this receipt or any other receipt). Full-only rows
+      // stay collapsed so the user just sees a single qty input.
+      const initSplit: Record<string, boolean> = {};
+      for (const r of next) {
+        if (!r.isMultiPart) continue;
+        const hasSplit =
+          r.partsQty.mixer > 0 || r.partsQty.trim > 0 ||
+          r.otherMixer > 0 || r.otherTrim > 0;
+        if (hasSplit) initSplit[r.invoice_item_id] = true;
+      }
+      setSplitOpen(initSplit);
       setLoading(false);
+
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId, receiptId]);
