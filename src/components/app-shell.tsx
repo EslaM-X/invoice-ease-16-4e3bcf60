@@ -246,7 +246,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             defaultOpen={
               location.pathname.startsWith("/purchase-orders") ||
               location.pathname.startsWith("/po-tracking") ||
-              location.pathname.startsWith("/stock-shortages") ||
+              
               location.pathname.startsWith("/profit-calculator") ||
               location.pathname.startsWith("/profit-scenarios")
             }
