@@ -312,10 +312,10 @@ function ReceiptView() {
                           <div className="ltr-nums text-base font-bold">{it.this_qty}</div>
                           <div
                             title={badgeTooltip}
-                            className={`mt-0.5 inline-block cursor-help rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums ${
+                            className={`mt-0.5 inline-block cursor-help rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold ltr-nums print:border-black print:bg-white print:text-black ${
                               complete
-                                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                                : "border-amber-500 bg-amber-50 text-amber-700"
+                                ? "border-emerald-600 bg-white text-emerald-700"
+                                : "border-amber-600 bg-white text-amber-700"
                             }`}
                           >
                             {complete
