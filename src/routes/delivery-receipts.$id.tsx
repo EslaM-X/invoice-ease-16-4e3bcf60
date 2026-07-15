@@ -31,6 +31,7 @@ function ReceiptView() {
   const navigate = useNavigate();
   const [r, setR] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [printRows, setPrintRows] = useState<PrintRow[] | null>(null);
   const [invoice, setInvoice] = useState<any>(null);
   const [, setSettings] = useState<Settings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -49,6 +50,21 @@ function ReceiptView() {
       if ((rec as any)?.invoice_id) {
         const { data: inv } = await supabase.from("invoices").select("*").eq("id", (rec as any).invoice_id).single();
         setInvoice(inv);
+        // v2 layout: fetch merged rows so PDF shows ALL invoice items
+        if ((rec as any)?.layout_version && (rec as any).layout_version >= 2) {
+          try {
+            const rows = await fetchInvoiceItemsForPrint(
+              (rec as any).invoice_id,
+              id,
+              (rec as any).created_at,
+            );
+            setPrintRows(rows);
+          } catch {
+            setPrintRows(null);
+          }
+        } else {
+          setPrintRows(null);
+        }
       }
       const { data: audit } = await supabase
         .from("delivery_receipt_audit_log" as any)
