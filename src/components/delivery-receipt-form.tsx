@@ -202,6 +202,9 @@ export function DeliveryReceiptForm({
         const multi = isMultiPartProduct(it.product_name);
         const parsed = parsePartFromNote(ex?.note ?? "");
         const sp = it.product_id ? sparePartInfo.get(it.product_id) : undefined;
+        // New-mode default: pre-select EVERY row so all invoice lines appear on the
+        // printed receipt. Rows with 0 remaining stay visible but their qty is 0.
+        const preselectAll = mode === "new";
         return {
           invoice_item_id: it.id,
           product_id: it.product_id ?? null,
@@ -212,7 +215,7 @@ export function DeliveryReceiptForm({
           delivered_other: multi ? strictDelivered : it.delivered_qty,
           qty: ex ? ex.qty : remainingForThisReceipt,
           note: ex ? parsed.cleanNote : "",
-          selected: ex ? true : remainingForThisReceipt > 0,
+          selected: ex ? true : (preselectAll ? true : remainingForThisReceipt > 0),
           isMultiPart: multi,
           part: ex ? parsed.part : "full",
           priorNotes: priorNotesMap.get(it.id) ?? [],
