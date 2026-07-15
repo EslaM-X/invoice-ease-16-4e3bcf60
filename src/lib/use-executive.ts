@@ -1,4 +1,4 @@
-import { useAuth } from "@/lib/auth";
+import { useEffectiveUser } from "@/lib/use-effective-user";
 
 /**
  * Top-tier executives who can see cost, USD pricing, profits,
@@ -14,8 +14,8 @@ export const EXECUTIVE_EMAILS = [
 ];
 
 export function useIsExecutive(): boolean {
-  const { user } = useAuth();
-  const email = (user?.email ?? "").trim().toLowerCase();
+  const effective = useEffectiveUser();
+  const email = (effective.email ?? "").trim().toLowerCase();
   return !!email && EXECUTIVE_EMAILS.includes(email);
 }
 

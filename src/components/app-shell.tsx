@@ -28,6 +28,7 @@ import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { useCollections } from "@/lib/use-collections";
 import { useUiPrefs } from "@/lib/use-ui-prefs";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { useEffectiveUser } from "@/lib/use-effective-user";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
@@ -79,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isAdmin, isCallCenter, isPurchasing, isCFO } = useRole();
   const isExecutive = useIsExecutive();
   const isSuperAdmin = useIsSuperAdmin();
+  const effectiveUser = useEffectiveUser();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -248,7 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               location.pathname.startsWith("/profit-scenarios")
             }
           >
-            <Link
+            {!ui.isNavHidden("purchase_orders") && <Link
               to="/purchase-orders"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
@@ -258,8 +260,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <ShoppingCart className="h-4 w-4" /> {lang === "ar" ? "أوامر الشراء" : "Purchase Orders"}
-            </Link>
-            <Link
+            </Link>}
+            {!ui.isNavHidden("po_tracking") && <Link
               to="/po-tracking"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
@@ -269,8 +271,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <Activity className="h-4 w-4" /> {lang === "ar" ? "تتبع أوامر الشراء" : "PO Tracking"}
-            </Link>
-            <Link
+            </Link>}
+            {!ui.isNavHidden("stock_shortages") && <Link
               to="/stock-shortages"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
@@ -280,10 +282,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <AlertTriangle className="h-4 w-4 text-amber-400" /> {lang === "ar" ? "تقرير النواقص" : "Stock Shortages"}
-            </Link>
+            </Link>}
             {isCFO && (
               <>
-                <Link
+                {!ui.isNavHidden("profit_calculator") && <Link
                   to="/profit-calculator"
                   onClick={() => setOpen(false)}
                   className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
@@ -293,8 +295,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <Calculator className="h-4 w-4" /> {lang === "ar" ? "حاسبة الربح" : "Profit Calculator"}
-                </Link>
-                <Link
+                </Link>}
+                {!ui.isNavHidden("profit_scenarios") && <Link
                   to="/profit-scenarios"
                   onClick={() => setOpen(false)}
                   className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
@@ -304,7 +306,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <ClipboardList className="h-4 w-4" /> {lang === "ar" ? "السيناريوهات المحفوظة" : "Saved Scenarios"}
-                </Link>
+                </Link>}
               </>
             )}
           </GroupNav>
@@ -321,7 +323,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             location.pathname.startsWith("/profits")
           }
         >
-          <Link
+          {!ui.isNavHidden("sales_analysis") && <Link
             to="/sales-analysis"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -331,8 +333,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Sparkles className="h-4 w-4" /> {lang === "ar" ? "تحليل المبيعات" : "Sales Analysis"}
-          </Link>
-          <Link
+          </Link>}
+          {!ui.isNavHidden("engineers_analysis") && <Link
             to="/engineers-analysis"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -342,9 +344,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Users className="h-4 w-4" /> {lang === "ar" ? "تحليل المهندسين" : "Engineers Analysis"}
-          </Link>
+          </Link>}
 
-          <Link
+          {!ui.isNavHidden("sales_range") && <Link
             to="/sales-range"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -354,8 +356,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <BarChart3 className="h-4 w-4" /> {t("sales_range")}
-          </Link>
-          <Link
+          </Link>}
+          {!ui.isNavHidden("shipping_order") && <Link
             to="/shipping-order"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -365,8 +367,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Truck className="h-4 w-4" /> {t("shipping_order")}
-          </Link>
-          {isExecutive && (
+          </Link>}
+          {isExecutive && !ui.isNavHidden("profits") && (
           <Link
             to="/profits"
             onClick={() => setOpen(false)}
@@ -390,7 +392,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               location.pathname.startsWith("/call-center-reports")
             }
           >
-            <Link
+            {!ui.isNavHidden("call_center") && <Link
               to="/call-center"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -400,8 +402,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <Phone className="h-4 w-4" /> {t("call_center")}
-            </Link>
-            <Link
+            </Link>}
+            {!ui.isNavHidden("call_center_reports") && <Link
               to="/call-center-reports"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -411,7 +413,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <BarChart3 className="h-4 w-4" /> {t("call_center_reports")}
-            </Link>
+            </Link>}
           </GroupNav>
         )}
         {!ui.isNavHidden("communication_group") && (
@@ -423,7 +425,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             location.pathname.startsWith("/whatsapp")
           }
         >
-          <Link
+          {!ui.isNavHidden("team_chat") && <Link
             to="/team-chat"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -439,8 +441,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {chatUnread > 99 ? "99+" : chatUnread}
               </span>
             )}
-          </Link>
-          <Link
+          </Link>}
+          {!ui.isNavHidden("whatsapp_inbox") && <Link
             to="/whatsapp"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -450,7 +452,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Phone className="h-4 w-4" /> {t("whatsapp_inbox")}
-          </Link>
+          </Link>}
         </GroupNav>
         )}
         {!ui.isNavHidden("settings_group") && (
@@ -464,7 +466,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             location.pathname.startsWith("/admin")
           }
         >
-          <Link
+          {!ui.isNavHidden("settings") && <Link
             to="/settings"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -474,8 +476,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Settings className="h-4 w-4" /> {t("settings")}
-          </Link>
-          {isExecutive && (
+          </Link>}
+          {isExecutive && !ui.isNavHidden("audit_log") && (
           <Link
             to="/audit-log"
             onClick={() => setOpen(false)}
@@ -488,7 +490,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ShieldCheck className="h-4 w-4" /> {t("audit_log")}
           </Link>
           )}
-          <Link
+          {!ui.isNavHidden("finance_audit") && <Link
             to="/finance-audit"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -498,8 +500,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Banknote className="h-4 w-4" /> {lang === "ar" ? "سجل تعديلات الفواتير" : "Invoice changes ledger"}
-          </Link>
-          <Link
+          </Link>}
+          {!ui.isNavHidden("pending_operations") && <Link
             to="/pending-operations"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -509,8 +511,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <CloudUpload className="h-4 w-4" /> {t("pending_operations")}
-          </Link>
-          <Link
+          </Link>}
+          {!ui.isNavHidden("distributors") && <Link
             to="/distributors"
             onClick={() => setOpen(false)}
             className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
@@ -520,8 +522,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <Store className="h-4 w-4" /> {lang === "ar" ? "الموزّعين" : "Distributors"}
-          </Link>
-          {isAdmin && isExecutive && (
+          </Link>}
+          {isAdmin && isExecutive && !ui.isNavHidden("admin_panel") && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}
@@ -534,7 +536,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <ShieldCheck className="h-4 w-4" /> {t("admin_panel")}
             </Link>
           )}
-          {isSuperAdmin && (
+          {isSuperAdmin && !effectiveUser.isPreviewing && !ui.isNavHidden("access_studio") && (
             <Link
               to="/admin/access-studio"
               onClick={() => setOpen(false)}
@@ -551,7 +553,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </nav>
       <div className="border-t border-sidebar-border p-3">
-        <div className="mb-2 truncate px-2 text-[11px] tracking-wide text-sidebar-foreground/55">{user.email}</div>
+        <div className="mb-2 truncate px-2 text-[11px] tracking-wide text-sidebar-foreground/55">{effectiveUser.email ?? user.email}</div>
         <Button
           variant="ghost"
           size="sm"

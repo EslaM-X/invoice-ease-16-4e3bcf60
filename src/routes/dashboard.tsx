@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -13,6 +13,8 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { useCurrentAvatar } from "@/lib/use-avatar";
+import { useUiPrefs } from "@/lib/use-ui-prefs";
+import { useEffectiveUser } from "@/lib/use-effective-user";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { CloseableInvoicesCard } from "@/components/closeable-invoices-card";
 import { NoirKpiCard, type NoirTone } from "@/components/noir-kpi-card";
@@ -43,6 +45,8 @@ function Dashboard() {
   const [fxInput, setFxInput] = useState("50.5");
   const [savingFx, setSavingFx] = useState(false);
   const avatar = useCurrentAvatar();
+  const ui = useUiPrefs();
+  const effectiveUser = useEffectiveUser();
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
   const navigate = useNavigate();
@@ -208,24 +212,112 @@ function Dashboard() {
   const costAdaptive = fmtMoneyAdaptive(stats.costValueEgp, "EGP", lang);
   const salesValueAdaptive = fmtMoneyAdaptive(stats.salesValueEgp, "EGP", lang);
 
-  const cards: Array<{ label: string; value: any; fullValue?: string; subValue?: string; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
-    { label: t("total_sales"),               value: salesAdaptive.short, fullValue: salesAdaptive.full, subValue: salesAdaptive.compact ? `≈ ${salesAdaptive.full}` : undefined, Icon: TrendingUp,   tone: "gold",    sensitive: true },
-    { label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
-    { label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
-    { label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
-    { label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
-    { label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
+  const cards: Array<{ key: string; label: string; value: any; fullValue?: string; subValue?: string; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
+    { key: "kpi_total_sales", label: t("total_sales"),               value: salesAdaptive.short, fullValue: salesAdaptive.full, subValue: salesAdaptive.compact ? `≈ ${salesAdaptive.full}` : undefined, Icon: TrendingUp,   tone: "gold",    sensitive: true },
+    { key: "kpi_total_invoices", label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
+    { key: "kpi_closed_invoices", label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
+    { key: "kpi_partial_invoices", label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
+    { key: "kpi_open_invoices", label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
+    { key: "kpi_customers", label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
+  const visibleCards = ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order);
 
   const now = new Date();
   const hour = now.getHours();
   const greeting = lang === "ar"
     ? (hour < 5 ? "مساء الخير" : hour < 12 ? "صباح الخير" : hour < 18 ? "طاب يومك" : "مساء الخير")
     : (hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
-  const displayName = (user as any)?.user_metadata?.full_name
-    || (user as any)?.email?.split("@")[0]
+  const displayName = effectiveUser.displayName
+    || effectiveUser.email?.split("@")[0]
     || "";
   const dateStr = now.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  const orderedSections = useMemo(() => {
+    const sections: Array<{ key: string; node: ReactNode }> = [
+      { key: "section_closeable_invoices", node: <CloseableInvoicesCard /> },
+      { key: "section_pending_accounts", node: <PendingAccountsCard /> },
+      { key: "section_distributor_approvals", node: <DistributorApprovalsCard /> },
+      { key: "section_incoming_shipments", node: <IncomingShipmentsStrip /> },
+      { key: "section_po_shipments_tracker", node: <LazyMount rootMargin="800px" minHeight={220}><PoShipmentsTracker /></LazyMount> },
+      {
+        key: "section_inventory_values",
+        node: (
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <InventoryValueCard
+              label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
+              value={loaded ? stats.inventoryStock : ""}
+              loading={!loaded}
+              sub={lang === "ar" ? `${stats.products} صنف نشط` : `${stats.products} active SKUs`}
+              Icon={Package}
+            />
+            <InventoryValueCard
+              label={lang === "ar" ? "منتجات في العيانات" : "Samples out"}
+              value={loaded ? stats.sampleStock : ""}
+              loading={!loaded}
+              sub={lang === "ar" ? "عينات خارج المخزون" : "Sample units outside stock"}
+              Icon={Sparkles}
+            />
+            <InventoryValueCard
+              label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
+              value={hidden ? "•••••" : costAdaptive.short}
+              fullValue={costAdaptive.full}
+              subValue={costAdaptive.compact && !hidden ? `≈ ${costAdaptive.full}` : undefined}
+              loading={!loaded}
+              sub={lang === "ar" ? `سعر الدولار المستخدم: ${stats.latestUsdRate}` : `USD rate used: ${stats.latestUsdRate}`}
+              Icon={Coins}
+              sensitive
+              footer={
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={fxInput}
+                    onChange={(e) => setFxInput(e.target.value)}
+                    className="h-8 min-w-0 border-[#c9a84c]/30 bg-black/60 text-xs tabular-nums text-[#f5e7b8] placeholder:text-white/40 focus-visible:ring-[#c9a84c]/60"
+                    aria-label={lang === "ar" ? "سعر الدولار" : "USD rate"}
+                  />
+                  <Button size="sm" variant="outline" className="h-8 shrink-0 border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 text-xs font-bold text-[#f5e7b8] hover:bg-[#c9a84c]/20 hover:text-[#f5e7b8]" disabled={savingFx} onClick={saveFxRate}>
+                    {lang === "ar" ? "تطبيق" : "Apply"}
+                  </Button>
+                </div>
+              }
+            />
+            <InventoryValueCard
+              label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
+              value={hidden ? "•••••" : salesValueAdaptive.short}
+              fullValue={salesValueAdaptive.full}
+              subValue={salesValueAdaptive.compact && !hidden ? `≈ ${salesValueAdaptive.full}` : undefined}
+              loading={!loaded}
+              sub={lang === "ar" ? "إجمالي سعر البيع للكمية المتاحة" : "Total sale value of available stock"}
+              Icon={TrendingUp}
+              sensitive
+            />
+          </section>
+        ),
+      },
+      { key: "section_sales_overview", node: <LazyMount rootMargin="800px" minHeight={280}><SalesOverview /></LazyMount> },
+      {
+        key: "section_recent_invoices",
+        node: (
+          <LazyMount rootMargin="800px" minHeight={320}>
+            <div className={ui.isCardHidden("section_top_products") ? "grid gap-3" : "grid gap-3 lg:grid-cols-2"}>
+              <RecentInvoicesPanel recent={recent} lang={lang} title={t("recent_invoices")} emptyLabel={t("no_data")} />
+              {!ui.isCardHidden("section_top_products") && <TopProductsInteractive rangeDays={30} limit={8} />}
+            </div>
+          </LazyMount>
+        ),
+      },
+      {
+        key: "section_top_products",
+        node: ui.isCardHidden("section_recent_invoices") ? (
+          <LazyMount rootMargin="800px" minHeight={320}><TopProductsInteractive rangeDays={30} limit={8} /></LazyMount>
+        ) : null,
+      },
+      { key: "section_activity_feed", node: <LazyMount rootMargin="600px" minHeight={240}><ActivityFeed limit={10} /></LazyMount> },
+    ];
+    return ui.sortByOrder(sections.filter((section) => section.node && !ui.isCardHidden(section.key)), ui.prefs.cards_order);
+  }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui]);
 
   return (
     <div className="space-y-8 sm:space-y-10">
@@ -370,9 +462,9 @@ function Dashboard() {
 
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded ? "done" : "loading"}>
-        {cards.map(({ label, value, fullValue, subValue, Icon, tone, sensitive }) => (
+        {visibleCards.map(({ key, label, value, fullValue, subValue, Icon, tone, sensitive }) => (
           <NoirKpiCard
-            key={label}
+            key={key}
             label={label}
             value={value}
             fullValue={fullValue}
@@ -386,111 +478,39 @@ function Dashboard() {
       </div>
 
 
-      <CloseableInvoicesCard />
-      <PendingAccountsCard />
-      <DistributorApprovalsCard />
+      {orderedSections.map((section) => <div key={section.key}>{section.node}</div>)}
+    </div>
+  );
+}
 
-      <IncomingShipmentsStrip />
-
-
-      <LazyMount rootMargin="800px" minHeight={220}>
-        <PoShipmentsTracker />
-      </LazyMount>
-
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <InventoryValueCard
-          label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
-          value={loaded ? stats.inventoryStock : ""}
-          loading={!loaded}
-          sub={lang === "ar" ? `${stats.products} صنف نشط` : `${stats.products} active SKUs`}
-          Icon={Package}
-        />
-        <InventoryValueCard
-          label={lang === "ar" ? "منتجات في العيانات" : "Samples out"}
-          value={loaded ? stats.sampleStock : ""}
-          loading={!loaded}
-          sub={lang === "ar" ? "عينات خارج المخزون" : "Sample units outside stock"}
-          Icon={Sparkles}
-        />
-        <InventoryValueCard
-          label={lang === "ar" ? "قيمة المخزون بسعر التكلفة" : "Inventory at cost"}
-          value={hidden ? "•••••" : costAdaptive.short}
-          fullValue={costAdaptive.full}
-          subValue={costAdaptive.compact && !hidden ? `≈ ${costAdaptive.full}` : undefined}
-          loading={!loaded}
-          sub={lang === "ar" ? `سعر الدولار المستخدم: ${stats.latestUsdRate}` : `USD rate used: ${stats.latestUsdRate}`}
-          Icon={Coins}
-          sensitive
-          footer={
-            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={fxInput}
-                onChange={(e) => setFxInput(e.target.value)}
-                className="h-8 min-w-0 border-[#c9a84c]/30 bg-black/60 text-xs tabular-nums text-[#f5e7b8] placeholder:text-white/40 focus-visible:ring-[#c9a84c]/60"
-                aria-label={lang === "ar" ? "سعر الدولار" : "USD rate"}
-              />
-              <Button size="sm" variant="outline" className="h-8 shrink-0 border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 text-xs font-bold text-[#f5e7b8] hover:bg-[#c9a84c]/20 hover:text-[#f5e7b8]" disabled={savingFx} onClick={saveFxRate}>
-                {lang === "ar" ? "تطبيق" : "Apply"}
-              </Button>
-            </div>
-          }
-        />
-        <InventoryValueCard
-          label={lang === "ar" ? "قيمة المخزون بسعر البيع" : "Inventory at sale price"}
-          value={hidden ? "•••••" : salesValueAdaptive.short}
-          fullValue={salesValueAdaptive.full}
-          subValue={salesValueAdaptive.compact && !hidden ? `≈ ${salesValueAdaptive.full}` : undefined}
-          loading={!loaded}
-          sub={lang === "ar" ? "إجمالي سعر البيع للكمية المتاحة" : "Total sale value of available stock"}
-          Icon={TrendingUp}
-          sensitive
-        />
-      </section>
-
-      <LazyMount rootMargin="800px" minHeight={280}>
-        <SalesOverview />
-      </LazyMount>
-
-      <LazyMount rootMargin="800px" minHeight={320}>
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="ios-card p-5 sm:p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="eyebrow">{t("recent_invoices")}</h3>
-              <div className="h-px flex-1 mx-4 bg-border" />
-            </div>
-            {recent.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">{t("no_data")}</div>
-            ) : (
-              <div className="divide-y divide-border">
-                {recent.map((r) => (
-                  <Link
-                    key={r.id}
-                    to="/invoices/$id"
-                    params={{ id: r.id }}
-                    aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
-                    className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
-                  >
-                    <div>
-                      <div className="text-sm font-medium">{r.invoice_number}</div>
-                      <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
-                    </div>
-                    <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
-                  </Link>
-                ))}
-
+function RecentInvoicesPanel({ recent, lang, title, emptyLabel }: { recent: any[]; lang: "ar" | "en"; title: string; emptyLabel: string }) {
+  return (
+    <div className="ios-card p-5 sm:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="eyebrow">{title}</h3>
+        <div className="h-px flex-1 mx-4 bg-border" />
+      </div>
+      {recent.length === 0 ? (
+        <div className="py-10 text-center text-sm text-muted-foreground">{emptyLabel}</div>
+      ) : (
+        <div className="divide-y divide-border">
+          {recent.map((r) => (
+            <Link
+              key={r.id}
+              to="/invoices/$id"
+              params={{ id: r.id }}
+              aria-label={`${r.invoice_number} · ${r.customer_name || "—"} · ${fmtMoney(Number(r.total), "EGP", lang)}`}
+              className="focus-gold flex items-center justify-between rounded-lg py-3 px-2 -mx-2 transition hover:bg-muted/40 hover:opacity-90"
+            >
+              <div>
+                <div className="text-sm font-medium">{r.invoice_number}</div>
+                <div className="text-xs text-muted-foreground">{r.customer_name || "—"} · {fmtDate(r.created_at, lang)}</div>
               </div>
-            )}
-          </div>
-          <TopProductsInteractive rangeDays={30} limit={8} />
+              <div className="text-sm font-semibold tabular-nums">{fmtMoney(Number(r.total), "EGP", lang)}</div>
+            </Link>
+          ))}
         </div>
-      </LazyMount>
-
-      <LazyMount rootMargin="600px" minHeight={240}>
-        <ActivityFeed limit={10} />
-      </LazyMount>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useEffectiveUser } from "@/lib/use-effective-user";
 
 export type AppRole = "admin" | "manager" | "cashier" | "call_center" | "purchasing" | "cfo" | "user";
 
@@ -10,10 +11,17 @@ export type AppRole = "admin" | "manager" | "cashier" | "call_center" | "purchas
  */
 export function useRole() {
   const { user } = useAuth();
+  const effective = useEffectiveUser();
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (effective.isPreviewing) {
+      const list = effective.roles.map((r) => r as AppRole);
+      setRoles(list.length ? list : ["user"]);
+      setLoading(effective.loading);
+      return;
+    }
     if (!user) {
       setRoles([]);
       setLoading(false);
@@ -34,11 +42,11 @@ export function useRole() {
     return () => {
       cancel = true;
     };
-  }, [user]);
+  }, [user, effective.isPreviewing, effective.loading, effective.roles]);
 
   // Email-based overrides: specific accounts get unconditional access to
   // certain feature areas regardless of their assigned roles.
-  const email = (user?.email ?? "").trim().toLowerCase();
+  const email = ((effective.isPreviewing ? effective.email : user?.email) ?? "").trim().toLowerCase();
   const CALL_CENTER_FULL_ACCESS = new Set(["f.hesham@steinheim-eg.com"]);
   const hasCallCenterOverride = CALL_CENTER_FULL_ACCESS.has(email);
 
