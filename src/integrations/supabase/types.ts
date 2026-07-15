@@ -1442,8 +1442,8 @@ export type Database = {
           id: string
           invoice_id: string
           invoice_item_id: string | null
-          po_id: string
-          po_item_id: string
+          po_id: string | null
+          po_item_id: string | null
           product_id: string
           quantity: number
           status: string
@@ -1456,8 +1456,8 @@ export type Database = {
           id?: string
           invoice_id: string
           invoice_item_id?: string | null
-          po_id: string
-          po_item_id: string
+          po_id?: string | null
+          po_item_id?: string | null
           product_id: string
           quantity: number
           status?: string
@@ -1470,8 +1470,8 @@ export type Database = {
           id?: string
           invoice_id?: string
           invoice_item_id?: string | null
-          po_id?: string
-          po_item_id?: string
+          po_id?: string | null
+          po_item_id?: string | null
           product_id?: string
           quantity?: number
           status?: string
@@ -4012,6 +4012,19 @@ export type Database = {
         Args: { _invoice_id: string }
         Returns: string
       }
+      cover_invoice_item: {
+        Args: {
+          _actor_email: string
+          _actor_id: string
+          _invoice_id: string
+          _invoice_item_id: string
+          _invoice_number: string
+          _product_id: string
+          _qty: number
+          _reason: string
+        }
+        Returns: undefined
+      }
       create_delivery_receipt:
         | {
             Args: {
@@ -4191,6 +4204,23 @@ export type Database = {
         Returns: {
           product_id: string
           sold_qty: number
+        }[]
+      }
+      get_stock_shortages: {
+        Args: never
+        Returns: {
+          collection: string
+          color: string
+          image_url: string
+          incoming_qty: number
+          invoices: Json
+          is_spare_part: boolean
+          needed_qty: number
+          net_shortage: number
+          product_id: string
+          product_name: string
+          serial_number: string
+          stock_quantity: number
         }[]
       }
       has_role: {
