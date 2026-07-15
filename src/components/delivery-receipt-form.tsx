@@ -267,8 +267,12 @@ export function DeliveryReceiptForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId, receiptId]);
 
+  // Effective delivered qty for a row (multi-part = sum of parts, single = qty)
+  const effQty = (r: Row) =>
+    r.isMultiPart ? r.partsQty.full + r.partsQty.mixer + r.partsQty.trim : (r.qty || 0);
+
   const totalQty = useMemo(
-    () => rows.filter((r) => r.selected).reduce((s, r) => s + (r.qty || 0), 0),
+    () => rows.filter((r) => r.selected).reduce((s, r) => s + effQty(r), 0),
     [rows],
   );
 
@@ -276,25 +280,53 @@ export function DeliveryReceiptForm({
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
   const submit = async (status: "draft" | "signed" | "out_for_delivery", andPrint = false) => {
-    const items = rows
-      .filter((r) => r.selected && r.qty > 0)
-      .map((r) => ({
-        invoice_item_id: r.invoice_item_id,
-        quantity: r.qty,
-        note: r.isMultiPart ? buildNoteWithPart(r.part, r.note) : (r.note || null),
-      }));
+    // Expand multi-part rows into one item per non-zero part
+    const items: Array<{ invoice_item_id: string; quantity: number; note: string | null }> = [];
+    for (const r of rows) {
+      if (!r.selected) continue;
+      if (r.isMultiPart) {
+        (["full", "mixer", "trim"] as PartKey[]).forEach((p) => {
+          const q = r.partsQty[p] || 0;
+          if (q > 0) {
+            items.push({
+              invoice_item_id: r.invoice_item_id,
+              quantity: q,
+              note: buildNoteWithPart(p, r.note),
+            });
+          }
+        });
+      } else if (r.qty > 0) {
+        items.push({
+          invoice_item_id: r.invoice_item_id,
+          quantity: r.qty,
+          note: r.note || null,
+        });
+      }
+    }
     if (items.length === 0) {
       toast.error(isAr ? "أدخل كمية لبند واحد على الأقل" : "Enter a quantity on at least one item");
       return;
     }
     // client-side validation against remaining
-    for (const r of rows.filter((x) => x.selected && x.qty > 0)) {
-      const maxAllowed = r.invoice_qty - r.delivered_other;
-      if (r.qty > maxAllowed) {
-        toast.error(
-          (isAr ? "كمية أكبر من المتبقي: " : "Quantity exceeds remaining: ") + r.product_name,
-        );
-        return;
+    for (const r of rows.filter((x) => x.selected && effQty(x) > 0)) {
+      if (r.isMultiPart) {
+        // Cap: mixers delivered (this + other full/mixer) <= invoice_qty
+        const mixersAfter = r.otherFull + r.otherMixer + r.partsQty.full + r.partsQty.mixer;
+        const trimsAfter = r.otherFull + r.otherTrim + r.partsQty.full + r.partsQty.trim;
+        if (mixersAfter > r.invoice_qty || trimsAfter > r.invoice_qty) {
+          toast.error(
+            (isAr ? "الأجزاء أكبر من كمية الفاتورة في: " : "Parts exceed invoice qty: ") + r.product_name,
+          );
+          return;
+        }
+      } else {
+        const maxAllowed = r.invoice_qty - r.delivered_other;
+        if (r.qty > maxAllowed) {
+          toast.error(
+            (isAr ? "كمية أكبر من المتبقي: " : "Quantity exceeds remaining: ") + r.product_name,
+          );
+          return;
+        }
       }
     }
     setSaving(true);
