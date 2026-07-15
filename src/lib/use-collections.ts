@@ -25,7 +25,7 @@ export function useCollections(opts: { includeInactive?: boolean } = {}) {
     })();
 
     const channel = supabase
-      .channel("collections-live")
+      .channel(`collections-live-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "collections" }, async () => {
         const { data } = await supabase
           .from("collections")
