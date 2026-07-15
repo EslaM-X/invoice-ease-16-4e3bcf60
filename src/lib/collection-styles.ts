@@ -1,6 +1,8 @@
 // Distinct color identity per product collection.
-// Colors are resolved from the live registry (DB-backed collections table)
-// so admins can add new collections at runtime.
+// Colors for the four seeded collections (JOY, UP, ART, QUATRO) keep their
+// original Tailwind classes for backward compatibility with pages that
+// don't yet pass inline styles. Custom collections added at runtime use
+// inline styles derived from `color_hex` in the DB registry.
 
 import { getCollectionEntry } from "@/lib/collection-registry";
 
@@ -24,9 +26,35 @@ const FALLBACK: Style = {
   dot: "bg-muted-foreground",
 };
 
-// Convert #rrggbb → "r g b" for use with rgb(...) & rgba(...).
+const SEEDED: Record<string, Style> = {
+  JOY: {
+    solid: "bg-rose-500 text-white shadow-sm shadow-rose-500/30",
+    soft: "bg-rose-500/10 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20",
+    badge: "border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-300",
+    dot: "bg-rose-500",
+  },
+  UP: {
+    solid: "bg-sky-500 text-white shadow-sm shadow-sky-500/30",
+    soft: "bg-sky-500/10 text-sky-600 dark:text-sky-300 hover:bg-sky-500/20",
+    badge: "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-300",
+    dot: "bg-sky-500",
+  },
+  ART: {
+    solid: "bg-violet-500 text-white shadow-sm shadow-violet-500/30",
+    soft: "bg-violet-500/10 text-violet-600 dark:text-violet-300 hover:bg-violet-500/20",
+    badge: "border-violet-500/30 bg-violet-500/15 text-violet-700 dark:text-violet-300",
+    dot: "bg-violet-500",
+  },
+  QUATRO: {
+    solid: "bg-amber-500 text-white shadow-sm shadow-amber-500/30",
+    soft: "bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20",
+    badge: "border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300",
+    dot: "bg-amber-500",
+  },
+};
+
 function hexToRgb(hex: string): string {
-  const h = hex.replace("#", "");
+  const h = (hex || "#8b5cf6").replace("#", "");
   const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
   const r = parseInt(full.slice(0, 2), 16) || 0;
   const g = parseInt(full.slice(2, 4), 16) || 0;
@@ -34,22 +62,18 @@ function hexToRgb(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
-// Perceived luminance to pick readable text on solid pill.
 function isLight(hex: string): boolean {
   const [r, g, b] = hexToRgb(hex).split(" ").map(Number);
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return lum > 0.65;
 }
 
-export function collectionStyle(c?: string | null): Style {
-  if (!c) return FALLBACK;
-  const entry = getCollectionEntry(c);
-  if (!entry) return FALLBACK;
-  const rgb = hexToRgb(entry.color_hex);
-  const textOnSolid = isLight(entry.color_hex) ? "#0b0b0b" : "#ffffff";
+function dynamicStyle(hex: string): Style {
+  const rgb = hexToRgb(hex);
+  const textOnSolid = isLight(hex) ? "#0b0b0b" : "#ffffff";
   return {
     solid: "shadow-sm",
-    soft: "hover:brightness-110 transition",
+    soft: "transition hover:brightness-110",
     badge: "border",
     dot: "",
     solidStyle: {
@@ -72,28 +96,32 @@ export function collectionStyle(c?: string | null): Style {
   };
 }
 
+export function collectionStyle(c?: string | null): Style {
+  if (!c) return FALLBACK;
+  const key = c.toUpperCase();
+  if (SEEDED[key]) return SEEDED[key];
+  const entry = getCollectionEntry(key);
+  if (entry) return dynamicStyle(entry.color_hex);
+  return FALLBACK;
+}
+
 export function collectionPillClass(c: string | null | undefined, active: boolean) {
   const s = collectionStyle(c);
   return active ? s.solid : s.soft;
 }
-
 export function collectionPillStyle(c: string | null | undefined, active: boolean): React.CSSProperties | undefined {
   const s = collectionStyle(c);
   return active ? s.solidStyle : s.softStyle;
 }
-
 export function collectionBadgeClass(c: string | null | undefined) {
   return collectionStyle(c).badge;
 }
-
 export function collectionBadgeStyle(c: string | null | undefined): React.CSSProperties | undefined {
   return collectionStyle(c).badgeStyle;
 }
-
 export function collectionDotClass(c: string | null | undefined) {
   return collectionStyle(c).dot;
 }
-
 export function collectionDotStyle(c: string | null | undefined): React.CSSProperties | undefined {
   return collectionStyle(c).dotStyle;
 }
