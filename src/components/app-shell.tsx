@@ -526,12 +526,25 @@ export function AppShell({ children }: { children: ReactNode }) {
               to="/admin"
               onClick={() => setOpen(false)}
               className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
-                location.pathname.startsWith("/admin")
+                location.pathname === "/admin"
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               }`}
             >
               <ShieldCheck className="h-4 w-4" /> {t("admin_panel")}
+            </Link>
+          )}
+          {isSuperAdmin && (
+            <Link
+              to="/admin/access-studio"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+                location.pathname.startsWith("/admin/access-studio")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-[#c9a84c]" /> {lang === "ar" ? "استوديو الصلاحيات" : "Access Studio"}
             </Link>
           )}
         </GroupNav>
