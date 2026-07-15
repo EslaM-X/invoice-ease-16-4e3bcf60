@@ -566,12 +566,31 @@ export function DeliveryReceiptForm({
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
                       </div>
                       {r.isMultiPart && !fullyDelivered && (() => {
+                        const isOpen = !!splitOpen[r.invoice_item_id];
                         const thisSum = r.partsQty.full + r.partsQty.mixer + r.partsQty.trim;
                         const mixersAfter = r.otherFull + r.otherMixer + r.partsQty.full + r.partsQty.mixer;
                         const trimsAfter = r.otherFull + r.otherTrim + r.partsQty.full + r.partsQty.trim;
                         const missingMixers = Math.max(0, r.invoice_qty - mixersAfter);
                         const missingTrims = Math.max(0, r.invoice_qty - trimsAfter);
                         const over = mixersAfter > r.invoice_qty || trimsAfter > r.invoice_qty;
+                        if (!isOpen) {
+                          return (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // When opening the split, clear any prior "full" so the
+                                  // user can freely reassign to mixer/trim inputs.
+                                  setSplitOpen((m) => ({ ...m, [r.invoice_item_id]: true }));
+                                }}
+                                className="rounded-full border border-primary/40 bg-primary/5 px-2.5 py-[3px] text-[10px] font-semibold text-primary transition hover:bg-primary/10"
+                              >
+                                {isAr ? "تقسيم إلى Mixer / Trim" : "Split into Mixer / Trim"}
+                              </button>
+                            </div>
+                          );
+                        }
+
                         const parts: { key: PartKey; label: string; prev: number; max: number }[] = [
                           {
                             key: "full",
