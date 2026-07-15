@@ -220,7 +220,10 @@ function Dashboard() {
     { key: "kpi_open_invoices", label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
     { key: "kpi_customers", label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
-  const visibleCards = ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order);
+  const uiReady = ui.loaded || ui.bypass;
+  const visibleCards = uiReady
+    ? ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order)
+    : [];
 
   const now = new Date();
   const hour = now.getHours();
