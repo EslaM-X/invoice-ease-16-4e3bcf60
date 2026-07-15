@@ -407,6 +407,32 @@ function StockShortagesPage() {
             <option value="oldest">{ar ? "الأقدم فاتورة" : "Oldest invoice"}</option>
             <option value="name">{ar ? "الاسم" : "Name"}</option>
           </select>
+          <div className="flex items-center gap-1.5 text-xs text-amber-100">
+            <span className="text-muted-foreground">{ar ? "من" : "From"}</span>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100"
+            />
+            <span className="text-muted-foreground">{ar ? "إلى" : "To"}</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100"
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setDateFrom(""); setDateTo(""); }}
+                className="h-8 px-2 text-amber-300 hover:text-amber-200"
+              >
+                {ar ? "مسح" : "Clear"}
+              </Button>
+            )}
+          </div>
           {filtered.filter((r) => r.net > 0).length > 0 && (
             <Button variant="ghost" size="sm" onClick={toggleSelectAllShort} className="text-amber-300 hover:text-amber-200">
               {selectedIds.length > 0 && filtered.filter((r) => r.net > 0).every((r) => selected[r.product_id])
