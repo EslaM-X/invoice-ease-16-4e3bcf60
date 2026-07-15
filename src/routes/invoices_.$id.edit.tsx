@@ -35,6 +35,7 @@ function EditInvoice() {
     sales_channel?: string | null;
     sales_event_id?: string | null;
     delivery_days?: number | null;
+    tax_enabled?: boolean | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
