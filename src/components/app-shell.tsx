@@ -616,6 +616,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </header>
+        <ImpersonationBanner />
         <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-visible px-3 py-6 pb-tabbar sm:px-6 sm:py-8 lg:px-8 lg:pb-safe">
           <PageTransition>{children}</PageTransition>
         </main>
