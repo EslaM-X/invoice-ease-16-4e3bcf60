@@ -319,6 +319,7 @@ function Dashboard() {
       },
       { key: "section_activity_feed", node: <LazyMount rootMargin="600px" minHeight={240}><ActivityFeed limit={10} /></LazyMount> },
     ];
+    if (!uiReady) return [];
     return ui.sortByOrder(sections.filter((section) => section.node && !ui.isCardHidden(section.key)), ui.prefs.cards_order);
   }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui]);
 
