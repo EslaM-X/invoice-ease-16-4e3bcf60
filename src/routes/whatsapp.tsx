@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Send, Phone, Bot, BotOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
   listConversations, listConversationMessages, sendWhatsAppText,
   setBotEnabled, checkWhatsAppStatus,
@@ -58,7 +59,7 @@ function WhatsAppPage() {
   useEffect(() => {
     if (!activeId) return;
     const ch = supabase
-      .channel(`wa-conv-${activeId}`)
+      .channel(uniqueRealtimeTopic(`wa-conv-${activeId}`))
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "whatsapp_messages", filter: `conversation_id=eq.${activeId}` },
@@ -73,7 +74,7 @@ function WhatsAppPage() {
 
   useEffect(() => {
     const ch = supabase
-      .channel("wa-convs-global")
+      .channel(uniqueRealtimeTopic("wa-convs-global"))
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_conversations" }, () => {
         qc.invalidateQueries({ queryKey: ["wa-convs"] });
       })

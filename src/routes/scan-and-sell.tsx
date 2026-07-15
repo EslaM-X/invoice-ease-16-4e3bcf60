@@ -7,6 +7,7 @@ import { QrScanner } from "@/components/qr-scanner";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 import { fetchProductCached } from "@/lib/product-cache";
 import { decodeProductQR } from "@/lib/qr-codec";
 import {
@@ -123,7 +124,7 @@ function ScanAndSellPage() {
   useEffect(() => {
     if (!session) return;
     const ch = supabase
-      .channel(`scanlink-mobile-${session.id}`)
+      .channel(uniqueRealtimeTopic(`scanlink-mobile-${session.id}`))
       .on(
         "postgres_changes",
         {

@@ -3,6 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Payload = { eventType: "INSERT" | "UPDATE" | "DELETE"; new: any; old: any };
 
+/**
+ * Realtime-js reuses channels with the same topic. If a second component asks
+ * for the same topic after the first has subscribed, adding `.on()` throws.
+ * Always use a per-mount topic for component-local listeners.
+ */
+export function uniqueRealtimeTopic(prefix: string): string {
+  const safePrefix = prefix.replace(/[^a-zA-Z0-9:_-]/g, "-");
+  const cryptoId = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(36).slice(2, 10);
+  return `${safePrefix}-${cryptoId}`;
+}
+
 // Debounce window for coalescing realtime bursts. A few hundred ms is
 // imperceptible to humans but collapses dozens of "items inserted at once"
 // events into a single refetch, dramatically reducing re-renders.
@@ -94,7 +107,7 @@ export function useRealtimeTable(
     const connect = () => {
       if (cancelled) return;
       cleanupChannel();
-      const ch = supabase.channel(`rt-${table}-${Math.random().toString(36).slice(2, 8)}`);
+      const ch = supabase.channel(uniqueRealtimeTopic(`rt-${table}`));
       channel = ch;
 
       ch.on(
@@ -218,7 +231,7 @@ export function useBatchedRealtimeTables(
     const connect = () => {
       cleanup();
       for (const table of tables) {
-        const ch = supabase.channel(`rtb-${table}-${Math.random().toString(36).slice(2, 8)}`);
+        const ch = supabase.channel(uniqueRealtimeTopic(`rtb-${table}`));
         ch.on(
           "postgres_changes",
           { event: "*", schema: "public", table },

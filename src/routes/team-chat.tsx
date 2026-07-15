@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Send, Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
   listChatRooms, listChatMessages, sendChatMessage, markRoomRead,
   listCompanyMembers, createChatRoom, deleteChatMessage,
@@ -87,7 +88,7 @@ function TeamChatPage() {
   useEffect(() => {
     if (!activeRoomId) return;
     const ch = supabase
-      .channel(`chat-room-${activeRoomId}`)
+      .channel(uniqueRealtimeTopic(`chat-room-${activeRoomId}`))
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages", filter: `room_id=eq.${activeRoomId}` },
@@ -103,7 +104,7 @@ function TeamChatPage() {
   // Global rooms refresh (new rooms / new direct memberships)
   useEffect(() => {
     const ch = supabase
-      .channel("chat-rooms-global")
+      .channel(uniqueRealtimeTopic("chat-rooms-global"))
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_rooms" }, () => {
         qc.invalidateQueries({ queryKey: ["chat-rooms"] });
       })

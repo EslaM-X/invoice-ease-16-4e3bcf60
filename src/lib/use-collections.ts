@@ -6,6 +6,7 @@ import {
   setCollectionsRegistry,
   subscribeCollections,
 } from "@/lib/collection-registry";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 /** Reactive list of active collections (synced with `public.collections`). */
 export function useCollections(opts: { includeInactive?: boolean } = {}) {
@@ -25,7 +26,7 @@ export function useCollections(opts: { includeInactive?: boolean } = {}) {
     })();
 
     const channel = supabase
-      .channel(`collections-live-${Math.random().toString(36).slice(2)}`)
+      .channel(uniqueRealtimeTopic("collections-live"))
       .on("postgres_changes", { event: "*", schema: "public", table: "collections" }, async () => {
         const { data } = await supabase
           .from("collections")

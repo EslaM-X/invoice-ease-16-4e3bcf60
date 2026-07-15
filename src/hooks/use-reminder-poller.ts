@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 /**
  * Polls x_notifications for due reminders, shows a toast, and broadcasts
@@ -68,7 +69,7 @@ export function useReminderPoller() {
 
     // Realtime: when a new notification lands, re-check immediately
     const ch = supabase
-      .channel("x-notifications-watch")
+      .channel(uniqueRealtimeTopic("x-notifications-watch"))
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "x_notifications", filter: `user_id=eq.${user.id}` }, () => {
         if (Date.now() - lastTickRef.current > 1000) {
           lastTickRef.current = Date.now();

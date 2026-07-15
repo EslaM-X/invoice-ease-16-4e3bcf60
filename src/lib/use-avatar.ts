@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveUser } from "@/lib/use-effective-user";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 export type CurrentAvatar = {
   url: string | null;
@@ -89,7 +90,7 @@ export function useCurrentAvatar(): CurrentAvatar {
     fetchProfile();
 
     const channel = (supabase as any)
-      .channel(`avatar-profile-${uid}`)
+      .channel(uniqueRealtimeTopic(`avatar-profile-${uid}`))
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${uid}` },

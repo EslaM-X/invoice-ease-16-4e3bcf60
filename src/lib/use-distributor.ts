@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 export type DistributorProfile = {
   id: string;
@@ -35,7 +36,7 @@ export function useDistributor() {
         setDistributor(data ?? null);
         setLoading(false);
       });
-    const ch = supabase.channel(`dist-${user.id}`)
+    const ch = supabase.channel(uniqueRealtimeTopic(`dist-${user.id}`))
       .on("postgres_changes", { event: "*", schema: "public", table: "distributors", filter: `user_id=eq.${user.id}` },
         () => {
           (supabase.from as any)("distributors").select("*").eq("user_id", user.id).maybeSingle()

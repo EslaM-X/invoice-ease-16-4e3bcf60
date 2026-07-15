@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 /**
  * Global team-chat realtime listener.
@@ -73,7 +74,7 @@ export function useChatNotifications() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("global-chat-notifications")
+      .channel(uniqueRealtimeTopic("global-chat-notifications"))
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages" },
