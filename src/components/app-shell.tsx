@@ -9,6 +9,7 @@ import {
   Plus, Languages, Moon, Sun, LogOut, Menu, X, ClipboardList, ShieldCheck, ShoppingCart,
   Phone, Truck, TrendingUp, StickyNote, ClipboardCheck, ChevronDown, Warehouse, Calculator,
   CloudUpload, Activity, PackageOpen, MessageSquare, MessagesSquare, Sparkles, Banknote, Store,
+  AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 import { PageTransition } from "@/components/page-transition";
