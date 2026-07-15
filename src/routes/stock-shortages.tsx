@@ -68,6 +68,8 @@ function StockShortagesPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [sortBy, setSortBy] = useState<SortKey>("priority");
   const [urgencyOnly, setUrgencyOnly] = useState<"all" | "critical" | "waiting">("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   // Existing open shortage requests, keyed by product_id — used to badge cards.
   const [openReqs, setOpenReqs] = useState<Record<string, number>>({});
