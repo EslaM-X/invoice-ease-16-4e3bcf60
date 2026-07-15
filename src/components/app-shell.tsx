@@ -82,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   useReminderPoller();
   useCollections(); // hydrate collections registry app-wide
+  const ui = useUiPrefs();
   const { unreadTotal: chatUnread } = useChatNotifications();
 
   const handleSignOut = async () => {
