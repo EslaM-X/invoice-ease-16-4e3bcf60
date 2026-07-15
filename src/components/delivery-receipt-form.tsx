@@ -575,6 +575,8 @@ export function DeliveryReceiptForm({
           </div>
         </div>
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border bg-card p-4">
           <SignaturePad
             label={isAr ? "توقيع المستلم" : "Recipient signature"}
