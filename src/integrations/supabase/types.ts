@@ -1589,6 +1589,8 @@ export type Database = {
           subject: string | null
           subtotal: number
           system_notes: string | null
+          tax_enabled: boolean
+          tax_rate: number
           total: number
           updated_at: string
           updated_by: string | null
@@ -1630,6 +1632,8 @@ export type Database = {
           subject?: string | null
           subtotal?: number
           system_notes?: string | null
+          tax_enabled?: boolean
+          tax_rate?: number
           total?: number
           updated_at?: string
           updated_by?: string | null
@@ -1671,6 +1675,8 @@ export type Database = {
           subject?: string | null
           subtotal?: number
           system_notes?: string | null
+          tax_enabled?: boolean
+          tax_rate?: number
           total?: number
           updated_at?: string
           updated_by?: string | null
@@ -3967,6 +3973,8 @@ export type Database = {
           subject: string | null
           subtotal: number
           system_notes: string | null
+          tax_enabled: boolean
+          tax_rate: number
           total: number
           updated_at: string
           updated_by: string | null
@@ -4440,6 +4448,8 @@ export type Database = {
           subject: string | null
           subtotal: number
           system_notes: string | null
+          tax_enabled: boolean
+          tax_rate: number
           total: number
           updated_at: string
           updated_by: string | null
