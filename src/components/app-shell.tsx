@@ -78,6 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, toggle } = useTheme();
   const { isAdmin, isCallCenter, isPurchasing, isCFO } = useRole();
   const isExecutive = useIsExecutive();
+  const isSuperAdmin = useIsSuperAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
