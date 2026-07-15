@@ -103,6 +103,13 @@ function ReceiptView() {
   if (!r) return <div className="text-muted-foreground">{isAr ? "جاري التحميل…" : "Loading…"}</div>;
 
   const shipping = r.shipping_fees != null ? Number(r.shipping_fees) : null;
+  const taxEnabled = (r as any).tax_enabled === true;
+  const taxRate = Number((r as any).tax_rate ?? 0.14) || 0.14;
+  const taxSubtotal = taxEnabled && printRows
+    ? printRows.reduce((s, it) => s + (it.this_qty * (it.unit_price || 0)), 0)
+    : 0;
+  const taxAmount = taxEnabled ? Math.round(taxSubtotal * taxRate * 100) / 100 : 0;
+  const taxTotal = taxEnabled ? taxSubtotal + taxAmount + (shipping || 0) : 0;
 
   return (
     <div className="space-y-6">
