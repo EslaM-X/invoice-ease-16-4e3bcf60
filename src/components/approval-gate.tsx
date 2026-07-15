@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, Clock, XCircle, Briefcase, Store } from "lucide-react";
 import { toast } from "sonner";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 type Profile = {
   account_type: "employee" | "distributor" | null;
@@ -34,7 +35,7 @@ export function ApprovalGate({ children }: { children: ReactNode }) {
     load(user.id);
     // Realtime: refresh when admin approves
     const ch = supabase
-      .channel(`approval-${user.id}`)
+      .channel(uniqueRealtimeTopic(`approval-${user.id}`))
       .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` },
         () => load(user.id))

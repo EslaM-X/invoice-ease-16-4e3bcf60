@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useIsSuperAdmin } from "@/lib/super-admin";
 import { loadUserPrefs } from "@/lib/access-studio.functions";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 
 const IMPERSONATE_KEY = "access-studio:impersonate-user-id";
 
@@ -106,7 +107,7 @@ export function useUiPrefs() {
     }
 
     const ch = supabase
-      .channel(`ui-prefs:${targetId}`)
+      .channel(uniqueRealtimeTopic(`ui-prefs:${targetId}`))
       .on("postgres_changes",
         { event: "*", schema: "public", table: "user_ui_preferences", filter: `user_id=eq.${targetId}` },
         (payload) => { setPrefs(normalize((payload as any).new ?? null)); },
