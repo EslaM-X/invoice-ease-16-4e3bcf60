@@ -25,6 +25,8 @@ import { XAssistant } from "@/components/x-assistant";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
 import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { useCollections } from "@/lib/use-collections";
+import { useUiPrefs } from "@/lib/use-ui-prefs";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 
 type NavItem = { to: string; icon: any; key: any };
 type NavGroup = { group: true; key: any; icon: any; children: NavItem[] };
