@@ -9,7 +9,7 @@ import { Printer, ArrowLeft, Pencil, Plus, FileDown, History } from "lucide-reac
 import { fmtDateTime } from "@/lib/utils-money";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { getSettings, type Settings } from "@/lib/data";
-import { elementToPdf } from "@/lib/delivery-receipts";
+import { elementToPdf, fetchInvoiceItemsForPrint, type PrintRow } from "@/lib/delivery-receipts";
 import { toast } from "sonner";
 import { DeliveryReceiptTracker } from "@/components/delivery-receipt-tracker";
 
