@@ -51,6 +51,7 @@ const items: NavEntry[] = [
       { to: "/inventory-audit", icon: ClipboardList, key: "inventory_audit" as const },
       { to: "/inventory-reconcile", icon: ClipboardList, key: "inventory_reconcile" as const },
       { to: "/defective-items", icon: PackageOpen, key: "defective_items" as const },
+      { to: "/stock-shortages", icon: AlertTriangle, key: "stock_shortages" as const },
       { to: "/qr-price-list", icon: FileText, key: "qr_price_list" as const },
     ],
   },
@@ -245,7 +246,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             defaultOpen={
               location.pathname.startsWith("/purchase-orders") ||
               location.pathname.startsWith("/po-tracking") ||
-              location.pathname.startsWith("/stock-shortages") ||
+              
               location.pathname.startsWith("/profit-calculator") ||
               location.pathname.startsWith("/profit-scenarios")
             }
@@ -271,17 +272,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               <Activity className="h-4 w-4" /> {lang === "ar" ? "تتبع أوامر الشراء" : "PO Tracking"}
-            </Link>}
-            {!ui.isNavHidden("stock_shortages") && <Link
-              to="/stock-shortages"
-              onClick={() => setOpen(false)}
-              className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
-                location.pathname.startsWith("/stock-shortages")
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-              }`}
-            >
-              <AlertTriangle className="h-4 w-4 text-amber-400" /> {lang === "ar" ? "تقرير النواقص" : "Stock Shortages"}
             </Link>}
             {isCFO && (
               <>
