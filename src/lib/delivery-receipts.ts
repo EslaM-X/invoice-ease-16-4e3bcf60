@@ -168,7 +168,7 @@ export async function fetchInvoiceItemsForPrint(
 ): Promise<PrintRow[]> {
   const { data: items } = await supabase
     .from("invoice_items")
-    .select("id, product_id, product_name, serial_number, color, quantity, created_at")
+    .select("id, product_id, product_name, serial_number, color, quantity, unit_price, created_at")
     .eq("invoice_id", invoiceId)
     .order("created_at", { ascending: true });
 
@@ -194,25 +194,40 @@ export async function fetchInvoiceItemsForPrint(
     for (const rec of (recs ?? []) as any[]) receiptCreatedAtMap.set(rec.id, rec.created_at);
   }
 
+  const zeroParts = (): PartAggregate => ({ full: 0, mixer: 0, trim: 0 });
   const thisMap = new Map<string, { qty: number; note: string | null }>();
   const priorMap = new Map<string, number>();
   const laterMap = new Map<string, number>();
+  const partsThisMap = new Map<string, PartAggregate>();
+  const partsPriorMap = new Map<string, PartAggregate>();
+  const partsLaterMap = new Map<string, PartAggregate>();
+
   for (const r of (dris ?? []) as any[]) {
+    const qty = r.quantity || 0;
+    // Determine bucket: this / prior / later
+    let bucketParts: Map<string, PartAggregate>;
     if (r.receipt_id === receiptId) {
       const cur = thisMap.get(r.invoice_item_id) ?? { qty: 0, note: null };
-      cur.qty += r.quantity || 0;
+      cur.qty += qty;
       if (!cur.note && r.note) cur.note = r.note;
       thisMap.set(r.invoice_item_id, cur);
+      bucketParts = partsThisMap;
     } else {
       const otherCreatedAt = receiptCreatedAtMap.get(r.receipt_id);
       const isPrior = otherCreatedAt ? otherCreatedAt < receiptCreatedAt : false;
       const m = isPrior ? priorMap : laterMap;
-      m.set(r.invoice_item_id, (m.get(r.invoice_item_id) || 0) + (r.quantity || 0));
+      m.set(r.invoice_item_id, (m.get(r.invoice_item_id) || 0) + qty);
+      bucketParts = isPrior ? partsPriorMap : partsLaterMap;
     }
+    const { part } = parsePartFromNote(r.note);
+    const agg = bucketParts.get(r.invoice_item_id) ?? zeroParts();
+    agg[part] += qty;
+    bucketParts.set(r.invoice_item_id, agg);
   }
 
   return (items ?? []).map((it: any) => {
     const t = thisMap.get(it.id);
+    const multi = isMultiPartProduct(it.product_name);
     return {
       invoice_item_id: it.id,
       product_id: it.product_id ?? null,
@@ -220,10 +235,15 @@ export async function fetchInvoiceItemsForPrint(
       serial_number: it.serial_number,
       color: it.color,
       invoice_qty: it.quantity,
+      unit_price: Number(it.unit_price ?? 0),
       this_qty: t?.qty ?? 0,
       this_note: t?.note ?? null,
       prior_qty: priorMap.get(it.id) ?? 0,
       later_qty: laterMap.get(it.id) ?? 0,
+      is_multi_part: multi,
+      parts_this: partsThisMap.get(it.id) ?? zeroParts(),
+      parts_prior: partsPriorMap.get(it.id) ?? zeroParts(),
+      parts_later: partsLaterMap.get(it.id) ?? zeroParts(),
     };
   });
 }
