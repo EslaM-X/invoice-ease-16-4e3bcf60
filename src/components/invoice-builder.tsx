@@ -1185,22 +1185,24 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                            onFocus={(e) => e.target.select()}
                            onChange={(e) => {
                              const v = e.target.value;
-                             let next = v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1);
-                              // Cap to available stock for catalog products (skip for drafts)
-                              if (!isDraft && it.product_id) {
+                              let next = v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1);
+                              // No cap — any excess is tracked as shortage; inform the user.
+                              if (it.product_id) {
                                 const p = products.find((x) => x.id === it.product_id);
                                 if (p) {
                                   const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
-                                  const maxAllowed = (p.stock_quantity ?? 0) + baseline;
-                                  if (next > maxAllowed) {
-                                    toast.error(
-                                      `${p.name} — ${t("insufficient_stock_remaining").replace("{n}", String(maxAllowed))}`,
+                                  const transit = inTransitQty[it.product_id] ?? 0;
+                                  const coverable = (p.stock_quantity ?? 0) + baseline + transit;
+                                  if (next > coverable) {
+                                    const gap = next - coverable;
+                                    toast.warning(
+                                      `${p.name} — ${lang === "ar" ? `نقص ${gap} — سيُسجَّل في تقرير النواقص` : `Shortage of ${gap} — tracked in shortages report`}`,
                                     );
-                                    next = Math.max(1, maxAllowed);
                                   }
                                 }
                               }
-                             updateItem(idx, { quantity: next });
+                              updateItem(idx, { quantity: next });
+
                            }}
                          />
                        </div>
