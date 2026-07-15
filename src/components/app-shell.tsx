@@ -18,6 +18,7 @@ import { LowStockAlerts } from "@/components/low-stock-alerts";
 import { ReservationAlertsBell } from "@/components/reservation-alerts-bell";
 import { useRole } from "@/lib/use-role";
 import { useIsExecutive } from "@/lib/use-executive";
+import { useIsSuperAdmin } from "@/lib/super-admin";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { InvoiceEditsBell } from "@/components/invoice-edits-bell";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
