@@ -49,7 +49,7 @@ import {
   collectionDotClass,
   collectionPillClass,
 } from "@/lib/collection-styles";
-import { COLLECTIONS } from "@/lib/data";
+import { useCollectionCodes } from "@/lib/use-collections";
 import { FileUp, Loader2 } from "lucide-react";
 
 import { ExecutiveGate } from "@/components/executive-gate";
