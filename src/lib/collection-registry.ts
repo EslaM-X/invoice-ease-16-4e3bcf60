@@ -22,6 +22,13 @@ const CACHE_KEY = "collections_registry_v1";
 
 const map = new Map<string, CollectionEntry>();
 const listeners = new Set<() => void>();
+let snapshot: CollectionEntry[] = [];
+
+function recomputeSnapshot() {
+  snapshot = Array.from(map.values()).sort(
+    (a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999),
+  );
+}
 
 function seedFromCache() {
   for (const s of SEED) map.set(s.code.toUpperCase(), s);
@@ -36,6 +43,7 @@ function seedFromCache() {
       }
     }
   } catch {}
+  recomputeSnapshot();
 }
 seedFromCache();
 
@@ -49,7 +57,25 @@ export function setCollectionsRegistry(items: CollectionEntry[]) {
       localStorage.setItem(CACHE_KEY, JSON.stringify(items));
     }
   } catch {}
-  listeners.forEach((l) => l());
+  const next = Array.from(map.values()).sort(
+    (a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999),
+  );
+  // Skip notify if nothing effectively changed (prevents render loops).
+  const same =
+    next.length === snapshot.length &&
+    next.every((c, i) => {
+      const p = snapshot[i];
+      return (
+        p &&
+        p.code === c.code &&
+        p.label === c.label &&
+        p.color_hex === c.color_hex &&
+        p.sort_order === c.sort_order &&
+        p.is_active === c.is_active
+      );
+    });
+  snapshot = next;
+  if (!same) listeners.forEach((l) => l());
 }
 
 export function getCollectionEntry(code?: string | null): CollectionEntry | null {
@@ -58,7 +84,7 @@ export function getCollectionEntry(code?: string | null): CollectionEntry | null
 }
 
 export function listCollectionsSync(): CollectionEntry[] {
-  return Array.from(map.values()).sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+  return snapshot;
 }
 
 export function subscribeCollections(fn: () => void): () => void {
