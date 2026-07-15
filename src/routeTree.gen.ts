@@ -13,6 +13,7 @@ import { Route as WhatsappRouteImport } from './routes/whatsapp'
 import { Route as TrustRouteImport } from './routes/trust'
 import { Route as TeamChatRouteImport } from './routes/team-chat'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as StockShortagesRouteImport } from './routes/stock-shortages'
 import { Route as StockIntakeRouteImport } from './routes/stock-intake'
 import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -106,6 +107,11 @@ const TeamChatRoute = TeamChatRouteImport.update({
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StockShortagesRoute = StockShortagesRouteImport.update({
+  id: '/stock-shortages',
+  path: '/stock-shortages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StockIntakeRoute = StockIntakeRouteImport.update({
@@ -538,6 +544,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/stock-shortages': typeof StockShortagesRoute
   '/tasks': typeof TasksRoute
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
@@ -618,6 +625,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/stock-shortages': typeof StockShortagesRoute
   '/tasks': typeof TasksRoute
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
@@ -699,6 +707,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
   '/stock-intake': typeof StockIntakeRoute
+  '/stock-shortages': typeof StockShortagesRoute
   '/tasks': typeof TasksRoute
   '/team-chat': typeof TeamChatRoute
   '/trust': typeof TrustRoute
@@ -781,6 +790,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/stock-shortages'
     | '/tasks'
     | '/team-chat'
     | '/trust'
@@ -861,6 +871,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/stock-shortages'
     | '/tasks'
     | '/team-chat'
     | '/trust'
@@ -941,6 +952,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shipping-order'
     | '/stock-intake'
+    | '/stock-shortages'
     | '/tasks'
     | '/team-chat'
     | '/trust'
@@ -1022,6 +1034,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
   StockIntakeRoute: typeof StockIntakeRoute
+  StockShortagesRoute: typeof StockShortagesRoute
   TasksRoute: typeof TasksRoute
   TeamChatRoute: typeof TeamChatRoute
   TrustRoute: typeof TrustRoute
@@ -1082,6 +1095,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stock-shortages': {
+      id: '/stock-shortages'
+      path: '/stock-shortages'
+      fullPath: '/stock-shortages'
+      preLoaderRoute: typeof StockShortagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stock-intake': {
@@ -1654,6 +1674,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
   StockIntakeRoute: StockIntakeRoute,
+  StockShortagesRoute: StockShortagesRoute,
   TasksRoute: TasksRoute,
   TeamChatRoute: TeamChatRoute,
   TrustRoute: TrustRoute,
