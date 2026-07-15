@@ -4025,6 +4025,10 @@ export type Database = {
         Args: { _new_status: string; _reason?: string; _receipt_id: string }
         Returns: string
       }
+      consume_needs_order_for_product: {
+        Args: { _delta: number; _product_id: string }
+        Returns: undefined
+      }
       convert_invoice_to_draft: {
         Args: { _invoice_id: string }
         Returns: string
@@ -4265,6 +4269,19 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      invoice_uncovered_shortage: {
+        Args: { _invoice_id: string }
+        Returns: {
+          color: string
+          image_url: string
+          incoming_qty: number
+          product_id: string
+          product_name: string
+          quantity: number
+          serial_number: string
+          stock_quantity: number
+        }[]
       }
       is_admin: { Args: never; Returns: boolean }
       is_allowed_company_email: { Args: { _email: string }; Returns: boolean }
