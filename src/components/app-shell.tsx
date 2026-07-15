@@ -173,8 +173,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         {items.map((it) => {
           if ("group" in it) {
+            if (ui.isNavHidden(it.key)) return null;
             const GroupIcon = it.icon;
-            const anyActive = it.children.some(
+            const visibleChildren = it.children.filter(
+              (c) => (isExecutive || c.to !== "/stock-intake") && !ui.isNavHidden(c.key),
+            );
+            if (visibleChildren.length === 0) return null;
+            const anyActive = visibleChildren.some(
               (c) => location.pathname === c.to || location.pathname.startsWith(c.to + "/"),
             );
             return (
@@ -184,7 +189,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 icon={GroupIcon}
                 defaultOpen={anyActive}
               >
-                {it.children.filter((c) => isExecutive || c.to !== "/stock-intake").map((c) => {
+                {visibleChildren.map((c) => {
                   const active = location.pathname === c.to || location.pathname.startsWith(c.to + "/");
                   const Icon = c.icon;
                   return (
@@ -208,6 +213,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </GroupNav>
             );
           }
+          if (ui.isNavHidden(it.key)) return null;
           const active = location.pathname === it.to || location.pathname.startsWith(it.to + "/");
           const Icon = it.icon;
           return (
