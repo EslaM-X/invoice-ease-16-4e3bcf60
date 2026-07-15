@@ -37,6 +37,7 @@ export async function createDeliveryReceipt(invoiceId: string, p: DRPayload) {
     _status: p.status ?? "draft",
     _items: p.items as any,
     _shipping_fees: p.shipping_fees ?? null,
+    _tax_enabled: p.tax_enabled ?? false,
   } as any);
   if (error) throw error;
   return data as string;
