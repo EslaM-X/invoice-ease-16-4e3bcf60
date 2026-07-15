@@ -285,12 +285,19 @@ function ReceiptView() {
                       const totalTrims = trimAll + fullAll;
                       const missMix = Math.max(0, it.invoice_qty - totalMixers);
                       const missTrim = Math.max(0, it.invoice_qty - totalTrims);
+                      // Only show the parts breakdown table when the line actually
+                      // has split parts (mixer/trim) somewhere across receipts.
+                      // If everything was delivered as "full", the main row + the
+                      // "فاضل N" badge is enough — no need for the extra table.
+                      const hasSplitParts = mixerAll > 0 || trimAll > 0;
                       const rowsDef = [
                         { label: isAr ? "المنتج كامل" : "Full product", now: t.full, all: fullAll },
                         { label: isAr ? "الخلاط الدفن (MIXER)" : "Mixer (concealed)", now: t.mixer, all: mixerAll },
                         { label: isAr ? "الجزء الظاهر (Trim)" : "External trim", now: t.trim, all: trimAll },
                       ];
+                      if (hasSplitParts) {
                       partsBlock = (
+
                         <div className="mt-1.5 border border-gray-500 bg-white print:border-black" dir={isAr ? "rtl" : "ltr"}>
                           <div className="border-b border-gray-500 px-2 py-0.5 text-[10px] font-bold text-gray-900 print:border-black">
                             {isAr ? "تفصيل الأجزاء لهذا البند" : "Parts breakdown for this line"}
