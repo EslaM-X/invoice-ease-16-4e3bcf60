@@ -66,6 +66,35 @@ export const loadUserPrefs = createServerFn({ method: "POST" })
     };
   });
 
+/** Load the visible identity + roles for preview-as-user mode (super-admin). */
+export const loadUserPreviewContext = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown): { user_id: string } => {
+    if (!isObj(raw) || !raw.user_id) throw new Error("user_id required");
+    return { user_id: String(raw.user_id) };
+  })
+  .handler(async ({ data, context }) => {
+    ensureSuper(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: profile }, { data: roles }] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id, email, display_name, avatar_url, account_type, approval_status")
+        .eq("user_id", data.user_id)
+        .maybeSingle(),
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", data.user_id),
+    ]);
+    return {
+      user_id: data.user_id,
+      email: (profile as any)?.email ?? null,
+      display_name: (profile as any)?.display_name ?? null,
+      avatar_url: (profile as any)?.avatar_url ?? null,
+      account_type: (profile as any)?.account_type ?? null,
+      approval_status: (profile as any)?.approval_status ?? null,
+      roles: ((roles as any[]) ?? []).map((r) => String(r.role)),
+    };
+  });
+
 type SaveInput = {
   user_id: string;
   nav_hidden: string[];

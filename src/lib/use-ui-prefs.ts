@@ -49,8 +49,10 @@ export function setImpersonateId(userId: string | null) {
     if (userId) sessionStorage.setItem(IMPERSONATE_KEY, userId);
     else sessionStorage.removeItem(IMPERSONATE_KEY);
   } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event("app:impersonation-changed")); } catch { /* ignore */ }
   // Reload so every hook re-reads the target user's prefs cleanly.
-  window.location.reload();
+  if (userId && !window.location.pathname.startsWith("/dashboard")) window.location.assign("/dashboard");
+  else window.location.reload();
 }
 
 /**

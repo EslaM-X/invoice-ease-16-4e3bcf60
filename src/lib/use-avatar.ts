@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+import { useEffectiveUser } from "@/lib/use-effective-user";
 
 export type CurrentAvatar = {
   url: string | null;
@@ -37,10 +37,11 @@ function withCacheBuster(url: string | null, version: string | number | null): s
  * Auto-upserts avatar_url from metadata → profiles on first load if missing.
  */
 export function useCurrentAvatar(): CurrentAvatar {
-  const { user } = useAuth();
-  const uid = user?.id;
-  const metaUrl = pickMetaAvatar(user);
-  const metaName = pickMetaName(user);
+  const effective = useEffectiveUser();
+  const user = effective.actualUser;
+  const uid = effective.id;
+  const metaUrl = effective.isPreviewing ? effective.avatarUrl : pickMetaAvatar(user);
+  const metaName = effective.isPreviewing ? effective.displayName : pickMetaName(user);
 
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -49,6 +50,13 @@ export function useCurrentAvatar(): CurrentAvatar {
 
   useEffect(() => {
     if (!uid) return;
+    if (effective.isPreviewing) {
+      setProfileUrl(effective.avatarUrl ?? null);
+      setProfileName(effective.displayName ?? null);
+      setVersion(null);
+      setLoading(effective.loading);
+      return;
+    }
     let cancelled = false;
 
     const fetchProfile = async () => {
@@ -105,7 +113,7 @@ export function useCurrentAvatar(): CurrentAvatar {
       sub.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid]);
+  }, [uid, effective.isPreviewing, effective.avatarUrl, effective.displayName, effective.loading]);
 
   const rawUrl = profileUrl ?? metaUrl ?? null;
   const url = withCacheBuster(rawUrl, version);
