@@ -179,3 +179,62 @@ export const createCompanyAccount = createServerFn({ method: "POST" })
 
     return { user_id: userId, email: data.email };
   });
+
+type ApplyToRoleInput = {
+  role: string;
+  nav_hidden: string[];
+  nav_order: string[];
+  cards_hidden: string[];
+  cards_order: string[];
+  overwrite: boolean;
+};
+
+/** Apply the current visibility template to every user that has a given role. */
+export const applyPrefsToRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown): ApplyToRoleInput => {
+    if (!isObj(raw) || !raw.role) throw new Error("role required");
+    const arr = (k: string) => (Array.isArray((raw as any)[k]) ? (raw as any)[k].map((s: any) => String(s)) : []);
+    return {
+      role: String(raw.role),
+      nav_hidden: arr("nav_hidden"),
+      nav_order: arr("nav_order"),
+      cards_hidden: arr("cards_hidden"),
+      cards_order: arr("cards_order"),
+      overwrite: Boolean((raw as any).overwrite ?? true),
+    };
+  })
+  .handler(async ({ data, context }) => {
+    ensureSuper(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: userRows, error: uErr } = await supabaseAdmin
+      .from("user_roles").select("user_id").eq("role", data.role as any);
+    if (uErr) throw new Error(uErr.message);
+    const users = Array.from(new Set((userRows ?? []).map((r: any) => r.user_id))).filter(Boolean);
+    if (users.length === 0) return { applied: 0 };
+
+    const rows = users.map((uid) => ({
+      user_id: uid,
+      nav_hidden: data.nav_hidden,
+      nav_order: data.nav_order,
+      cards_hidden: data.cards_hidden,
+      cards_order: data.cards_order,
+      mobile_tabs: [],
+      updated_by: context.userId,
+    }));
+    const { error } = await supabaseAdmin
+      .from("user_ui_preferences")
+      .upsert(rows as any, { onConflict: "user_id" });
+    if (error) throw new Error(error.message);
+
+    try {
+      await supabaseAdmin.from("audit_log").insert({
+        actor_id: context.userId,
+        action: "ui_prefs_bulk_role",
+        entity_type: "user_ui_preferences",
+        entity_id: data.role,
+        details: { role: data.role, users_count: users.length },
+      } as any);
+    } catch { /* ignore */ }
+    return { applied: users.length };
+  });
