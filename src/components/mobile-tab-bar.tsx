@@ -2,9 +2,11 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { LayoutDashboard, FileText, Package, Users, MoreHorizontal } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { useUiPrefs } from "@/lib/use-ui-prefs";
 
 type TabItem = {
   to: string;
+  key: string;
   icon: typeof LayoutDashboard;
   labelAr: string;
   labelEn: string;
@@ -12,13 +14,11 @@ type TabItem = {
 };
 
 const tabs: TabItem[] = [
-  { to: "/dashboard", icon: LayoutDashboard, labelAr: "الرئيسية", labelEn: "Home", match: (p) => p === "/dashboard" || p === "/" },
-  { to: "/invoices", icon: FileText, labelAr: "الفواتير", labelEn: "Invoices", match: (p) => p.startsWith("/invoices") },
-  { to: "/products", icon: Package, labelAr: "المنتجات", labelEn: "Products", match: (p) => p.startsWith("/products") || p.startsWith("/inventory") },
-  { to: "/customers", icon: Users, labelAr: "العملاء", labelEn: "Customers", match: (p) => p.startsWith("/customers") },
+  { to: "/dashboard", key: "dashboard", icon: LayoutDashboard, labelAr: "الرئيسية", labelEn: "Home", match: (p) => p === "/dashboard" || p === "/" },
+  { to: "/invoices", key: "invoices", icon: FileText, labelAr: "الفواتير", labelEn: "Invoices", match: (p) => p.startsWith("/invoices") },
+  { to: "/products", key: "products", icon: Package, labelAr: "المنتجات", labelEn: "Products", match: (p) => p.startsWith("/products") || p.startsWith("/inventory") },
+  { to: "/customers", key: "customers", icon: Users, labelAr: "العملاء", labelEn: "Customers", match: (p) => p.startsWith("/customers") },
 ];
-
-const ITEMS = tabs.length + 1; // +1 for "More"
 
 // Detect user preference for reduced motion (also disables haptics for comfort)
 function usePrefersReducedMotion() {
@@ -37,6 +37,7 @@ function usePrefersReducedMotion() {
 export function MobileTabBar({ onMore }: { onMore: () => void }) {
   const location = useLocation();
   const { lang } = useI18n();
+  const ui = useUiPrefs();
   const reducedMotion = usePrefersReducedMotion();
   const navRef = useRef<HTMLElement | null>(null);
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
@@ -44,8 +45,11 @@ export function MobileTabBar({ onMore }: { onMore: () => void }) {
   const [hidden, setHidden] = useState(false);
   const lastScrollY = useRef(0);
 
+  const visibleTabs = ui.sortByOrder(tabs.filter((tab) => !ui.isNavHidden(tab.key)), ui.prefs.mobile_tabs.length ? ui.prefs.mobile_tabs : ui.prefs.nav_order);
+  const itemCount = visibleTabs.length + 1;
+
   const activeIndex = (() => {
-    const i = tabs.findIndex((t) => t.match(location.pathname));
+    const i = visibleTabs.findIndex((t) => t.match(location.pathname));
     return i;
   })();
 
@@ -73,7 +77,7 @@ export function MobileTabBar({ onMore }: { onMore: () => void }) {
       window.removeEventListener("orientationchange", update);
       window.removeEventListener("resize", update);
     };
-  }, [activeIndex, lang]);
+  }, [activeIndex, lang, visibleTabs.length]);
 
   // Smart hide on scroll-down, reveal on scroll-up — disabled when reduced motion is on
   useEffect(() => {
@@ -116,7 +120,7 @@ export function MobileTabBar({ onMore }: { onMore: () => void }) {
       className="ios-tabbar tabbar-smart fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around px-2 pb-safe pt-1.5 lg:hidden no-print"
       aria-label={navLabel}
       role="navigation"
-      style={{ ['--tab-count' as any]: ITEMS }}
+      style={{ ['--tab-count' as any]: itemCount }}
     >
       <ul role="tablist" className="contents">
         <span
@@ -125,7 +129,7 @@ export function MobileTabBar({ onMore }: { onMore: () => void }) {
           data-visible={indicator.visible}
           style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }}
         />
-        {tabs.map((tab, i) => {
+        {visibleTabs.map((tab, i) => {
           const active = i === activeIndex;
           const Icon = tab.icon;
           const label = lang === "ar" ? tab.labelAr : tab.labelEn;
@@ -155,7 +159,7 @@ export function MobileTabBar({ onMore }: { onMore: () => void }) {
           <button
             type="button"
             onClick={() => { triggerHaptic(); onMore(); }}
-            ref={(el) => { itemRefs.current[tabs.length] = el; }}
+            ref={(el) => { itemRefs.current[visibleTabs.length] = el; }}
             aria-label={moreLabel}
             aria-haspopup="menu"
             className="tabbar-item press-spring ios-tap flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1 min-h-11 text-[10px] font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
