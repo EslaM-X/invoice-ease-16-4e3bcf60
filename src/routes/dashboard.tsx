@@ -13,6 +13,8 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { ActivityFeed } from "@/components/activity-feed";
 import { useHideNumbers } from "@/lib/use-hide-numbers";
 import { useCurrentAvatar } from "@/lib/use-avatar";
+import { useUiPrefs } from "@/lib/use-ui-prefs";
+import { useEffectiveUser } from "@/lib/use-effective-user";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { CloseableInvoicesCard } from "@/components/closeable-invoices-card";
 import { NoirKpiCard, type NoirTone } from "@/components/noir-kpi-card";
@@ -43,6 +45,8 @@ function Dashboard() {
   const [fxInput, setFxInput] = useState("50.5");
   const [savingFx, setSavingFx] = useState(false);
   const avatar = useCurrentAvatar();
+  const ui = useUiPrefs();
+  const effectiveUser = useEffectiveUser();
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
   const navigate = useNavigate();
@@ -208,22 +212,23 @@ function Dashboard() {
   const costAdaptive = fmtMoneyAdaptive(stats.costValueEgp, "EGP", lang);
   const salesValueAdaptive = fmtMoneyAdaptive(stats.salesValueEgp, "EGP", lang);
 
-  const cards: Array<{ label: string; value: any; fullValue?: string; subValue?: string; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
-    { label: t("total_sales"),               value: salesAdaptive.short, fullValue: salesAdaptive.full, subValue: salesAdaptive.compact ? `≈ ${salesAdaptive.full}` : undefined, Icon: TrendingUp,   tone: "gold",    sensitive: true },
-    { label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
-    { label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
-    { label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
-    { label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
-    { label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
+  const cards: Array<{ key: string; label: string; value: any; fullValue?: string; subValue?: string; Icon: any; tone: NoirTone; sensitive?: boolean }> = [
+    { key: "kpi_total_sales", label: t("total_sales"),               value: salesAdaptive.short, fullValue: salesAdaptive.full, subValue: salesAdaptive.compact ? `≈ ${salesAdaptive.full}` : undefined, Icon: TrendingUp,   tone: "gold",    sensitive: true },
+    { key: "kpi_total_invoices", label: t("total_invoices"),            value: stats.invoices,                     Icon: FileText,     tone: "neutral" },
+    { key: "kpi_closed_invoices", label: t("closed_invoices"),           value: stats.closed,                       Icon: CheckCircle2, tone: "emerald" },
+    { key: "kpi_partial_invoices", label: t("partial_delivery_invoices"), value: stats.partial,                      Icon: Truck,        tone: "amber" },
+    { key: "kpi_open_invoices", label: t("open_invoices"),             value: stats.open,                         Icon: Clock,        tone: "blue" },
+    { key: "kpi_customers", label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
+  const visibleCards = ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order);
 
   const now = new Date();
   const hour = now.getHours();
   const greeting = lang === "ar"
     ? (hour < 5 ? "مساء الخير" : hour < 12 ? "صباح الخير" : hour < 18 ? "طاب يومك" : "مساء الخير")
     : (hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
-  const displayName = (user as any)?.user_metadata?.full_name
-    || (user as any)?.email?.split("@")[0]
+  const displayName = effectiveUser.displayName
+    || effectiveUser.email?.split("@")[0]
     || "";
   const dateStr = now.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
@@ -370,9 +375,9 @@ function Dashboard() {
 
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded ? "done" : "loading"}>
-        {cards.map(({ label, value, fullValue, subValue, Icon, tone, sensitive }) => (
+        {visibleCards.map(({ key, label, value, fullValue, subValue, Icon, tone, sensitive }) => (
           <NoirKpiCard
-            key={label}
+            key={key}
             label={label}
             value={value}
             fullValue={fullValue}
@@ -386,18 +391,18 @@ function Dashboard() {
       </div>
 
 
-      <CloseableInvoicesCard />
-      <PendingAccountsCard />
-      <DistributorApprovalsCard />
+      {!ui.isCardHidden("section_closeable_invoices") && <CloseableInvoicesCard />}
+      {!ui.isCardHidden("section_pending_accounts") && <PendingAccountsCard />}
+      {!ui.isCardHidden("section_distributor_approvals") && <DistributorApprovalsCard />}
 
-      <IncomingShipmentsStrip />
+      {!ui.isCardHidden("section_incoming_shipments") && <IncomingShipmentsStrip />}
 
 
-      <LazyMount rootMargin="800px" minHeight={220}>
+      {!ui.isCardHidden("section_po_shipments_tracker") && <LazyMount rootMargin="800px" minHeight={220}>
         <PoShipmentsTracker />
-      </LazyMount>
+      </LazyMount>}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {!ui.isCardHidden("section_inventory_values") && <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <InventoryValueCard
           label={lang === "ar" ? "منتجات في المخزن" : "Products in stock"}
           value={loaded ? stats.inventoryStock : ""}
@@ -448,15 +453,15 @@ function Dashboard() {
           Icon={TrendingUp}
           sensitive
         />
-      </section>
+      </section>}
 
-      <LazyMount rootMargin="800px" minHeight={280}>
+      {!ui.isCardHidden("section_sales_overview") && <LazyMount rootMargin="800px" minHeight={280}>
         <SalesOverview />
-      </LazyMount>
+      </LazyMount>}
 
-      <LazyMount rootMargin="800px" minHeight={320}>
+      {(!ui.isCardHidden("section_recent_invoices") || !ui.isCardHidden("section_top_products")) && <LazyMount rootMargin="800px" minHeight={320}>
         <div className="grid gap-3 lg:grid-cols-2">
-          <div className="ios-card p-5 sm:p-6">
+          {!ui.isCardHidden("section_recent_invoices") && <div className="ios-card p-5 sm:p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="eyebrow">{t("recent_invoices")}</h3>
               <div className="h-px flex-1 mx-4 bg-border" />
@@ -483,14 +488,14 @@ function Dashboard() {
 
               </div>
             )}
-          </div>
-          <TopProductsInteractive rangeDays={30} limit={8} />
+          </div>}
+          {!ui.isCardHidden("section_top_products") && <TopProductsInteractive rangeDays={30} limit={8} />}
         </div>
-      </LazyMount>
+      </LazyMount>}
 
-      <LazyMount rootMargin="600px" minHeight={240}>
+      {!ui.isCardHidden("section_activity_feed") && <LazyMount rootMargin="600px" minHeight={240}>
         <ActivityFeed limit={10} />
-      </LazyMount>
+      </LazyMount>}
     </div>
   );
 }
