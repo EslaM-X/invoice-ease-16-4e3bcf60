@@ -175,11 +175,22 @@ export function DeliveryReceiptForm({
       }
 
       // map existing receipt selections
-      const existingMap = new Map<string, { qty: number; note: string }>();
+      // For multi-part items the SAME invoice_item_id may appear multiple times
+      // (once per PartKey). Group them so edit-mode can seed partsQty.
+      const existingMap = new Map<string, { qty: number; note: string; partsQty: PartsQty }>();
       if (existing) {
         for (const it of existing.items) {
-          if (it.invoice_item_id)
-            existingMap.set(it.invoice_item_id, { qty: it.quantity, note: it.note ?? "" });
+          if (!it.invoice_item_id) continue;
+          const parsed = parsePartFromNote(it.note ?? "");
+          const cur = existingMap.get(it.invoice_item_id) ?? {
+            qty: 0,
+            note: "",
+            partsQty: { full: 0, mixer: 0, trim: 0 },
+          };
+          cur.qty += it.quantity;
+          cur.partsQty[parsed.part] += it.quantity;
+          if (!cur.note && parsed.cleanNote) cur.note = parsed.cleanNote;
+          existingMap.set(it.invoice_item_id, cur);
         }
       }
       const productIds = Array.from(new Set(items.map((i) => i.product_id).filter(Boolean) as string[]));
@@ -205,6 +216,18 @@ export function DeliveryReceiptForm({
         }
       }
 
+      // Aggregate parts delivered in OTHER receipts (for multi-part tracking)
+      const otherPartsMap = new Map<string, PartsQty>();
+      for (const notesArr of priorNotesMap.entries()) {
+        const [iid, arr] = notesArr;
+        const agg: PartsQty = { full: 0, mixer: 0, trim: 0 };
+        for (const n of arr) {
+          const { part } = parsePartFromNote(n);
+          agg[part] += 1;
+        }
+        otherPartsMap.set(iid, agg);
+      }
+
       const next: Row[] = items.map((it) => {
         const ex = existingMap.get(it.id);
         const strictDelivered = deliveredStrictMap.get(it.id) ?? 0;
@@ -215,6 +238,7 @@ export function DeliveryReceiptForm({
         // New-mode default: pre-select EVERY row so all invoice lines appear on the
         // printed receipt. Rows with 0 remaining stay visible but their qty is 0.
         const preselectAll = mode === "new";
+        const otherParts = otherPartsMap.get(it.id) ?? { full: 0, mixer: 0, trim: 0 };
         return {
           invoice_item_id: it.id,
           product_id: it.product_id ?? null,
@@ -223,11 +247,15 @@ export function DeliveryReceiptForm({
           color: it.color,
           invoice_qty: it.quantity,
           delivered_other: multi ? strictDelivered : it.delivered_qty,
-          qty: ex ? ex.qty : remainingForThisReceipt,
-          note: ex ? parsed.cleanNote : "",
+          qty: ex ? ex.qty : (multi ? 0 : remainingForThisReceipt),
+          note: ex ? ex.note : "",
           selected: ex ? true : (preselectAll ? true : remainingForThisReceipt > 0),
           isMultiPart: multi,
           part: ex ? parsed.part : "full",
+          partsQty: ex ? ex.partsQty : { full: 0, mixer: 0, trim: 0 },
+          otherFull: otherParts.full,
+          otherMixer: otherParts.mixer,
+          otherTrim: otherParts.trim,
           priorNotes: priorNotesMap.get(it.id) ?? [],
           is_spare_part: !!sp?.is_spare_part,
           parent_product_name: sp?.parent_product_id ? (productNamesById.get(sp.parent_product_id) ?? null) : null,
