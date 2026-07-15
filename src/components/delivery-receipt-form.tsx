@@ -97,6 +97,9 @@ export function DeliveryReceiptForm({
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Which multi-part rows have the split panel expanded. Full-only stays collapsed.
+  const [splitOpen, setSplitOpen] = useState<Record<string, boolean>>({});
+
 
   // header fields
   const [deliveredName, setDeliveredName] = useState(existing?.delivered_to_name ?? "");
@@ -263,7 +266,20 @@ export function DeliveryReceiptForm({
         };
       });
       setRows(next);
+      // Auto-open the split panel only for rows that actually contain a
+      // mixer/trim split (this receipt or any other receipt). Full-only rows
+      // stay collapsed so the user just sees a single qty input.
+      const initSplit: Record<string, boolean> = {};
+      for (const r of next) {
+        if (!r.isMultiPart) continue;
+        const hasSplit =
+          r.partsQty.mixer > 0 || r.partsQty.trim > 0 ||
+          r.otherMixer > 0 || r.otherTrim > 0;
+        if (hasSplit) initSplit[r.invoice_item_id] = true;
+      }
+      setSplitOpen(initSplit);
       setLoading(false);
+
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId, receiptId]);
@@ -550,12 +566,31 @@ export function DeliveryReceiptForm({
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
                       </div>
                       {r.isMultiPart && !fullyDelivered && (() => {
+                        const isOpen = !!splitOpen[r.invoice_item_id];
                         const thisSum = r.partsQty.full + r.partsQty.mixer + r.partsQty.trim;
                         const mixersAfter = r.otherFull + r.otherMixer + r.partsQty.full + r.partsQty.mixer;
                         const trimsAfter = r.otherFull + r.otherTrim + r.partsQty.full + r.partsQty.trim;
                         const missingMixers = Math.max(0, r.invoice_qty - mixersAfter);
                         const missingTrims = Math.max(0, r.invoice_qty - trimsAfter);
                         const over = mixersAfter > r.invoice_qty || trimsAfter > r.invoice_qty;
+                        if (!isOpen) {
+                          return (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // When opening the split, clear any prior "full" so the
+                                  // user can freely reassign to mixer/trim inputs.
+                                  setSplitOpen((m) => ({ ...m, [r.invoice_item_id]: true }));
+                                }}
+                                className="rounded-full border border-primary/40 bg-primary/5 px-2.5 py-[3px] text-[10px] font-semibold text-primary transition hover:bg-primary/10"
+                              >
+                                {isAr ? "تقسيم إلى Mixer / Trim" : "Split into Mixer / Trim"}
+                              </button>
+                            </div>
+                          );
+                        }
+
                         const parts: { key: PartKey; label: string; prev: number; max: number }[] = [
                           {
                             key: "full",
@@ -616,6 +651,19 @@ export function DeliveryReceiptForm({
                                 >
                                   {isAr ? "مسح" : "Clear"}
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Collapse: fold split back into full and hide panel.
+                                    const merged = r.partsQty.full + r.partsQty.mixer + r.partsQty.trim;
+                                    setRow(idx, { partsQty: { full: merged, mixer: 0, trim: 0 } });
+                                    setSplitOpen((m) => ({ ...m, [r.invoice_item_id]: false }));
+                                  }}
+                                  className="rounded-full border border-border bg-background px-2 py-[2px] text-[9.5px] font-medium text-muted-foreground transition hover:bg-muted/50"
+                                >
+                                  {isAr ? "إخفاء التقسيم" : "Hide split"}
+                                </button>
+
                                 <span className={`ltr-nums rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
                                   over ? "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
                                        : "border-primary/40 bg-background text-primary"
@@ -681,14 +729,29 @@ export function DeliveryReceiptForm({
                     <td className="px-3 py-2 text-center font-semibold tabular-nums">{remaining}</td>
                     <td className="px-3 py-2 text-center">
                       {r.isMultiPart ? (
-                        <div className="mx-auto inline-flex flex-col items-center gap-0.5">
-                          <span className="ltr-nums text-lg font-bold text-primary">
-                            {r.partsQty.full + r.partsQty.mixer + r.partsQty.trim}
-                          </span>
-                          <span className="text-[9px] text-muted-foreground">
-                            {isAr ? "من الأجزاء أعلاه" : "from parts above"}
-                          </span>
-                        </div>
+                        splitOpen[r.invoice_item_id] ? (
+                          <div className="mx-auto inline-flex flex-col items-center gap-0.5">
+                            <span className="ltr-nums text-lg font-bold text-primary">
+                              {r.partsQty.full + r.partsQty.mixer + r.partsQty.trim}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground">
+                              {isAr ? "من الأجزاء أعلاه" : "from parts above"}
+                            </span>
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={remaining}
+                            value={r.partsQty.full}
+                            disabled={!r.selected || fullyDelivered}
+                            onChange={(e) => {
+                              const v = Math.max(0, Math.min(remaining, parseInt(e.target.value || "0", 10)));
+                              setRow(idx, { partsQty: { full: v, mixer: 0, trim: 0 } });
+                            }}
+                            className="mx-auto h-8 w-20 text-center tabular-nums"
+                          />
+                        )
                       ) : (
                         <Input
                           type="number"
@@ -702,6 +765,7 @@ export function DeliveryReceiptForm({
                           className="mx-auto h-8 w-20 text-center tabular-nums"
                         />
                       )}
+
                     </td>
                     <td className="px-3 py-2">
                       <Input
