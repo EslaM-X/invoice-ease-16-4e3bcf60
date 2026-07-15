@@ -2934,6 +2934,70 @@ export type Database = {
         }
         Relationships: []
       }
+      shortage_requests: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          po_id: string | null
+          product_id: string
+          quantity: number
+          requested_by: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          po_id?: string | null
+          product_id: string
+          quantity: number
+          requested_by: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          po_id?: string | null
+          product_id?: string
+          quantity?: number
+          requested_by?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortage_requests_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shortage_requests_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shortage_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_intake_items: {
         Row: {
           color: string | null
