@@ -76,7 +76,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   // Procurement (executive)
   { key: "purchase_orders", to: "/purchase-orders", labelAr: "أوامر الشراء", labelEn: "Purchase Orders", group: "procurement_group", requires: "purchasing" },
   { key: "po_tracking", to: "/po-tracking", labelAr: "تتبع أوامر الشراء", labelEn: "PO Tracking", group: "procurement_group", requires: "purchasing" },
-  { key: "stock_shortages", to: "/stock-shortages", labelAr: "تقرير النواقص", labelEn: "Stock Shortages", group: "procurement_group", requires: "purchasing" },
+  { key: "stock_shortages", to: "/stock-shortages", labelAr: "تقرير النواقص", labelEn: "Stock Shortages", group: "inventory_group" },
   { key: "profit_calculator", to: "/profit-calculator", labelAr: "حاسبة الربح", labelEn: "Profit Calculator", group: "procurement_group", requires: "cfo" },
   { key: "profit_scenarios", to: "/profit-scenarios", labelAr: "السيناريوهات المحفوظة", labelEn: "Saved Scenarios", group: "procurement_group", requires: "cfo" },
 
