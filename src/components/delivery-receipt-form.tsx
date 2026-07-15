@@ -52,6 +52,8 @@ type ExistingReceipt = {
   }>;
 };
 
+type PartsQty = { full: number; mixer: number; trim: number };
+
 type Row = {
   invoice_item_id: string;
   product_id: string | null;
@@ -59,13 +61,18 @@ type Row = {
   serial_number: string | null;
   color: string | null;
   invoice_qty: number;
-  delivered_other: number; // delivered in OTHER receipts
-  qty: number; // current input
+  delivered_other: number; // delivered in OTHER receipts (as units — see product-parts weights)
+  qty: number; // current input (single-part)
   note: string;
   selected: boolean;
   isMultiPart: boolean;
-  part: PartKey;
-  priorNotes: string[]; // notes from OTHER receipts (for multi-part tracking)
+  part: PartKey; // single-part legacy (unused for multi)
+  partsQty: PartsQty; // per-part split for this receipt (multi-part only)
+  // Aggregates from OTHER receipts for multi-part tracking:
+  otherFull: number;
+  otherMixer: number;
+  otherTrim: number;
+  priorNotes: string[];
   is_spare_part: boolean;
   parent_product_name: string | null;
 };
