@@ -527,8 +527,9 @@ function Products() {
               key={c}
               onClick={() => setCollectionFilter(c)}
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${collectionPillClass(c, collectionFilter === c)}`}
+              style={collectionPillStyle(c, collectionFilter === c)}
             >
-              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} aria-hidden />
+              <span className={`inline-block h-2 w-2 rounded-full ${collectionDotClass(c)}`} style={collectionDotStyle(c)} aria-hidden />
               {c} ({collectionCounts[c] ?? 0})
             </button>
           ))}
