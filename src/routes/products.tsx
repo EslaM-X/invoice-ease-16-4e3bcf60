@@ -201,7 +201,7 @@ function Products() {
       else if (!p.collection) counts.__none__++;
     }
     return counts;
-  }, [list]);
+  }, [list, COLLECTIONS]);
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
   const toggleAll = () => {
