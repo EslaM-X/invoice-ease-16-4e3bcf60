@@ -580,6 +580,14 @@ function CreatePODialog({
       });
   }, [open, isAr]);
 
+  const collections = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of products) if (p.collection) s.add(p.collection);
+    return Array.from(s).sort();
+  }, [products]);
+
+
+
   const colors = useMemo(() => {
     const s = new Set<string>();
     for (const p of products) if (p.color) s.add(p.color);
