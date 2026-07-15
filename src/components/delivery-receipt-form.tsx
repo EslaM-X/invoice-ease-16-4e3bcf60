@@ -549,34 +549,96 @@ export function DeliveryReceiptForm({
                         {r.color && <span>{isAr ? "اللون" : "Color"}: {r.color}</span>}
                       </div>
                       {r.isMultiPart && !fullyDelivered && (() => {
-                        const pendingParts = remainingPartsLabel(r.invoice_qty, r.priorNotes, isAr);
+                        const thisSum = r.partsQty.full + r.partsQty.mixer + r.partsQty.trim;
+                        const mixersAfter = r.otherFull + r.otherMixer + r.partsQty.full + r.partsQty.mixer;
+                        const trimsAfter = r.otherFull + r.otherTrim + r.partsQty.full + r.partsQty.trim;
+                        const missingMixers = Math.max(0, r.invoice_qty - mixersAfter);
+                        const missingTrims = Math.max(0, r.invoice_qty - trimsAfter);
+                        const over = mixersAfter > r.invoice_qty || trimsAfter > r.invoice_qty;
+                        const parts: { key: PartKey; label: string; prev: number; max: number }[] = [
+                          {
+                            key: "full",
+                            label: partLabel("full", isAr),
+                            prev: r.otherFull,
+                            max: Math.min(
+                              r.invoice_qty - r.otherFull - r.otherMixer - r.partsQty.mixer,
+                              r.invoice_qty - r.otherFull - r.otherTrim - r.partsQty.trim,
+                            ),
+                          },
+                          {
+                            key: "mixer",
+                            label: partLabel("mixer", isAr),
+                            prev: r.otherMixer,
+                            max: r.invoice_qty - r.otherFull - r.otherMixer - r.partsQty.full,
+                          },
+                          {
+                            key: "trim",
+                            label: partLabel("trim", isAr),
+                            prev: r.otherTrim,
+                            max: r.invoice_qty - r.otherFull - r.otherTrim - r.partsQty.full,
+                          },
+                        ];
                         return (
-                          <div className="mt-2 flex flex-col gap-1.5">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[10px] font-semibold text-muted-foreground">
-                                {isAr ? "الجزء المُسلَّم:" : "Part delivered:"}
+                          <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+                            <div className="mb-1.5 flex items-center justify-between gap-2">
+                              <span className="text-[10.5px] font-bold text-primary">
+                                {isAr ? "توزيع الأجزاء في هذا المحضر" : "Split parts in this receipt"}
                               </span>
-                              {(["full", "mixer", "trim"] as PartKey[]).map((p) => (
-                                <button
-                                  key={p}
-                                  type="button"
-                                  disabled={!r.selected}
-                                  onClick={() => setRow(idx, { part: p })}
-                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
-                                    r.part === p
-                                      ? "border-primary bg-primary/10 text-primary"
-                                      : "border-border bg-background text-muted-foreground hover:bg-muted/50"
-                                  } ${!r.selected ? "opacity-50" : ""}`}
-                                >
-                                  {partLabel(p, isAr)}
-                                </button>
+                              <span className={`ltr-nums rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
+                                over ? "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
+                                     : "border-primary/40 bg-background text-primary"
+                              }`}>
+                                {isAr ? "الإجمالي: " : "Total: "}{thisSum}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                              {parts.map((p) => (
+                                <div key={p.key} className="rounded-md border border-border bg-background px-2 py-1.5">
+                                  <div className="mb-1 flex items-center justify-between gap-1">
+                                    <span className="truncate text-[10px] font-semibold">{p.label}</span>
+                                    <span className="ltr-nums text-[9.5px] text-muted-foreground" title={isAr ? "مسلَّم في محاضر أخرى" : "Delivered in other receipts"}>
+                                      {isAr ? "سابقًا:" : "prior:"} {p.prev}
+                                    </span>
+                                  </div>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={Math.max(0, p.max)}
+                                    value={r.partsQty[p.key]}
+                                    disabled={!r.selected}
+                                    onChange={(e) => {
+                                      const raw = parseInt(e.target.value || "0", 10);
+                                      const capped = Math.max(0, Math.min(Math.max(0, p.max), isNaN(raw) ? 0 : raw));
+                                      setRow(idx, { partsQty: { ...r.partsQty, [p.key]: capped } });
+                                    }}
+                                    className="h-8 text-center tabular-nums"
+                                  />
+                                </div>
                               ))}
                             </div>
-                            {pendingParts && (
-                              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                                {isAr ? "⚠ متبقي من السابق: " : "⚠ Still pending: "}{pendingParts}
-                              </div>
-                            )}
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[9.5px]">
+                              <span className="text-muted-foreground">
+                                {isAr ? "إجمالي المكسر بعد الحفظ:" : "Mixers after save:"}{" "}
+                                <b className={mixersAfter > r.invoice_qty ? "text-red-600" : "text-foreground"}>{mixersAfter}/{r.invoice_qty}</b>
+                              </span>
+                              <span className="text-muted-foreground">
+                                {isAr ? "إجمالي الظاهر بعد الحفظ:" : "Trims after save:"}{" "}
+                                <b className={trimsAfter > r.invoice_qty ? "text-red-600" : "text-foreground"}>{trimsAfter}/{r.invoice_qty}</b>
+                              </span>
+                              {(missingMixers > 0 || missingTrims > 0) && !over && (
+                                <span className="text-amber-700 dark:text-amber-400">
+                                  {isAr ? "لسه ناقص:" : "Still missing:"}{" "}
+                                  {missingMixers > 0 && <span>MIXER {missingMixers}</span>}
+                                  {missingMixers > 0 && missingTrims > 0 && " • "}
+                                  {missingTrims > 0 && <span>{isAr ? "ظاهر" : "Trim"} {missingTrims}</span>}
+                                </span>
+                              )}
+                              {over && (
+                                <span className="font-semibold text-red-600">
+                                  {isAr ? "⚠ تخطّى كمية الفاتورة" : "⚠ Exceeds invoice qty"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })()}
@@ -585,17 +647,28 @@ export function DeliveryReceiptForm({
                     <td className="px-3 py-2 text-center tabular-nums">{r.delivered_other}</td>
                     <td className="px-3 py-2 text-center font-semibold tabular-nums">{remaining}</td>
                     <td className="px-3 py-2 text-center">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={remaining}
-                        value={r.qty}
-                        disabled={!r.selected || fullyDelivered}
-                        onChange={(e) =>
-                          setRow(idx, { qty: Math.max(0, Math.min(remaining, parseInt(e.target.value || "0", 10))) })
-                        }
-                        className="mx-auto h-8 w-20 text-center tabular-nums"
-                      />
+                      {r.isMultiPart ? (
+                        <div className="mx-auto inline-flex flex-col items-center gap-0.5">
+                          <span className="ltr-nums text-lg font-bold text-primary">
+                            {r.partsQty.full + r.partsQty.mixer + r.partsQty.trim}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {isAr ? "من الأجزاء أعلاه" : "from parts above"}
+                          </span>
+                        </div>
+                      ) : (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={remaining}
+                          value={r.qty}
+                          disabled={!r.selected || fullyDelivered}
+                          onChange={(e) =>
+                            setRow(idx, { qty: Math.max(0, Math.min(remaining, parseInt(e.target.value || "0", 10))) })
+                          }
+                          className="mx-auto h-8 w-20 text-center tabular-nums"
+                        />
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <Input
