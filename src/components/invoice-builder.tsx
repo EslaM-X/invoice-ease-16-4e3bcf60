@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import type { Customer, Product, SalesEvent } from "@/lib/data";
-import { COLLECTIONS } from "@/lib/data";
+import { useCollectionCodes } from "@/lib/use-collections";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { SparePartBadge } from "@/components/spare-part-badge";
 import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
