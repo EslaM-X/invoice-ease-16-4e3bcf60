@@ -100,6 +100,7 @@ function EditInvoice() {
       sales_channel: invAny.sales_channel ?? null,
       sales_event_id: invAny.sales_event_id ?? null,
       delivery_days: invAny.delivery_days != null ? Number(invAny.delivery_days) : null,
+      tax_enabled: invAny.tax_enabled === true,
     });
     setSnapshotKey((k) => k + 1);
     setLoading(false);
