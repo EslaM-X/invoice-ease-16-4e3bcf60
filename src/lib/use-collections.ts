@@ -25,7 +25,7 @@ export function useCollections(opts: { includeInactive?: boolean } = {}) {
     })();
 
     const channel = supabase
-      .channel("collections-live")
+      .channel(`collections-live-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "collections" }, async () => {
         const { data } = await supabase
           .from("collections")
@@ -43,6 +43,12 @@ export function useCollections(opts: { includeInactive?: boolean } = {}) {
 
   const filtered = opts.includeInactive ? items : items.filter((c) => c.is_active);
   return { items: filtered, all: items, loading };
+}
+
+/** Reactive list of active collection codes (e.g. ["JOY","UP","ART","QUATRO", ...custom]). */
+export function useCollectionCodes(): string[] {
+  const { items } = useCollections();
+  return items.map((c) => c.code.toUpperCase());
 }
 
 export async function refreshCollections() {

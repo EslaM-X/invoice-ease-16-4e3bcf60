@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import type { Customer, Product, SalesEvent } from "@/lib/data";
-import { COLLECTIONS } from "@/lib/data";
+import { useCollectionCodes } from "@/lib/use-collections";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { SparePartBadge } from "@/components/spare-part-badge";
 import { collectionPillClass, collectionBadgeClass, collectionDotClass } from "@/lib/collection-styles";
@@ -70,6 +70,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const COLLECTIONS = useCollectionCodes();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [products, setProducts] = useState<Product[]>([]);

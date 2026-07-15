@@ -49,7 +49,7 @@ import {
   collectionDotClass,
   collectionPillClass,
 } from "@/lib/collection-styles";
-import { COLLECTIONS } from "@/lib/data";
+import { useCollectionCodes } from "@/lib/use-collections";
 import { FileUp, Loader2 } from "lucide-react";
 
 import { ExecutiveGate } from "@/components/executive-gate";
@@ -1212,6 +1212,7 @@ function PODetailDialog({
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const COLLECTIONS = useCollectionCodes();
   const canEditPricing = isCFO || isAdmin;
   const canEditItems = isAdmin || isPurchasing;
   const canDeleteItems = isAdmin;
@@ -2480,6 +2481,7 @@ function AddItemPicker({
 }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const COLLECTIONS = useCollectionCodes();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [collectionFilter, setCollectionFilter] = useState("");

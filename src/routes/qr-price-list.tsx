@@ -25,7 +25,7 @@ import { swatchStyle } from "@/lib/color-swatch";
 import { ProductImageUpload } from "@/components/product-image-upload";
 import { lovable } from "@/integrations/lovable";
 import type { Product } from "@/lib/data";
-import { COLLECTIONS as APP_COLLECTIONS } from "@/lib/data";
+import { useCollectionCodes } from "@/lib/use-collections";
 import { fmtMoney } from "@/lib/utils-money";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 
@@ -39,8 +39,7 @@ export const Route = createFileRoute("/qr-price-list")({
   }),
 });
 
-const COLLECTION_TABS = ["ALL", ...APP_COLLECTIONS] as const;
-type CollectionFilter = (typeof COLLECTION_TABS)[number];
+type CollectionFilter = string;
 
 const CACHE_KEY = "qr_price_list_products_v1";
 
@@ -63,6 +62,8 @@ function PriceListPage() {
   const { isAdmin } = useRole();
   const navigate = useNavigate();
   const { lang, setLang, dir } = useI18n();
+  const APP_COLLECTIONS = useCollectionCodes();
+  const COLLECTION_TABS = ["ALL", ...APP_COLLECTIONS];
   const isAr = lang === "ar";
   const tt = (ar: string, en: string) => (isAr ? ar : en);
 
@@ -948,9 +949,10 @@ function SignInDialog({ onClose, lang }: { onClose: () => void; lang: "ar" | "en
 function AddDialog({
   userId, userEmail, onClose,
 }: { userId: string; userEmail: string | null; onClose: () => void }) {
+  const APP_COLLECTIONS = useCollectionCodes();
   const [form, setForm] = useState({
     name: "", serial_number: "", color: "",
-    collection: "JOY" as string,
+    collection: (APP_COLLECTIONS[0] ?? "JOY") as string,
     price: "", stock_quantity: "0",
   });
   const [imageUrl, setImageUrl] = useState<string | null>(null);
