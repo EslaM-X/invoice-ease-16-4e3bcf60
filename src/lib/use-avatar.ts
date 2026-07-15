@@ -118,5 +118,8 @@ export function useCurrentAvatar(): CurrentAvatar {
   const rawUrl = profileUrl ?? metaUrl ?? null;
   const url = withCacheBuster(rawUrl, version);
   const name = profileName ?? metaName ?? null;
-  return { url, name, initial: computeInitial(name, user), loading };
+  const initialUser = effective.isPreviewing
+    ? { email: effective.email, user_metadata: { full_name: effective.displayName } }
+    : user;
+  return { url, name, initial: computeInitial(name, initialUser), loading };
 }
