@@ -899,6 +899,8 @@ export type Database = {
           signature_manager: string | null
           status: string
           status_reason: string | null
+          tax_enabled: boolean
+          tax_rate: number
           updated_at: string
           updated_by: string | null
           updated_by_email: string | null
@@ -926,6 +928,8 @@ export type Database = {
           signature_manager?: string | null
           status?: string
           status_reason?: string | null
+          tax_enabled?: boolean
+          tax_rate?: number
           updated_at?: string
           updated_by?: string | null
           updated_by_email?: string | null
@@ -953,6 +957,8 @@ export type Database = {
           signature_manager?: string | null
           status?: string
           status_reason?: string | null
+          tax_enabled?: boolean
+          tax_rate?: number
           updated_at?: string
           updated_by?: string | null
           updated_by_email?: string | null
@@ -4064,6 +4070,25 @@ export type Database = {
             }
             Returns: string
           }
+        | {
+            Args: {
+              _accountant_name: string
+              _delivered_to_id_number: string
+              _delivered_to_name: string
+              _delivered_to_phone: string
+              _invoice_id: string
+              _items: Json
+              _manager_name: string
+              _notes: string
+              _shipping_fees?: number
+              _signature_accountant: string
+              _signature_customer: string
+              _signature_manager: string
+              _status: string
+              _tax_enabled?: boolean
+            }
+            Returns: string
+          }
       create_invoice:
         | {
             Args: {
@@ -4503,6 +4528,25 @@ export type Database = {
               _signature_customer: string
               _signature_manager: string
               _status: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _accountant_name: string
+              _delivered_to_id_number: string
+              _delivered_to_name: string
+              _delivered_to_phone: string
+              _items: Json
+              _manager_name: string
+              _notes: string
+              _receipt_id: string
+              _shipping_fees?: number
+              _signature_accountant: string
+              _signature_customer: string
+              _signature_manager: string
+              _status: string
+              _tax_enabled?: boolean
             }
             Returns: string
           }
