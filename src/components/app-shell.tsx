@@ -451,6 +451,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </GroupNav>
         )}
+        {!ui.isNavHidden("settings_group") && (
         <GroupNav
           label={t("settings")}
           icon={Settings}
