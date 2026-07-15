@@ -557,10 +557,24 @@ export function DeliveryReceiptForm({
               />
             )}
           </div>
+          <div className="rounded-lg border border-dashed border-amber-500/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Checkbox checked={taxEnabled} onCheckedChange={(v) => setTaxEnabled(!!v)} />
+                {isAr ? "تطبيق ضريبة القيمة المضافة 14%" : "Apply 14% VAT"}
+              </label>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                {isAr ? "اختياري" : "Optional"}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {isAr
+                ? "لو مفعّلة تظهر في المحضر و PDF كملخّص مالي (الفرعي / الضريبة / الإجمالي). لو مطفية لا يظهر أي شيء عن الضريبة."
+                : "If enabled, a subtotal / VAT / total block appears on the receipt and PDF. If off, nothing tax-related is shown."}
+            </p>
+          </div>
         </div>
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border bg-card p-4">
           <SignaturePad
             label={isAr ? "توقيع المستلم" : "Recipient signature"}
