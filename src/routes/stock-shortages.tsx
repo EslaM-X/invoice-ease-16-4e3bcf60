@@ -70,8 +70,10 @@ function StockShortagesPage() {
     () => {
       load();
     },
-    300,
+    [],
+    { debounceMs: 400 },
   );
+
 
   const filtered = useMemo(() => {
     if (!rows) return [];
