@@ -378,6 +378,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           )}
         </GroupNav>
+        )}
         {isCallCenter && !ui.isNavHidden("call_center_group") && (
           <GroupNav
             label={t("call_center_group")}
