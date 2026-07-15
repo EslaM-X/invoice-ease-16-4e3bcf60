@@ -449,11 +449,28 @@ export function DeliveryReceiptForm({
                   className="h-7 text-xs"
                   onClick={() =>
                     setRows((prev) =>
-                      prev.map((r) => ({
-                        ...r,
-                        selected: true,
-                        qty: Math.max(0, r.invoice_qty - r.delivered_other),
-                      })),
+                      prev.map((r) => {
+                        if (r.isMultiPart) {
+                          // Fill only what's remaining as FULL products
+                          const remainFull = Math.max(
+                            0,
+                            Math.min(
+                              r.invoice_qty - r.otherFull - r.otherMixer,
+                              r.invoice_qty - r.otherFull - r.otherTrim,
+                            ),
+                          );
+                          return {
+                            ...r,
+                            selected: true,
+                            partsQty: { full: remainFull, mixer: 0, trim: 0 },
+                          };
+                        }
+                        return {
+                          ...r,
+                          selected: true,
+                          qty: Math.max(0, r.invoice_qty - r.delivered_other),
+                        };
+                      }),
                     )
                   }
                 >
@@ -464,7 +481,15 @@ export function DeliveryReceiptForm({
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => setRows((prev) => prev.map((r) => ({ ...r, qty: 0 })))}
+                  onClick={() =>
+                    setRows((prev) =>
+                      prev.map((r) => ({
+                        ...r,
+                        qty: 0,
+                        partsQty: { full: 0, mixer: 0, trim: 0 },
+                      })),
+                    )
+                  }
                 >
                   {isAr ? "صفّر الكل" : "Clear all"}
                 </Button>
