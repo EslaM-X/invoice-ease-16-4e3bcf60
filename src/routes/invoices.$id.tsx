@@ -31,6 +31,12 @@ function InvoiceView() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [shortageOpen, setShortageOpen] = useState(false);
+  const [shortage, setShortage] = useState<Array<{
+    product_id: string; product_name: string; serial_number: string | null;
+    color: string | null; image_url: string | null; quantity: number;
+    stock_quantity: number; incoming_qty: number;
+  }>>([]);
 
   const load = async () => {
     if (!user) return;
@@ -58,7 +64,38 @@ function InvoiceView() {
     load();
   };
 
+  const markDeliveredNow = async () => {
+    const { error } = await supabase
+      .from("invoices")
+      .update({ delivery_status: "delivered" } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(lang === "ar" ? "تم التعليم بالتسليم" : "Marked delivered");
+    setShortageOpen(false);
+    load();
+  };
+
   const toggleDelivered = async (next: boolean) => {
+    if (next) {
+      // Guard: check for uncovered shortage before closing the invoice.
+      const { data, error } = await supabase.rpc("invoice_uncovered_shortage" as any, { _invoice_id: id } as any);
+      if (error) return toast.error(error.message);
+      const rows = (data ?? []) as any[];
+      if (rows.length > 0) {
+        setShortage(rows.map((r) => ({
+          product_id: r.product_id,
+          product_name: r.product_name,
+          serial_number: r.serial_number,
+          color: r.color,
+          image_url: r.image_url,
+          quantity: Number(r.quantity ?? 0),
+          stock_quantity: Number(r.stock_quantity ?? 0),
+          incoming_qty: Number(r.incoming_qty ?? 0),
+        })));
+        setShortageOpen(true);
+        return;
+      }
+    }
     const { error } = await supabase
       .from("invoices")
       .update({ delivery_status: next ? "delivered" : "pending" } as any)
@@ -67,6 +104,7 @@ function InvoiceView() {
     toast.success(next ? (lang === "ar" ? "تم التعليم بالتسليم" : "Marked delivered") : (lang === "ar" ? "تم إلغاء التسليم" : "Unmarked delivered"));
     load();
   };
+
 
   // Payments are managed via PaymentsManager dialog (adds/removes rows in `payments` table);
   // a DB trigger keeps invoices.paid_amount synced.
