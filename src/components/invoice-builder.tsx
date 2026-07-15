@@ -323,25 +323,22 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     return Math.max(0, (p.stock_quantity ?? 0) + transit + baseline - allocatedNow);
   };
 
-  /** Try to add 1 unit of a product. Returns true if added, false if blocked by stock. */
+  /** Add 1 unit of a product. Never blocked — shortage is auto-tracked. */
   const addProduct = (p: Product): boolean => {
     const remaining = remainingFor(p.id);
-    if (!isDraft && remaining <= 0) {
-      const msg = remaining === 0
-        ? t("out_of_stock_now")
-        : t("insufficient_stock_remaining").replace("{n}", String(remaining));
-      toast.error(`${p.name} — ${msg}`);
-      return false;
-    }
-    // Notify when this unit is coming from the in-transit pool (stock fully consumed).
     const allocatedNow = items
       .filter((it) => it.product_id === p.id)
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(p.id) ?? 0;
     const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
-    if (!isDraft && stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0) {
+    if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0 && remaining > 0) {
       toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
+    } else if (remaining <= 0) {
+      toast.warning(
+        `${p.name} — ${lang === "ar" ? "غير متوفر — سيُضاف كنقص وسيظهر في تقرير النواقص" : "Shortage — will be tracked in the shortages report"}`,
+      );
     }
+
 
     let newQty = 1;
     setItems((prev) => {
@@ -763,29 +760,43 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       discount: it.discount,
     }));
 
-    // Confirm reservation from in-transit if any line exceeds physical stock
+    // Inform (don't block) when lines will consume incoming shipments or generate a shortage.
     if (!isDraft) {
       const reservedLines: string[] = [];
+      const shortageLines: string[] = [];
       for (const it of items) {
         if (!it.product_id) continue;
         const p = products.find((x) => x.id === it.product_id);
         if (!p) continue;
         const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
         const stockAvail = Math.max(0, (p.stock_quantity ?? 0) + baseline);
+        const transit = inTransitQty[it.product_id] ?? 0;
         if (it.quantity > stockAvail) {
-          const short = it.quantity - stockAvail;
-          reservedLines.push(`• ${p.name} — ${lang === "ar" ? `حجز ${short} من القادم` : `reserve ${short} from incoming`}`);
+          const gap = it.quantity - stockAvail;
+          const fromTransit = Math.min(gap, transit);
+          const shortage = gap - fromTransit;
+          if (fromTransit > 0) {
+            reservedLines.push(`• ${p.name} — ${lang === "ar" ? `حجز ${fromTransit} من القادم` : `reserve ${fromTransit} from incoming`}`);
+          }
+          if (shortage > 0) {
+            shortageLines.push(`• ${p.name} — ${lang === "ar" ? `نقص ${shortage} (يظهر في تقرير النواقص)` : `shortage of ${shortage} (added to shortages report)`}`);
+          }
         }
       }
-      if (reservedLines.length > 0) {
-        const msg = (lang === "ar"
-          ? "المخزن غير كافٍ لبعض المنتجات. سيتم حجز الكميات التالية من شحنات قادمة:\n\n"
-          : "Stock is insufficient for some products. The following quantities will be reserved from incoming shipments:\n\n")
-          + reservedLines.join("\n")
-          + (lang === "ar" ? "\n\nهل تريد المتابعة؟" : "\n\nProceed?");
-        if (!window.confirm(msg)) return;
+      if (reservedLines.length > 0 || shortageLines.length > 0) {
+        const parts: string[] = [];
+        if (reservedLines.length > 0) {
+          parts.push((lang === "ar" ? "سيتم حجز الكميات التالية من شحنات قادمة:\n" : "The following will be reserved from incoming shipments:\n") + reservedLines.join("\n"));
+        }
+        if (shortageLines.length > 0) {
+          parts.push((lang === "ar" ? "الكميات التالية أكثر من المخزون والقادم وسيتم تتبعها كنواقص:\n" : "The following exceed stock + incoming and will be tracked as shortages:\n") + shortageLines.join("\n"));
+        }
+        parts.push(lang === "ar" ? "هل تريد المتابعة؟" : "Proceed?");
+        if (!window.confirm(parts.join("\n\n"))) return;
       }
     }
+
+
 
     setSaving(true);
     try {
@@ -1188,22 +1199,24 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                            onFocus={(e) => e.target.select()}
                            onChange={(e) => {
                              const v = e.target.value;
-                             let next = v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1);
-                              // Cap to available stock for catalog products (skip for drafts)
-                              if (!isDraft && it.product_id) {
+                              let next = v === "" ? 0 : Math.max(1, parseInt(v, 10) || 1);
+                              // No cap — any excess is tracked as shortage; inform the user.
+                              if (it.product_id) {
                                 const p = products.find((x) => x.id === it.product_id);
                                 if (p) {
                                   const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
-                                  const maxAllowed = (p.stock_quantity ?? 0) + baseline;
-                                  if (next > maxAllowed) {
-                                    toast.error(
-                                      `${p.name} — ${t("insufficient_stock_remaining").replace("{n}", String(maxAllowed))}`,
+                                  const transit = inTransitQty[it.product_id] ?? 0;
+                                  const coverable = (p.stock_quantity ?? 0) + baseline + transit;
+                                  if (next > coverable) {
+                                    const gap = next - coverable;
+                                    toast.warning(
+                                      `${p.name} — ${lang === "ar" ? `نقص ${gap} — سيُسجَّل في تقرير النواقص` : `Shortage of ${gap} — tracked in shortages report`}`,
                                     );
-                                    next = Math.max(1, maxAllowed);
                                   }
                                 }
                               }
-                             updateItem(idx, { quantity: next });
+                              updateItem(idx, { quantity: next });
+
                            }}
                          />
                        </div>
