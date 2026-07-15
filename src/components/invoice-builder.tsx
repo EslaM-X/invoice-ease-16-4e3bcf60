@@ -1360,6 +1360,29 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
             })()}
           </div>
 
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
+            <label className="flex items-center justify-between gap-2 cursor-pointer">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={taxEnabled}
+                  onChange={(e) => setTaxEnabled(e.target.checked)}
+                  className="h-4 w-4 accent-amber-600"
+                />
+                {lang === "ar" ? "تطبيق ضريبة القيمة المضافة 14%" : "Apply 14% VAT"}
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                {lang === "ar" ? "اختياري" : "Optional"}
+              </span>
+            </label>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {lang === "ar"
+                ? "لو مفعّلة تظهر في الفاتورة والطباعة كملخّص (الفرعي / ضريبة 14% / الإجمالي شامل الضريبة)، وتظهر أيضاً في محاضر الاستلام المرتبطة بها. لو مطفية لا يظهر أي شيء عن الضريبة."
+                : "If enabled, a subtotal / 14% VAT / total-with-VAT block appears on the invoice and PDF, and on linked delivery receipts. If off, nothing tax-related appears."}
+            </p>
+          </div>
+
+
 
 
           <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 sm:p-5 shadow-sm">
