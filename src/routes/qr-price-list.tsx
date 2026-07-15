@@ -39,8 +39,7 @@ export const Route = createFileRoute("/qr-price-list")({
   }),
 });
 
-const COLLECTION_TABS = ["ALL", ...APP_COLLECTIONS] as const;
-type CollectionFilter = (typeof COLLECTION_TABS)[number];
+type CollectionFilter = string;
 
 const CACHE_KEY = "qr_price_list_products_v1";
 
