@@ -105,17 +105,19 @@ export const saveUserPrefs = createServerFn({ method: "POST" })
         updated_by: context.userId,
       }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
-    // audit
-    await supabaseAdmin.from("audit_log").insert({
-      user_id: context.userId,
-      action: "ui_prefs_update",
-      entity_type: "user_ui_preferences",
-      entity_id: data.user_id,
-      details: {
-        nav_hidden_count: data.nav_hidden.length,
-        cards_hidden_count: data.cards_hidden.length,
-      },
-    }).select().maybeSingle().then(() => {}).catch(() => {});
+    // audit (best-effort)
+    try {
+      await supabaseAdmin.from("audit_log").insert({
+        actor_id: context.userId,
+        action: "ui_prefs_update",
+        entity_type: "user_ui_preferences",
+        entity_id: data.user_id,
+        details: {
+          nav_hidden_count: data.nav_hidden.length,
+          cards_hidden_count: data.cards_hidden.length,
+        },
+      } as any);
+    } catch { /* ignore */ }
     return { ok: true };
   });
 
