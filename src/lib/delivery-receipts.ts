@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isMultiPartProduct, parsePartFromNote } from "@/lib/product-parts";
 
 export type DRItemInput = {
   invoice_item_id: string;
