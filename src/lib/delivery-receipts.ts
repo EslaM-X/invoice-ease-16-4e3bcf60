@@ -132,6 +132,12 @@ export function deliveryStatusColor(status: string | null | undefined) {
   }
 }
 
+export type PartAggregate = {
+  full: number;
+  mixer: number;
+  trim: number;
+};
+
 export type PrintRow = {
   invoice_item_id: string;
   product_id: string | null;
@@ -139,10 +145,16 @@ export type PrintRow = {
   serial_number: string | null;
   color: string | null;
   invoice_qty: number;
+  unit_price: number;           // from invoice_items, used for tax subtotal
   this_qty: number;             // qty delivered in THIS receipt
   this_note: string | null;     // note stored in THIS receipt
   prior_qty: number;            // qty delivered in EARLIER receipts (before this one)
   later_qty: number;            // qty delivered in LATER receipts (after this one)
+  is_multi_part: boolean;
+  // Per-part breakdown across the three buckets (each row represents one unit)
+  parts_this: PartAggregate;    // parts delivered in this receipt
+  parts_prior: PartAggregate;   // parts delivered in earlier receipts
+  parts_later: PartAggregate;   // parts delivered in later receipts
 };
 
 /**
