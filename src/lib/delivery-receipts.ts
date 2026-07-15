@@ -18,6 +18,7 @@ export type DRPayload = {
   signature_accountant?: string | null;
   status?: "draft" | "signed" | "out_for_delivery";
   shipping_fees?: number | null;
+  tax_enabled?: boolean | null;
   items: DRItemInput[];
 };
 
