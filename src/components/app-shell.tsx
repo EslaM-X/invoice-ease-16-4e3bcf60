@@ -450,6 +450,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Phone className="h-4 w-4" /> {t("whatsapp_inbox")}
           </Link>
         </GroupNav>
+        )}
         <GroupNav
           label={t("settings")}
           icon={Settings}
