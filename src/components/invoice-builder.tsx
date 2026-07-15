@@ -70,6 +70,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const COLLECTIONS = useCollectionCodes();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
