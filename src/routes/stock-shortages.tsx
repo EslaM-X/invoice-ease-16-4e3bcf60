@@ -537,29 +537,42 @@ function ShortageCard({
           {isOpen && (
             <div className="mt-2 rounded-lg border border-amber-500/15 divide-y divide-amber-500/10 overflow-hidden">
               {row.invoices.map((inv) => (
-                <Link
+                <div
                   key={inv.invoice_id}
-                  to="/invoices/$id"
-                  params={{ id: inv.invoice_id }}
                   className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-amber-500/5"
                 >
-                  <div className="min-w-0">
+                  <Link
+                    to="/invoices/$id"
+                    params={{ id: inv.invoice_id }}
+                    className="min-w-0 flex-1"
+                  >
                     <div className="font-medium text-amber-100 truncate">{inv.invoice_number}</div>
                     <div className="text-xs text-muted-foreground truncate">
                       {inv.customer_name ?? (ar ? "بدون عميل" : "No customer")} ·{" "}
                       {new Date(inv.created_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
                     </div>
-                  </div>
+                  </Link>
                   <div className="text-end shrink-0">
                     <div className="font-semibold text-rose-300 tabular-nums">
                       {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
                     </div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{inv.status}</div>
                   </div>
-                </Link>
+                  <button
+                    onClick={() =>
+                      onRequest({ id: inv.invoice_id, number: inv.invoice_number })
+                    }
+                    title={ar ? "طلب الكمية لهذه الفاتورة" : "Request qty for this invoice"}
+                    className="shrink-0 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20 inline-flex items-center gap-1"
+                  >
+                    <Send className="h-3 w-3" />
+                    {ar ? "طلب" : "Request"}
+                  </button>
+                </div>
               ))}
             </div>
           )}
+
         </div>
       </div>
     </div>
