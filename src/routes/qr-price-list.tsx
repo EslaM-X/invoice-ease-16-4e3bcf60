@@ -25,7 +25,7 @@ import { swatchStyle } from "@/lib/color-swatch";
 import { ProductImageUpload } from "@/components/product-image-upload";
 import { lovable } from "@/integrations/lovable";
 import type { Product } from "@/lib/data";
-import { COLLECTIONS as APP_COLLECTIONS } from "@/lib/data";
+import { useCollectionCodes } from "@/lib/use-collections";
 import { fmtMoney } from "@/lib/utils-money";
 import brandLogo from "@/assets/steinheim-logo-white.png";
 
