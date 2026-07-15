@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
   closeScanSession,
   createScanSession,
@@ -90,7 +91,7 @@ export function DesktopPairWidget({ mode, invoiceId, onScanEvent }: Props) {
   useEffect(() => {
     if (!session) return;
     const ch = supabase
-      .channel(`scanlink-${session.id}`)
+      .channel(uniqueRealtimeTopic(`scanlink-${session.id}`))
       .on(
         "postgres_changes",
         {

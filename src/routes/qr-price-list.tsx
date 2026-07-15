@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 import { useAuth } from "@/lib/auth";
 import { useRole } from "@/lib/use-role";
 import { useI18n } from "@/lib/i18n";
@@ -117,7 +118,7 @@ function PriceListPage() {
     window.addEventListener("offline", onOff);
 
     const channel = supabase
-      .channel("qr_price_list_products")
+      .channel(uniqueRealtimeTopic("qr-price-list-products"))
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => load())
       .subscribe();
 

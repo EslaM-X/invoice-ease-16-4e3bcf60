@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
+import { uniqueRealtimeTopic } from "@/lib/realtime";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "@tanstack/react-router";
@@ -136,7 +137,7 @@ export function XAssistant() {
     let myId: string | null = null;
     supabase.auth.getUser().then(({ data }) => { myId = data.user?.id ?? null; });
     const channel = supabase
-      .channel("x-activity-live")
+      .channel(uniqueRealtimeTopic("x-activity-live"))
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "x_activity_log" },

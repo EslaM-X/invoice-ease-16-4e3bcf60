@@ -652,7 +652,7 @@ function ProfitsPage() {
     };
 
     const channel = supabase
-      .channel("profits-invoice-status")
+      .channel(uniqueRealtimeTopic("profits-invoice-status"))
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "invoices" },
