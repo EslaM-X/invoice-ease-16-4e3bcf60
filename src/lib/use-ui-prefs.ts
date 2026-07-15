@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useIsSuperAdmin } from "@/lib/super-admin";
+import { loadUserPrefs } from "@/lib/access-studio.functions";
 
 const IMPERSONATE_KEY = "access-studio:impersonate-user-id";
 
@@ -54,9 +55,10 @@ export function setImpersonateId(userId: string | null) {
 
 /**
  * Reads the current effective UI prefs.
- * - Normal users: reads their own row.
- * - Super admins: reads the impersonated user's row when set, otherwise their own (unfiltered).
- * - Super admins always return EMPTY prefs so they see EVERYTHING when not impersonating.
+ * - Normal users: reads their own row (RLS-scoped).
+ * - Super admins WITHOUT impersonation: EMPTY (see everything).
+ * - Super admins WITH impersonation: loads target user's row via
+ *   the admin-backed loadUserPrefs server fn (browser RLS would block it).
  */
 export function useUiPrefs() {
   const { user } = useAuth();
@@ -73,7 +75,19 @@ export function useUiPrefs() {
   useEffect(() => {
     if (!targetId || bypass) { setPrefs(EMPTY); setLoaded(true); return; }
     let cancel = false;
+
     (async () => {
+      // When a super admin is previewing another user, browser RLS blocks
+      // reading that user's row — go through the admin-backed server fn.
+      if (isSuper && impersonate) {
+        try {
+          const row: any = await loadUserPrefs({ data: { user_id: targetId } } as any);
+          if (!cancel) { setPrefs(normalize(row)); setLoaded(true); }
+        } catch {
+          if (!cancel) { setPrefs(EMPTY); setLoaded(true); }
+        }
+        return;
+      }
       const { data } = await supabase
         .from("user_ui_preferences")
         .select("*")
@@ -81,6 +95,13 @@ export function useUiPrefs() {
         .maybeSingle();
       if (!cancel) { setPrefs(normalize(data)); setLoaded(true); }
     })();
+
+    // Realtime works only for the signed-in user's own row (RLS filter).
+    // Skip subscribing while impersonating; a page reload happens on
+    // setImpersonateId, and Studio saves reflect on the next preview reload.
+    if (isSuper && impersonate) {
+      return () => { cancel = true; };
+    }
 
     const ch = supabase
       .channel(`ui-prefs:${targetId}`)
@@ -91,7 +112,7 @@ export function useUiPrefs() {
       .subscribe();
 
     return () => { cancel = true; supabase.removeChannel(ch); };
-  }, [targetId, bypass]);
+  }, [targetId, bypass, isSuper, impersonate]);
 
   return useMemo(() => ({
     prefs,
