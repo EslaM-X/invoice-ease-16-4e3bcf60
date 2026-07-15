@@ -580,16 +580,48 @@ export function DeliveryReceiptForm({
                         ];
                         return (
                           <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
-                            <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                               <span className="text-[10.5px] font-bold text-primary">
                                 {isAr ? "توزيع الأجزاء في هذا المحضر" : "Split parts in this receipt"}
                               </span>
-                              <span className={`ltr-nums rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
-                                over ? "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
-                                     : "border-primary/40 bg-background text-primary"
-                              }`}>
-                                {isAr ? "الإجمالي: " : "Total: "}{thisSum}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={!r.selected}
+                                  onClick={() => {
+                                    // Auto-distribute to reach total "remaining" using only what's available per part.
+                                    // Priority: pair up missing Mixer + missing Trim into FULL units first,
+                                    // then fill the remaining single-side gap with MIXER or TRIM.
+                                    const invQ = r.invoice_qty;
+                                    const missMix = Math.max(0, invQ - r.otherFull - r.otherMixer);
+                                    const missTrim = Math.max(0, invQ - r.otherFull - r.otherTrim);
+                                    const pairFull = Math.min(missMix, missTrim);
+                                    const restMix = missMix - pairFull;
+                                    const restTrim = missTrim - pairFull;
+                                    setRow(idx, {
+                                      selected: true,
+                                      partsQty: { full: pairFull, mixer: restMix, trim: restTrim },
+                                    });
+                                  }}
+                                  className="rounded-full border border-primary/50 bg-primary px-2 py-[2px] text-[9.5px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-40"
+                                >
+                                  {isAr ? "توزيع تلقائي" : "Auto-distribute"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!r.selected}
+                                  onClick={() => setRow(idx, { partsQty: { full: 0, mixer: 0, trim: 0 } })}
+                                  className="rounded-full border border-border bg-background px-2 py-[2px] text-[9.5px] font-medium text-muted-foreground transition hover:bg-muted/50 disabled:opacity-40"
+                                >
+                                  {isAr ? "مسح" : "Clear"}
+                                </button>
+                                <span className={`ltr-nums rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
+                                  over ? "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
+                                       : "border-primary/40 bg-background text-primary"
+                                }`}>
+                                  {isAr ? "الإجمالي: " : "Total: "}{thisSum}
+                                </span>
+                              </div>
                             </div>
                             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
                               {parts.map((p) => (
