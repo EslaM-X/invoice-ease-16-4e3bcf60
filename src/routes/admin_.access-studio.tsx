@@ -32,7 +32,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { setImpersonateId } from "@/lib/use-ui-prefs";
 
-export const Route = createFileRoute("/admin/access-studio")({
+export const Route = createFileRoute("/admin_/access-studio")({
   component: () => (
     <SuperAdminGate>
       <AppShell><AccessStudio /></AppShell>
