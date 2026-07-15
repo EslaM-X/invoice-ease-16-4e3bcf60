@@ -62,6 +62,8 @@ function PriceListPage() {
   const { isAdmin } = useRole();
   const navigate = useNavigate();
   const { lang, setLang, dir } = useI18n();
+  const APP_COLLECTIONS = useCollectionCodes();
+  const COLLECTION_TABS = ["ALL", ...APP_COLLECTIONS];
   const isAr = lang === "ar";
   const tt = (ar: string, en: string) => (isAr ? ar : en);
 
