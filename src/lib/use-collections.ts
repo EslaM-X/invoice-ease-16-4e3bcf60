@@ -45,6 +45,12 @@ export function useCollections(opts: { includeInactive?: boolean } = {}) {
   return { items: filtered, all: items, loading };
 }
 
+/** Reactive list of active collection codes (e.g. ["JOY","UP","ART","QUATRO", ...custom]). */
+export function useCollectionCodes(): string[] {
+  const { items } = useCollections();
+  return items.map((c) => c.code.toUpperCase());
+}
+
 export async function refreshCollections() {
   const { data } = await supabase
     .from("collections")
