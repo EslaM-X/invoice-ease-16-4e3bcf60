@@ -16,6 +16,7 @@ const ar: Dict = {
   inventory: "تحليل المخزون",
   inventory_traceability: "متتبع المخزون والمستويات",
   stock_intake: "المخزون",
+  stock_shortages: "تقرير النواقص",
   stock_intake_desc: "تسجيل القطع الواردة من الموردين والشحنات وتحديث الكميات والتكاليف",
   new_intake: "استلام شحنة جديدة",
   supplier: "المورد",
