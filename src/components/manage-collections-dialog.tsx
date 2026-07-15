@@ -12,8 +12,16 @@ import type { CollectionEntry } from "@/lib/collection-registry";
 import { collectionBadgeStyle } from "@/lib/collection-styles";
 
 const PRESETS = [
-  "#F43F5E", "#0EA5E9", "#8B5CF6", "#F59E0B",
-  "#10B981", "#D946EF", "#14B8A6", "#F97316",
+  // Reds / pinks
+  "#EF4444", "#F43F5E", "#EC4899", "#D946EF",
+  // Purples / indigos / blues
+  "#A855F7", "#8B5CF6", "#6366F1", "#3B82F6", "#0EA5E9", "#06B6D4",
+  // Teals / greens
+  "#14B8A6", "#10B981", "#22C55E", "#84CC16",
+  // Yellows / oranges / browns
+  "#EAB308", "#F59E0B", "#F97316", "#FB7185", "#B45309", "#78350F",
+  // Neutrals / luxe
+  "#D4AF37", "#C0C0C0", "#0F172A", "#475569",
 ];
 
 type Props = {
