@@ -225,6 +225,48 @@ function StockShortagesPage() {
     navigate({ to: "/purchase-orders" });
   };
 
+  const openRequest = (
+    product_id: string,
+    product_name: string,
+    quantity: number,
+    invoice?: { id: string; number: string },
+  ) => {
+    setReqTarget({
+      product_id,
+      product_name,
+      invoice_id: invoice?.id,
+      invoice_number: invoice?.number,
+      quantity,
+    });
+    setReqQty(Math.max(1, quantity));
+    setReqNote("");
+  };
+
+  const submitRequest = async () => {
+    if (!reqTarget || !user) return;
+    if (!Number.isFinite(reqQty) || reqQty <= 0) {
+      toast.error(ar ? "الكمية غير صالحة" : "Invalid quantity");
+      return;
+    }
+    setReqSaving(true);
+    const { error } = await supabase.from("shortage_requests" as any).insert({
+      product_id: reqTarget.product_id,
+      invoice_id: reqTarget.invoice_id ?? null,
+      quantity: reqQty,
+      notes: reqNote || null,
+      requested_by: user.id,
+    } as any);
+    setReqSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(ar ? "تم تسجيل طلب النقص" : "Shortage request logged");
+    setReqTarget(null);
+    loadRequests();
+  };
+
+
   const copySummary = async () => {
     const lines = filtered.map((r) => {
       const bits: string[] = [r.product_name];
