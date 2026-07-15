@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {isExecutive && (isPurchasing || isCFO) && (
+        {isExecutive && (isPurchasing || isCFO) && !ui.isNavHidden("procurement_group") && (
           <GroupNav
             label={lang === "ar" ? "المشتريات والربح" : "Procurement & Profit"}
             icon={ShoppingCart}
@@ -377,7 +377,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           )}
         </GroupNav>
-        {isCallCenter && (
+        {isCallCenter && !ui.isNavHidden("call_center_group") && (
           <GroupNav
             label={t("call_center_group")}
             icon={Phone}
