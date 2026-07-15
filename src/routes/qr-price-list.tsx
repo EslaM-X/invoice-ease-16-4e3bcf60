@@ -949,9 +949,10 @@ function SignInDialog({ onClose, lang }: { onClose: () => void; lang: "ar" | "en
 function AddDialog({
   userId, userEmail, onClose,
 }: { userId: string; userEmail: string | null; onClose: () => void }) {
+  const APP_COLLECTIONS = useCollectionCodes();
   const [form, setForm] = useState({
     name: "", serial_number: "", color: "",
-    collection: "JOY" as string,
+    collection: (APP_COLLECTIONS[0] ?? "JOY") as string,
     price: "", stock_quantity: "0",
   });
   const [imageUrl, setImageUrl] = useState<string | null>(null);
