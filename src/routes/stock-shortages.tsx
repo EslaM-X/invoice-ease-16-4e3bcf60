@@ -503,18 +503,36 @@ function ShortageCard({
               <Chip label={ar ? "قادم" : "Incoming"} value={row.incoming_qty} tone="emerald" icon={<TruckIcon className="h-3 w-3" />} />
               <Chip label={ar ? "مطلوب" : "Needed"} value={row.needed_qty} tone="amber" />
               <Chip label={ar ? "نقص" : "Short"} value={row.net} tone={row.net > 0 ? "red" : "emerald"} bold />
+              {openRequests > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
+                  <ClipboardList className="h-3 w-3" />
+                  {ar ? `طلبات مفتوحة: ${openRequests}` : `Open reqs: ${openRequests}`}
+                </span>
+              )}
             </div>
           </div>
 
-          <button
-            className="mt-2.5 text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1"
-            onClick={onToggle}
-          >
-            {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {isOpen
-              ? ar ? "إخفاء الفواتير" : "Hide invoices"
-              : ar ? `عرض ${row.invoices.length} فاتورة` : `Show ${row.invoices.length} invoice${row.invoices.length === 1 ? "" : "s"}`}
-          </button>
+          <div className="mt-2.5 flex flex-wrap items-center gap-3">
+            <button
+              className="text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1"
+              onClick={onToggle}
+            >
+              {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {isOpen
+                ? ar ? "إخفاء الفواتير" : "Hide invoices"
+                : ar ? `عرض ${row.invoices.length} فاتورة` : `Show ${row.invoices.length} invoice${row.invoices.length === 1 ? "" : "s"}`}
+            </button>
+            {row.net > 0 && (
+              <button
+                onClick={() => onRequest()}
+                className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/5 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/10"
+              >
+                <Send className="h-3 w-3" />
+                {ar ? `طلب الكمية الناقصة (${row.net})` : `Request missing qty (${row.net})`}
+              </button>
+            )}
+          </div>
+
 
           {isOpen && (
             <div className="mt-2 rounded-lg border border-amber-500/15 divide-y divide-amber-500/10 overflow-hidden">
