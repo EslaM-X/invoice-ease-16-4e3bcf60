@@ -115,6 +115,23 @@ function ReceiptView() {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { error: itErr } = await supabase.from("delivery_receipt_items" as any).delete().eq("receipt_id", id);
+      if (itErr) throw itErr;
+      const { error: recErr } = await supabase.from("delivery_receipts" as any).delete().eq("id", id);
+      if (recErr) throw recErr;
+      toast.success(isAr ? "تم حذف المحضر" : "Receipt deleted");
+      navigate({ to: "/delivery-receipts" });
+    } catch (e: any) {
+      toast.error(e?.message || (isAr ? "تعذّر الحذف" : "Delete failed"));
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   if (!r) return <div className="text-muted-foreground">{isAr ? "جاري التحميل…" : "Loading…"}</div>;
 
   const shipping = r.shipping_fees != null ? Number(r.shipping_fees) : null;
