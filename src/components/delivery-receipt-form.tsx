@@ -246,11 +246,11 @@ export function DeliveryReceiptForm({
         note: r.isMultiPart ? buildNoteWithPart(r.part, r.note) : (r.note || null),
       }));
     if (items.length === 0) {
-      toast.error(isAr ? "اختر بنداً واحداً على الأقل" : "Select at least one item");
+      toast.error(isAr ? "أدخل كمية لبند واحد على الأقل" : "Enter a quantity on at least one item");
       return;
     }
     // client-side validation against remaining
-    for (const r of rows.filter((x) => x.selected)) {
+    for (const r of rows.filter((x) => x.selected && x.qty > 0)) {
       const maxAllowed = r.invoice_qty - r.delivered_other;
       if (r.qty > maxAllowed) {
         toast.error(
