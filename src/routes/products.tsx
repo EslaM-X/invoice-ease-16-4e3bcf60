@@ -53,8 +53,11 @@ function Products() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const isExecutive = useIsExecutive();
+  const { isAdmin } = useRole();
+  const { items: collectionsList } = useCollections();
+  const COLLECTIONS = useMemo(() => collectionsList.map((c) => c.code), [collectionsList]);
+  const [manageOpen, setManageOpen] = useState(false);
   const [list, setList] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collectionFilter, setCollectionFilter] = useState<string>("");
   const [kindFilter, setKindFilter] = useState<"all" | "products" | "spare">("all");
