@@ -1656,8 +1656,8 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                         </div>
                         <div className="flex-shrink-0 text-end">
                           <div className="font-semibold tabular-nums text-sm">{fmtMoney(Number(p.price), "EGP", lang)}</div>
-                          {blocked && <span className="text-[10px] font-bold text-destructive">{lang === "ar" ? "نفد" : "OUT"}</span>}
-                          {out && !blocked && <span className="text-[10px] font-bold text-sky-600 dark:text-sky-300">{lang === "ar" ? "من الشحنة" : "FROM SHIPMENT"}</span>}
+                          {out && transit <= 0 && <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">{lang === "ar" ? "نقص — سيُتتبع" : "SHORTAGE"}</span>}
+                          {out && transit > 0 && <span className="text-[10px] font-bold text-sky-600 dark:text-sky-300">{lang === "ar" ? "من الشحنة" : "FROM SHIPMENT"}</span>}
                         </div>
                       </button>
                     </li>
