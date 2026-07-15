@@ -10,6 +10,7 @@ export const EXECUTIVE_EMAILS = [
   "cfo@steinheim-eg.com",
   "h.elsharbatly@steinheim-eg.com",
   "e.hesham@steinheim-eg.com",
+  "esraa@steinheim-eg.com",
 ];
 
 export function useIsExecutive(): boolean {
