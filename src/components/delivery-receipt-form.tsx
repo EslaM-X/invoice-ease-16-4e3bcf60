@@ -97,6 +97,9 @@ export function DeliveryReceiptForm({
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Which multi-part rows have the split panel expanded. Full-only stays collapsed.
+  const [splitOpen, setSplitOpen] = useState<Record<string, boolean>>({});
+
 
   // header fields
   const [deliveredName, setDeliveredName] = useState(existing?.delivered_to_name ?? "");
