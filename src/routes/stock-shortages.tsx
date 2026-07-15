@@ -422,8 +422,11 @@ function StockShortagesPage() {
                     onToggle={() => setExpanded((p) => ({ ...p, [r.product_id]: !p[r.product_id] }))}
                     selected={!!selected[r.product_id]}
                     onSelectChange={(v) => setSelected((p) => ({ ...p, [r.product_id]: v }))}
+                    openRequests={openReqs[r.product_id] ?? 0}
+                    onRequest={(inv) => openRequest(r.product_id, r.product_name, r.net, inv)}
                   />
                 ))}
+
               </div>
             </section>
           ))}
