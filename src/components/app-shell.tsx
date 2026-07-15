@@ -533,6 +533,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           )}
         </GroupNav>
+        )}
       </nav>
       <div className="border-t border-sidebar-border p-3">
         <div className="mb-2 truncate px-2 text-[11px] tracking-wide text-sidebar-foreground/55">{user.email}</div>
