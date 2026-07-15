@@ -432,9 +432,79 @@ function StockShortagesPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={!!reqTarget} onOpenChange={(v) => { if (!v) setReqTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-200">
+              <ClipboardList className="h-5 w-5" />
+              {ar ? "طلب الكمية الناقصة" : "Request missing quantity"}
+            </DialogTitle>
+            <DialogDescription>
+              {ar
+                ? "سجّل طلبًا واضحًا للكمية الناقصة مع ربطه بالفاتورة لمتابعته في تقرير النواقص."
+                : "Log a clear request for the missing quantity, linked to its invoice for follow-up."}
+            </DialogDescription>
+          </DialogHeader>
+          {reqTarget && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-sm">
+                <div className="text-[10px] uppercase tracking-wider text-amber-500/80">
+                  {ar ? "المنتج" : "Product"}
+                </div>
+                <div className="mt-0.5 font-semibold text-amber-100">{reqTarget.product_name}</div>
+                {reqTarget.invoice_number && (
+                  <div className="mt-1.5 text-xs text-muted-foreground">
+                    {ar ? "مرتبطة بالفاتورة" : "Linked invoice"}:{" "}
+                    <span className="font-mono text-amber-300">{reqTarget.invoice_number}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {ar ? "الكمية المطلوبة" : "Requested quantity"}
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={reqQty}
+                  onChange={(e) => setReqQty(Math.max(0, parseInt(e.target.value || "0", 10)))}
+                  className="mt-1 tabular-nums"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {ar ? "ملاحظات (اختياري)" : "Notes (optional)"}
+                </label>
+                <Textarea
+                  rows={3}
+                  value={reqNote}
+                  onChange={(e) => setReqNote(e.target.value)}
+                  placeholder={ar ? "مثال: عاجل — العميل ينتظر التسليم…" : "e.g. urgent — customer awaiting delivery…"}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReqTarget(null)}>
+              {ar ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              onClick={submitRequest}
+              disabled={reqSaving || reqQty <= 0}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 text-black hover:from-amber-400 hover:to-amber-500"
+            >
+              <Send className="h-4 w-4 me-2" />
+              {ar ? "تسجيل الطلب" : "Submit request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function ShortageCard({
   row, ar, isOpen, onToggle, selected, onSelectChange, openRequests, onRequest,
