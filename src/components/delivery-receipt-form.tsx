@@ -276,6 +276,7 @@ export function DeliveryReceiptForm({
         signature_accountant: sigAccountant,
         status,
         shipping_fees: shippingEnabled ? Number(shippingFees) || 0 : null,
+        tax_enabled: taxEnabled,
         items,
       };
       let id = receiptId;
