@@ -4515,6 +4515,7 @@ export type Database = {
         Returns: {
           products_changed: number
           products_zeroed: number
+          shortages_created: number
           total_delivered: number
           total_received: number
         }[]
@@ -4529,6 +4530,7 @@ export type Database = {
         Returns: undefined
       }
       recalculate_po_receipt_state: { Args: { p_po_id: string }; Returns: Json }
+      recompute_missing_shortages: { Args: never; Returns: number }
       record_historical_po_receipt: {
         Args: {
           _apply_to_inventory?: boolean

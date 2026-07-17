@@ -414,6 +414,7 @@ function RebuildFromSourceCard({ isAr, onChanged }: { isAr: boolean; onChanged: 
     total_received: number;
     total_delivered: number;
     products_zeroed: number;
+    shortages_created?: number;
   } | null>(null);
 
   const run = async () => {
@@ -459,11 +460,12 @@ function RebuildFromSourceCard({ isAr, onChanged }: { isAr: boolean; onChanged: 
       </div>
 
       {result && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2">
           <StatChip label={isAr ? "منتجات تغيّرت" : "Products changed"} value={result.products_changed} tone="primary" />
           <StatChip label={isAr ? "إجمالي المستلم" : "Total received"} value={result.total_received} tone="ok" />
           <StatChip label={isAr ? "إجمالي المسلَّم" : "Total delivered"} value={result.total_delivered} tone="warn" />
           <StatChip label={isAr ? "منتجات برصيد صفر" : "Zero-stock products"} value={result.products_zeroed} tone="muted" />
+          <StatChip label={isAr ? "نواقص جديدة" : "New shortages"} value={result.shortages_created ?? 0} tone="warn" />
         </div>
       )}
     </Card>
