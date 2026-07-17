@@ -4490,6 +4490,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      orphan_delivery_items_report: {
+        Args: never
+        Returns: {
+          color: string
+          created_at: string
+          dri_id: string
+          match_status: string
+          matched_product_id: string
+          product_name: string
+          quantity: number
+          receipt_id: string
+          receipt_number: string
+          receipt_status: string
+          serial_number: string
+        }[]
+      }
       pair_scan_session: { Args: { _pair_code: string }; Returns: string }
       preview_bulk_apply_po_receipts: {
         Args: { p_payload: Json }
