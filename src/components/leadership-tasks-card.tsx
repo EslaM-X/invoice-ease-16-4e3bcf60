@@ -10,12 +10,13 @@ import { useRealtimeTable } from "@/lib/realtime";
 /**
  * Leadership Tasks Card
  * Visible only for the two allowed accounts. Shows tasks assigned by the
- * CEO (k.elsharbatly) and the COO (e.hesham), split into two halves.
+ * CEO (k.elsharbatly) and the COO — Chief Operating Officer (e.hesham),
+ * split into two halves.
  */
 const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com"]);
 
 const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي", roleEn: "CEO", short: "CEO", Icon: Crown };
-const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات",   roleEn: "COO", short: "COO", Icon: Briefcase };
+const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", Icon: Briefcase };
 
 type Task = {
   id: string;
