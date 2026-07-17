@@ -414,6 +414,7 @@ function RebuildFromSourceCard({ isAr, onChanged }: { isAr: boolean; onChanged: 
     total_received: number;
     total_delivered: number;
     products_zeroed: number;
+    shortages_created?: number;
   } | null>(null);
 
   const run = async () => {
