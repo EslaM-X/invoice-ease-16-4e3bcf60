@@ -71,9 +71,13 @@ function ReceiptsList() {
   });
 
   const filtered = rows.filter((r) => {
+    const inv = invoices[r.invoice_id];
+    // Hide receipts whose invoice is already closed/paid — they belong in Archive
+    if (inv && inv.status === "completed") return false;
+    // Hide fully-delivered receipts — nothing left to act on, they belong in Archive
+    if (inv && inv.delivery_status === "delivered" && r.status === "signed") return false;
     if (!q.trim()) return true;
     const s = q.toLowerCase();
-    const inv = invoices[r.invoice_id];
     return (
       r.receipt_number?.toLowerCase().includes(s) ||
       r.delivered_to_name?.toLowerCase().includes(s) ||
