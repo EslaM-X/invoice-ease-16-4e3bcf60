@@ -576,7 +576,7 @@ function ShortageCard({
         : "border-emerald-500/25 hover:border-emerald-500/40";
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-3 md:p-4 bg-neutral-950/40 backdrop-blur-sm transition-colors ${urgencyRing}`}>
+    <div className={`relative overflow-hidden rounded-2xl border p-3 md:p-4 bg-gradient-to-br from-neutral-950/95 via-neutral-900/95 to-neutral-950/95 backdrop-blur-sm transition-colors ${urgencyRing}`}>
       {row.urgency === "critical" && (
         <span className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-red-500/70 to-transparent" />
       )}
