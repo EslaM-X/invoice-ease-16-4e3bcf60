@@ -17,6 +17,7 @@ import { useUiPrefs } from "@/lib/use-ui-prefs";
 import { useEffectiveUser } from "@/lib/use-effective-user";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { CloseableInvoicesCard } from "@/components/closeable-invoices-card";
+import { LeadershipTasksCard } from "@/components/leadership-tasks-card";
 import { NoirKpiCard, type NoirTone } from "@/components/noir-kpi-card";
 import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
@@ -237,6 +238,7 @@ function Dashboard() {
 
   const orderedSections = useMemo(() => {
     const sections: Array<{ key: string; node: ReactNode }> = [
+      { key: "section_leadership_tasks", node: <LeadershipTasksCard /> },
       { key: "section_closeable_invoices", node: <CloseableInvoicesCard /> },
       { key: "section_pending_accounts", node: <PendingAccountsCard /> },
       { key: "section_distributor_approvals", node: <DistributorApprovalsCard /> },
