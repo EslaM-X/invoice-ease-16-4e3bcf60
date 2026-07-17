@@ -136,6 +136,8 @@ function Reconcile() {
         </div>
       </div>
 
+      <RebuildFromSourceCard isAr={isAr} onChanged={load} />
+
       <ReconciliationReport isAr={isAr} onChanged={load} />
 
       <div className="relative">
