@@ -10,12 +10,13 @@ import { useRealtimeTable } from "@/lib/realtime";
 /**
  * Leadership Tasks Card
  * Visible only for the two allowed accounts. Shows tasks assigned by the
- * CEO (k.elsharbatly) and the COO (e.hesham), split into two halves.
+ * CEO (k.elsharbatly) and the COO — Chief Operating Officer (e.hesham),
+ * split into two halves.
  */
 const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com"]);
 
 const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي", roleEn: "CEO", short: "CEO", Icon: Crown };
-const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات",   roleEn: "COO", short: "COO", Icon: Briefcase };
+const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", Icon: Briefcase };
 
 type Task = {
   id: string;
@@ -297,7 +298,7 @@ function LeaderColumn({
           <div className="truncate text-sm font-semibold text-amber-100">
             {profile?.display_name || leader.email.split("@")[0]}
           </div>
-          <div className="text-[11px] text-amber-100/60">{roleLabel}</div>
+          <div className="text-[11px] leading-tight text-amber-100/70 whitespace-normal">{roleLabel}</div>
         </div>
         <div className="flex flex-col items-end">
           <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold text-amber-200 ring-1 ring-amber-400/30">
