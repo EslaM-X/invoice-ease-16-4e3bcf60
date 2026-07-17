@@ -804,7 +804,7 @@ function SegBtn({
       type="button"
       onClick={onClick}
       className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs border transition ${
-        active ? activeClasses : "border-amber-500/15 text-muted-foreground hover:border-amber-500/30 hover:text-amber-200"
+        active ? activeClasses : "border-amber-500/20 text-amber-100/70 hover:border-amber-500/40 hover:text-amber-100"
       }`}
     >
       {children}
