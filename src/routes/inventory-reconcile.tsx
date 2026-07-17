@@ -487,3 +487,128 @@ function StatChip({ label, value, tone }: { label: string; value: number; tone: 
     </div>
   );
 }
+
+type OrphanRow = {
+  dri_id: string;
+  receipt_id: string;
+  receipt_number: string | null;
+  receipt_status: string;
+  product_name: string;
+  serial_number: string | null;
+  color: string | null;
+  quantity: number;
+  matched_product_id: string | null;
+  match_status: "matched_by_serial" | "unmatched" | "no_serial";
+  created_at: string;
+};
+
+function OrphanDeliveryItemsCard({ isAr }: { isAr: boolean }) {
+  const [rows, setRows] = useState<OrphanRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await (supabase as any).rpc("orphan_delivery_items_report");
+    if (error) toast.error(error.message);
+    else setRows((data as OrphanRow[]) ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { void load(); }, []);
+
+  const active = rows.filter((r) => r.receipt_status !== "cancelled");
+  const matched = active.filter((r) => r.match_status === "matched_by_serial");
+  const unmatched = active.filter((r) => r.match_status !== "matched_by_serial");
+  const view = showAll ? rows : unmatched;
+  const matchedQty = matched.reduce((s, r) => s + r.quantity, 0);
+  const unmatchedQty = unmatched.reduce((s, r) => s + r.quantity, 0);
+
+  return (
+    <Card className="p-4 space-y-3 border-amber-500/30 bg-amber-50/20 dark:bg-amber-500/5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+          <div>
+            <h2 className="text-base font-bold">
+              {isAr ? "بنود محاضر يتيمة (بند الفاتورة اتحذف)" : "Orphan delivery items (invoice line deleted)"}
+            </h2>
+            <p className="text-xs text-muted-foreground max-w-2xl">
+              {isAr
+                ? "بنود محاضر تسليم مقطوع ارتباطها ببنود الفواتير. إعادة البناء بتحاول تطابقهم بالسيريال مع المنتج تلقائياً. البنود اللي مطابقة اتخصمت من المخزون؛ البنود غير المطابقة محتاجة مراجعة يدوية."
+                : "Delivery items whose invoice line was deleted. The rebuild matches them to a product by serial automatically. Matched items were deducted from stock; unmatched need manual review."}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={load} disabled={loading} className="gap-1 h-8">
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          {isAr ? "تحديث" : "Refresh"}
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+          <CheckCircle2 className="h-3 w-3 me-1" />
+          {matched.length} {isAr ? "مطابق (" : "matched ("}{matchedQty}{isAr ? " قطعة)" : " units)"}
+        </Badge>
+        <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/30">
+          <AlertTriangle className="h-3 w-3 me-1" />
+          {unmatched.length} {isAr ? "غير مطابق (" : "unmatched ("}{unmatchedQty}{isAr ? " قطعة)" : " units)"}
+        </Badge>
+        <label className="ms-auto inline-flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="h-3.5 w-3.5" />
+          {isAr ? "عرض الكل (بما فيهم الملغاة والمطابقة)" : "Show all (incl. cancelled & matched)"}
+        </label>
+      </div>
+
+      {view.length > 0 && (
+        <div className="rounded border bg-background overflow-x-auto max-h-72 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted/60 z-10">
+              <tr>
+                <th className="p-2 text-start">{isAr ? "المحضر" : "Receipt"}</th>
+                <th className="p-2 text-start">{isAr ? "المنتج" : "Product"}</th>
+                <th className="p-2 text-start">{isAr ? "السيريال" : "Serial"}</th>
+                <th className="p-2 text-center">{isAr ? "الكمية" : "Qty"}</th>
+                <th className="p-2 text-center">{isAr ? "الحالة" : "Status"}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {view.slice(0, 200).map((r) => (
+                <tr key={r.dri_id} className={r.match_status === "matched_by_serial" ? "" : "bg-rose-500/5"}>
+                  <td className="p-2 font-mono text-[11px]">
+                    <div>{r.receipt_number ?? "—"}</div>
+                    <div className="text-[10px] text-muted-foreground">{r.receipt_status}</div>
+                  </td>
+                  <td className="p-2">{r.product_name}</td>
+                  <td className="p-2 font-mono text-[11px]">{r.serial_number ?? "—"}</td>
+                  <td className="p-2 text-center tabular-nums font-semibold">{r.quantity}</td>
+                  <td className="p-2 text-center">
+                    {r.match_status === "matched_by_serial" ? (
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[10px]">
+                        {isAr ? "مطابق" : "matched"}
+                      </Badge>
+                    ) : r.match_status === "no_serial" ? (
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px]">
+                        {isAr ? "بدون سيريال" : "no serial"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-rose-500/10 text-rose-700 border-rose-500/30 text-[10px]">
+                        {isAr ? "غير مطابق" : "unmatched"}
+                      </Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && view.length === 0 && (
+        <div className="text-xs text-center text-muted-foreground py-2">
+          {isAr ? "لا توجد بنود تحتاج مراجعة." : "No items need review."}
+        </div>
+      )}
+    </Card>
+  );
+}
