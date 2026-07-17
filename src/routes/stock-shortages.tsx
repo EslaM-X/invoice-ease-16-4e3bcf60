@@ -337,7 +337,7 @@ function StockShortagesPage() {
               <h1 className="text-xl md:text-2xl font-bold tracking-tight text-amber-100 truncate">
                 {ar ? "تقرير النواقص الذكي" : "Smart Stock Shortages"}
               </h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs md:text-sm text-amber-100/70 mt-0.5">
                 {ar
                   ? "أولوية تلقائية حسب النقص × عمر الفاتورة — اضغط إنشاء أمر شراء لتعبئة المنتجات فورًا."
                   : "Auto-prioritized by shortage × invoice age — click Create PO to prefill items instantly."}
