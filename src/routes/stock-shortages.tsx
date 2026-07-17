@@ -382,7 +382,7 @@ function StockShortagesPage() {
           <div className="relative flex-1 min-w-[220px]">
             <Search className="h-4 w-4 absolute top-1/2 -translate-y-1/2 start-3 text-amber-200/50" />
             <Input
-              className="ps-9"
+              className="ps-9 bg-black/40 border-amber-500/25 text-amber-100 placeholder:text-amber-100/40"
               placeholder={ar ? "ابحث بالمنتج، سيريال، لون، فاتورة، عميل…" : "Search product, serial, color, invoice, customer…"}
               value={q}
               onChange={(e) => setQ(e.target.value)}
