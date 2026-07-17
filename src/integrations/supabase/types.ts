@@ -4510,6 +4510,15 @@ export type Database = {
         Returns: undefined
       }
       reassign_shipment_codes_global: { Args: never; Returns: undefined }
+      rebuild_inventory_from_source_of_truth: {
+        Args: never
+        Returns: {
+          products_changed: number
+          products_zeroed: number
+          total_delivered: number
+          total_received: number
+        }[]
+      }
       rebuild_product_stock: { Args: { p_product_id?: string }; Returns: Json }
       recalc_invoice_delivery_status: {
         Args: { _invoice_id: string }
