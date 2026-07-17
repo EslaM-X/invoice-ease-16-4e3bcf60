@@ -606,7 +606,7 @@ function ShortageCard({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="font-semibold text-amber-100 truncate">{row.product_name}</div>
-              <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <div className="text-xs text-amber-100/60 mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 {row.serial_number && <span className="tabular-nums">SN: {row.serial_number}</span>}
                 {row.color && <span>{row.color}</span>}
                 {row.is_spare_part && (
@@ -664,7 +664,7 @@ function ShortageCard({
                   </div>
                   <div className="text-sm font-bold text-amber-100 tabular-nums">
                     {totalAcross} {ar ? "قطعة" : totalAcross === 1 ? "unit" : "units"}
-                    <span className="text-[11px] text-muted-foreground font-normal ms-2">
+                    <span className="text-[11px] text-amber-100/50 font-normal ms-2">
                       · {row.invoices.length} {ar ? "فاتورة" : row.invoices.length === 1 ? "invoice" : "invoices"}
                     </span>
                   </div>
@@ -681,7 +681,7 @@ function ShortageCard({
                         className="min-w-0 flex-1"
                       >
                         <div className="font-medium text-amber-100 truncate">{inv.invoice_number}</div>
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className="text-xs text-amber-100/60 truncate">
                           {inv.customer_name ?? (ar ? "بدون عميل" : "No customer")} ·{" "}
                           {new Date(inv.created_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
                         </div>
@@ -690,7 +690,7 @@ function ShortageCard({
                         <div className="font-semibold text-rose-300 tabular-nums">
                           {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{inv.status}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-amber-100/50">{inv.status}</div>
                       </div>
                       <button
                         onClick={() =>
@@ -708,7 +708,7 @@ function ShortageCard({
                 {/* Footer echo for long lists */}
                 {row.invoices.length > 4 && (
                   <div className="flex items-center justify-between gap-3 px-3 py-2 bg-amber-500/[0.04] border-t border-amber-500/15 text-xs">
-                    <span className="text-muted-foreground">{ar ? "المجموع" : "Sum"}</span>
+                    <span className="text-amber-100/60">{ar ? "المجموع" : "Sum"}</span>
                     <span className="font-bold text-amber-100 tabular-nums">
                       {totalAcross} {ar ? "قطعة" : totalAcross === 1 ? "unit" : "units"}
                     </span>
