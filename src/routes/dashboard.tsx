@@ -238,6 +238,7 @@ function Dashboard() {
 
   const orderedSections = useMemo(() => {
     const sections: Array<{ key: string; node: ReactNode }> = [
+      { key: "section_leadership_tasks", node: <LeadershipTasksCard /> },
       { key: "section_closeable_invoices", node: <CloseableInvoicesCard /> },
       { key: "section_pending_accounts", node: <PendingAccountsCard /> },
       { key: "section_distributor_approvals", node: <DistributorApprovalsCard /> },
