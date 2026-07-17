@@ -337,7 +337,7 @@ function StockShortagesPage() {
               <h1 className="text-xl md:text-2xl font-bold tracking-tight text-amber-100 truncate">
                 {ar ? "تقرير النواقص الذكي" : "Smart Stock Shortages"}
               </h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs md:text-sm text-amber-100/70 mt-0.5">
                 {ar
                   ? "أولوية تلقائية حسب النقص × عمر الفاتورة — اضغط إنشاء أمر شراء لتعبئة المنتجات فورًا."
                   : "Auto-prioritized by shortage × invoice age — click Create PO to prefill items instantly."}
@@ -380,9 +380,9 @@ function StockShortagesPage() {
         {/* Controls */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="h-4 w-4 absolute top-1/2 -translate-y-1/2 start-3 text-muted-foreground" />
+            <Search className="h-4 w-4 absolute top-1/2 -translate-y-1/2 start-3 text-amber-200/50" />
             <Input
-              className="ps-9"
+              className="ps-9 bg-black/40 border-amber-500/25 text-amber-100 placeholder:text-amber-100/40"
               placeholder={ar ? "ابحث بالمنتج، سيريال، لون، فاتورة، عميل…" : "Search product, serial, color, invoice, customer…"}
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -408,19 +408,19 @@ function StockShortagesPage() {
             <option value="name">{ar ? "الاسم" : "Name"}</option>
           </select>
           <div className="flex items-center gap-1.5 text-xs text-amber-100">
-            <span className="text-muted-foreground">{ar ? "من" : "From"}</span>
+            <span className="text-amber-100/60">{ar ? "من" : "From"}</span>
             <Input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100"
+              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100 [color-scheme:dark]"
             />
-            <span className="text-muted-foreground">{ar ? "إلى" : "To"}</span>
+            <span className="text-amber-100/60">{ar ? "إلى" : "To"}</span>
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100"
+              className="h-8 w-[140px] bg-black/40 border-amber-500/25 text-amber-100 [color-scheme:dark]"
             />
             {(dateFrom || dateTo) && (
               <Button
@@ -576,7 +576,7 @@ function ShortageCard({
         : "border-emerald-500/25 hover:border-emerald-500/40";
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-3 md:p-4 bg-neutral-950/40 backdrop-blur-sm transition-colors ${urgencyRing}`}>
+    <div className={`relative overflow-hidden rounded-2xl border p-3 md:p-4 bg-gradient-to-br from-neutral-950/95 via-neutral-900/95 to-neutral-950/95 backdrop-blur-sm transition-colors ${urgencyRing}`}>
       {row.urgency === "critical" && (
         <span className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-red-500/70 to-transparent" />
       )}
@@ -606,7 +606,7 @@ function ShortageCard({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="font-semibold text-amber-100 truncate">{row.product_name}</div>
-              <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <div className="text-xs text-amber-100/60 mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 {row.serial_number && <span className="tabular-nums">SN: {row.serial_number}</span>}
                 {row.color && <span>{row.color}</span>}
                 {row.is_spare_part && (
@@ -664,7 +664,7 @@ function ShortageCard({
                   </div>
                   <div className="text-sm font-bold text-amber-100 tabular-nums">
                     {totalAcross} {ar ? "قطعة" : totalAcross === 1 ? "unit" : "units"}
-                    <span className="text-[11px] text-muted-foreground font-normal ms-2">
+                    <span className="text-[11px] text-amber-100/50 font-normal ms-2">
                       · {row.invoices.length} {ar ? "فاتورة" : row.invoices.length === 1 ? "invoice" : "invoices"}
                     </span>
                   </div>
@@ -681,7 +681,7 @@ function ShortageCard({
                         className="min-w-0 flex-1"
                       >
                         <div className="font-medium text-amber-100 truncate">{inv.invoice_number}</div>
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className="text-xs text-amber-100/60 truncate">
                           {inv.customer_name ?? (ar ? "بدون عميل" : "No customer")} ·{" "}
                           {new Date(inv.created_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
                         </div>
@@ -690,7 +690,7 @@ function ShortageCard({
                         <div className="font-semibold text-rose-300 tabular-nums">
                           {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{inv.status}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-amber-100/50">{inv.status}</div>
                       </div>
                       <button
                         onClick={() =>
@@ -708,7 +708,7 @@ function ShortageCard({
                 {/* Footer echo for long lists */}
                 {row.invoices.length > 4 && (
                   <div className="flex items-center justify-between gap-3 px-3 py-2 bg-amber-500/[0.04] border-t border-amber-500/15 text-xs">
-                    <span className="text-muted-foreground">{ar ? "المجموع" : "Sum"}</span>
+                    <span className="text-amber-100/60">{ar ? "المجموع" : "Sum"}</span>
                     <span className="font-bold text-amber-100 tabular-nums">
                       {totalAcross} {ar ? "قطعة" : totalAcross === 1 ? "unit" : "units"}
                     </span>
@@ -760,7 +760,7 @@ function KPI({ label, value, tone }: { label: string; value: number; tone: "ambe
   };
   return (
     <div className={`rounded-xl border p-3 ${toneMap[tone]}`}>
-      <div className="text-[10px] md:text-[11px] uppercase tracking-wider text-muted-foreground truncate">{label}</div>
+      <div className="text-[10px] md:text-[11px] uppercase tracking-wider opacity-80 truncate">{label}</div>
       <div className="text-xl md:text-2xl font-bold mt-1 tabular-nums">{value.toLocaleString("en-GB")}</div>
     </div>
   );
@@ -804,7 +804,7 @@ function SegBtn({
       type="button"
       onClick={onClick}
       className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs border transition ${
-        active ? activeClasses : "border-amber-500/15 text-muted-foreground hover:border-amber-500/30 hover:text-amber-200"
+        active ? activeClasses : "border-amber-500/20 text-amber-100/70 hover:border-amber-500/40 hover:text-amber-100"
       }`}
     >
       {children}
