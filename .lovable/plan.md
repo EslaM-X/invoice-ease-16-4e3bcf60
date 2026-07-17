@@ -1,51 +1,60 @@
+## Goal
+Add a distinctive, luxury "My Tasks from Leadership" (مهامي من القيادة) card to the dashboard, visible **only** for:
+- `esraa@steinheim-eg.com`
+- `f.hesham@steinheim-eg.com`
 
-## نتيجة المراجعة الفعلية على قاعدة البيانات
+Card is split in two halves showing tasks assigned by:
+- **Left/Right half A** — CEO: `k.elsharbatly@steinheim-eg.com` (المدير التنفيذي · CEO)
+- **Half B** — E. Hesham: `e.hesham@steinheim-eg.com` (proposed title: **مدير العمليات — COO** — this is the standard global abbreviation for Chief Operating Officer and is stronger than "BOM" which usually means Bill of Materials in manufacturing software; recommend **COO**)
 
-راجعت الأرقام الفعلية دلوقتي — النتائج بالظبط:
+Placement on `/dashboard`: directly **before** the "Smart Closure Suggestions" card and the "Open invoices / Partial delivery" strip.
 
-### ما تم التحقق منه (سليم 100%)
-- **المخزون مطابق للمصدر الحقيقي:** كل الـ 125 منتج، الرصيد الحالي = (مجموع أوامر الشراء المستلمة − مجموع محاضر التسليم غير الملغاة). صفر تفاوت.
-- **مفيش مخزون وهمي متبقّي:** أي زيادة يدوية قديمة (لم تأتِ من PO) اتشالت خلال التصفير.
-- **تقرير النواقص كامل التغطية:** فحصت 332 بند فاتورة نشط، الفجوة `ordered − delivered − reserved` = 0 لكل البنود. يعني كل فاتورة فيها كمية غير مغطاة بالمخزون أو بأمر شراء مفتوح → مسجَّلة كنقص. الإجمالي الحالي: 93 نقص = 231 قطعة.
-- **محاضر التسليم القديمة سليمة:** 107 محضر موجودين بحالتهم (73 paid، 26 signed، 5 out_for_delivery، 3 cancelled). مفيش محضر اتحذف أو اتغيّرت حالته. الأرشيف وصفحة "في الطريق" هيبقوا زي ما هم.
+## What the card shows
 
-### مشكلة واحدة اكتشفتها لازم أقولك عليها بصراحة
-في **103 بند** جوّه محاضر تسليم قديمة (منهم **96 بند بكمية 145 قطعة** على محاضر paid/out_for_delivery) رابطهم بـ `invoice_items` مقطوع — يعني بند الفاتورة الأصلي كان اتحذف قبل كدة، والـ FK رجّع `invoice_item_id = NULL`.
+Header (always visible even with zero tasks):
+- Two circular gold-ringed avatars (real profile photo from `profiles.avatar_url`, fallback initials) for CEO + COO, name + role chip under each.
+- Live indicator when a new task lands (subtle glow pulse for ~10s on the half that received it).
 
-**لماذا يهمك:** دالة إعادة البناء بتوصل للـ `product_id` عن طريق JOIN مع `invoice_items`. البنود اليتيمة دي مالهاش `product_id` فمعتُدّتش في خصم "المسلَّم". النتيجة: **الرصيد الحالي أعلى بـ ≈ 145 قطعة من الحقيقة**، موزّعين على المنتجات اللي اتسلّمت في المحاضر دي.
+Filters (top bar of the card):
+- **Priority**: الكل · عاجلة · عالية · عادية · منخفضة
+- **Status**: الكل · قيد الانتظار · قيد التنفيذ · منجزة
 
-**قابلة للاسترداد:** الـ `serial_number` محفوظ داخل بند المحضر نفسه، و 45 سيريال منهم (= 141 قطعة) بيطابقوا مباشرة صف في `products`. باقي 4 قطع بس (سيريال واحد) مش موجود في المنتجات — هيتسجّلوا كتحذير في التقرير.
+Body — two columns (stacked on mobile), each showing all tasks assigned by that leader to the current user (no cap — scroll inside the card so 20+ tasks stay usable):
+- Title, description, priority chip (color-coded), status chip, due date (with overdue amber/red), created at.
+- Assigner mini-avatar + role label on each task.
+- Click a task → opens the existing task detail view on `/tasks`.
 
----
+Empty half: shows the assigner's avatar + role + "لا مهام حالياً" in muted gold — card stays present, not hidden.
 
-## الخطة (Build mode)
+New-task highlight: when `tasks_notify` realtime event arrives for the current user from that assigner, the half briefly "lights up" (gold glow + soft ring animation) to grab attention.
 
-### 1) إصلاح دالة `rebuild_inventory_from_source_of_truth`
-تعديل حساب "delivered" ليأخذ الكمية من مسارين:
-- **المسار الحالي:** DRI → invoice_items → product_id (للبنود السليمة).
-- **مسار جديد (fallback):** لما `invoice_item_id IS NULL`، طابق بـ `dri.serial_number = products.serial_number`.
-النتيجة: الـ 141 قطعة اليتيمة القابلة للمطابقة هتتخصم صح من المخزون.
+## Visual style
+Noir & Gold, matches existing `noir-surface` + `gold-hairline` tokens. Distinctive from other dashboard cards via:
+- Dual-portrait header with concentric gold rings
+- Vertical gold hairline divider between the two halves
+- Priority chips use existing task palette; overdue rows get amber left-border
+- Subtle gold shimmer on the card frame so it reads as "special"
 
-### 2) إضافة تقرير "بنود محاضر يتيمة غير قابلة للمطابقة"
-دالة جديدة `orphan_delivery_items_report()` ترجّع الصفوف اللي مالهاش `invoice_item_id` ولا سيريال مطابق، عشان تراجعهم يدوياً (متوقّع 4 قطع بس، سيريال واحد).
+## Access & data
 
-### 3) عرضها في صفحة تسوية المخزون
-تحت كارت "إعادة البناء" أضيف قسم صغير:
-- عدّاد "بنود محاضر يتيمة" (زر Refresh).
-- جدول: رقم المحضر، اسم المنتج، السيريال، الكمية، حالة المطابقة (matched-by-serial / unmatched).
-عشان تشوف بعينك أي محضر قديم فيه سيريال مش موجود في المنتجات وتعالجه.
+New file `src/components/leadership-tasks-card.tsx`:
+- Visibility gate: `useEffectiveUser().email` in the allowlist `["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com"]`. Respects impersonation — matches how other gates in the app work.
+- Data: query `tasks` where `assignee_id = me` and `assigned_by IN (ceo_id, coo_id)`; resolve the two leader UUIDs from `profiles` by email once on mount.
+- Live updates via `useRealtimeTable("tasks", …)` with `uniqueRealtimeTopic` (per the project's realtime rules).
+- Titles/roles pulled from `profiles.display_name` / a small local role map (CEO / COO); avatars from `profiles.avatar_url` via existing `team-profiles` cache.
 
-### 4) إعادة تشغيل الرِبيلد بعد التعديل
-بعد ما توافق، من صفحة تسوية المخزون اضغط "إعادة البناء الآن" مرة واحدة — هيصحّح الفرق الـ 141 قطعة تلقائياً، ويعيد حساب النواقص (اللي هترتفع بنفس المقدار تقريباً لأن الطلب اللي كان محسوب مغطى بمخزون وهمي هيبان دلوقتي كنقص حقيقي).
+Dashboard wiring in `src/routes/dashboard.tsx`:
+- Render `<LeadershipTasksCard />` immediately before the Smart Closure Suggestions / open-invoices strip.
+- Component self-hides for anyone outside the two allowed accounts, so it doesn't need a new UI-prefs entry.
 
-### 5) لا يوجد تأثير على أي شيء آخر
-- محاضر التسليم نفسها **لن تُلمَس** (لا حذف ولا تعديل حالة ولا تغيير أرقام).
-- الفواتير وأوامر الشراء والأرشيف زي ما هم بالظبط.
-- Realtime واشتراكات الصفحات مش هتتأثر.
+## Title recommendation
+Use **COO** (Chief Operating Officer, "مدير العمليات") instead of BOM. BOM in operations software almost always means "Bill of Materials" and would be confusing. COO is the internationally recognized #2-after-CEO title.
 
-### تفاصيل تقنية
-- Migration جديدة: تعديل `rebuild_inventory_from_source_of_truth` + دالة `orphan_delivery_items_report()` مع `is_admin()` guard و `GRANT EXECUTE TO authenticated`.
-- Frontend: تعديل `src/routes/inventory-reconcile.tsx` لإضافة كارت "بنود يتيمة" أسفل `RebuildFromSourceCard`.
-- بعد الـ migration، ترجيع الرِبيلد يدوياً من الواجهة (مش من migration) عشان تشوف الأرقام قبل/بعد.
+## Out of scope
+- No changes to task creation flow, RLS, or the `/tasks` page.
+- No new tables or migrations.
+- No changes to other users' dashboards.
 
-توافق أنفّذ؟
+## Files
+- New: `src/components/leadership-tasks-card.tsx`
+- Edit: `src/routes/dashboard.tsx` (single import + one JSX insertion)
