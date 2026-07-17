@@ -406,3 +406,80 @@ function ReconciliationReport({ isAr, onChanged }: { isAr: boolean; onChanged: (
     </Card>
   );
 }
+
+function RebuildFromSourceCard({ isAr, onChanged }: { isAr: boolean; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{
+    products_changed: number;
+    total_received: number;
+    total_delivered: number;
+    products_zeroed: number;
+  } | null>(null);
+
+  const run = async () => {
+    const msg = isAr
+      ? "سيتم تصفير المخزون وإعادة بنائه من (أوامر شراء مستلمة − محاضر تسليم غير ملغاة) فقط.\n\nلن تُمس الفواتير أو أوامر الشراء أو محاضر التسليم.\n\nمتابعة؟"
+      : "Stock will be reset and rebuilt strictly from (PO receipts − non-cancelled delivery receipts).\n\nInvoices, POs, and delivery receipts will NOT be touched.\n\nContinue?";
+    if (!confirm(msg)) return;
+    if (!confirm(isAr ? "تأكيد أخير: ابدأ إعادة البناء؟" : "Final confirmation: start rebuild?")) return;
+    setBusy(true);
+    const { data, error } = await (supabase as any).rpc("rebuild_inventory_from_source_of_truth");
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    const row = Array.isArray(data) ? data[0] : data;
+    setResult(row);
+    toast.success(
+      isAr
+        ? `تمت المصالحة: ${row?.products_changed ?? 0} منتج تغيّر`
+        : `Reconciled: ${row?.products_changed ?? 0} products changed`,
+    );
+    onChanged();
+  };
+
+  return (
+    <Card className="p-4 space-y-3 border-primary/40 bg-gradient-to-br from-primary/5 to-transparent">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <Sparkles className="h-5 w-5 text-primary mt-0.5" />
+          <div>
+            <h2 className="text-base font-bold">
+              {isAr ? "إعادة بناء المخزون من المصادر الحقيقية" : "Rebuild inventory from source of truth"}
+            </h2>
+            <p className="text-xs text-muted-foreground max-w-2xl">
+              {isAr
+                ? "يصفّر كل الأرصدة ثم يعيد حسابها بدقة من أوامر الشراء المستلمة ناقص محاضر التسليم غير الملغاة. تنبيهات النواقص هتتحدّث تلقائياً. لن تُمس الفواتير أو أوامر الشراء أو محاضر التسليم كسجلات."
+                : "Zeroes all stock, then rebuilds it strictly from PO receipts minus non-cancelled delivery receipts. Shortages auto-refresh. Invoices, POs, and delivery receipts stay untouched."}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" onClick={run} disabled={busy} className="gap-1 h-8">
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
+          {isAr ? "إعادة البناء الآن" : "Rebuild now"}
+        </Button>
+      </div>
+
+      {result && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+          <StatChip label={isAr ? "منتجات تغيّرت" : "Products changed"} value={result.products_changed} tone="primary" />
+          <StatChip label={isAr ? "إجمالي المستلم" : "Total received"} value={result.total_received} tone="ok" />
+          <StatChip label={isAr ? "إجمالي المسلَّم" : "Total delivered"} value={result.total_delivered} tone="warn" />
+          <StatChip label={isAr ? "منتجات برصيد صفر" : "Zero-stock products"} value={result.products_zeroed} tone="muted" />
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function StatChip({ label, value, tone }: { label: string; value: number; tone: "primary" | "ok" | "warn" | "muted" }) {
+  const toneCls =
+    tone === "primary" ? "border-primary/40 bg-primary/10 text-primary"
+    : tone === "ok" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+    : tone === "warn" ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+    : "border-muted bg-muted/40 text-muted-foreground";
+  return (
+    <div className={`rounded-lg border p-2 ${toneCls}`}>
+      <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+      <div className="text-lg font-bold tabular-nums">{value.toLocaleString()}</div>
+    </div>
+  );
+}
