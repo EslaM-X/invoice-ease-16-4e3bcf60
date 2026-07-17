@@ -380,7 +380,7 @@ function StockShortagesPage() {
         {/* Controls */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="h-4 w-4 absolute top-1/2 -translate-y-1/2 start-3 text-muted-foreground" />
+            <Search className="h-4 w-4 absolute top-1/2 -translate-y-1/2 start-3 text-amber-200/50" />
             <Input
               className="ps-9"
               placeholder={ar ? "ابحث بالمنتج، سيريال، لون، فاتورة، عميل…" : "Search product, serial, color, invoice, customer…"}
