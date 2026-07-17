@@ -760,7 +760,7 @@ function KPI({ label, value, tone }: { label: string; value: number; tone: "ambe
   };
   return (
     <div className={`rounded-xl border p-3 ${toneMap[tone]}`}>
-      <div className="text-[10px] md:text-[11px] uppercase tracking-wider text-muted-foreground truncate">{label}</div>
+      <div className="text-[10px] md:text-[11px] uppercase tracking-wider opacity-80 truncate">{label}</div>
       <div className="text-xl md:text-2xl font-bold mt-1 tabular-nums">{value.toLocaleString("en-GB")}</div>
     </div>
   );
