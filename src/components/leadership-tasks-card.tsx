@@ -298,7 +298,7 @@ function LeaderColumn({
           <div className="truncate text-sm font-semibold text-amber-100">
             {profile?.display_name || leader.email.split("@")[0]}
           </div>
-          <div className="text-[11px] text-amber-100/60">{roleLabel}</div>
+          <div className="text-[11px] leading-tight text-amber-100/70 whitespace-normal">{roleLabel}</div>
         </div>
         <div className="flex flex-col items-end">
           <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold text-amber-200 ring-1 ring-amber-400/30">
