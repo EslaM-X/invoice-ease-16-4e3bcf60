@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ShieldCheck, Save, RefreshCw, Download, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, ShieldCheck, Save, RefreshCw, Download, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/lib/data";
 
