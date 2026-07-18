@@ -71,7 +71,8 @@ function LeaderAvatar({ url, name, email, size = 56 }: { url: string | null; nam
     <div
       className="relative shrink-0 rounded-full"
       style={{
-        width: size, height: size,
+        width: `clamp(64px, ${size * 0.85}px, ${size}px)`,
+        height: `clamp(64px, ${size * 0.85}px, ${size}px)`,
         padding: 2,
         background: "conic-gradient(from 220deg, #E9C77E, #B8863A, #F6E1A4, #8A5A1A, #E9C77E)",
         boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 0 24px -6px rgba(233,199,126,0.35)",
