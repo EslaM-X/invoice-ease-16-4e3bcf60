@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
+
 
 export type NoirTone = "gold" | "emerald" | "blue" | "amber" | "neutral" | "violet";
 
