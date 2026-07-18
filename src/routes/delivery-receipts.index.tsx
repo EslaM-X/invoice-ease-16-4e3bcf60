@@ -260,7 +260,7 @@ function ReceiptsList() {
         )}
       </div>
 
-      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card perf-contain">
         {loading ? (
           <TableSkeleton rows={5} cols={6} />
         ) : filtered.length === 0 ? (
@@ -269,7 +269,7 @@ function ReceiptsList() {
             {isAr ? "لا يوجد محاضر بعد" : "No receipts yet"}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto smooth-scroll">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs">
                 <tr>
