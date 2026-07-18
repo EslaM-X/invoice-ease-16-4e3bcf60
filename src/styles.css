@@ -1258,3 +1258,44 @@ html, body {
   60% { transform: rotate(-6deg); }
   80% { transform: rotate(4deg); }
 }
+
+/* =========================================================
+   Performance utilities — apply to heavy off-screen cards
+   and long scroll containers to reduce paint/layout cost
+   without changing appearance.
+   ========================================================= */
+
+/* Skip rendering work for elements off-screen; browser paints them
+   only when they scroll near the viewport. Use on repeated cards. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 320px;
+}
+.cv-auto-sm { content-visibility: auto; contain-intrinsic-size: 1px 96px; }
+.cv-auto-md { content-visibility: auto; contain-intrinsic-size: 1px 200px; }
+.cv-auto-lg { content-visibility: auto; contain-intrinsic-size: 1px 480px; }
+
+/* Isolate layout/paint of a card so hover / state changes on it
+   don't invalidate siblings. */
+.perf-contain {
+  contain: layout paint style;
+}
+
+/* Smoother scrolling containers with contained overscroll so parent
+   pages don't rubber-band when a nested list reaches its edge. */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smooth-scroll { scroll-behavior: auto; }
+}
+
+/* GPU-friendly promotion — use sparingly on elements that animate
+   transform/opacity while visible. */
+.gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
