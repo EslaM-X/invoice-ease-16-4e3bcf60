@@ -384,7 +384,7 @@ export function LeadershipTasksCard() {
               {isAr ? "مهامي مع الفريق" : "My tasks with the team"}
             </h2>
             <p className="truncate text-[11px] text-amber-100/60">
-              {isAr ? "تنسيق الإدارة التنفيذية" : "Executive management coordination"}
+              {isAr ? "الإدارة العليا — متابعة مهام الفريق" : "Top management — team task follow-up"}
             </p>
           </div>
         </div>
