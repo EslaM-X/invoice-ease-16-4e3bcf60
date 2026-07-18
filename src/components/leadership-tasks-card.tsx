@@ -262,21 +262,31 @@ function FilterGroup<T extends string>({
   isAr: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-full bg-black/40 p-1 ring-1 ring-amber-400/20">
+    <div
+      className="flex shrink-0 items-center gap-1 rounded-full bg-black/40 p-1 ring-1 ring-amber-400/20"
+      role="radiogroup"
+      aria-label={label}
+    >
       <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-amber-100/60">{label}</span>
-      {options.map((o) => (
-        <button
-          key={o.v}
-          onClick={() => onChange(o.v)}
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
-            value === o.v
-              ? "bg-gradient-to-b from-amber-400 to-amber-600 text-neutral-950 shadow"
-              : "text-amber-100/70 hover:text-amber-100"
-          }`}
-        >
-          {isAr ? o.ar : o.en}
-        </button>
-      ))}
+      {options.map((o) => {
+        const active = value === o.v;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.v)}
+            className={`rounded-full px-2 py-1 text-[11px] font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1 focus-visible:ring-offset-black ${
+              active
+                ? "bg-gradient-to-b from-amber-400 to-amber-600 text-neutral-950 shadow"
+                : "text-amber-100/70 hover:text-amber-100"
+            }`}
+          >
+            {isAr ? o.ar : o.en}
+          </button>
+        );
+      })}
     </div>
   );
 }
