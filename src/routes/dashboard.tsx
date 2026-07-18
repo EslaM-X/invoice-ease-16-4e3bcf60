@@ -251,7 +251,6 @@ function Dashboard() {
 
   const orderedSections = useMemo(() => {
     const sections: Array<{ key: string; node: ReactNode }> = [
-      { key: LEADERSHIP_TASKS_KEY, node: <LeadershipTasksCard /> },
       { key: CLOSEABLE_INVOICES_KEY, node: <CloseableInvoicesCard /> },
       { key: "section_pending_accounts", node: <PendingAccountsCard /> },
       { key: "section_distributor_approvals", node: <DistributorApprovalsCard /> },
@@ -479,6 +478,8 @@ function Dashboard() {
       )}
 
 
+
+      {uiReady && !ui.isCardHidden(LEADERSHIP_TASKS_KEY) && <LeadershipTasksCard />}
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded && uiReady ? "done" : "loading"}>
         {!uiReady
