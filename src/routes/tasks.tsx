@@ -150,19 +150,6 @@ function TasksPage() {
 
   const openTask = useMemo(() => tasks.find(t => t.id === openId) ?? null, [tasks, openId]);
 
-  // Filtered visible list
-  const visible = useMemo(() => {
-    let list = tasks;
-    if (view === "inbox") list = list.filter(t => t.assignee_id === user?.id && t.status !== "done" && t.status !== "cancelled");
-    else if (view === "done") list = list.filter(t => t.assignee_id === user?.id && (t.status === "done" || t.status === "cancelled"));
-    else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
-    // "all" shows everything visible per RLS
-    if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
-    if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(t => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q));
-    }
   // Filter only — no re-sort. The fetched order (newest first by created_at)
   // is the single source of truth for position, so applying a filter, changing
   // view, or typing in search never moves an existing row.
@@ -179,6 +166,7 @@ function TasksPage() {
     }
     return list;
   }, [tasks, view, prioFilter, statusFilter, search, user?.id]);
+
 
 
   // Counters for the sidebar
