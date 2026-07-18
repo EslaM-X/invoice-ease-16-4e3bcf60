@@ -128,6 +128,17 @@ function initialsOf(name: string | null, email: string | null) {
 // tab, subsequent renders skip the skeleton entirely — prevents the blur-up
 // flash when the card re-mounts (nav-back, dashboard re-order, etc.).
 const AVATAR_CACHE: Set<string> = new Set();
+// Track the last URL seen per leader identity. When the URL changes (avatar
+// re-uploaded, ?v= bumped, path replaced), we evict the previous entry so
+// the stale bitmap never wins over the fresh one.
+const AVATAR_LAST_URL: Map<string, string> = new Map();
+
+function rememberAvatar(identity: string | null | undefined, url: string | null | undefined) {
+  if (!identity || !url) return;
+  const prev = AVATAR_LAST_URL.get(identity);
+  if (prev && prev !== url) AVATAR_CACHE.delete(prev);
+  AVATAR_LAST_URL.set(identity, url);
+}
 
 function preloadAvatar(url: string) {
   if (!url || AVATAR_CACHE.has(url)) return;
@@ -135,15 +146,15 @@ function preloadAvatar(url: string) {
   img.decoding = "async";
   img.src = url;
   img.onload = () => {
-    // decode() upgrades to a fully-rasterized bitmap so the first paint is sharp
     (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).finally(() => {
       AVATAR_CACHE.add(url);
     });
   };
 }
 
-function LeaderAvatar({ url, name, email, size = 128, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
-  const dim = `clamp(96px, 15vw, ${size}px)`;
+function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
+  const dim = `clamp(112px, 16vw, ${size}px)`;
+
   const cached = !!url && AVATAR_CACHE.has(url);
   const [imgLoaded, setImgLoaded] = useState(cached);
   const [imgError, setImgError] = useState(false);
