@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Crown, Briefcase, Sparkles, AlertTriangle, Clock, PlayCircle, CheckCircle2, CalendarDays } from "lucide-react";
+import { Crown, Briefcase, Sparkles, AlertTriangle, Clock, PlayCircle, CheckCircle2, CalendarDays, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useEffectiveUser } from "@/lib/use-effective-user";
@@ -377,14 +377,14 @@ export function LeadershipTasksCard() {
       <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div className="shrink-0 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-300/5 p-2 ring-1 ring-amber-400/30">
-            <Sparkles className="h-5 w-5 text-amber-300" aria-hidden />
+            <ClipboardList className="h-5 w-5 text-amber-300" aria-hidden />
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold tracking-tight text-amber-100 sm:text-lg">
               {isAr ? "مهامي مع الفريق" : "My tasks with the team"}
             </h2>
             <p className="truncate text-[11px] text-amber-100/60">
-              {isAr ? "متابعة مشتركة مع الرئيس التنفيذي ومدير العمليات" : "Shared follow-ups with the CEO and COO"}
+              {isAr ? "لوحة مهام مشتركة بيننا" : "A shared board for the tasks between us"}
             </p>
           </div>
         </div>
