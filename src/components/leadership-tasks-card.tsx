@@ -502,7 +502,7 @@ function LeaderColumn({
 }: {
   isAr: boolean;
   leader: typeof CEO;
-  profile: { display_name: string | null; email: string | null; avatar_url: string | null } | null;
+  profile: { display_name: string | null; email: string | null; avatar_url: string | null; updated_at?: string | null } | null;
   tasks: Task[];
   loaded: boolean;
   flash: boolean;
@@ -510,6 +510,10 @@ function LeaderColumn({
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
   const articleRef = useRef<HTMLElement | null>(null);
+  // Version-tag the URL with the profile's updated_at so re-uploads to the
+  // same storage path immediately break the previous cached bitmap.
+  const versionedUrl = versioned(profile?.avatar_url ?? null, profile?.updated_at ?? null);
+  rememberAvatar(leader.email, versionedUrl);
   return (
     <article
       ref={articleRef}
@@ -521,8 +525,9 @@ function LeaderColumn({
       {/* Leader header — grid keeps text container flexible on all widths */}
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
         <LeaderAvatar
-          url={profile?.avatar_url ?? null}
+          url={versionedUrl}
           name={profile?.display_name ?? null}
+
           email={leader.email}
           size={192}
           prefetchRef={articleRef}
