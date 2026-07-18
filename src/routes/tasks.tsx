@@ -452,6 +452,26 @@ function TasksPage() {
               <div className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جاري التحميل..." : "Loading..."}</div>
             ) : visible.length === 0 ? (
               <EmptyState view={view} isAr={isAr} isManager={isManager} onCreate={() => setCreateOpen(true)} hasFilters={!!search || prioFilter !== "all" || statusFilter !== "all"} onClearFilters={() => { setSearch(""); setPrioFilter("all"); setStatusFilter("all"); }} />
+            ) : visible.length > 50 ? (
+              // Virtualize long lists — only render rows in the viewport (+overscan)
+              // so scroll stays 60fps and memory usage stays flat regardless of list size.
+              <List
+                rowCount={visible.length}
+                rowHeight={52}
+                defaultHeight={Math.min(640, Math.max(320, visible.length * 52))}
+                overscanCount={10}
+                className="divide-y"
+                rowProps={{
+                  rows: visible,
+                  profiles,
+                  selected,
+                  openId,
+                  isAr,
+                  onToggle: toggleSelect,
+                  onOpen: setOpenId,
+                }}
+                rowComponent={VirtualTaskRow}
+              />
             ) : (
               <ul className="divide-y">
                 {visible.map(t => {
@@ -491,6 +511,7 @@ function TasksPage() {
               </ul>
             )}
           </div>
+
         </div>
       </div>
 
