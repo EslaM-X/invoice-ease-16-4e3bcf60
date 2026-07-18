@@ -116,6 +116,7 @@ export type DashboardCardKey =
   | "kpi_partial_invoices"
   | "kpi_open_invoices"
   | "kpi_customers"
+  | "section_leadership_tasks"
   | "section_closeable_invoices"
   | "section_pending_accounts"
   | "section_distributor_approvals"
@@ -141,6 +142,7 @@ export const DASHBOARD_CARDS: DashboardCardDef[] = [
   { key: "kpi_partial_invoices", labelAr: "توريد جزئي", labelEn: "Partial Delivery", group: "kpi" },
   { key: "kpi_open_invoices", labelAr: "فواتير مفتوحة", labelEn: "Open Invoices", group: "kpi" },
   { key: "kpi_customers", labelAr: "العملاء", labelEn: "Customers", group: "kpi" },
+  { key: "section_leadership_tasks", labelAr: "مهامي من القيادة", labelEn: "Tasks from Leadership", group: "section" },
   { key: "section_closeable_invoices", labelAr: "فواتير جاهزة للإغلاق", labelEn: "Closeable Invoices", group: "section" },
   { key: "section_pending_accounts", labelAr: "طلبات الانضمام", labelEn: "Pending Accounts", group: "section" },
   { key: "section_distributor_approvals", labelAr: "موافقات الموزّعين", labelEn: "Distributor Approvals", group: "section" },
