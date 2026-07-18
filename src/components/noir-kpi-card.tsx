@@ -46,7 +46,7 @@ function NoirKpiCardBase({
       tabIndex={0}
       aria-label={ariaValue ? `${label}: ${ariaValue}` : label}
       title={!hidden ? fullValue : undefined}
-      className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5"
+      className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5 perf-contain cv-auto-md"
     >
       {/* animated shimmering top gold hairline */}
       <div aria-hidden="true" className="gold-hairline-live absolute inset-x-0 top-0" />
