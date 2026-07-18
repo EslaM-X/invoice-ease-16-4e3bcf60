@@ -19,7 +19,9 @@ import {
   Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
   X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
 } from "lucide-react";
+import { List, type RowComponentProps } from "react-window";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/tasks")({
   component: () => <AppShell><TasksPage /></AppShell>,
@@ -450,6 +452,26 @@ function TasksPage() {
               <div className="p-8 text-center text-sm text-muted-foreground">{isAr ? "جاري التحميل..." : "Loading..."}</div>
             ) : visible.length === 0 ? (
               <EmptyState view={view} isAr={isAr} isManager={isManager} onCreate={() => setCreateOpen(true)} hasFilters={!!search || prioFilter !== "all" || statusFilter !== "all"} onClearFilters={() => { setSearch(""); setPrioFilter("all"); setStatusFilter("all"); }} />
+            ) : visible.length > 50 ? (
+              // Virtualize long lists — only render rows in the viewport (+overscan)
+              // so scroll stays 60fps and memory usage stays flat regardless of list size.
+              <List
+                rowCount={visible.length}
+                rowHeight={52}
+                defaultHeight={Math.min(640, Math.max(320, visible.length * 52))}
+                overscanCount={10}
+                className="divide-y"
+                rowProps={{
+                  rows: visible,
+                  profiles,
+                  selected,
+                  openId,
+                  isAr,
+                  onToggle: toggleSelect,
+                  onOpen: setOpenId,
+                }}
+                rowComponent={VirtualTaskRow}
+              />
             ) : (
               <ul className="divide-y">
                 {visible.map(t => {
@@ -489,6 +511,7 @@ function TasksPage() {
               </ul>
             )}
           </div>
+
         </div>
       </div>
 
@@ -797,3 +820,52 @@ function Meta({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+type VirtualRowProps = {
+  rows: Task[];
+  profiles: ReturnType<typeof useTeamProfiles>;
+  selected: Set<string>;
+  openId: string | null;
+  isAr: boolean;
+  onToggle: (id: string) => void;
+  onOpen: (id: string) => void;
+};
+
+function VirtualTaskRow({ index, style, ariaAttributes, rows, profiles, selected, openId, isAr, onToggle, onOpen }: RowComponentProps<VirtualRowProps>) {
+  const t = rows[index];
+  if (!t) return null;
+  const overdue = !!(t.due_date && t.status !== "done" && t.status !== "cancelled" && new Date(t.due_date) < new Date());
+  const assignee = profiles.byId(t.assignee_id);
+  const Icon = STATUS_META[t.status].icon;
+  const isSelected = selected.has(t.id);
+  return (
+    <div
+      style={style}
+      {...ariaAttributes}
+      className={`flex items-center gap-2 px-3 py-2.5 transition-colors duration-150 hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}
+    >
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => onToggle(t.id)}
+        onClick={(e) => e.stopPropagation()}
+        className="shrink-0"
+      />
+      <button onClick={() => onOpen(t.id)} className="min-w-0 flex-1 flex items-center gap-3 text-start">
+        <span className={`h-2 w-2 rounded-full ${PRIO_META[t.priority].dot} shrink-0`} title={isAr ? PRIO_META[t.priority].ar : PRIO_META[t.priority].en} />
+        <Icon className={`h-4 w-4 shrink-0 ${STATUS_META[t.status].tone}`} />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.title}</span>
+        <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
+          {assignee?.display_name || assignee?.email || "—"}
+        </span>
+        {t.due_date && (
+          <span className={`hidden md:inline-flex items-center gap-1 text-xs tabular-nums ${overdue ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
+            <Timer className="h-3 w-3" />
+            {new Date(t.due_date).toLocaleDateString(isAr ? "ar-EG-u-nu-latn" : "en-GB", { day: "2-digit", month: "short" })}
+          </span>
+        )}
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+      </button>
+    </div>
+  );
+}
+

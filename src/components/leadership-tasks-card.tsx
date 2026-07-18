@@ -28,10 +28,29 @@ function transformAvatar(url: string, width: number, quality: number, format?: "
   }
 }
 
-const AVATAR_WIDTHS = [128, 192, 256, 384, 512] as const;
+// Higher-fidelity variant ladder — up to 768w retina + q≥90 on large sizes.
+const AVATAR_WIDTHS = [128, 192, 256, 384, 512, 768] as const;
 function buildSrcSet(url: string, format?: "webp" | "avif" | "origin") {
-  return AVATAR_WIDTHS.map((w) => `${transformAvatar(url, w, w >= 384 ? 78 : 82, format)} ${w}w`).join(", ");
+  return AVATAR_WIDTHS
+    .map((w) => `${transformAvatar(url, w, w >= 512 ? 92 : w >= 256 ? 88 : 84, format)} ${w}w`)
+    .join(", ");
 }
+
+/** Append a version tag so a re-uploaded avatar at the SAME storage path
+ *  becomes a different URL string (busts <img>, HTTP, and AVATAR_CACHE). */
+function versioned(url: string | null, version: string | number | null | undefined): string | null {
+  if (!url) return null;
+  if (!version) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("v", String(version));
+    return u.toString();
+  } catch {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}v=${encodeURIComponent(String(version))}`;
+  }
+}
+
 
 
 /**
@@ -109,6 +128,17 @@ function initialsOf(name: string | null, email: string | null) {
 // tab, subsequent renders skip the skeleton entirely — prevents the blur-up
 // flash when the card re-mounts (nav-back, dashboard re-order, etc.).
 const AVATAR_CACHE: Set<string> = new Set();
+// Track the last URL seen per leader identity. When the URL changes (avatar
+// re-uploaded, ?v= bumped, path replaced), we evict the previous entry so
+// the stale bitmap never wins over the fresh one.
+const AVATAR_LAST_URL: Map<string, string> = new Map();
+
+function rememberAvatar(identity: string | null | undefined, url: string | null | undefined) {
+  if (!identity || !url) return;
+  const prev = AVATAR_LAST_URL.get(identity);
+  if (prev && prev !== url) AVATAR_CACHE.delete(prev);
+  AVATAR_LAST_URL.set(identity, url);
+}
 
 function preloadAvatar(url: string) {
   if (!url || AVATAR_CACHE.has(url)) return;
@@ -116,15 +146,15 @@ function preloadAvatar(url: string) {
   img.decoding = "async";
   img.src = url;
   img.onload = () => {
-    // decode() upgrades to a fully-rasterized bitmap so the first paint is sharp
     (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).finally(() => {
       AVATAR_CACHE.add(url);
     });
   };
 }
 
-function LeaderAvatar({ url, name, email, size = 128, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
-  const dim = `clamp(96px, 15vw, ${size}px)`;
+function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
+  const dim = `clamp(112px, 16vw, ${size}px)`;
+
   const cached = !!url && AVATAR_CACHE.has(url);
   const [imgLoaded, setImgLoaded] = useState(cached);
   const [imgError, setImgError] = useState(false);
@@ -191,9 +221,10 @@ function LeaderAvatar({ url, name, email, size = 128, prefetchRef }: { url: stri
               </>
             )}
             <img
-              src={canTransform ? transformAvatar(url!, size * 2, 82, "origin") : url!}
+              src={canTransform ? transformAvatar(url!, Math.min(768, size * 2), 92, "origin") : url!}
               srcSet={canTransform ? buildSrcSet(url!, "origin") : undefined}
               sizes={canTransform ? sizesAttr : undefined}
+
               alt={name || email || ""}
               loading="eager"
               decoding="async"
@@ -471,7 +502,7 @@ function LeaderColumn({
 }: {
   isAr: boolean;
   leader: typeof CEO;
-  profile: { display_name: string | null; email: string | null; avatar_url: string | null } | null;
+  profile: { display_name: string | null; email: string | null; avatar_url: string | null; updated_at?: string | null } | null;
   tasks: Task[];
   loaded: boolean;
   flash: boolean;
@@ -479,6 +510,10 @@ function LeaderColumn({
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
   const articleRef = useRef<HTMLElement | null>(null);
+  // Version-tag the URL with the profile's updated_at so re-uploads to the
+  // same storage path immediately break the previous cached bitmap.
+  const versionedUrl = versioned(profile?.avatar_url ?? null, profile?.updated_at ?? null);
+  rememberAvatar(leader.email, versionedUrl);
   return (
     <article
       ref={articleRef}
@@ -490,10 +525,11 @@ function LeaderColumn({
       {/* Leader header — grid keeps text container flexible on all widths */}
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
         <LeaderAvatar
-          url={profile?.avatar_url ?? null}
+          url={versionedUrl}
           name={profile?.display_name ?? null}
+
           email={leader.email}
-          size={192}
+          size={224}
           prefetchRef={articleRef}
         />
 
