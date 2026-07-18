@@ -458,7 +458,7 @@ function TasksPage() {
                   const Icon = STATUS_META[t.status].icon;
                   const isSelected = selected.has(t.id);
                   return (
-                    <li key={t.id} className={`flex items-center gap-2 px-3 py-2.5 transition hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
+                    <li key={t.id} className={`flex items-center gap-2 px-3 py-2.5 transition-colors duration-300 ease-out animate-in fade-in slide-in-from-top-1 hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleSelect(t.id)}
