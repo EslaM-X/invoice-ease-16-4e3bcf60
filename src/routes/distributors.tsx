@@ -82,7 +82,7 @@ function DistributorsInner() {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <CardGridSkeleton count={6} cols="sm:grid-cols-2 lg:grid-cols-3" />
       ) : filtered.length === 0 ? (
         <div className="ios-card py-16 text-center text-sm text-muted-foreground">{isAr ? "لا يوجد موزّعين" : "No distributors yet"}</div>
       ) : (
