@@ -304,52 +304,61 @@ function LeaderColumn({
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
   return (
-    <div
-      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-4 ring-1 ring-amber-400/20 ${
+    <article
+      aria-label={`${leader.short} — ${roleLabel}`}
+      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 ring-amber-400/20 sm:p-4 ${
         flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)] animate-pulse" : ""
       }`}
     >
-      {/* Leader header */}
-      <div className="flex items-center gap-4">
+      {/* Leader header — grid keeps text container flexible on all widths */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
         <LeaderAvatar
           url={profile?.avatar_url ?? null}
           name={profile?.display_name ?? null}
           email={leader.email}
           size={96}
         />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+            <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
             <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">{leader.short}</span>
           </div>
-          <div className="mt-0.5 truncate text-lg font-bold leading-tight text-amber-100">
+          <div className="mt-0.5 truncate text-base font-bold leading-tight text-amber-100 sm:text-lg">
             {leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}
           </div>
-          <div className="mt-1 line-clamp-2 text-xs leading-snug text-amber-100/70">
+          <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-amber-100/70 sm:text-xs">
             {roleLabel}
           </div>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="rounded-lg bg-gradient-to-b from-amber-400/25 to-amber-600/15 px-2.5 py-1 text-sm font-bold text-amber-100 ring-1 ring-amber-400/40 tabular-nums">
+        <div className="flex shrink-0 flex-col items-center gap-0.5">
+          <span
+            className="rounded-lg bg-gradient-to-b from-amber-400/25 to-amber-600/15 px-2.5 py-1 text-sm font-bold text-amber-100 ring-1 ring-amber-400/40 tabular-nums"
+            aria-label={isAr ? `${tasks.length} مهمة` : `${tasks.length} tasks`}
+          >
             {tasks.length}
           </span>
-          <span className="text-[9px] uppercase tracking-wider text-amber-100/50">{isAr ? "مهمة" : "tasks"}</span>
+          <span aria-hidden className="text-[9px] uppercase tracking-wider text-amber-100/50">{isAr ? "مهمة" : "tasks"}</span>
         </div>
       </div>
 
-      <div className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.35), transparent)" }} />
+      <div aria-hidden className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.35), transparent)" }} />
 
-      {/* Task list — visible scroll surface */}
-      <div className="leadership-scroll max-h-[420px] min-h-[180px] overflow-y-auto">
+      {/* Task list — visible scroll surface, keyboard-scrollable */}
+      <div
+        className="leadership-scroll max-h-[60vh] min-h-[180px] overflow-y-auto sm:max-h-[420px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
+        tabIndex={0}
+        role="region"
+        aria-label={isAr ? `مهام ${leader.short}` : `${leader.short} tasks`}
+      >
         {!loaded ? (
-          <div className="space-y-2">
+          <div className="space-y-2" aria-busy="true">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-900/70 ring-1 ring-amber-400/10" />
             ))}
           </div>
         ) : tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
-            <Sparkles className="h-6 w-6 text-amber-300/50" />
+            <Sparkles className="h-6 w-6 text-amber-300/50" aria-hidden />
             <span className="text-xs font-medium text-amber-100/70">{isAr ? "لا مهام حالياً" : "No tasks right now"}</span>
             <span className="text-[10px] text-amber-100/40">
               {isAr ? `في انتظار مهام من ${roleLabel}` : `Awaiting tasks from ${roleLabel}`}
