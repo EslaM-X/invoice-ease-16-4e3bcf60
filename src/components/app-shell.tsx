@@ -513,7 +513,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Store className="h-4 w-4" /> {lang === "ar" ? "الموزّعين" : "Distributors"}
           </Link>}
-          {isAdmin && isExecutive && !ui.isNavHidden("admin_panel") && (
+          {isSuperAdmin && !effectiveUser.isPreviewing && !ui.isNavHidden("admin_panel") && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}
