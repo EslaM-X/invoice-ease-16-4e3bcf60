@@ -79,9 +79,14 @@ function LeaderAvatar({ url, name, email, size = 56 }: { url: string | null; nam
     >
       <div className="h-full w-full rounded-full bg-neutral-950 p-[2px]">
         {url ? (
-          <img src={url} alt={name || email || ""} className="h-full w-full rounded-full object-cover" />
+          <img
+            src={url}
+            alt={name || email || ""}
+            loading="lazy"
+            className="h-full w-full rounded-full object-cover object-top"
+          />
         ) : (
-          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-sm font-semibold text-amber-200">
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-lg font-bold text-amber-200">
             {initialsOf(name, email)}
           </div>
         )}
