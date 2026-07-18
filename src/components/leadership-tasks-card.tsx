@@ -159,7 +159,8 @@ export function LeadershipTasksCard() {
   return (
     <section
       dir={isAr ? "rtl" : "ltr"}
-      className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-4 md:p-5"
+      aria-label={isAr ? "مهامي من القيادة" : "Tasks from leadership"}
+      className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
     >
       <div aria-hidden className="gold-hairline-live absolute inset-x-0 top-0" />
       {/* Ambient gold shimmer */}
@@ -169,23 +170,27 @@ export function LeadershipTasksCard() {
       </div>
 
       {/* Header */}
-      <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-300/5 p-2 ring-1 ring-amber-400/30">
-            <Sparkles className="h-5 w-5 text-amber-300" />
+      <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="shrink-0 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-300/5 p-2 ring-1 ring-amber-400/30">
+            <Sparkles className="h-5 w-5 text-amber-300" aria-hidden />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-amber-100">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold tracking-tight text-amber-100 sm:text-lg">
               {isAr ? "مهامي من القيادة" : "Tasks from Leadership"}
             </h2>
-            <p className="text-[11px] text-amber-100/60">
+            <p className="truncate text-[11px] text-amber-100/60">
               {isAr ? "المهام الموكلة إليك من مجلس الإدارة" : "Tasks assigned to you by the executive team"}
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Filters — horizontally scrollable on narrow screens */}
+        <div
+          className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible"
+          role="toolbar"
+          aria-label={isAr ? "فلاتر المهام" : "Task filters"}
+        >
           <FilterGroup
             label={isAr ? "الأولوية" : "Priority"}
             value={priorityFilter}
@@ -214,8 +219,8 @@ export function LeadershipTasksCard() {
         </div>
       </div>
 
-      {/* Two halves */}
-      <div className="relative mt-4 grid gap-4 md:grid-cols-2">
+      {/* Two halves — stack on mobile, side-by-side on md+ */}
+      <div className="relative mt-4 grid gap-3 sm:gap-4 md:grid-cols-2">
         {/* Vertical gold divider */}
         <div aria-hidden className="pointer-events-none absolute inset-y-2 left-1/2 hidden w-px -translate-x-1/2 md:block"
              style={{ background: "linear-gradient(to bottom, transparent, rgba(233,199,126,0.35), transparent)" }} />
