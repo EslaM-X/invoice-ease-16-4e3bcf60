@@ -156,9 +156,23 @@ export function LeadershipTasksCard() {
       .in("assigned_by", ids)
       .order("created_at", { ascending: false })
       .limit(200);
-    setTasks((data as Task[]) ?? []);
+    const next = (data as Task[]) ?? [];
+    // Reconcile in place: keep existing row references when unchanged so React
+    // skips re-rendering those <TaskRow>s — prevents visual flicker on realtime updates.
+    setTasks((prev) => {
+      const prevById = new Map(prev.map((t) => [t.id, t]));
+      let changed = prev.length !== next.length;
+      const merged = next.map((n) => {
+        const p = prevById.get(n.id);
+        if (p && shallowEqualTask(p, n)) return p;
+        changed = true;
+        return n;
+      });
+      return changed ? merged : prev;
+    });
     setLoaded(true);
   }
+
 
   useEffect(() => { if (allowed) void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, meId, ceoId, cooId]);
 
