@@ -92,15 +92,37 @@ function TasksPage() {
     title: "", description: "", assignee_id: "", priority: "normal", due_date: "",
   });
 
+  // Position-preserving merge: keep existing row identity/order; only new
+  // ids append. Rows that disappear from the server are removed. This prevents
+  // visual reflow during realtime refreshes.
+  const mergeTasks = (next: Task[]) => {
+    setTasks((prev) => {
+      const nextIds = new Set(next.map(n => n.id));
+      const nextById = new Map(next.map(n => [n.id, n] as const));
+      const keptInOrder: Task[] = [];
+      for (const p of prev) {
+        if (!nextIds.has(p.id)) continue;
+        const n = nextById.get(p.id)!;
+        // Shallow-equal check by JSON is cheap for small task objects and
+        // preserves reference when nothing changed → skips row re-render.
+        keptInOrder.push(JSON.stringify(p) === JSON.stringify(n) ? p : n);
+        nextIds.delete(p.id);
+      }
+      // Append genuinely-new rows in their fetched order.
+      for (const n of next) if (nextIds.has(n.id)) keptInOrder.push(n);
+      return keptInOrder;
+    });
+  };
+
   const load = async () => {
-    setLoading(true);
     const { data } = await supabase.from("tasks" as any).select("*").order("created_at", { ascending: false }).limit(500);
-    setTasks((data as any) ?? []);
+    mergeTasks(((data as any) ?? []) as Task[]);
     setLoading(false);
   };
 
   useEffect(() => { if (user) load(); }, [user?.id]);
   useRealtimeTable("tasks" as any, () => load());
+
 
   // Comments for the currently open task
   useEffect(() => {
@@ -128,30 +150,24 @@ function TasksPage() {
 
   const openTask = useMemo(() => tasks.find(t => t.id === openId) ?? null, [tasks, openId]);
 
-  // Filtered visible list
+  // Filter only — no re-sort. The fetched order (newest first by created_at)
+  // is the single source of truth for position, so applying a filter, changing
+  // view, or typing in search never moves an existing row.
   const visible = useMemo(() => {
     let list = tasks;
     if (view === "inbox") list = list.filter(t => t.assignee_id === user?.id && t.status !== "done" && t.status !== "cancelled");
     else if (view === "done") list = list.filter(t => t.assignee_id === user?.id && (t.status === "done" || t.status === "cancelled"));
     else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
-    // "all" shows everything visible per RLS
     if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
     if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(t => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q));
     }
-    return [...list].sort((a, b) => {
-      // Overdue first, then priority, then due date, then created
-      const now = Date.now();
-      const oa = a.due_date && a.status !== "done" && a.status !== "cancelled" && new Date(a.due_date).getTime() < now ? 0 : 1;
-      const ob = b.due_date && b.status !== "done" && b.status !== "cancelled" && new Date(b.due_date).getTime() < now ? 0 : 1;
-      if (oa !== ob) return oa - ob;
-      const p = PRIO_META[a.priority].order - PRIO_META[b.priority].order;
-      if (p !== 0) return p;
-      return (a.due_date || "9999").localeCompare(b.due_date || "9999");
-    });
+    return list;
   }, [tasks, view, prioFilter, statusFilter, search, user?.id]);
+
+
 
   // Counters for the sidebar
   const counts = useMemo(() => {
@@ -442,7 +458,7 @@ function TasksPage() {
                   const Icon = STATUS_META[t.status].icon;
                   const isSelected = selected.has(t.id);
                   return (
-                    <li key={t.id} className={`flex items-center gap-2 px-3 py-2.5 transition hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
+                    <li key={t.id} className={`flex items-center gap-2 px-3 py-2.5 transition-colors duration-300 ease-out animate-in fade-in slide-in-from-top-1 hover:bg-muted/50 ${openId === t.id ? "bg-muted/40" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleSelect(t.id)}

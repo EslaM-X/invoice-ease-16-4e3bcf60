@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Crown, Briefcase, Sparkles, AlertTriangle, Clock, PlayCircle, CheckCircle2, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,33 @@ import { useI18n } from "@/lib/i18n";
 import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
+
+/**
+ * Build a Supabase Storage image-transform URL. Falls back to the original
+ * URL for non-Supabase sources or if the URL can't be parsed.
+ * Docs: https://supabase.com/docs/guides/storage/serving/image-transformations
+ */
+function transformAvatar(url: string, width: number, quality: number, format?: "webp" | "avif" | "origin") {
+  try {
+    const u = new URL(url);
+    if (!u.pathname.includes("/storage/v1/object/public/")) return url;
+    u.pathname = u.pathname.replace("/storage/v1/object/", "/storage/v1/render/image/");
+    u.searchParams.set("width", String(width));
+    u.searchParams.set("height", String(width));
+    u.searchParams.set("resize", "cover");
+    u.searchParams.set("quality", String(quality));
+    if (format) u.searchParams.set("format", format);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+const AVATAR_WIDTHS = [128, 192, 256, 384, 512] as const;
+function buildSrcSet(url: string, format?: "webp" | "avif" | "origin") {
+  return AVATAR_WIDTHS.map((w) => `${transformAvatar(url, w, w >= 384 ? 78 : 82, format)} ${w}w`).join(", ");
+}
+
 
 /**
  * Leadership Tasks Card
@@ -96,19 +123,41 @@ function preloadAvatar(url: string) {
   };
 }
 
-function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
+function LeaderAvatar({ url, name, email, size = 128, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
   const dim = `clamp(96px, 15vw, ${size}px)`;
   const cached = !!url && AVATAR_CACHE.has(url);
   const [imgLoaded, setImgLoaded] = useState(cached);
   const [imgError, setImgError] = useState(false);
+  // If a transformed variant fails, fall back to the raw original URL.
+  const [useOriginal, setUseOriginal] = useState(false);
+
+  // Intersection-observer prefetch: warm the largest variant a little before
+  // the card scrolls into view so no flash happens even at high scroll speed.
   useEffect(() => {
     if (!url) return;
     if (AVATAR_CACHE.has(url)) { setImgLoaded(true); setImgError(false); return; }
-    setImgLoaded(false);
-    setImgError(false);
-    preloadAvatar(url);
-  }, [url]);
+    setImgLoaded(false); setImgError(false); setUseOriginal(false);
+    const el = prefetchRef?.current;
+    if (!el || typeof IntersectionObserver === "undefined") { preloadAvatar(url); return; }
+    let done = false;
+    const io = new IntersectionObserver((entries) => {
+      if (done) return;
+      if (entries.some((e) => e.isIntersecting)) {
+        done = true;
+        preloadAvatar(url);
+        io.disconnect();
+      }
+    }, { rootMargin: "600px 0px", threshold: 0.01 });
+    io.observe(el);
+    // Safety net: prefetch after 1s even if IO never triggers (edge browsers).
+    const t = setTimeout(() => { if (!done) { done = true; preloadAvatar(url); io.disconnect(); } }, 1000);
+    return () => { clearTimeout(t); io.disconnect(); };
+  }, [url, prefetchRef]);
+
   const showImg = !!url && !imgError;
+  const canTransform = !!url && !useOriginal && url.includes("/storage/v1/object/public/");
+  const sizesAttr = `(max-width: 640px) 96px, (max-width: 1024px) 15vw, ${size}px`;
+
   return (
     <div
       className="relative shrink-0 rounded-full"
@@ -121,8 +170,6 @@ function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; na
       }}
     >
       <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[2px]">
-        {/* Skeleton / initials underlay — matches avatar dimensions exactly.
-            Only hides after the real image's onLoad fires (not a timer). */}
         <div
           aria-hidden={showImg && imgLoaded}
           className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/85 transition-opacity duration-500 ${
@@ -136,35 +183,49 @@ function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; na
           <span className="relative">{initialsOf(name, email)}</span>
         </div>
         {showImg && (
-          <img
-            src={url!}
-            alt={name || email || ""}
-            loading="eager"
-            decoding="async"
-            // @ts-expect-error fetchpriority is a valid HTML attribute
-            fetchpriority="high"
-            draggable={false}
-            onLoad={(e) => {
-              const el = e.currentTarget;
-              // Await full decode before revealing → guarantees a sharp first paint.
-              const done = () => { AVATAR_CACHE.add(url!); setImgLoaded(true); };
-              if (el.decode) el.decode().then(done).catch(done); else done();
-            }}
-            onError={() => setImgError(true)}
-            className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
-            style={{
-              imageRendering: "auto",
-              WebkitBackfaceVisibility: "hidden",
-              opacity: imgLoaded ? 1 : 0,
-              filter: imgLoaded ? "blur(0px) saturate(1.06) contrast(1.03)" : "blur(16px) saturate(1.25)",
-              transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.08)",
-            }}
-          />
+          <picture>
+            {canTransform && (
+              <>
+                <source type="image/avif" srcSet={buildSrcSet(url!, "avif")} sizes={sizesAttr} />
+                <source type="image/webp" srcSet={buildSrcSet(url!, "webp")} sizes={sizesAttr} />
+              </>
+            )}
+            <img
+              src={canTransform ? transformAvatar(url!, size * 2, 82, "origin") : url!}
+              srcSet={canTransform ? buildSrcSet(url!, "origin") : undefined}
+              sizes={canTransform ? sizesAttr : undefined}
+              alt={name || email || ""}
+              loading="eager"
+              decoding="async"
+              // @ts-expect-error fetchpriority is a valid HTML attribute
+              fetchpriority="high"
+              draggable={false}
+              onLoad={(e) => {
+                const el = e.currentTarget;
+                const done = () => { AVATAR_CACHE.add(url!); setImgLoaded(true); };
+                if (el.decode) el.decode().then(done).catch(done); else done();
+              }}
+              onError={() => {
+                // Transform pipeline unavailable → drop to raw URL once.
+                if (canTransform) { setUseOriginal(true); return; }
+                setImgError(true);
+              }}
+              className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
+              style={{
+                imageRendering: "auto",
+                WebkitBackfaceVisibility: "hidden",
+                opacity: imgLoaded ? 1 : 0,
+                filter: imgLoaded ? "blur(0px) saturate(1.06) contrast(1.03)" : "blur(16px) saturate(1.25)",
+                transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.08)",
+              }}
+            />
+          </picture>
         )}
       </div>
     </div>
   );
 }
+
 
 
 export function LeadershipTasksCard() {
@@ -271,7 +332,7 @@ export function LeadershipTasksCard() {
   return (
     <section
       dir={isAr ? "rtl" : "ltr"}
-      aria-label={isAr ? "مهامي من القيادة" : "Tasks from leadership"}
+      aria-label={isAr ? "مهام الفريق" : "Team tasks"}
       className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
     >
       <div aria-hidden className="gold-hairline-live absolute inset-x-0 top-0" />
@@ -289,13 +350,15 @@ export function LeadershipTasksCard() {
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold tracking-tight text-amber-100 sm:text-lg">
-              {isAr ? "مهامي من القيادة" : "Tasks from Leadership"}
+              {isAr ? "مهامي مع الفريق" : "My tasks with the team"}
             </h2>
             <p className="truncate text-[11px] text-amber-100/60">
-              {isAr ? "المهام الموكلة إليك من مجلس الإدارة" : "Tasks assigned to you by the executive team"}
+              {isAr ? "متابعة مشتركة مع الرئيس التنفيذي ومدير العمليات" : "Shared follow-ups with the CEO and COO"}
             </p>
           </div>
         </div>
+
+
 
         {/* Filters — horizontally scrollable on narrow screens */}
         <div
@@ -415,8 +478,10 @@ function LeaderColumn({
 }) {
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
+  const articleRef = useRef<HTMLElement | null>(null);
   return (
     <article
+      ref={articleRef}
       aria-label={`${leader.short} — ${roleLabel}`}
       className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 sm:p-4 transition-[box-shadow,ring-color] duration-700 ease-out ${
         flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)]" : "ring-amber-400/20"
@@ -428,8 +493,10 @@ function LeaderColumn({
           url={profile?.avatar_url ?? null}
           name={profile?.display_name ?? null}
           email={leader.email}
-          size={128}
+          size={192}
+          prefetchRef={articleRef}
         />
+
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
