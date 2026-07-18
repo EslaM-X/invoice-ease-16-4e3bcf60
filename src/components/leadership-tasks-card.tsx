@@ -32,6 +32,18 @@ type Task = {
 
 const PRIORITY_ORDER: Record<Task["priority"], number> = { urgent: 0, high: 1, normal: 2, low: 3 };
 
+function shallowEqualTask(a: Task, b: Task) {
+  return a.id === b.id
+    && a.title === b.title
+    && a.description === b.description
+    && a.assignee_id === b.assignee_id
+    && a.assigned_by === b.assigned_by
+    && a.priority === b.priority
+    && a.status === b.status
+    && a.due_date === b.due_date
+    && a.created_at === b.created_at;
+}
+
 function priorityChip(p: Task["priority"], isAr: boolean) {
   const map = {
     urgent: { ar: "عاجلة", en: "Urgent", cls: "bg-red-500/15 text-red-300 ring-red-400/40" },
