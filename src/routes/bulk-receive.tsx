@@ -23,6 +23,7 @@ import {
   AlertTriangle, Eye, Undo2, ShieldAlert, History,
 } from "lucide-react";
 import { fmtMoney } from "@/lib/utils-money";
+import { TableSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/bulk-receive")({
   component: () => (
@@ -351,7 +352,7 @@ function BulkReceivePage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        <TableSkeleton rows={5} cols={4} />
       ) : (
         <div className="space-y-3">
           {filtered.map((po) => {

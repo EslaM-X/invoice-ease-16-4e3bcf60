@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Phone, Plus, Star, Loader2, PhoneIncoming, PhoneOutgoing, Pencil, Check, ChevronsUpDown, Trash2, FileText, ExternalLink, Search } from "lucide-react";
+import { PageBlockSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/call-center")({
   component: CallCenterPage,
@@ -143,9 +144,7 @@ function CallCenterPage() {
   if (roleLoading || !isCallCenter) {
     return (
       <AppShell>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <PageBlockSkeleton />
       </AppShell>
     );
   }

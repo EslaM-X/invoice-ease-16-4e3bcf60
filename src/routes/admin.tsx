@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ShieldCheck, UserPlus, Trash2, Loader2, Database, Check, X, Briefcase, Store } from "lucide-react";
 import { BackupButton } from "@/components/backup-button";
 import { useRealtimeTable } from "@/lib/realtime";
+import { PageBlockSkeleton } from "@/components/skeletons";
 
 type Member = {
   user_id: string;
@@ -115,9 +116,7 @@ function AdminPage() {
   if (roleLoading || !isAdmin) {
     return (
       <AppShell>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <PageBlockSkeleton />
       </AppShell>
     );
   }

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { BarChart3, Loader2, Star, TrendingUp, Phone, Search, FileText, ExternalLink, PhoneIncoming, PhoneOutgoing } from "lucide-react";
+import { PageBlockSkeleton, CardsSkeleton } from "@/components/skeletons";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, LineChart, Line, Legend,
@@ -114,9 +115,7 @@ function ReportsPage() {
   if (rl || !isManager) {
     return (
       <AppShell>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <PageBlockSkeleton />
       </AppShell>
     );
   }
@@ -135,9 +134,7 @@ function ReportsPage() {
         </div>
 
         {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <CardsSkeleton count={4} />
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-4">

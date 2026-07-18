@@ -18,6 +18,7 @@ import { PendingAccountsCard } from "@/components/pending-accounts-card";
 import { DistributorBalancesCard } from "@/components/distributor-balances-card";
 import { CreateDistributorAccountButton, ResetDistributorPasswordButton } from "@/components/create-distributor-account-dialog";
 import { StockOverridesButton } from "@/components/distributor-stock-overrides-dialog";
+import { CardGridSkeleton, PageBlockSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/distributors")({ component: DistributorsPage });
 
@@ -82,7 +83,7 @@ function DistributorsInner() {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <CardGridSkeleton count={6} cols="sm:grid-cols-2 lg:grid-cols-3" />
       ) : filtered.length === 0 ? (
         <div className="ios-card py-16 text-center text-sm text-muted-foreground">{isAr ? "لا يوجد موزّعين" : "No distributors yet"}</div>
       ) : (

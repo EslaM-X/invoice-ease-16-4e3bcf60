@@ -475,7 +475,7 @@ function InvoicesList() {
                 {filtered.map((i) => {
                   const voided = i.status === "voided";
                   return (
-                    <tr key={i.id} className={`hover:bg-muted/30 ${voided ? "opacity-60" : ""}`}>
+                    <tr key={i.id} className={`cv-auto-md hover:bg-muted/30 ${voided ? "opacity-60" : ""}`}>
                       <td className="px-3 py-3">
                         {!voided && (
                           <Checkbox
