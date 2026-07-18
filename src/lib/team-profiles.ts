@@ -20,7 +20,7 @@ let cache: Cache = { byEmail: new Map(), byId: new Map() };
 const listeners = new Set<() => void>();
 
 async function refresh() {
-  const { data } = await supabase.from("profiles").select("user_id, email, display_name, avatar_url");
+  const { data } = await supabase.from("profiles").select("user_id, email, display_name, avatar_url, updated_at");
   const byEmail = new Map<string, TeamProfile>();
   const byId = new Map<string, TeamProfile>();
   (data ?? []).forEach((p: any) => {
@@ -29,10 +29,12 @@ async function refresh() {
       email: p.email,
       display_name: p.display_name,
       avatar_url: p.avatar_url,
+      updated_at: p.updated_at ?? null,
     };
     if (p.email) byEmail.set(p.email.toLowerCase(), tp);
     byId.set(p.user_id, tp);
   });
+
   cache = { byEmail, byId };
   listeners.forEach((l) => l());
 }
