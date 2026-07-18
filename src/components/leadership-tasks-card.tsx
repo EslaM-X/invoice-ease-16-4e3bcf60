@@ -322,7 +322,7 @@ function LeaderColumn({
           url={profile?.avatar_url ?? null}
           name={profile?.display_name ?? null}
           email={leader.email}
-          size={96}
+          size={120}
         />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
