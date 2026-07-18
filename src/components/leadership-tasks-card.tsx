@@ -32,6 +32,18 @@ type Task = {
 
 const PRIORITY_ORDER: Record<Task["priority"], number> = { urgent: 0, high: 1, normal: 2, low: 3 };
 
+function shallowEqualTask(a: Task, b: Task) {
+  return a.id === b.id
+    && a.title === b.title
+    && a.description === b.description
+    && a.assignee_id === b.assignee_id
+    && a.assigned_by === b.assigned_by
+    && a.priority === b.priority
+    && a.status === b.status
+    && a.due_date === b.due_date
+    && a.created_at === b.created_at;
+}
+
 function priorityChip(p: Task["priority"], isAr: boolean) {
   const map = {
     urgent: { ar: "عاجلة", en: "Urgent", cls: "bg-red-500/15 text-red-300 ring-red-400/40" },
@@ -68,6 +80,12 @@ function initialsOf(name: string | null, email: string | null) {
 
 function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
   const dim = `clamp(88px, 14vw, ${size}px)`;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  // Reset loading state when the source changes so the skeleton reappears
+  // for the new image instead of flashing empty space.
+  useEffect(() => { setImgLoaded(false); setImgError(false); }, [url]);
+  const showImg = !!url && !imgError;
   return (
     <div
       className="relative shrink-0 rounded-full"
@@ -79,23 +97,40 @@ function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; na
         boxShadow: "0 0 0 1px rgba(0,0,0,0.65), 0 10px 30px -12px rgba(0,0,0,0.8), 0 0 32px -6px rgba(233,199,126,0.45)",
       }}
     >
-      <div className="h-full w-full rounded-full bg-neutral-950 p-[2px]">
-        {url ? (
+      <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[2px]">
+        {/* Skeleton / initials underlay — always mounted so there's no flash */}
+        <div
+          aria-hidden={showImg && imgLoaded}
+          className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/80 transition-opacity duration-500 ${
+            showImg && imgLoaded ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          {/* shimmer */}
+          {showImg && !imgLoaded && (
+            <span aria-hidden className="absolute inset-0 rounded-full leadership-avatar-shimmer" />
+          )}
+          <span className="relative">{initialsOf(name, email)}</span>
+        </div>
+        {showImg && (
           <img
-            src={url}
+            src={url!}
             alt={name || email || ""}
             loading="eager"
             decoding="async"
             // @ts-expect-error fetchpriority is a valid HTML attribute
             fetchpriority="high"
             draggable={false}
-            className="h-full w-full rounded-full object-cover object-top"
-            style={{ imageRendering: "auto", WebkitBackfaceVisibility: "hidden", transform: "translateZ(0)" }}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+            className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
+            style={{
+              imageRendering: "auto",
+              WebkitBackfaceVisibility: "hidden",
+              opacity: imgLoaded ? 1 : 0,
+              filter: imgLoaded ? "blur(0px) saturate(1.05) contrast(1.02)" : "blur(14px) saturate(1.2)",
+              transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.06)",
+            }}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200">
-            {initialsOf(name, email)}
-          </div>
         )}
       </div>
     </div>
@@ -133,9 +168,23 @@ export function LeadershipTasksCard() {
       .in("assigned_by", ids)
       .order("created_at", { ascending: false })
       .limit(200);
-    setTasks((data as Task[]) ?? []);
+    const next = (data as Task[]) ?? [];
+    // Reconcile in place: keep existing row references when unchanged so React
+    // skips re-rendering those <TaskRow>s — prevents visual flicker on realtime updates.
+    setTasks((prev) => {
+      const prevById = new Map(prev.map((t) => [t.id, t]));
+      let changed = prev.length !== next.length;
+      const merged = next.map((n) => {
+        const p = prevById.get(n.id);
+        if (p && shallowEqualTask(p, n)) return p;
+        changed = true;
+        return n;
+      });
+      return changed ? merged : prev;
+    });
     setLoaded(true);
   }
+
 
   useEffect(() => { if (allowed) void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, meId, ceoId, cooId]);
 
@@ -312,8 +361,8 @@ function LeaderColumn({
   return (
     <article
       aria-label={`${leader.short} — ${roleLabel}`}
-      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 ring-amber-400/20 sm:p-4 ${
-        flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)] animate-pulse" : ""
+      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 sm:p-4 transition-[box-shadow,ring-color] duration-700 ease-out ${
+        flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)]" : "ring-amber-400/20"
       }`}
     >
       {/* Leader header — grid keeps text container flexible on all widths */}
