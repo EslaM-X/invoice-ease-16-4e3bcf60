@@ -163,17 +163,23 @@ function TasksPage() {
       const q = search.trim().toLowerCase();
       list = list.filter(t => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q));
     }
-    return [...list].sort((a, b) => {
-      // Overdue first, then priority, then due date, then created
-      const now = Date.now();
-      const oa = a.due_date && a.status !== "done" && a.status !== "cancelled" && new Date(a.due_date).getTime() < now ? 0 : 1;
-      const ob = b.due_date && b.status !== "done" && b.status !== "cancelled" && new Date(b.due_date).getTime() < now ? 0 : 1;
-      if (oa !== ob) return oa - ob;
-      const p = PRIO_META[a.priority].order - PRIO_META[b.priority].order;
-      if (p !== 0) return p;
-      return (a.due_date || "9999").localeCompare(b.due_date || "9999");
-    });
+  // Filter only — no re-sort. The fetched order (newest first by created_at)
+  // is the single source of truth for position, so applying a filter, changing
+  // view, or typing in search never moves an existing row.
+  const visible = useMemo(() => {
+    let list = tasks;
+    if (view === "inbox") list = list.filter(t => t.assignee_id === user?.id && t.status !== "done" && t.status !== "cancelled");
+    else if (view === "done") list = list.filter(t => t.assignee_id === user?.id && (t.status === "done" || t.status === "cancelled"));
+    else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
+    if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
+    if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(t => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q));
+    }
+    return list;
   }, [tasks, view, prioFilter, statusFilter, search, user?.id]);
+
 
   // Counters for the sidebar
   const counts = useMemo(() => {
