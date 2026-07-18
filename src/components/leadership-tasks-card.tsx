@@ -221,9 +221,10 @@ function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: stri
               </>
             )}
             <img
-              src={canTransform ? transformAvatar(url!, size * 2, 82, "origin") : url!}
+              src={canTransform ? transformAvatar(url!, Math.min(768, size * 2), 92, "origin") : url!}
               srcSet={canTransform ? buildSrcSet(url!, "origin") : undefined}
               sizes={canTransform ? sizesAttr : undefined}
+
               alt={name || email || ""}
               loading="eager"
               decoding="async"
