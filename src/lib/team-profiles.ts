@@ -7,7 +7,9 @@ export type TeamProfile = {
   email: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  updated_at: string | null;
 };
+
 
 type Cache = {
   byEmail: Map<string, TeamProfile>;
