@@ -15,8 +15,8 @@ import { useRealtimeTable } from "@/lib/realtime";
  */
 const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com"]);
 
-const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي", roleEn: "CEO", short: "CEO", Icon: Crown };
-const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", Icon: Briefcase };
+const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي — CEO", roleEn: "CEO — Chief Executive Officer", short: "CEO", displayOverride: null as string | null, Icon: Crown };
+const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", displayOverride: "Eslam Hesham" as string | null, Icon: Briefcase };
 
 type Task = {
   id: string;
@@ -289,15 +289,15 @@ function LeaderColumn({
       }`}
     >
       {/* Leader header */}
-      <div className="flex items-center gap-3">
-        <LeaderAvatar url={profile?.avatar_url ?? null} name={profile?.display_name ?? null} email={leader.email} size={54} />
+      <div className="flex items-center gap-4">
+        <LeaderAvatar url={profile?.avatar_url ?? null} name={profile?.display_name ?? null} email={leader.email} size={84} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <LeaderIcon className="h-3.5 w-3.5 text-amber-300" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">{leader.short}</span>
           </div>
-          <div className="truncate text-sm font-semibold text-amber-100">
-            {profile?.display_name || leader.email.split("@")[0]}
+          <div className="truncate text-base font-semibold text-amber-100">
+            {leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}
           </div>
           <div className="text-[11px] leading-tight text-amber-100/70 whitespace-normal">{roleLabel}</div>
         </div>
