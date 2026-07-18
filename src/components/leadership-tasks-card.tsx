@@ -332,7 +332,7 @@ export function LeadershipTasksCard() {
   return (
     <section
       dir={isAr ? "rtl" : "ltr"}
-      aria-label={isAr ? "مهامي من القيادة" : "Tasks from leadership"}
+      aria-label={isAr ? "مهام الفريق" : "Team tasks"}
       className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
     >
       <div aria-hidden className="gold-hairline-live absolute inset-x-0 top-0" />
@@ -350,13 +350,15 @@ export function LeadershipTasksCard() {
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold tracking-tight text-amber-100 sm:text-lg">
-              {isAr ? "مهامي من القيادة" : "Tasks from Leadership"}
+              {isAr ? "مهامي مع الفريق" : "My tasks with the team"}
             </h2>
             <p className="truncate text-[11px] text-amber-100/60">
-              {isAr ? "المهام الموكلة إليك من مجلس الإدارة" : "Tasks assigned to you by the executive team"}
+              {isAr ? "متابعة مشتركة مع الرئيس التنفيذي ومدير العمليات" : "Shared follow-ups with the CEO and COO"}
             </p>
           </div>
         </div>
+
+
 
         {/* Filters — horizontally scrollable on narrow screens */}
         <div
