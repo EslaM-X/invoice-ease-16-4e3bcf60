@@ -152,8 +152,8 @@ function preloadAvatar(url: string) {
   };
 }
 
-function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
-  const dim = `clamp(112px, 16vw, ${size}px)`;
+function LeaderAvatar({ url, name, email, size = 224, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
+  const dim = `clamp(128px, 18vw, ${size}px)`;
 
   const cached = !!url && AVATAR_CACHE.has(url);
   const [imgLoaded, setImgLoaded] = useState(cached);
