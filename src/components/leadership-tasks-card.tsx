@@ -78,13 +78,36 @@ function initialsOf(name: string | null, email: string | null) {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
-function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
-  const dim = `clamp(88px, 14vw, ${size}px)`;
-  const [imgLoaded, setImgLoaded] = useState(false);
+// Module-level cache: once an avatar URL has decoded successfully in this
+// tab, subsequent renders skip the skeleton entirely — prevents the blur-up
+// flash when the card re-mounts (nav-back, dashboard re-order, etc.).
+const AVATAR_CACHE: Set<string> = new Set();
+
+function preloadAvatar(url: string) {
+  if (!url || AVATAR_CACHE.has(url)) return;
+  const img = new Image();
+  img.decoding = "async";
+  img.src = url;
+  img.onload = () => {
+    // decode() upgrades to a fully-rasterized bitmap so the first paint is sharp
+    (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).finally(() => {
+      AVATAR_CACHE.add(url);
+    });
+  };
+}
+
+function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
+  const dim = `clamp(96px, 15vw, ${size}px)`;
+  const cached = !!url && AVATAR_CACHE.has(url);
+  const [imgLoaded, setImgLoaded] = useState(cached);
   const [imgError, setImgError] = useState(false);
-  // Reset loading state when the source changes so the skeleton reappears
-  // for the new image instead of flashing empty space.
-  useEffect(() => { setImgLoaded(false); setImgError(false); }, [url]);
+  useEffect(() => {
+    if (!url) return;
+    if (AVATAR_CACHE.has(url)) { setImgLoaded(true); setImgError(false); return; }
+    setImgLoaded(false);
+    setImgError(false);
+    preloadAvatar(url);
+  }, [url]);
   const showImg = !!url && !imgError;
   return (
     <div
@@ -94,18 +117,19 @@ function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; na
         height: dim,
         padding: 3,
         background: "conic-gradient(from 220deg, #E9C77E, #B8863A, #F6E1A4, #8A5A1A, #E9C77E)",
-        boxShadow: "0 0 0 1px rgba(0,0,0,0.65), 0 10px 30px -12px rgba(0,0,0,0.8), 0 0 32px -6px rgba(233,199,126,0.45)",
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.65), 0 12px 34px -12px rgba(0,0,0,0.85), 0 0 36px -6px rgba(233,199,126,0.5)",
       }}
     >
       <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[2px]">
-        {/* Skeleton / initials underlay — always mounted so there's no flash */}
+        {/* Skeleton / initials underlay — matches avatar dimensions exactly.
+            Only hides after the real image's onLoad fires (not a timer). */}
         <div
           aria-hidden={showImg && imgLoaded}
-          className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/80 transition-opacity duration-500 ${
+          className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/85 transition-opacity duration-500 ${
             showImg && imgLoaded ? "opacity-0" : "opacity-100"
           }`}
+          style={{ fontSize: `calc(${dim} * 0.28)` }}
         >
-          {/* shimmer */}
           {showImg && !imgLoaded && (
             <span aria-hidden className="absolute inset-0 rounded-full leadership-avatar-shimmer" />
           )}
@@ -120,15 +144,20 @@ function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; na
             // @ts-expect-error fetchpriority is a valid HTML attribute
             fetchpriority="high"
             draggable={false}
-            onLoad={() => setImgLoaded(true)}
+            onLoad={(e) => {
+              const el = e.currentTarget;
+              // Await full decode before revealing → guarantees a sharp first paint.
+              const done = () => { AVATAR_CACHE.add(url!); setImgLoaded(true); };
+              if (el.decode) el.decode().then(done).catch(done); else done();
+            }}
             onError={() => setImgError(true)}
             className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
             style={{
               imageRendering: "auto",
               WebkitBackfaceVisibility: "hidden",
               opacity: imgLoaded ? 1 : 0,
-              filter: imgLoaded ? "blur(0px) saturate(1.05) contrast(1.02)" : "blur(14px) saturate(1.2)",
-              transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.06)",
+              filter: imgLoaded ? "blur(0px) saturate(1.06) contrast(1.03)" : "blur(16px) saturate(1.25)",
+              transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.08)",
             }}
           />
         )}
@@ -136,6 +165,7 @@ function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; na
     </div>
   );
 }
+
 
 export function LeadershipTasksCard() {
   const { lang } = useI18n();
