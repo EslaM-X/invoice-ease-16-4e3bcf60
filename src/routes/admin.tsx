@@ -38,7 +38,7 @@ export const Route = createFileRoute("/admin")({
   component: () => (
     <SuperAdminGate>
       <AdminPage />
-    </ExecutiveGate>
+    </SuperAdminGate>
   ),
 });
 
