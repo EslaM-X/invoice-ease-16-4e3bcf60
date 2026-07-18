@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
+
 
 export type NoirTone = "gold" | "emerald" | "blue" | "amber" | "neutral" | "violet";
 
@@ -12,7 +13,7 @@ const toneMap: Record<NoirTone, { icon: string; text: string; glow: string; bar:
   neutral: { icon: "bg-white/5 text-white/70 border-white/10",                 text: "text-[#fdfcfb]",   glow: "bg-white/5",        bar: "via-white/40" },
 };
 
-export function NoirKpiCard({
+function NoirKpiCardBase({
   label,
   value,
   fullValue,
@@ -45,7 +46,7 @@ export function NoirKpiCard({
       tabIndex={0}
       aria-label={ariaValue ? `${label}: ${ariaValue}` : label}
       title={!hidden ? fullValue : undefined}
-      className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5"
+      className="noir-kpi noir-glow noir-press noir-ripple focus-gold group relative overflow-hidden rounded-2xl border border-[#c9a84c]/20 bg-gradient-to-br from-[#161616] to-[#0d0d0d] p-4 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:border-[#c9a84c]/40 active:scale-[0.98] sm:p-5 perf-contain cv-auto-md"
     >
       {/* animated shimmering top gold hairline */}
       <div aria-hidden="true" className="gold-hairline-live absolute inset-x-0 top-0" />
@@ -94,4 +95,7 @@ export function NoirKpiCard({
     </div>
   );
 }
+
+export const NoirKpiCard = memo(NoirKpiCardBase);
+
 
