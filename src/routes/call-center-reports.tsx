@@ -134,9 +134,7 @@ function ReportsPage() {
         </div>
 
         {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <CardsSkeleton count={4} />
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-4">
