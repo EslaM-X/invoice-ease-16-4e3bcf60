@@ -23,6 +23,7 @@ import {
   AlertTriangle, Eye, Undo2, ShieldAlert, History,
 } from "lucide-react";
 import { fmtMoney } from "@/lib/utils-money";
+import { TableSkeleton } from "@/components/skeletons";
 
 export const Route = createFileRoute("/bulk-receive")({
   component: () => (
