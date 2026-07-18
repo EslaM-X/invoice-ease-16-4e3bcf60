@@ -152,8 +152,8 @@ function preloadAvatar(url: string) {
   };
 }
 
-function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
-  const dim = `clamp(112px, 16vw, ${size}px)`;
+function LeaderAvatar({ url, name, email, size = 224, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
+  const dim = `clamp(128px, 18vw, ${size}px)`;
 
   const cached = !!url && AVATAR_CACHE.has(url);
   const [imgLoaded, setImgLoaded] = useState(cached);
@@ -194,12 +194,13 @@ function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: stri
       style={{
         width: dim,
         height: dim,
-        padding: 3,
-        background: "conic-gradient(from 220deg, #E9C77E, #B8863A, #F6E1A4, #8A5A1A, #E9C77E)",
-        boxShadow: "0 0 0 1px rgba(0,0,0,0.65), 0 12px 34px -12px rgba(0,0,0,0.85), 0 0 36px -6px rgba(233,199,126,0.5)",
+        padding: 4,
+        background: "conic-gradient(from 210deg, #F6E1A4, #C9982E, #FFF3CE, #8A5A1A, #E9C77E, #F6E1A4)",
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.7), 0 18px 42px -14px rgba(0,0,0,0.9), 0 0 48px -8px rgba(233,199,126,0.55)",
       }}
     >
-      <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[2px]">
+      <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[3px] ring-1 ring-black/60">
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full" style={{ background: "radial-gradient(120% 80% at 30% 15%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%)", zIndex: 3 }} />
         <div
           aria-hidden={showImg && imgLoaded}
           className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/85 transition-opacity duration-500 ${
@@ -384,7 +385,7 @@ export function LeadershipTasksCard() {
               {isAr ? "مهامي مع الفريق" : "My tasks with the team"}
             </h2>
             <p className="truncate text-[11px] text-amber-100/60">
-              {isAr ? "لوحة مهام مشتركة بيننا" : "A shared board for the tasks between us"}
+              {isAr ? "بإشراف الإدارة العليا" : "Under executive leadership"}
             </p>
           </div>
         </div>
