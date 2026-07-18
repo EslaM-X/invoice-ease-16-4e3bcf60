@@ -30,7 +30,6 @@ export const Route = createFileRoute("/tasks")({
 const MANAGER_EMAILS = [
   "k.elsharbatly@steinheim-eg.com",
   "e.hesham@steinheim-eg.com",
-  "f.hesham@steinheim-eg.com",
 ] as const;
 
 type TaskStatus = "pending" | "in_progress" | "done" | "cancelled";
