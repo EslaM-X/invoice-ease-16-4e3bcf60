@@ -478,8 +478,10 @@ function LeaderColumn({
 }) {
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
+  const articleRef = useRef<HTMLElement | null>(null);
   return (
     <article
+      ref={articleRef}
       aria-label={`${leader.short} — ${roleLabel}`}
       className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 sm:p-4 transition-[box-shadow,ring-color] duration-700 ease-out ${
         flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)]" : "ring-amber-400/20"
@@ -491,8 +493,10 @@ function LeaderColumn({
           url={profile?.avatar_url ?? null}
           name={profile?.display_name ?? null}
           email={leader.email}
-          size={128}
+          size={192}
+          prefetchRef={articleRef}
         />
+
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
