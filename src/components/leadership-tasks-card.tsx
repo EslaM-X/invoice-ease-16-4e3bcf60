@@ -123,19 +123,41 @@ function preloadAvatar(url: string) {
   };
 }
 
-function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
+function LeaderAvatar({ url, name, email, size = 128, prefetchRef }: { url: string | null; name: string | null; email: string | null; size?: number; prefetchRef?: React.RefObject<HTMLElement | null> }) {
   const dim = `clamp(96px, 15vw, ${size}px)`;
   const cached = !!url && AVATAR_CACHE.has(url);
   const [imgLoaded, setImgLoaded] = useState(cached);
   const [imgError, setImgError] = useState(false);
+  // If a transformed variant fails, fall back to the raw original URL.
+  const [useOriginal, setUseOriginal] = useState(false);
+
+  // Intersection-observer prefetch: warm the largest variant a little before
+  // the card scrolls into view so no flash happens even at high scroll speed.
   useEffect(() => {
     if (!url) return;
     if (AVATAR_CACHE.has(url)) { setImgLoaded(true); setImgError(false); return; }
-    setImgLoaded(false);
-    setImgError(false);
-    preloadAvatar(url);
-  }, [url]);
+    setImgLoaded(false); setImgError(false); setUseOriginal(false);
+    const el = prefetchRef?.current;
+    if (!el || typeof IntersectionObserver === "undefined") { preloadAvatar(url); return; }
+    let done = false;
+    const io = new IntersectionObserver((entries) => {
+      if (done) return;
+      if (entries.some((e) => e.isIntersecting)) {
+        done = true;
+        preloadAvatar(url);
+        io.disconnect();
+      }
+    }, { rootMargin: "600px 0px", threshold: 0.01 });
+    io.observe(el);
+    // Safety net: prefetch after 1s even if IO never triggers (edge browsers).
+    const t = setTimeout(() => { if (!done) { done = true; preloadAvatar(url); io.disconnect(); } }, 1000);
+    return () => { clearTimeout(t); io.disconnect(); };
+  }, [url, prefetchRef]);
+
   const showImg = !!url && !imgError;
+  const canTransform = !!url && !useOriginal && url.includes("/storage/v1/object/public/");
+  const sizesAttr = `(max-width: 640px) 96px, (max-width: 1024px) 15vw, ${size}px`;
+
   return (
     <div
       className="relative shrink-0 rounded-full"
@@ -148,8 +170,6 @@ function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; na
       }}
     >
       <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[2px]">
-        {/* Skeleton / initials underlay — matches avatar dimensions exactly.
-            Only hides after the real image's onLoad fires (not a timer). */}
         <div
           aria-hidden={showImg && imgLoaded}
           className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/85 transition-opacity duration-500 ${
@@ -163,35 +183,49 @@ function LeaderAvatar({ url, name, email, size = 128 }: { url: string | null; na
           <span className="relative">{initialsOf(name, email)}</span>
         </div>
         {showImg && (
-          <img
-            src={url!}
-            alt={name || email || ""}
-            loading="eager"
-            decoding="async"
-            // @ts-expect-error fetchpriority is a valid HTML attribute
-            fetchpriority="high"
-            draggable={false}
-            onLoad={(e) => {
-              const el = e.currentTarget;
-              // Await full decode before revealing → guarantees a sharp first paint.
-              const done = () => { AVATAR_CACHE.add(url!); setImgLoaded(true); };
-              if (el.decode) el.decode().then(done).catch(done); else done();
-            }}
-            onError={() => setImgError(true)}
-            className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
-            style={{
-              imageRendering: "auto",
-              WebkitBackfaceVisibility: "hidden",
-              opacity: imgLoaded ? 1 : 0,
-              filter: imgLoaded ? "blur(0px) saturate(1.06) contrast(1.03)" : "blur(16px) saturate(1.25)",
-              transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.08)",
-            }}
-          />
+          <picture>
+            {canTransform && (
+              <>
+                <source type="image/avif" srcSet={buildSrcSet(url!, "avif")} sizes={sizesAttr} />
+                <source type="image/webp" srcSet={buildSrcSet(url!, "webp")} sizes={sizesAttr} />
+              </>
+            )}
+            <img
+              src={canTransform ? transformAvatar(url!, size * 2, 82, "origin") : url!}
+              srcSet={canTransform ? buildSrcSet(url!, "origin") : undefined}
+              sizes={canTransform ? sizesAttr : undefined}
+              alt={name || email || ""}
+              loading="eager"
+              decoding="async"
+              // @ts-expect-error fetchpriority is a valid HTML attribute
+              fetchpriority="high"
+              draggable={false}
+              onLoad={(e) => {
+                const el = e.currentTarget;
+                const done = () => { AVATAR_CACHE.add(url!); setImgLoaded(true); };
+                if (el.decode) el.decode().then(done).catch(done); else done();
+              }}
+              onError={() => {
+                // Transform pipeline unavailable → drop to raw URL once.
+                if (canTransform) { setUseOriginal(true); return; }
+                setImgError(true);
+              }}
+              className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
+              style={{
+                imageRendering: "auto",
+                WebkitBackfaceVisibility: "hidden",
+                opacity: imgLoaded ? 1 : 0,
+                filter: imgLoaded ? "blur(0px) saturate(1.06) contrast(1.03)" : "blur(16px) saturate(1.25)",
+                transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.08)",
+              }}
+            />
+          </picture>
         )}
       </div>
     </div>
   );
 }
+
 
 
 export function LeadershipTasksCard() {
