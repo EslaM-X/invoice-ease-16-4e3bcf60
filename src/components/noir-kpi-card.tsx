@@ -96,3 +96,6 @@ function NoirKpiCardBase({
   );
 }
 
+export const NoirKpiCard = memo(NoirKpiCardBase);
+
+
