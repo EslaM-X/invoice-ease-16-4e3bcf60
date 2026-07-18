@@ -361,8 +361,8 @@ function LeaderColumn({
   return (
     <article
       aria-label={`${leader.short} — ${roleLabel}`}
-      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 ring-amber-400/20 sm:p-4 ${
-        flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)] animate-pulse" : ""
+      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 sm:p-4 transition-[box-shadow,ring-color] duration-700 ease-out ${
+        flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)]" : "ring-amber-400/20"
       }`}
     >
       {/* Leader header — grid keeps text container flexible on all widths */}
