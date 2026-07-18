@@ -92,15 +92,37 @@ function TasksPage() {
     title: "", description: "", assignee_id: "", priority: "normal", due_date: "",
   });
 
+  // Position-preserving merge: keep existing row identity/order; only new
+  // ids append. Rows that disappear from the server are removed. This prevents
+  // visual reflow during realtime refreshes.
+  const mergeTasks = (next: Task[]) => {
+    setTasks((prev) => {
+      const nextIds = new Set(next.map(n => n.id));
+      const nextById = new Map(next.map(n => [n.id, n] as const));
+      const keptInOrder: Task[] = [];
+      for (const p of prev) {
+        if (!nextIds.has(p.id)) continue;
+        const n = nextById.get(p.id)!;
+        // Shallow-equal check by JSON is cheap for small task objects and
+        // preserves reference when nothing changed → skips row re-render.
+        keptInOrder.push(JSON.stringify(p) === JSON.stringify(n) ? p : n);
+        nextIds.delete(p.id);
+      }
+      // Append genuinely-new rows in their fetched order.
+      for (const n of next) if (nextIds.has(n.id)) keptInOrder.push(n);
+      return keptInOrder;
+    });
+  };
+
   const load = async () => {
-    setLoading(true);
     const { data } = await supabase.from("tasks" as any).select("*").order("created_at", { ascending: false }).limit(500);
-    setTasks((data as any) ?? []);
+    mergeTasks(((data as any) ?? []) as Task[]);
     setLoading(false);
   };
 
   useEffect(() => { if (user) load(); }, [user?.id]);
   useRealtimeTable("tasks" as any, () => load());
+
 
   // Comments for the currently open task
   useEffect(() => {
