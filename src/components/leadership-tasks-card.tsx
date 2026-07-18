@@ -372,7 +372,7 @@ function LeaderColumn({
           </ul>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
