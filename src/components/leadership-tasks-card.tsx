@@ -142,14 +142,14 @@ export function LeadershipTasksCard() {
   useRealtimeTable("tasks", (payload: any) => {
     if (!allowed) return;
     const row = payload?.new ?? payload?.old;
-    if (!row || row.assignee_id !== meId) return;
-    if (row.assigned_by !== ceoId && row.assigned_by !== cooId) return;
-    // Flash the half that received the new/updated task
-    if (payload?.eventType === "INSERT") {
+    // Flash the half that received a new task assigned to me
+    if (payload?.eventType === "INSERT" && row?.assignee_id === meId) {
       if (row.assigned_by === ceoId) setFlash((f) => ({ ...f, ceo: true }));
       if (row.assigned_by === cooId) setFlash((f) => ({ ...f, coo: true }));
       setTimeout(() => setFlash({ ceo: false, coo: false }), 10000);
     }
+    // Always refresh — server query is already scoped to me + CEO/COO,
+    // so we stay live for INSERT / UPDATE / DELETE from the Tasks page.
     void refresh();
   });
 
