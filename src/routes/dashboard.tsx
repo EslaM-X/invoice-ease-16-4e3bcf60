@@ -26,9 +26,21 @@ import { SalesOverview } from "@/components/sales-overview";
 import { TopProductsInteractive } from "@/components/top-products-interactive";
 import { cachedListFetch } from "@/lib/list-cache";
 import { LazyMount } from "@/components/lazy-mount";
+import { DASHBOARD_CARDS } from "@/lib/nav-catalog";
 import { toast } from "sonner";
 
 const DASH_CACHE_KEY = "dashboard:stats:v1";
+const LEADERSHIP_TASKS_KEY = "section_leadership_tasks";
+const CLOSEABLE_INVOICES_KEY = "section_closeable_invoices";
+
+function dashboardOrderWithLeadership(order: string[]) {
+  if (order.length === 0 || order.includes(LEADERSHIP_TASKS_KEY)) return order;
+  const next = order.filter((key) => DASHBOARD_CARDS.some((card) => card.key === key));
+  const closeableIndex = next.indexOf(CLOSEABLE_INVOICES_KEY);
+  if (closeableIndex >= 0) next.splice(closeableIndex, 0, LEADERSHIP_TASKS_KEY);
+  else next.push(LEADERSHIP_TASKS_KEY);
+  return next;
+}
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -222,8 +234,9 @@ function Dashboard() {
     { key: "kpi_customers", label: t("total_customers"),           value: stats.customers,                    Icon: Users,        tone: "violet" },
   ];
   const uiReady = ui.loaded || ui.bypass;
+  const dashboardCardOrder = useMemo(() => dashboardOrderWithLeadership(ui.prefs.cards_order), [ui.prefs.cards_order]);
   const visibleCards = uiReady
-    ? ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), ui.prefs.cards_order)
+    ? ui.sortByOrder(cards.filter((card) => !ui.isCardHidden(card.key)), dashboardCardOrder)
     : [];
 
   const now = new Date();
@@ -238,8 +251,8 @@ function Dashboard() {
 
   const orderedSections = useMemo(() => {
     const sections: Array<{ key: string; node: ReactNode }> = [
-      { key: "section_leadership_tasks", node: <LeadershipTasksCard /> },
-      { key: "section_closeable_invoices", node: <CloseableInvoicesCard /> },
+      { key: LEADERSHIP_TASKS_KEY, node: <LeadershipTasksCard /> },
+      { key: CLOSEABLE_INVOICES_KEY, node: <CloseableInvoicesCard /> },
       { key: "section_pending_accounts", node: <PendingAccountsCard /> },
       { key: "section_distributor_approvals", node: <DistributorApprovalsCard /> },
       { key: "section_incoming_shipments", node: <IncomingShipmentsStrip /> },
@@ -322,8 +335,8 @@ function Dashboard() {
       { key: "section_activity_feed", node: <LazyMount rootMargin="600px" minHeight={240}><ActivityFeed limit={10} /></LazyMount> },
     ];
     if (!uiReady) return [];
-    return ui.sortByOrder(sections.filter((section) => section.node && !ui.isCardHidden(section.key)), ui.prefs.cards_order);
-  }, [costAdaptive, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui, uiReady]);
+    return ui.sortByOrder(sections.filter((section) => section.node && !ui.isCardHidden(section.key)), dashboardCardOrder);
+  }, [costAdaptive, dashboardCardOrder, fxInput, hidden, lang, loaded, recent, salesValueAdaptive, savingFx, stats, t, ui, uiReady]);
 
   return (
     <div className="space-y-8 sm:space-y-10">
