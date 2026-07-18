@@ -28,10 +28,29 @@ function transformAvatar(url: string, width: number, quality: number, format?: "
   }
 }
 
-const AVATAR_WIDTHS = [128, 192, 256, 384, 512] as const;
+// Higher-fidelity variant ladder — up to 768w retina + q≥90 on large sizes.
+const AVATAR_WIDTHS = [128, 192, 256, 384, 512, 768] as const;
 function buildSrcSet(url: string, format?: "webp" | "avif" | "origin") {
-  return AVATAR_WIDTHS.map((w) => `${transformAvatar(url, w, w >= 384 ? 78 : 82, format)} ${w}w`).join(", ");
+  return AVATAR_WIDTHS
+    .map((w) => `${transformAvatar(url, w, w >= 512 ? 92 : w >= 256 ? 88 : 84, format)} ${w}w`)
+    .join(", ");
 }
+
+/** Append a version tag so a re-uploaded avatar at the SAME storage path
+ *  becomes a different URL string (busts <img>, HTTP, and AVATAR_CACHE). */
+function versioned(url: string | null, version: string | number | null | undefined): string | null {
+  if (!url) return null;
+  if (!version) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("v", String(version));
+    return u.toString();
+  } catch {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}v=${encodeURIComponent(String(version))}`;
+  }
+}
+
 
 
 /**
