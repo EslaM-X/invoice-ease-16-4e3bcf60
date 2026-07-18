@@ -92,13 +92,20 @@ function RootComponent() {
   const queryClient = useMemo(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30_000,
-        gcTime: 5 * 60_000,
+        staleTime: 60_000,
+        gcTime: 10 * 60_000,
         refetchOnWindowFocus: false,
+        refetchOnReconnect: "always",
         retry: 1,
+        // Keep prior data visible while refetching to eliminate flashes.
+        placeholderData: (prev: unknown) => prev,
+        // Reuse identical references when server payloads are structurally
+        // equal — cuts unnecessary re-renders in memoized consumers.
+        structuralSharing: true,
       },
     },
   }), []);
+
   useEffect(() => { startSyncEngine(); }, []);
   return (
     <QueryClientProvider client={queryClient}>
