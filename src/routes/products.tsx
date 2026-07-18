@@ -580,7 +580,7 @@ function Products() {
                 {filtered.map((p) => {
                   const low = p.stock_quantity <= p.low_stock_threshold;
                   return (
-                    <tr key={p.id} className="hover:bg-muted/30">
+                    <tr key={p.id} className="cv-auto-md hover:bg-muted/30">
                       <td className="px-2 py-3 sm:px-3">
                         <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={p.name} />
                       </td>
