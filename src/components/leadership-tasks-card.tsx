@@ -153,8 +153,9 @@ export function LeadershipTasksCard() {
   return (
     <section
       dir={isAr ? "rtl" : "ltr"}
-      className="noir-surface gold-hairline relative overflow-hidden rounded-2xl p-4 md:p-5"
+      className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-4 md:p-5"
     >
+      <div aria-hidden className="gold-hairline-live absolute inset-x-0 top-0" />
       {/* Ambient gold shimmer */}
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70">
         <div className="absolute -top-24 -right-16 h-56 w-56 rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(233,199,126,0.18), transparent 60%)" }} />

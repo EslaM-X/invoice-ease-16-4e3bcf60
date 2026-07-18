@@ -438,6 +438,19 @@ aside[class*="bg-sidebar"] .bg-sidebar-primary:hover {
       0 20px 60px -24px oklch(0 0 0 / 0.6);
   }
 
+  .leadership-tasks-surface {
+    color: oklch(0.97 0.025 86);
+    border: 1px solid color-mix(in oklab, var(--brand-gold) 38%, transparent);
+    background:
+      radial-gradient(ellipse 80% 120% at 100% 0%, color-mix(in oklab, var(--brand-gold) 22%, transparent), transparent 62%),
+      radial-gradient(ellipse 70% 100% at 0% 100%, oklch(0.42 0.09 76 / 0.22), transparent 58%),
+      linear-gradient(135deg, oklch(0.115 0.008 65) 0%, oklch(0.075 0.006 60) 46%, oklch(0.045 0.005 60) 100%);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--brand-gold) 24%, transparent) inset,
+      0 24px 62px -24px oklch(0 0 0 / 0.72),
+      0 0 0 1px oklch(1 0 0 / 0.04);
+  }
+
   /* KPI luxury hover — subtle lift + gold sheen sweep */
   .kpi-luxe {
     position: relative;
