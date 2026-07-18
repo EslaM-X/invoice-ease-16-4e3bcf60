@@ -217,11 +217,11 @@ function Customers() {
         <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">{lang === "ar" ? "كل المعارض" : "All events"}</option>{salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}</select>
       </div>
 
-      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card perf-contain">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_customers")}</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto smooth-scroll">
           <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-muted/50 text-start">
               <tr>

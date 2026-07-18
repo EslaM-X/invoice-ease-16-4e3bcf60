@@ -1911,7 +1911,7 @@ function PODetailDialog({
                   {visibleItems.length} / {items.length} {isAr ? "بند ظاهر" : "visible items"}
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto smooth-scroll">
                 <table className="w-full min-w-[640px] text-xs">
                   <thead className="bg-muted/30">
                     <tr>

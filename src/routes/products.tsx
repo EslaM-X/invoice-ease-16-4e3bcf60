@@ -554,13 +554,13 @@ function Products() {
       <ManageCollectionsDialog open={manageOpen} onOpenChange={setManageOpen} canEdit={isAdmin} />
 
 
-      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card no-print">
+      <div className="surface-elevated overflow-hidden rounded-2xl border bg-card perf-contain no-print">
         {loading ? (
           <TableSkeleton rows={6} cols={6} />
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_products")}</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto smooth-scroll">
             <table className="w-full text-sm table-auto">
               <thead className="bg-muted/50">
                 <tr>
