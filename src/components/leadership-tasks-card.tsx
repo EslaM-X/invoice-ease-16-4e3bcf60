@@ -289,15 +289,15 @@ function LeaderColumn({
       }`}
     >
       {/* Leader header */}
-      <div className="flex items-center gap-3">
-        <LeaderAvatar url={profile?.avatar_url ?? null} name={profile?.display_name ?? null} email={leader.email} size={54} />
+      <div className="flex items-center gap-4">
+        <LeaderAvatar url={profile?.avatar_url ?? null} name={profile?.display_name ?? null} email={leader.email} size={84} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <LeaderIcon className="h-3.5 w-3.5 text-amber-300" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">{leader.short}</span>
           </div>
-          <div className="truncate text-sm font-semibold text-amber-100">
-            {profile?.display_name || leader.email.split("@")[0]}
+          <div className="truncate text-base font-semibold text-amber-100">
+            {leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}
           </div>
           <div className="text-[11px] leading-tight text-amber-100/70 whitespace-normal">{roleLabel}</div>
         </div>
