@@ -352,7 +352,7 @@ function BulkReceivePage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        <TableSkeleton rows={5} cols={4} />
       ) : (
         <div className="space-y-3">
           {filtered.map((po) => {
