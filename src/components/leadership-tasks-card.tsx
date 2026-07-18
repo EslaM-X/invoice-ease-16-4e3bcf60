@@ -166,11 +166,11 @@ export function LeadershipTasksCard() {
       .select("id,title,description,assignee_id,assigned_by,priority,status,due_date,created_at")
       .eq("assignee_id", meId)
       .in("assigned_by", ids)
-      .order("created_at", { ascending: false })
+      // Ascending order = stable positions. New inserts naturally append at the
+      // end; existing rows never shift when other rows are added / removed.
+      .order("created_at", { ascending: true })
       .limit(200);
     const next = (data as Task[]) ?? [];
-    // Reconcile in place: keep existing row references when unchanged so React
-    // skips re-rendering those <TaskRow>s — prevents visual flicker on realtime updates.
     setTasks((prev) => {
       const prevById = new Map(prev.map((t) => [t.id, t]));
       let changed = prev.length !== next.length;
@@ -188,26 +188,53 @@ export function LeadershipTasksCard() {
 
   useEffect(() => { if (allowed) void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, meId, ceoId, cooId]);
 
+  // Realtime: reconcile by id, patch in place — never re-fetch or re-sort.
+  // This keeps every visible row locked to its position across INSERT/UPDATE/DELETE.
   useRealtimeTable("tasks", (payload: any) => {
     if (!allowed) return;
-    const row = payload?.new ?? payload?.old;
-    // Flash the half that received a new task assigned to me
-    if (payload?.eventType === "INSERT" && row?.assignee_id === meId) {
-      if (row.assigned_by === ceoId) setFlash((f) => ({ ...f, ceo: true }));
-      if (row.assigned_by === cooId) setFlash((f) => ({ ...f, coo: true }));
-      setTimeout(() => setFlash({ ceo: false, coo: false }), 10000);
+    const evt = payload?.eventType as "INSERT" | "UPDATE" | "DELETE" | undefined;
+    const nrow = payload?.new as Task | undefined;
+    const orow = payload?.old as Task | undefined;
+    const belongsHere = (r?: Task) =>
+      !!r && r.assignee_id === meId && (r.assigned_by === ceoId || r.assigned_by === cooId);
+
+    setTasks((prev) => {
+      if (evt === "DELETE" && orow) {
+        return prev.some((t) => t.id === orow.id) ? prev.filter((t) => t.id !== orow.id) : prev;
+      }
+      if (evt === "INSERT" && nrow) {
+        if (!belongsHere(nrow) || prev.some((t) => t.id === nrow.id)) return prev;
+        return [...prev, nrow]; // append preserves existing positions
+      }
+      if (evt === "UPDATE" && nrow) {
+        const idx = prev.findIndex((t) => t.id === nrow.id);
+        if (!belongsHere(nrow)) return idx >= 0 ? prev.filter((_, i) => i !== idx) : prev;
+        if (idx < 0) return [...prev, nrow];
+        if (shallowEqualTask(prev[idx], nrow)) return prev;
+        const copy = prev.slice();
+        copy[idx] = nrow; // replace in place — position stays
+        return copy;
+      }
+      return prev;
+    });
+
+    if (evt === "INSERT" && belongsHere(nrow)) {
+      if (nrow!.assigned_by === ceoId) setFlash((f) => ({ ...f, ceo: true }));
+      if (nrow!.assigned_by === cooId) setFlash((f) => ({ ...f, coo: true }));
+      setTimeout(() => setFlash({ ceo: false, coo: false }), 8000);
     }
-    // Always refresh — server query is already scoped to me + CEO/COO,
-    // so we stay live for INSERT / UPDATE / DELETE from the Tasks page.
-    void refresh();
   });
 
-  const filtered = useMemo(() => {
-    return tasks.filter((t) => (priorityFilter === "all" || t.priority === priorityFilter) && (statusFilter === "all" || t.status === statusFilter));
-  }, [tasks, priorityFilter, statusFilter]);
+  // Filter only — no re-sort — so existing tasks keep their exact positions
+  // even when priority / status changes.
+  const filtered = useMemo(
+    () => tasks.filter((t) => (priorityFilter === "all" || t.priority === priorityFilter) && (statusFilter === "all" || t.status === statusFilter)),
+    [tasks, priorityFilter, statusFilter],
+  );
 
-  const ceoTasks = useMemo(() => filtered.filter((t) => t.assigned_by === ceoId).sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]), [filtered, ceoId]);
-  const cooTasks = useMemo(() => filtered.filter((t) => t.assigned_by === cooId).sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]), [filtered, cooId]);
+  const ceoTasks = useMemo(() => filtered.filter((t) => t.assigned_by === ceoId), [filtered, ceoId]);
+  const cooTasks = useMemo(() => filtered.filter((t) => t.assigned_by === cooId), [filtered, cooId]);
+
 
   if (!allowed) return null;
 
