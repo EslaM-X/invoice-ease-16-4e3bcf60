@@ -15,8 +15,8 @@ import { useRealtimeTable } from "@/lib/realtime";
  */
 const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com"]);
 
-const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي", roleEn: "CEO", short: "CEO", Icon: Crown };
-const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", Icon: Briefcase };
+const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي — CEO", roleEn: "CEO — Chief Executive Officer", short: "CEO", displayOverride: null as string | null, Icon: Crown };
+const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", displayOverride: "Eslam Hesham" as string | null, Icon: Briefcase };
 
 type Task = {
   id: string;
