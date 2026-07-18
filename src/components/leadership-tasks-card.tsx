@@ -30,7 +30,7 @@ type Task = {
   created_at: string;
 };
 
-const PRIORITY_ORDER: Record<Task["priority"], number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+
 
 function shallowEqualTask(a: Task, b: Task) {
   return a.id === b.id
