@@ -13,7 +13,7 @@ const toneMap: Record<NoirTone, { icon: string; text: string; glow: string; bar:
   neutral: { icon: "bg-white/5 text-white/70 border-white/10",                 text: "text-[#fdfcfb]",   glow: "bg-white/5",        bar: "via-white/40" },
 };
 
-export function NoirKpiCard({
+function NoirKpiCardBase({
   label,
   value,
   fullValue,
