@@ -1718,8 +1718,20 @@ function PODetailDialog({
         </DialogHeader>
 
         {loading || !po ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            {isAr ? "جارٍ التحميل…" : "Loading…"}
+          <div className="space-y-3 p-4" aria-busy="true" aria-live="polite">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-lg border p-3">
+                  <div className="mb-2 h-3 w-16 rounded skeleton-shimmer bg-muted" />
+                  <div className="h-5 w-32 rounded skeleton-shimmer bg-muted" />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-10 w-full rounded skeleton-shimmer bg-muted" style={{ animationDelay: `${i * 60}ms` }} />
+              ))}
+            </div>
           </div>
         ) : (
           <>
