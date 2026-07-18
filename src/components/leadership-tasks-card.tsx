@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Crown, Briefcase, Sparkles, AlertTriangle, Clock, PlayCircle, CheckCircle2, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,33 @@ import { useI18n } from "@/lib/i18n";
 import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
+
+/**
+ * Build a Supabase Storage image-transform URL. Falls back to the original
+ * URL for non-Supabase sources or if the URL can't be parsed.
+ * Docs: https://supabase.com/docs/guides/storage/serving/image-transformations
+ */
+function transformAvatar(url: string, width: number, quality: number, format?: "webp" | "avif" | "origin") {
+  try {
+    const u = new URL(url);
+    if (!u.pathname.includes("/storage/v1/object/public/")) return url;
+    u.pathname = u.pathname.replace("/storage/v1/object/", "/storage/v1/render/image/");
+    u.searchParams.set("width", String(width));
+    u.searchParams.set("height", String(width));
+    u.searchParams.set("resize", "cover");
+    u.searchParams.set("quality", String(quality));
+    if (format) u.searchParams.set("format", format);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+const AVATAR_WIDTHS = [128, 192, 256, 384, 512] as const;
+function buildSrcSet(url: string, format?: "webp" | "avif" | "origin") {
+  return AVATAR_WIDTHS.map((w) => `${transformAvatar(url, w, w >= 384 ? 78 : 82, format)} ${w}w`).join(", ");
+}
+
 
 /**
  * Leadership Tasks Card
