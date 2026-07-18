@@ -19,7 +19,9 @@ import {
   Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
   X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
 } from "lucide-react";
+import { List, type RowComponentProps } from "react-window";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/tasks")({
   component: () => <AppShell><TasksPage /></AppShell>,
