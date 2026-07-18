@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Crown, Briefcase, Sparkles, AlertTriangle, Clock, PlayCircle, CheckCircle2, CalendarDays } from "lucide-react";
+import { Crown, Briefcase, Sparkles, AlertTriangle, Clock, PlayCircle, CheckCircle2, CalendarDays, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useEffectiveUser } from "@/lib/use-effective-user";
