@@ -79,9 +79,14 @@ function LeaderAvatar({ url, name, email, size = 56 }: { url: string | null; nam
     >
       <div className="h-full w-full rounded-full bg-neutral-950 p-[2px]">
         {url ? (
-          <img src={url} alt={name || email || ""} className="h-full w-full rounded-full object-cover" />
+          <img
+            src={url}
+            alt={name || email || ""}
+            loading="lazy"
+            className="h-full w-full rounded-full object-cover object-top"
+          />
         ) : (
-          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-sm font-semibold text-amber-200">
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-lg font-bold text-amber-200">
             {initialsOf(name, email)}
           </div>
         )}
@@ -284,35 +289,42 @@ function LeaderColumn({
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
   return (
     <div
-      className={`relative rounded-xl bg-gradient-to-b from-neutral-950/60 to-black/40 p-3 ring-1 ring-amber-400/15 transition-shadow ${
+      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-4 ring-1 ring-amber-400/20 ${
         flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)] animate-pulse" : ""
       }`}
     >
       {/* Leader header */}
       <div className="flex items-center gap-4">
-        <LeaderAvatar url={profile?.avatar_url ?? null} name={profile?.display_name ?? null} email={leader.email} size={84} />
+        <LeaderAvatar
+          url={profile?.avatar_url ?? null}
+          name={profile?.display_name ?? null}
+          email={leader.email}
+          size={96}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <LeaderIcon className="h-3.5 w-3.5 text-amber-300" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">{leader.short}</span>
+            <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">{leader.short}</span>
           </div>
-          <div className="truncate text-base font-semibold text-amber-100">
+          <div className="mt-0.5 truncate text-lg font-bold leading-tight text-amber-100">
             {leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}
           </div>
-          <div className="text-[11px] leading-tight text-amber-100/70 whitespace-normal">{roleLabel}</div>
+          <div className="mt-1 line-clamp-2 text-xs leading-snug text-amber-100/70">
+            {roleLabel}
+          </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold text-amber-200 ring-1 ring-amber-400/30">
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="rounded-lg bg-gradient-to-b from-amber-400/25 to-amber-600/15 px-2.5 py-1 text-sm font-bold text-amber-100 ring-1 ring-amber-400/40 tabular-nums">
             {tasks.length}
           </span>
-          <span className="mt-0.5 text-[9px] text-amber-100/50">{isAr ? "مهمة" : "tasks"}</span>
+          <span className="text-[9px] uppercase tracking-wider text-amber-100/50">{isAr ? "مهمة" : "tasks"}</span>
         </div>
       </div>
 
-      <div className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.3), transparent)" }} />
+      <div className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.35), transparent)" }} />
 
-      {/* Task list */}
-      <div className="max-h-[420px] overflow-y-auto pr-1" style={{ scrollbarWidth: "thin" }}>
+      {/* Task list — visible scroll surface */}
+      <div className="leadership-scroll max-h-[420px] min-h-[180px] overflow-y-auto">
         {!loaded ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -320,9 +332,9 @@ function LeaderColumn({
             ))}
           </div>
         ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-1 py-6 text-center">
-            <Sparkles className="h-5 w-5 text-amber-300/40" />
-            <span className="text-xs text-amber-100/60">{isAr ? "لا مهام حالياً" : "No tasks right now"}</span>
+          <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
+            <Sparkles className="h-6 w-6 text-amber-300/50" />
+            <span className="text-xs font-medium text-amber-100/70">{isAr ? "لا مهام حالياً" : "No tasks right now"}</span>
             <span className="text-[10px] text-amber-100/40">
               {isAr ? `في انتظار مهام من ${roleLabel}` : `Awaiting tasks from ${roleLabel}`}
             </span>
