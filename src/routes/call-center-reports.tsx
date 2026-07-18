@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { BarChart3, Loader2, Star, TrendingUp, Phone, Search, FileText, ExternalLink, PhoneIncoming, PhoneOutgoing } from "lucide-react";
+import { PageBlockSkeleton, CardsSkeleton } from "@/components/skeletons";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, LineChart, Line, Legend,
