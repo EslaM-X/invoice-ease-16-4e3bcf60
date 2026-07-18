@@ -529,7 +529,7 @@ function LeaderColumn({
           name={profile?.display_name ?? null}
 
           email={leader.email}
-          size={192}
+          size={224}
           prefetchRef={articleRef}
         />
 
