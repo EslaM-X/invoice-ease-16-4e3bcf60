@@ -68,6 +68,12 @@ function initialsOf(name: string | null, email: string | null) {
 
 function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
   const dim = `clamp(88px, 14vw, ${size}px)`;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  // Reset loading state when the source changes so the skeleton reappears
+  // for the new image instead of flashing empty space.
+  useEffect(() => { setImgLoaded(false); setImgError(false); }, [url]);
+  const showImg = !!url && !imgError;
   return (
     <div
       className="relative shrink-0 rounded-full"
@@ -79,23 +85,40 @@ function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; na
         boxShadow: "0 0 0 1px rgba(0,0,0,0.65), 0 10px 30px -12px rgba(0,0,0,0.8), 0 0 32px -6px rgba(233,199,126,0.45)",
       }}
     >
-      <div className="h-full w-full rounded-full bg-neutral-950 p-[2px]">
-        {url ? (
+      <div className="relative h-full w-full overflow-hidden rounded-full bg-neutral-950 p-[2px]">
+        {/* Skeleton / initials underlay — always mounted so there's no flash */}
+        <div
+          aria-hidden={showImg && imgLoaded}
+          className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200/80 transition-opacity duration-500 ${
+            showImg && imgLoaded ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          {/* shimmer */}
+          {showImg && !imgLoaded && (
+            <span aria-hidden className="absolute inset-0 rounded-full leadership-avatar-shimmer" />
+          )}
+          <span className="relative">{initialsOf(name, email)}</span>
+        </div>
+        {showImg && (
           <img
-            src={url}
+            src={url!}
             alt={name || email || ""}
             loading="eager"
             decoding="async"
             // @ts-expect-error fetchpriority is a valid HTML attribute
             fetchpriority="high"
             draggable={false}
-            className="h-full w-full rounded-full object-cover object-top"
-            style={{ imageRendering: "auto", WebkitBackfaceVisibility: "hidden", transform: "translateZ(0)" }}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+            className="relative h-full w-full rounded-full object-cover object-top transition-[filter,opacity,transform] duration-700 ease-out"
+            style={{
+              imageRendering: "auto",
+              WebkitBackfaceVisibility: "hidden",
+              opacity: imgLoaded ? 1 : 0,
+              filter: imgLoaded ? "blur(0px) saturate(1.05) contrast(1.02)" : "blur(14px) saturate(1.2)",
+              transform: imgLoaded ? "translateZ(0) scale(1)" : "translateZ(0) scale(1.06)",
+            }}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200">
-            {initialsOf(name, email)}
-          </div>
         )}
       </div>
     </div>
