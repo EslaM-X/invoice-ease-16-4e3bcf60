@@ -66,16 +66,17 @@ function initialsOf(name: string | null, email: string | null) {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
-function LeaderAvatar({ url, name, email, size = 56 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
+function LeaderAvatar({ url, name, email, size = 120 }: { url: string | null; name: string | null; email: string | null; size?: number }) {
+  const dim = `clamp(88px, 14vw, ${size}px)`;
   return (
     <div
       className="relative shrink-0 rounded-full"
       style={{
-        width: `clamp(64px, ${size * 0.85}px, ${size}px)`,
-        height: `clamp(64px, ${size * 0.85}px, ${size}px)`,
-        padding: 2,
+        width: dim,
+        height: dim,
+        padding: 3,
         background: "conic-gradient(from 220deg, #E9C77E, #B8863A, #F6E1A4, #8A5A1A, #E9C77E)",
-        boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 0 24px -6px rgba(233,199,126,0.35)",
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.65), 0 10px 30px -12px rgba(0,0,0,0.8), 0 0 32px -6px rgba(233,199,126,0.45)",
       }}
     >
       <div className="h-full w-full rounded-full bg-neutral-950 p-[2px]">
@@ -83,11 +84,16 @@ function LeaderAvatar({ url, name, email, size = 56 }: { url: string | null; nam
           <img
             src={url}
             alt={name || email || ""}
-            loading="lazy"
+            loading="eager"
+            decoding="async"
+            // @ts-expect-error fetchpriority is a valid HTML attribute
+            fetchpriority="high"
+            draggable={false}
             className="h-full w-full rounded-full object-cover object-top"
+            style={{ imageRendering: "auto", WebkitBackfaceVisibility: "hidden", transform: "translateZ(0)" }}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-lg font-bold text-amber-200">
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-800 to-neutral-950 text-2xl font-bold text-amber-200">
             {initialsOf(name, email)}
           </div>
         )}
