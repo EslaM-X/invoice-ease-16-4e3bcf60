@@ -496,6 +496,30 @@ aside[class*="bg-sidebar"] .bg-sidebar-primary:hover {
     background: color-mix(in oklab, var(--brand-gold) 85%, transparent);
   }
 
+  /* Leadership avatar shimmer while the image loads (blur-up) */
+  .leadership-avatar-shimmer {
+    background: linear-gradient(
+      110deg,
+      rgba(233, 199, 126, 0) 20%,
+      rgba(233, 199, 126, 0.18) 45%,
+      rgba(246, 225, 164, 0.28) 55%,
+      rgba(233, 199, 126, 0.18) 65%,
+      rgba(233, 199, 126, 0) 85%
+    );
+    background-size: 220% 100%;
+    animation: leadership-avatar-shimmer 1.6s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes leadership-avatar-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .leadership-avatar-shimmer { animation: none; }
+  }
+
+
+
   /* KPI luxury hover — subtle lift + gold sheen sweep */
   .kpi-luxe {
     position: relative;
