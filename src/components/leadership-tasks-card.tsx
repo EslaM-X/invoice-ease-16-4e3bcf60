@@ -71,7 +71,8 @@ function LeaderAvatar({ url, name, email, size = 56 }: { url: string | null; nam
     <div
       className="relative shrink-0 rounded-full"
       style={{
-        width: size, height: size,
+        width: `clamp(64px, ${size * 0.85}px, ${size}px)`,
+        height: `clamp(64px, ${size * 0.85}px, ${size}px)`,
         padding: 2,
         background: "conic-gradient(from 220deg, #E9C77E, #B8863A, #F6E1A4, #8A5A1A, #E9C77E)",
         boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 0 24px -6px rgba(233,199,126,0.35)",
@@ -158,7 +159,8 @@ export function LeadershipTasksCard() {
   return (
     <section
       dir={isAr ? "rtl" : "ltr"}
-      className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-4 md:p-5"
+      aria-label={isAr ? "مهامي من القيادة" : "Tasks from leadership"}
+      className="leadership-tasks-surface relative overflow-hidden rounded-2xl p-3 sm:p-4 md:p-5"
     >
       <div aria-hidden className="gold-hairline-live absolute inset-x-0 top-0" />
       {/* Ambient gold shimmer */}
@@ -168,23 +170,27 @@ export function LeadershipTasksCard() {
       </div>
 
       {/* Header */}
-      <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-300/5 p-2 ring-1 ring-amber-400/30">
-            <Sparkles className="h-5 w-5 text-amber-300" />
+      <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="shrink-0 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-300/5 p-2 ring-1 ring-amber-400/30">
+            <Sparkles className="h-5 w-5 text-amber-300" aria-hidden />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-amber-100">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold tracking-tight text-amber-100 sm:text-lg">
               {isAr ? "مهامي من القيادة" : "Tasks from Leadership"}
             </h2>
-            <p className="text-[11px] text-amber-100/60">
+            <p className="truncate text-[11px] text-amber-100/60">
               {isAr ? "المهام الموكلة إليك من مجلس الإدارة" : "Tasks assigned to you by the executive team"}
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Filters — horizontally scrollable on narrow screens */}
+        <div
+          className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible"
+          role="toolbar"
+          aria-label={isAr ? "فلاتر المهام" : "Task filters"}
+        >
           <FilterGroup
             label={isAr ? "الأولوية" : "Priority"}
             value={priorityFilter}
@@ -213,8 +219,8 @@ export function LeadershipTasksCard() {
         </div>
       </div>
 
-      {/* Two halves */}
-      <div className="relative mt-4 grid gap-4 md:grid-cols-2">
+      {/* Two halves — stack on mobile, side-by-side on md+ */}
+      <div className="relative mt-4 grid gap-3 sm:gap-4 md:grid-cols-2">
         {/* Vertical gold divider */}
         <div aria-hidden className="pointer-events-none absolute inset-y-2 left-1/2 hidden w-px -translate-x-1/2 md:block"
              style={{ background: "linear-gradient(to bottom, transparent, rgba(233,199,126,0.35), transparent)" }} />
@@ -256,21 +262,31 @@ function FilterGroup<T extends string>({
   isAr: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-full bg-black/40 p-1 ring-1 ring-amber-400/20">
+    <div
+      className="flex shrink-0 items-center gap-1 rounded-full bg-black/40 p-1 ring-1 ring-amber-400/20"
+      role="radiogroup"
+      aria-label={label}
+    >
       <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-amber-100/60">{label}</span>
-      {options.map((o) => (
-        <button
-          key={o.v}
-          onClick={() => onChange(o.v)}
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
-            value === o.v
-              ? "bg-gradient-to-b from-amber-400 to-amber-600 text-neutral-950 shadow"
-              : "text-amber-100/70 hover:text-amber-100"
-          }`}
-        >
-          {isAr ? o.ar : o.en}
-        </button>
-      ))}
+      {options.map((o) => {
+        const active = value === o.v;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.v)}
+            className={`rounded-full px-2 py-1 text-[11px] font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1 focus-visible:ring-offset-black ${
+              active
+                ? "bg-gradient-to-b from-amber-400 to-amber-600 text-neutral-950 shadow"
+                : "text-amber-100/70 hover:text-amber-100"
+            }`}
+          >
+            {isAr ? o.ar : o.en}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -288,52 +304,61 @@ function LeaderColumn({
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
   return (
-    <div
-      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-4 ring-1 ring-amber-400/20 ${
+    <article
+      aria-label={`${leader.short} — ${roleLabel}`}
+      className={`leadership-column relative rounded-2xl bg-gradient-to-b from-neutral-950/70 to-black/50 p-3 ring-1 ring-amber-400/20 sm:p-4 ${
         flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)] animate-pulse" : ""
       }`}
     >
-      {/* Leader header */}
-      <div className="flex items-center gap-4">
+      {/* Leader header — grid keeps text container flexible on all widths */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
         <LeaderAvatar
           url={profile?.avatar_url ?? null}
           name={profile?.display_name ?? null}
           email={leader.email}
           size={96}
         />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+            <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
             <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">{leader.short}</span>
           </div>
-          <div className="mt-0.5 truncate text-lg font-bold leading-tight text-amber-100">
+          <div className="mt-0.5 truncate text-base font-bold leading-tight text-amber-100 sm:text-lg">
             {leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}
           </div>
-          <div className="mt-1 line-clamp-2 text-xs leading-snug text-amber-100/70">
+          <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-amber-100/70 sm:text-xs">
             {roleLabel}
           </div>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="rounded-lg bg-gradient-to-b from-amber-400/25 to-amber-600/15 px-2.5 py-1 text-sm font-bold text-amber-100 ring-1 ring-amber-400/40 tabular-nums">
+        <div className="flex shrink-0 flex-col items-center gap-0.5">
+          <span
+            className="rounded-lg bg-gradient-to-b from-amber-400/25 to-amber-600/15 px-2.5 py-1 text-sm font-bold text-amber-100 ring-1 ring-amber-400/40 tabular-nums"
+            aria-label={isAr ? `${tasks.length} مهمة` : `${tasks.length} tasks`}
+          >
             {tasks.length}
           </span>
-          <span className="text-[9px] uppercase tracking-wider text-amber-100/50">{isAr ? "مهمة" : "tasks"}</span>
+          <span aria-hidden className="text-[9px] uppercase tracking-wider text-amber-100/50">{isAr ? "مهمة" : "tasks"}</span>
         </div>
       </div>
 
-      <div className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.35), transparent)" }} />
+      <div aria-hidden className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.35), transparent)" }} />
 
-      {/* Task list — visible scroll surface */}
-      <div className="leadership-scroll max-h-[420px] min-h-[180px] overflow-y-auto">
+      {/* Task list — visible scroll surface, keyboard-scrollable */}
+      <div
+        className="leadership-scroll max-h-[60vh] min-h-[180px] overflow-y-auto sm:max-h-[420px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
+        tabIndex={0}
+        role="region"
+        aria-label={isAr ? `مهام ${leader.short}` : `${leader.short} tasks`}
+      >
         {!loaded ? (
-          <div className="space-y-2">
+          <div className="space-y-2" aria-busy="true">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-900/70 ring-1 ring-amber-400/10" />
             ))}
           </div>
         ) : tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
-            <Sparkles className="h-6 w-6 text-amber-300/50" />
+            <Sparkles className="h-6 w-6 text-amber-300/50" aria-hidden />
             <span className="text-xs font-medium text-amber-100/70">{isAr ? "لا مهام حالياً" : "No tasks right now"}</span>
             <span className="text-[10px] text-amber-100/40">
               {isAr ? `في انتظار مهام من ${roleLabel}` : `Awaiting tasks from ${roleLabel}`}
@@ -347,7 +372,7 @@ function LeaderColumn({
           </ul>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -360,7 +385,8 @@ function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
     <li>
       <Link
         to="/tasks"
-        className={`group block rounded-lg bg-black/40 p-2.5 ring-1 transition hover:bg-black/60 ${
+        aria-label={`${task.title}${task.due_date ? " — " + (isAr ? "الاستحقاق " : "due ") + new Date(task.due_date).toLocaleDateString(isAr ? "ar-EG" : "en-US") : ""}`}
+        className={`group block rounded-lg bg-black/40 p-2.5 ring-1 transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
           overdue ? "ring-red-400/40" : "ring-amber-400/10 hover:ring-amber-400/30"
         }`}
         style={overdue ? { borderInlineStart: "3px solid rgba(248,113,113,0.7)" } : undefined}
