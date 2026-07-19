@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
+import { RoleBadge } from "@/components/role-badge";
 
 const MANAGER_EMAILS = [
   "k.elsharbatly@steinheim-eg.com",
@@ -80,7 +82,7 @@ function StatusBadge({ s, isAr }: { s: TaskStatus; isAr: boolean }) {
     </span>
   );
 }
-function Meta({ label, value }: { label: string; value: string }) {
+function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-lg border bg-muted/30 p-2">
       <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
@@ -267,8 +269,8 @@ export function TaskDetailDialog({
                     <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{task.description}</div>
                   )}
                   <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                    <Meta label={isAr ? "أسندها" : "Assigned by"} value={profiles.byId(task.assigned_by)?.display_name || "—"} />
-                    <Meta label={isAr ? "المكلَّف" : "Assignee"} value={profiles.byId(task.assignee_id)?.display_name || "—"} />
+                    <Meta label={isAr ? "أسندها" : "Assigned by"} value={<span className="inline-flex items-center gap-1.5">{profiles.byId(task.assigned_by)?.display_name || "—"}<RoleBadge userId={task.assigned_by} /></span>} />
+                    <Meta label={isAr ? "المكلَّف" : "Assignee"} value={<span className="inline-flex items-center gap-1.5">{profiles.byId(task.assignee_id)?.display_name || "—"}<RoleBadge userId={task.assignee_id} /></span>} />
                     <Meta label={isAr ? "الإسناد" : "Created"} value={fmtDateTime(task.created_at, lang)} />
                     {task.due_date && <Meta label={isAr ? "الاستحقاق" : "Due"} value={fmtDateTime(task.due_date, lang)} />}
                     {task.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(task.started_at, lang)} />}
@@ -442,7 +444,7 @@ export function TaskDetailDialog({
                     return (
                       <div key={c.id} className="rounded-lg border bg-card p-2 text-sm">
                         <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="font-semibold">{author?.display_name || author?.email || "—"}</span>
+                          <span className="inline-flex items-center gap-1.5"><span className="font-semibold">{author?.display_name || author?.email || "—"}</span><RoleBadge userId={c.author_id} /></span>
                           <span>{fmtDateTime(c.created_at, lang)}</span>
                         </div>
                         <div className="whitespace-pre-wrap">{c.body}</div>

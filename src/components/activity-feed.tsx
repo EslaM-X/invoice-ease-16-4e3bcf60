@@ -6,6 +6,7 @@ import { fmtDate } from "@/lib/utils-money";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { Plus, Pencil, Trash2, ShieldCheck, User } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { RoleBadge } from "@/components/role-badge";
 
 type Row = {
   id: string;
@@ -99,6 +100,7 @@ export function ActivityFeed({ limit = 8 }: { limit?: number }) {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm">
                     <span className="font-semibold">{who}</span>{" "}
+                    <RoleBadge email={r.actor_email} className="align-middle me-1" />{" "}
                     <span className="text-muted-foreground">{r.action}</span>{" "}
                     <span className="text-muted-foreground">·</span>{" "}
                     <span className="text-muted-foreground">{r.entity_type}</span>{" "}

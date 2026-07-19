@@ -8,6 +8,7 @@ import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import { useRealtimeTable } from "@/lib/realtime";
 import { ShieldCheck, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { ExecutiveGate } from "@/components/executive-gate";
+import { RoleBadge } from "@/components/role-badge";
 
 export const Route = createFileRoute("/audit-log")({
   component: () => (
@@ -363,8 +364,10 @@ function AuditLog() {
                       </span>
                       <div className="min-w-0">
                         <div className="text-sm font-medium">{summarize(r, lang)}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {r.actor_email ?? "—"} · {fmtDateTime(r.created_at, lang)}
+                        <div className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
+                          <span>{r.actor_email ?? "—"}</span>
+                          <RoleBadge email={r.actor_email} />
+                          <span>· {fmtDateTime(r.created_at, lang)}</span>
                         </div>
                       </div>
                     </div>

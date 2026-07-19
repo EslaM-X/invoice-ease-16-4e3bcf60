@@ -1,5 +1,6 @@
 import { User } from "lucide-react";
 import { useTeamProfiles } from "@/lib/team-profiles";
+import { RoleBadge } from "@/components/role-badge";
 
 type Props = {
   email?: string | null;
@@ -34,6 +35,8 @@ export function AuthorBadge({ email, label, className = "", size = "xs" }: Props
         </span>
       )}
       <span className="truncate">{short}</span>
+      <RoleBadge email={email} size={size} className="no-print" />
     </span>
   );
 }
+
