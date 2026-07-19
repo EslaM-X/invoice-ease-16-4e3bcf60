@@ -448,6 +448,20 @@ function TasksPage() {
                 ))}
               </ChipRow>
             </FilterGroup>
+            <FilterGroup label={isAr ? "الفاتورة" : "Invoice"}>
+              <ChipRow>
+                <Chip active={invFilter === "all"} onClick={() => setInvFilter("all")}>{isAr ? "الكل" : "All"}</Chip>
+                <Chip active={invFilter === "closed"} onClick={() => setInvFilter("closed")}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  {isAr ? "خدمة ما بعد البيع" : "After-sales"}
+                </Chip>
+                <Chip active={invFilter === "open"} onClick={() => setInvFilter("open")}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  {isAr ? "عميل" : "Customer"}
+                </Chip>
+                <Chip active={invFilter === "none"} onClick={() => setInvFilter("none")}>{isAr ? "بدون فاتورة" : "No invoice"}</Chip>
+              </ChipRow>
+            </FilterGroup>
           </div>
         </aside>
 
