@@ -625,7 +625,6 @@ function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
                     drCount={task.delivery_receipt_ids?.length ?? 0}
                     isAr={isAr}
                     size="xs"
-                    tone="dark"
                   />
                 </span>
               )}
