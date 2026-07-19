@@ -257,6 +257,57 @@ export function TaskNotificationsCenter({
         })}
       </div>
 
+      {/* Sub-filters: Type + Priority */}
+      <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-amber-400/10">
+        <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-100/50 uppercase tracking-wide">
+          <Filter className="h-3 w-3" />
+          {isAr ? "النوع" : "Type"}
+        </div>
+        {([
+          { k: "all",    ar: "الكل",  en: "All" },
+          { k: "new",    ar: "جديدة", en: "New" },
+          { k: "urgent", ar: "عاجلة", en: "Urgent" },
+        ] as { k: "all" | "new" | "urgent"; ar: string; en: string }[]).map(t => (
+          <button
+            key={t.k}
+            onClick={() => setTypeFilter(t.k)}
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold border transition-all ${
+              typeFilter === t.k
+                ? "bg-amber-400/90 text-black border-amber-400"
+                : "bg-white/[0.03] text-amber-100/70 hover:bg-white/10 border-amber-400/15"
+            }`}
+          >
+            {isAr ? t.ar : t.en}
+          </button>
+        ))}
+        <span className="mx-1 h-4 w-px bg-amber-400/20" />
+        <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-100/50 uppercase tracking-wide">
+          {isAr ? "الأولوية" : "Priority"}
+        </div>
+        {(["all", "urgent", "high", "normal", "low"] as ("all" | Priority)[]).map(p => {
+          const meta = p === "all" ? null : PRIO_META[p as Priority];
+          const label = p === "all"
+            ? (isAr ? "الكل" : "All")
+            : (isAr ? meta!.ar : meta!.en);
+          const active = prioFilter === p;
+          return (
+            <button
+              key={p}
+              onClick={() => setPrioFilter(p)}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold border transition-all ${
+                active
+                  ? "bg-amber-400/90 text-black border-amber-400"
+                  : "bg-white/[0.03] text-amber-100/70 hover:bg-white/10 border-amber-400/15"
+              }`}
+            >
+              {meta && <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+
       {/* List */}
       <div className="max-h-[28rem] overflow-y-auto -mx-1 px-1 space-y-2">
         {loading ? (
