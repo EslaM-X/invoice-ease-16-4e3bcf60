@@ -68,8 +68,8 @@ export function CooHideToggle() {
         .from("profiles")
         .select("hide_from_leadership_card")
         .eq("user_id", ownerUserId)
-        .maybeSingle()
-        .abortSignal(controller.signal);
+        .abortSignal(controller.signal)
+        .maybeSingle();
       if (!mountedRef.current) return;
       if (error) throw error;
       const next = Boolean((data as any)?.hide_from_leadership_card);
