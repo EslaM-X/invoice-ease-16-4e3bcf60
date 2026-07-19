@@ -577,7 +577,7 @@ function TasksPage() {
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isAr ? "مهمة جديدة" : "New task"}</DialogTitle>
           </DialogHeader>
