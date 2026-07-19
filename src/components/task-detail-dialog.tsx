@@ -129,9 +129,40 @@ export function TaskDetailDialog({
     setComments(((data as any) ?? []) as Comment[]);
   };
 
-  useEffect(() => { loadTask(); loadComments(); setNewComment(""); }, [taskId]);
+  useEffect(() => { loadTask(); loadComments(); setNewComment(""); setEditing(false); }, [taskId]);
   useRealtimeTable("tasks" as any, () => { if (taskId) loadTask(); });
   useRealtimeTable("task_comments" as any, () => { if (taskId) loadComments(); });
+
+  // Sync edit form from latest task whenever we're not actively editing.
+  useEffect(() => {
+    if (!task || editing) return;
+    setForm({
+      title: task.title ?? "",
+      description: task.description ?? "",
+      priority: task.priority,
+      due_date: task.due_date ? task.due_date.slice(0, 10) : "",
+      contact_phone: task.contact_phone ?? "",
+    });
+  }, [task, editing]);
+
+  const saveEdits = async () => {
+    if (!task) return;
+    const title = form.title.trim();
+    if (!title) { toast.error(isAr ? "العنوان مطلوب" : "Title is required"); return; }
+    setSaving(true);
+    const patch: any = {
+      title,
+      description: form.description.trim() || null,
+      priority: form.priority,
+      due_date: form.due_date || null,
+      contact_phone: form.contact_phone.trim() || null,
+    };
+    const { error } = await supabase.from("tasks" as any).update(patch).eq("id", task.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? "تم حفظ التعديلات" : "Changes saved");
+    setEditing(false);
+  };
 
   const updateStatus = async (status: TaskStatus) => {
     if (!task) return;
