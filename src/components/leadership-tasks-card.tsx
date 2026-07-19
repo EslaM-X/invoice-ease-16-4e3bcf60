@@ -507,7 +507,7 @@ function FilterGroup<T extends string>({
 }
 
 function LeaderColumn({
-  isAr, leader, profile, tasks, loaded, flash,
+  isAr, leader, profile, tasks, loaded, flash, onOpenTask,
 }: {
   isAr: boolean;
   leader: typeof CEO;
@@ -515,6 +515,7 @@ function LeaderColumn({
   tasks: Task[];
   loaded: boolean;
   flash: boolean;
+  onOpenTask: (id: string) => void;
 }) {
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
