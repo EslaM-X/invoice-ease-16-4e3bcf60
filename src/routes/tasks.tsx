@@ -446,6 +446,8 @@ function TasksPage() {
         </div>
       )}
 
+      <TaskNotificationsCenter onOpenTask={(id) => setOpenId(id)} />
+
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Sidebar */}
         <aside className="space-y-1">
