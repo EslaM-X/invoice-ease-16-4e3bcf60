@@ -242,6 +242,13 @@ export function CooHideToggle() {
         </span>
       )}
 
+      {!syncError && syncing && !isSynced && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200 ring-1 ring-amber-400/25">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {isAr ? "مزامنة..." : "Syncing..."}
+        </span>
+      )}
+
       {hidden && (
         <span
           className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-100/80 ring-1 ring-amber-400/25"
