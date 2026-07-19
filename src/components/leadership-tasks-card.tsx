@@ -443,6 +443,7 @@ export function LeadershipTasksCard() {
           tasks={ceoTasks}
           loaded={loaded}
           flash={flash.ceo}
+          onOpenTask={setOpenTaskId}
         />
         <LeaderColumn
           isAr={isAr}
@@ -451,8 +452,11 @@ export function LeadershipTasksCard() {
           tasks={cooTasks}
           loaded={loaded}
           flash={flash.coo}
+          onOpenTask={setOpenTaskId}
         />
       </div>
+
+      <TaskDetailDialog taskId={openTaskId} onClose={() => setOpenTaskId(null)} showOpenInPage />
 
       <div className="relative mt-3 flex justify-end">
         <Link to="/tasks" className="text-[11px] font-medium text-amber-200/80 hover:text-amber-200 hover:underline">
