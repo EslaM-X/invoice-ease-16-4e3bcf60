@@ -89,7 +89,14 @@ function TasksPage() {
   const [newComment, setNewComment] = useState("");
 
   // Filters
+  const isCEO = (user?.email || "").toLowerCase() === "k.elsharbatly@steinheim-eg.com";
   const [view, setView] = useState<"inbox" | "done" | "sent" | "all">("inbox");
+  const viewInitRef = useRef(false);
+  useEffect(() => {
+    if (!user?.id || viewInitRef.current) return;
+    viewInitRef.current = true;
+    if (isCEO) setView("sent");
+  }, [user?.id, isCEO]);
   const [prioFilter, setPrioFilter] = useState<TaskPriority | "all">("all");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [invFilter, setInvFilter] = useState<"all" | "closed" | "open" | "none">("all");
@@ -188,7 +195,7 @@ function TasksPage() {
     let list = tasks;
     if (view === "inbox") list = list.filter(t => t.assignee_id === user?.id && t.status !== "done" && t.status !== "cancelled");
     else if (view === "done") list = list.filter(t => t.assignee_id === user?.id && (t.status === "done" || t.status === "cancelled"));
-    else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
+    else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id && (statusFilter !== "all" || (t.status !== "done" && t.status !== "cancelled")));
     if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
     if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
     if (invFilter !== "all") {
@@ -603,8 +610,12 @@ function TasksPage() {
                             />
                           </span>
                         )}
-                        <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
-                          {assignee?.display_name || assignee?.email || "—"}
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground truncate max-w-[240px]">
+                          <span className="text-muted-foreground/70">{isAr ? "من" : "From"}</span>
+                          <span className="font-medium text-foreground/80 truncate max-w-[100px]">{profiles.byId(t.assigned_by)?.display_name || profiles.byId(t.assigned_by)?.email || "—"}</span>
+                          <ChevronRight className="h-3 w-3 opacity-50" />
+                          <span className="text-muted-foreground/70">{isAr ? "إلى" : "To"}</span>
+                          <span className="font-medium text-foreground/80 truncate max-w-[100px]">{assignee?.display_name || assignee?.email || "—"}</span>
                         </span>
                         {t.due_date && (
                           <span className={`hidden md:inline-flex items-center gap-1 text-xs tabular-nums ${overdue ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
@@ -912,8 +923,12 @@ function VirtualTaskRow({ index, style, ariaAttributes, rows, profiles, selected
             />
           </span>
         )}
-        <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
-          {assignee?.display_name || assignee?.email || "—"}
+        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground truncate max-w-[240px]">
+          <span className="text-muted-foreground/70">{isAr ? "من" : "From"}</span>
+          <span className="font-medium text-foreground/80 truncate max-w-[100px]">{profiles.byId(t.assigned_by)?.display_name || profiles.byId(t.assigned_by)?.email || "—"}</span>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <span className="text-muted-foreground/70">{isAr ? "إلى" : "To"}</span>
+          <span className="font-medium text-foreground/80 truncate max-w-[100px]">{assignee?.display_name || assignee?.email || "—"}</span>
         </span>
         {t.due_date && (
           <span className={`hidden md:inline-flex items-center gap-1 text-xs tabular-nums ${overdue ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
