@@ -219,7 +219,8 @@ function TasksPage() {
 
   const submitCreate = async () => {
     if (!form.title.trim() || !form.assignee_id) { toast.error(isAr ? "أدخل العنوان واختر المكلَّف" : "Title and assignee required"); return; }
-    const { error } = await supabase.from("tasks" as any).insert({
+    const phone = form.contact_phone.trim() || null;
+    const { data: created, error } = await supabase.from("tasks" as any).insert({
       title: form.title.trim(),
       description: form.description.trim() || null,
       assignee_id: form.assignee_id,
@@ -228,11 +229,44 @@ function TasksPage() {
       due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
       invoice_id: form.invoice_id,
       delivery_receipt_ids: form.delivery_receipt_ids,
-    });
+      contact_phone: phone,
+    }).select("id").maybeSingle();
     if (error) { toast.error(error.message); return; }
-    toast.success(isAr ? "تم إسناد المهمة" : "Task assigned");
+
+    // 🔔 Instant notification (push + email) — urgency by priority
+    try {
+      const prioTag = form.priority === "urgent"
+        ? (isAr ? "🚨 عاجل جداً" : "🚨 URGENT")
+        : form.priority === "high"
+          ? (isAr ? "🔥 أولوية عالية" : "🔥 High priority")
+          : form.priority === "low"
+            ? (isAr ? "🟢 أولوية منخفضة" : "🟢 Low priority")
+            : (isAr ? "🔔 مهمة جديدة" : "🔔 New task");
+      const bodyParts = [
+        form.description.trim() || form.title.trim(),
+        phone ? (isAr ? `📞 للتواصل: ${phone}` : `📞 Contact: ${phone}`) : null,
+        form.due_date ? (isAr ? `⏰ الاستحقاق: ${fmtDateTime(new Date(form.due_date).toISOString(), lang)}` : `⏰ Due: ${fmtDateTime(new Date(form.due_date).toISOString(), lang)}`) : null,
+      ].filter(Boolean).join(" · ");
+      await supabase.from("notifications").insert({
+        user_id: form.assignee_id,
+        type: form.priority === "urgent" || form.priority === "high" ? "task_urgent" : "task_assigned",
+        title: `${prioTag} — ${form.title.trim()}`,
+        body: bodyParts,
+        link: `/tasks?id=${created?.id ?? ""}`,
+        meta: {
+          task_id: created?.id ?? null,
+          priority: form.priority,
+          contact_phone: phone,
+          invoice_id: form.invoice_id,
+        },
+      } as any);
+    } catch (e) {
+      console.error("[tasks] notify failed", e);
+    }
+
+    toast.success(isAr ? "تم إسناد المهمة وإرسال إشعار" : "Task assigned & notified");
     setCreateOpen(false);
-    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [] });
+    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "" });
     load();
   };
 
