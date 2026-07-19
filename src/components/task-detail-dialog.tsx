@@ -332,6 +332,7 @@ export function TaskDetailDialog({
                         {isAr ? "نسخ" : "Copy"}
                       </button>
                     </div>
+                    )}
                   </div>
                 );
               })()}
