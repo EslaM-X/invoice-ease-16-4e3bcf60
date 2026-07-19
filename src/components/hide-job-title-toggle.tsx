@@ -195,22 +195,30 @@ export function HideJobTitleToggle() {
           </span>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => void persist(!hidden)}
-        aria-pressed={hidden}
-        aria-busy={saving}
-        className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-bold uppercase tracking-wider ring-1 transition disabled:opacity-70 ${
-          hidden
-            ? "bg-gradient-to-b from-emerald-400 to-emerald-600 text-neutral-950 ring-emerald-300/50 shadow hover:brightness-110"
-            : "bg-amber-500/15 text-amber-700 dark:text-amber-200 ring-amber-400/30 hover:bg-amber-500/25"
-        }`}
-      >
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : hidden ? <ShieldCheck className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        {hidden
-          ? (isAr ? "إظهار لقبي COO في كل التطبيق الآن" : "Show my COO title everywhere now")
-          : (isAr ? "إخفاء لقبي COO من كل التطبيق مؤقتاً" : "Hide my COO title across the app")}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void persist(!hidden)}
+          aria-pressed={hidden}
+          aria-busy={saving}
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-bold uppercase tracking-wider ring-1 transition disabled:opacity-70 ${
+            hidden
+              ? "bg-gradient-to-b from-emerald-400 to-emerald-600 text-neutral-950 ring-emerald-300/50 shadow hover:brightness-110"
+              : "bg-amber-500/15 text-amber-700 dark:text-amber-200 ring-amber-400/30 hover:bg-amber-500/25"
+          }`}
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : hidden ? <ShieldCheck className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {hidden
+            ? (isAr ? "إظهار لقبي COO في كل التطبيق الآن" : "Show my COO title everywhere now")
+            : (isAr ? "إخفاء لقبي COO من كل التطبيق مؤقتاً" : "Hide my COO title across the app")}
+        </button>
+        {!syncError && !syncing && !saving && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-400/30 dark:text-emerald-200" title={isAr ? "الحالة الحالية مقروءة من قاعدة البيانات" : "Current state read from the database"}>
+            <ShieldCheck className="h-3 w-3" />
+            {isAr ? "متزامن مع قاعدة البيانات" : "Synced with database"}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
