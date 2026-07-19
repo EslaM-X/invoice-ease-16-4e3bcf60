@@ -377,7 +377,7 @@ function SalesRange() {
                 <tr className="border-t-2">
                   <td className="p-3" colSpan={6}>{tt("الإجمالي", "Total")}</td>
                   <td className="p-3 text-primary text-lg">{totalUnits}</td>
-                  <td className="p-3">{fmtMoney(totalValue)}</td>
+                  <td className="p-3">{fmtMoney(linesValue)}</td>
                   <td></td>
                 </tr>
               </tfoot>
