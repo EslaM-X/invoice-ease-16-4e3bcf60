@@ -11,6 +11,7 @@ export type TeamProfile = {
   job_title: string | null;
   job_title_color: string | null;
   hide_from_leadership_card: boolean | null;
+  hide_job_title: boolean | null;
 };
 
 
