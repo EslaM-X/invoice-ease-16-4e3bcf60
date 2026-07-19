@@ -39,12 +39,14 @@ export function CooHideToggle() {
   const ownerUserId = user?.id ?? null;
   const cacheKey = ownerUserId ? `${CACHE_PREFIX}${ownerUserId}` : null;
 
-  const [hidden, setHidden] = useState<boolean | null>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [hidden, setHidden] = useState(true);
+  const [isSynced, setIsSynced] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const reloadSeqRef = useRef(0);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -53,60 +55,76 @@ export function CooHideToggle() {
   // UI can never disagree with the persisted truth.
   const reload = useCallback(async () => {
     if (!isOwner || !ownerUserId) {
-      if (mountedRef.current) setInitialLoading(false);
       return;
     }
 
+    const seq = ++reloadSeqRef.current;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
     try {
-      timeout = setTimeout(() => controller.abort(), 7000);
+      setSyncing(true);
+      timeout = setTimeout(() => controller.abort(), 3500);
       const { data, error } = await supabase
         .from("profiles")
         .select("hide_from_leadership_card")
         .eq("user_id", ownerUserId)
         .abortSignal(controller.signal)
         .maybeSingle();
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || seq !== reloadSeqRef.current) return;
       if (error) throw error;
       const next = Boolean((data as any)?.hide_from_leadership_card);
       setHidden(next);
+      setIsSynced(true);
       if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(next));
       setSyncError(null);
     } catch (e: any) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || seq !== reloadSeqRef.current) return;
       let cached: boolean | null = null;
       try {
         const raw = cacheKey ? localStorage.getItem(cacheKey) : null;
         if (raw === "true" || raw === "false") cached = raw === "true";
         else if (raw) cached = Boolean(JSON.parse(raw));
       } catch { /* ignore */ }
-      setHidden((current) => current ?? cached ?? false);
+      setHidden((current) => cached ?? current);
+      setIsSynced(false);
       setSyncError(
         isAr
-          ? "تعذر تحميل حالة الإخفاء من قاعدة البيانات"
-          : "Could not load hide state from the database",
+          ? "تعذر التزامن الآن — الزر ما زال يعمل فورياً"
+          : "Sync is delayed — the button still works instantly",
       );
     } finally {
       if (timeout) clearTimeout(timeout);
-      if (mountedRef.current) setInitialLoading(false);
+      if (mountedRef.current && seq === reloadSeqRef.current) setSyncing(false);
     }
   }, [cacheKey, isOwner, ownerUserId, isAr]);
 
   // Initial load + auto-reverify on login change.
   useEffect(() => {
-    if (authLoading) return;
-    if (!isOwner || !ownerUserId) { setInitialLoading(false); return; }
+    if (authLoading && !user) return;
+    if (!isOwner || !ownerUserId) {
+      setHidden(true);
+      setIsSynced(false);
+      setSyncing(false);
+      setSyncError(null);
+      return;
+    }
 
     try {
       const raw = cacheKey ? localStorage.getItem(cacheKey) : null;
-      if (raw === "true" || raw === "false") setHidden(raw === "true");
-      else if (raw) setHidden(Boolean(JSON.parse(raw)));
+      if (raw === "true" || raw === "false") {
+        setHidden(raw === "true");
+        setIsSynced(false);
+      } else if (raw) {
+        setHidden(Boolean(JSON.parse(raw)));
+        setIsSynced(false);
+      } else {
+        setHidden(true);
+        setIsSynced(false);
+      }
     } catch { /* ignore */ }
 
-    setInitialLoading(true);
     void reload();
-  }, [authLoading, cacheKey, isOwner, ownerUserId, reload]);
+  }, [authLoading, cacheKey, isOwner, ownerUserId, reload, user]);
 
   // Realtime subscription with explicit status handling.
   // On CHANNEL_ERROR / TIMED_OUT / CLOSED we surface an inline warning and
@@ -122,6 +140,8 @@ export function CooHideToggle() {
           if (!mountedRef.current) return;
           const next = Boolean(payload?.new?.hide_from_leadership_card);
           setHidden(next);
+          setIsSynced(true);
+          setSyncing(false);
           if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(next));
           setSyncError(null);
         },
@@ -169,6 +189,8 @@ export function CooHideToggle() {
         .eq("user_id", ownerUserId);
       if (error) throw error;
       if (mountedRef.current) {
+        setIsSynced(true);
+        setSyncError(null);
         toast.success(
           next
             ? (isAr ? "تم إخفاؤك مؤقتاً — تقدر ترجع بزرار واحد" : "Hidden temporarily — restore anytime with one click")
@@ -199,28 +221,6 @@ export function CooHideToggle() {
     }
   }
 
-  // Initial loading skeleton — matches the pill shape.
-  if (initialLoading || hidden === null) {
-    return (
-      <div dir={isAr ? "rtl" : "ltr"} className="flex justify-end">
-        <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-100/50 ring-1 ring-amber-400/20">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          {isAr ? "جارٍ التحميل..." : "Loading..."}
-        </div>
-        {syncError && (
-          <button
-            type="button"
-            onClick={() => void persist(false)}
-            className="ms-2 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-neutral-950 ring-1 ring-emerald-300/60 hover:brightness-110"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            {isAr ? "تفعيل كارت المهام" : "Re-activate tasks card"}
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div dir={isAr ? "rtl" : "ltr"} className="flex flex-wrap items-center justify-end gap-2">
       {syncError && (
@@ -242,6 +242,13 @@ export function CooHideToggle() {
         </span>
       )}
 
+      {!syncError && syncing && !isSynced && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200 ring-1 ring-amber-400/25">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {isAr ? "مزامنة..." : "Syncing..."}
+        </span>
+      )}
+
       {hidden && (
         <span
           className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-100/80 ring-1 ring-amber-400/25"
@@ -257,7 +264,7 @@ export function CooHideToggle() {
         onClick={onPrimaryClick}
         disabled={saving}
         aria-pressed={hidden}
-        aria-busy={saving}
+        aria-busy={saving || syncing}
         className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ring-1 transition disabled:opacity-70 ${
           hidden
             ? "bg-gradient-to-b from-emerald-400 to-emerald-600 text-neutral-950 ring-emerald-300/50 shadow hover:brightness-110"
