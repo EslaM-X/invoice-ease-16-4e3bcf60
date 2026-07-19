@@ -81,7 +81,7 @@ function StatusBadge({ s, isAr }: { s: TaskStatus; isAr: boolean }) {
     </span>
   );
 }
-function Meta({ label, value }: { label: string; value: string }) {
+function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-lg border bg-muted/30 p-2">
       <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
