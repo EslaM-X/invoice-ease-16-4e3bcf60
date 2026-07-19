@@ -287,7 +287,7 @@ export function LeadershipTasksCard() {
     const ids = [ceoId, cooId].filter(Boolean) as string[];
     const { data } = await supabase
       .from("tasks")
-      .select("id,title,description,assignee_id,assigned_by,priority,status,due_date,created_at")
+      .select("id,title,description,assignee_id,assigned_by,priority,status,due_date,created_at,invoice_id,delivery_receipt_ids")
       .eq("assignee_id", meId)
       .in("assigned_by", ids)
       // Ascending order = stable positions. New inserts naturally append at the
