@@ -47,8 +47,9 @@ export function TaskNotificationsCenter({
   const [items, setItems] = useState<Notif[]>([]);
   const [tab, setTab] = useState<Tab>("all");
   const [loading, setLoading] = useState(true);
-  // task_id -> status ; "open" = still needs attention (glow)
-  const [taskStatus, setTaskStatus] = useState<Record<string, string>>({});
+  // task_id -> { status, assignee_id } — used to (a) hide notifications for
+  // tasks no longer assigned to the viewer and (b) stop the "still open" glow.
+  const [taskInfo, setTaskInfo] = useState<Record<string, { status: string; assignee_id: string }>>({});
 
   const load = async () => {
     if (!user) return;
@@ -60,24 +61,34 @@ export function TaskNotificationsCenter({
       .in("type", TASK_TYPES as unknown as string[])
       .order("created_at", { ascending: false })
       .limit(100);
-    const list = ((data as any) ?? []) as Notif[];
-    setItems(list);
-    setLoading(false);
-    // fetch statuses for referenced tasks (so we know when to stop glowing)
+    const raw = ((data as any) ?? []) as Notif[];
+
     const ids = Array.from(
-      new Set(list.map(n => n?.meta?.task_id).filter((x: any) => typeof x === "string"))
+      new Set(raw.map(n => n?.meta?.task_id).filter((x: any) => typeof x === "string"))
     ) as string[];
+    const info: Record<string, { status: string; assignee_id: string }> = {};
     if (ids.length) {
       const { data: t } = await supabase
         .from("tasks" as any)
-        .select("id,status")
+        .select("id,status,assignee_id")
         .in("id", ids);
-      const map: Record<string, string> = {};
-      ((t as any[]) ?? []).forEach(row => { map[row.id] = row.status; });
-      setTaskStatus(map);
-    } else {
-      setTaskStatus({});
+      ((t as any[]) ?? []).forEach(row => {
+        info[row.id] = { status: row.status, assignee_id: row.assignee_id };
+      });
     }
+    setTaskInfo(info);
+
+    // Show ONLY notifications for tasks currently assigned to this user.
+    // Notifications with no task_id are kept (legacy / non-task pushes).
+    const mine = raw.filter(n => {
+      const tid = n?.meta?.task_id as string | undefined;
+      if (!tid) return true;
+      const row = info[tid];
+      if (!row) return false; // task deleted or reassigned → hide
+      return row.assignee_id === user.id;
+    });
+    setItems(mine);
+    setLoading(false);
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
@@ -86,11 +97,10 @@ export function TaskNotificationsCenter({
 
   const isTaskOpen = (n: Notif) => {
     const id = n?.meta?.task_id as string | undefined;
-    if (!id) return true; // no link — treat as still open
-    const s = taskStatus[id];
-    // if we don't have status yet, assume open
-    if (!s) return true;
-    return s !== "done" && s !== "cancelled";
+    if (!id) return true;
+    const row = taskInfo[id];
+    if (!row) return true;
+    return row.status !== "done" && row.status !== "cancelled";
   };
 
   const filtered = useMemo(() => {
