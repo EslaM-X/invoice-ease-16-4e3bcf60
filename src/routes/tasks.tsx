@@ -220,7 +220,7 @@ function TasksPage() {
   const submitCreate = async () => {
     if (!form.title.trim() || !form.assignee_id) { toast.error(isAr ? "أدخل العنوان واختر المكلَّف" : "Title and assignee required"); return; }
     const phone = form.contact_phone.trim() || null;
-    const { data: created, error } = await supabase.from("tasks" as any).insert({
+    const insertRes: any = await (supabase.from("tasks" as any).insert({
       title: form.title.trim(),
       description: form.description.trim() || null,
       assignee_id: form.assignee_id,
@@ -230,8 +230,9 @@ function TasksPage() {
       invoice_id: form.invoice_id,
       delivery_receipt_ids: form.delivery_receipt_ids,
       contact_phone: phone,
-    }).select("id").maybeSingle() as any;
-    const createdId = (created as any)?.id ?? null;
+    }) as any).select("id").maybeSingle();
+    if (insertRes?.error) { toast.error(insertRes.error.message); return; }
+    const createdId: string | null = insertRes?.data?.id ?? null;
 
     // 🔔 Instant notification (push + email) — urgency by priority
     try {
