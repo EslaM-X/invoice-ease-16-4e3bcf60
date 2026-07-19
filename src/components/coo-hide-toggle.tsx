@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffectiveUser } from "@/lib/use-effective-user";
+import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Eye, EyeOff, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const OWNER_EMAIL = "e.hesham@steinheim-eg.com";
+const CACHE_PREFIX = "coo-hide-toggle:";
 
 /**
  * Owner-only toggle: hides / shows Eslam Hesham (COO) from the
@@ -32,9 +33,11 @@ const OWNER_EMAIL = "e.hesham@steinheim-eg.com";
 export function CooHideToggle() {
   const { lang } = useI18n();
   const isAr = lang === "ar";
-  const effective = useEffectiveUser();
-  const email = (effective.email ?? "").trim().toLowerCase();
-  const isOwner = email === OWNER_EMAIL && !!effective.id;
+  const { user, loading: authLoading } = useAuth();
+  const actualEmail = (user?.email ?? "").trim().toLowerCase();
+  const isOwner = actualEmail === OWNER_EMAIL && !!user?.id;
+  const ownerUserId = user?.id ?? null;
+  const cacheKey = ownerUserId ? `${CACHE_PREFIX}${ownerUserId}` : null;
 
   const [hidden, setHidden] = useState<boolean | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -49,49 +52,77 @@ export function CooHideToggle() {
   // on window focus / online events, and after any save failure so the
   // UI can never disagree with the persisted truth.
   const reload = useCallback(async () => {
-    if (!isOwner || !effective.id) return;
+    if (!isOwner || !ownerUserId) {
+      if (mountedRef.current) setInitialLoading(false);
+      return;
+    }
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const controller = new AbortController();
     try {
+      timeout = setTimeout(() => controller.abort(), 7000);
       const { data, error } = await supabase
         .from("profiles")
         .select("hide_from_leadership_card")
-        .eq("user_id", effective.id)
+        .eq("user_id", ownerUserId)
+        .abortSignal(controller.signal)
         .maybeSingle();
       if (!mountedRef.current) return;
       if (error) throw error;
-      setHidden(Boolean((data as any)?.hide_from_leadership_card));
+      const next = Boolean((data as any)?.hide_from_leadership_card);
+      setHidden(next);
+      if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(next));
       setSyncError(null);
     } catch (e: any) {
       if (!mountedRef.current) return;
+      let cached: boolean | null = null;
+      try {
+        const raw = cacheKey ? localStorage.getItem(cacheKey) : null;
+        if (raw === "true" || raw === "false") cached = raw === "true";
+        else if (raw) cached = Boolean(JSON.parse(raw));
+      } catch { /* ignore */ }
+      setHidden((current) => current ?? cached ?? false);
       setSyncError(
         isAr
           ? "تعذر تحميل حالة الإخفاء من قاعدة البيانات"
           : "Could not load hide state from the database",
       );
     } finally {
+      if (timeout) clearTimeout(timeout);
       if (mountedRef.current) setInitialLoading(false);
     }
-  }, [isOwner, effective.id, isAr]);
+  }, [cacheKey, isOwner, ownerUserId, isAr]);
 
-  // Initial load + auto-reverify on login change (effective.id updates on re-login).
+  // Initial load + auto-reverify on login change.
   useEffect(() => {
-    if (!isOwner || !effective.id) { setInitialLoading(false); return; }
+    if (authLoading) return;
+    if (!isOwner || !ownerUserId) { setInitialLoading(false); return; }
+
+    try {
+      const raw = cacheKey ? localStorage.getItem(cacheKey) : null;
+      if (raw === "true" || raw === "false") setHidden(raw === "true");
+      else if (raw) setHidden(Boolean(JSON.parse(raw)));
+    } catch { /* ignore */ }
+
     setInitialLoading(true);
     void reload();
-  }, [isOwner, effective.id, reload]);
+  }, [authLoading, cacheKey, isOwner, ownerUserId, reload]);
 
   // Realtime subscription with explicit status handling.
   // On CHANNEL_ERROR / TIMED_OUT / CLOSED we surface an inline warning and
   // fall back to a DB reload so the toggle never displays stale truth.
   useEffect(() => {
-    if (!isOwner || !effective.id) return;
+    if (!isOwner || !ownerUserId) return;
     const ch = supabase
-      .channel(`coo-hide:${effective.id}`)
+      .channel(`coo-hide:${ownerUserId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${effective.id}` },
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${ownerUserId}` },
         (payload: any) => {
           if (!mountedRef.current) return;
-          setHidden(Boolean(payload?.new?.hide_from_leadership_card));
+          const next = Boolean(payload?.new?.hide_from_leadership_card);
+          setHidden(next);
+          if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(next));
           setSyncError(null);
         },
       )
@@ -120,21 +151,22 @@ export function CooHideToggle() {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onOnline);
     };
-  }, [isOwner, effective.id, reload, isAr]);
+  }, [cacheKey, isOwner, ownerUserId, reload, isAr]);
 
   if (!isOwner) return null;
 
   async function persist(next: boolean) {
-    if (saving || hidden === null) return;
+    if (saving || !ownerUserId) return;
     setSaving(true);
-    const prev = hidden;
+    const prev = hidden ?? false;
     // Optimistic: flip immediately for instant feel.
     setHidden(next);
+    if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(next));
     try {
       const { error } = await supabase
         .from("profiles")
         .update({ hide_from_leadership_card: next })
-        .eq("user_id", effective.id!);
+        .eq("user_id", ownerUserId);
       if (error) throw error;
       if (mountedRef.current) {
         toast.success(
@@ -146,6 +178,7 @@ export function CooHideToggle() {
     } catch (e: any) {
       if (mountedRef.current) {
         setHidden(prev);
+        if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(prev));
         const msg = e?.message?.includes("hide_from_leadership_card")
           ? (isAr ? "غير مسموح بتعديل هذا الإعداد" : "Not allowed to modify this setting")
           : (isAr ? "فشل الحفظ — يتم إعادة قراءة الحالة" : "Save failed — re-reading state");
@@ -174,6 +207,16 @@ export function CooHideToggle() {
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           {isAr ? "جارٍ التحميل..." : "Loading..."}
         </div>
+        {syncError && (
+          <button
+            type="button"
+            onClick={() => void persist(false)}
+            className="ms-2 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-neutral-950 ring-1 ring-emerald-300/60 hover:brightness-110"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {isAr ? "تفعيل كارت المهام" : "Re-activate tasks card"}
+          </button>
+        )}
       </div>
     );
   }
