@@ -8,11 +8,13 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { fmtDateTime } from "@/lib/utils-money";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2, XCircle, Play, Flag, MessageSquare, Send, Trash2,
-  Circle, CircleDot, FileText, Truck, Phone, ExternalLink,
+  Circle, CircleDot, FileText, Truck, Phone, ExternalLink, Pencil, Save, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
