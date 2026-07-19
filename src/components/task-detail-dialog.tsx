@@ -176,7 +176,16 @@ export function TaskDetailDialog({
     if (status === "done") patch.completed_at = new Date().toISOString();
     const { error } = await supabase.from("tasks" as any).update(patch).eq("id", task.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(isAr ? "تم تحديث الحالة" : "Status updated");
+    if (status === "done") {
+      toast.success(
+        isAr ? "تم إنجاز المهمة" : "Task completed",
+        { description: isAr ? "تم نقلها للأرشيف — يمكنك مراجعتها لاحقاً" : "Moved to archive — you can review it later" },
+      );
+    } else if (status === "cancelled") {
+      toast.success(isAr ? "تم إلغاء المهمة ونقلها للأرشيف" : "Task cancelled and archived");
+    } else {
+      toast.success(isAr ? "تم تحديث الحالة" : "Status updated");
+    }
   };
   const deleteTask = async () => {
     if (!task) return;
