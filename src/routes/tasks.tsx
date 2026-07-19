@@ -253,9 +253,9 @@ function TasksPage() {
         type: form.priority === "urgent" || form.priority === "high" ? "task_urgent" : "task_assigned",
         title: `${prioTag} — ${form.title.trim()}`,
         body: bodyParts,
-        link: `/tasks?id=${created?.id ?? ""}`,
+        link: `/tasks?id=${createdId ?? ""}`,
         meta: {
-          task_id: created?.id ?? null,
+          task_id: createdId,
           priority: form.priority,
           contact_phone: phone,
           invoice_id: form.invoice_id,
