@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useI18n } from "@/lib/i18n";
 import { Eye, EyeOff, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { toast } from "sonner";
@@ -35,7 +34,6 @@ export function CooHideToggle() {
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const { user, loading: authLoading } = useAuth();
-  const effective = useEffectiveUser();
   const actualEmail = (user?.email ?? "").trim().toLowerCase();
   const isOwner = actualEmail === OWNER_EMAIL && !!user?.id;
   const ownerUserId = user?.id ?? null;
@@ -97,7 +95,7 @@ export function CooHideToggle() {
 
   // Initial load + auto-reverify on login change.
   useEffect(() => {
-    if (authLoading || effective.loading) return;
+    if (authLoading) return;
     if (!isOwner || !ownerUserId) { setInitialLoading(false); return; }
 
     try {
@@ -108,7 +106,7 @@ export function CooHideToggle() {
 
     setInitialLoading(true);
     void reload();
-  }, [authLoading, cacheKey, effective.loading, isOwner, ownerUserId, reload]);
+  }, [authLoading, cacheKey, isOwner, ownerUserId, reload]);
 
   // Realtime subscription with explicit status handling.
   // On CHANNEL_ERROR / TIMED_OUT / CLOSED we surface an inline warning and
