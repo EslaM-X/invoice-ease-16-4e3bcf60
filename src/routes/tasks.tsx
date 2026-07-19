@@ -957,6 +957,16 @@ function VirtualTaskRow({ index, style, ariaAttributes, rows, profiles, selected
         <span className={`h-2 w-2 rounded-full ${PRIO_META[t.priority].dot} shrink-0`} title={isAr ? PRIO_META[t.priority].ar : PRIO_META[t.priority].en} />
         <Icon className={`h-4 w-4 shrink-0 ${STATUS_META[t.status].tone}`} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.title}</span>
+        {t.invoice_id && (
+          <span className="hidden md:inline-flex shrink-0" onClick={(e) => e.stopPropagation()}>
+            <TaskInvoiceChip
+              invoiceId={t.invoice_id}
+              drCount={t.delivery_receipt_ids?.length ?? 0}
+              isAr={isAr}
+              size="xs"
+            />
+          </span>
+        )}
         <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
           {assignee?.display_name || assignee?.email || "—"}
         </span>
