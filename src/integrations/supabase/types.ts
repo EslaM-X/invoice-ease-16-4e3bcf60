@@ -3290,9 +3290,11 @@ export type Database = {
           assignee_id: string
           completed_at: string | null
           created_at: string
+          delivery_receipt_ids: string[]
           description: string | null
           due_date: string | null
           id: string
+          invoice_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
           started_at: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -3304,9 +3306,11 @@ export type Database = {
           assignee_id: string
           completed_at?: string | null
           created_at?: string
+          delivery_receipt_ids?: string[]
           description?: string | null
           due_date?: string | null
           id?: string
+          invoice_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -3318,16 +3322,26 @@ export type Database = {
           assignee_id?: string
           completed_at?: string | null
           created_at?: string
+          delivery_receipt_ids?: string[]
           description?: string | null
           due_date?: string | null
           id?: string
+          invoice_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_counters: {
         Row: {
