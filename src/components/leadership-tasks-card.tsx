@@ -7,6 +7,7 @@ import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
+import { TaskDetailDialog } from "@/components/task-detail-dialog";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
