@@ -20,6 +20,7 @@ import { NotificationSettings } from "@/components/notification-settings";
 import { ChatProfileSettings } from "@/components/chat-profile-settings";
 import { XCalendar } from "@/components/x-calendar";
 import { HideJobTitleToggle } from "@/components/hide-job-title-toggle";
+import { HideJobTitleVerifier } from "@/components/hide-job-title-verifier";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
@@ -88,6 +89,8 @@ function SettingsPage() {
       <AppearanceSettings />
 
       <HideJobTitleToggle />
+
+      <HideJobTitleVerifier />
 
       <XCalendar />
 
