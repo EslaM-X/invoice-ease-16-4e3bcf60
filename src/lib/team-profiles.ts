@@ -10,6 +10,7 @@ export type TeamProfile = {
   updated_at: string | null;
   job_title: string | null;
   job_title_color: string | null;
+  hide_from_leadership_card: boolean | null;
 };
 
 
