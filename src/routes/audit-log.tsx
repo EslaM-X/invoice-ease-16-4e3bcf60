@@ -363,8 +363,10 @@ function AuditLog() {
                       </span>
                       <div className="min-w-0">
                         <div className="text-sm font-medium">{summarize(r, lang)}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {r.actor_email ?? "—"} · {fmtDateTime(r.created_at, lang)}
+                        <div className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
+                          <span>{r.actor_email ?? "—"}</span>
+                          <RoleBadge email={r.actor_email} />
+                          <span>· {fmtDateTime(r.created_at, lang)}</span>
                         </div>
                       </div>
                     </div>
