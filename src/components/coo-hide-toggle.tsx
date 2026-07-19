@@ -37,7 +37,6 @@ export function CooHideToggle() {
   const { user, loading: authLoading } = useAuth();
   const effective = useEffectiveUser();
   const actualEmail = (user?.email ?? "").trim().toLowerCase();
-  const effectiveEmail = (effective.email ?? "").trim().toLowerCase();
   const isOwner = actualEmail === OWNER_EMAIL && !!user?.id;
   const ownerUserId = user?.id ?? null;
   const cacheKey = ownerUserId ? `${CACHE_PREFIX}${ownerUserId}` : null;
@@ -96,7 +95,7 @@ export function CooHideToggle() {
     }
   }, [cacheKey, isOwner, ownerUserId, isAr]);
 
-  // Initial load + auto-reverify on login change (effective.id updates on re-login).
+  // Initial load + auto-reverify on login change.
   useEffect(() => {
     if (authLoading || effective.loading) return;
     if (!isOwner || !ownerUserId) { setInitialLoading(false); return; }
