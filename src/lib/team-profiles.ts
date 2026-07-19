@@ -26,7 +26,7 @@ const listeners = new Set<() => void>();
 async function refresh() {
   const { data } = await supabase
     .from("profiles")
-    .select("user_id, email, display_name, avatar_url, updated_at, job_title, job_title_color, hide_from_leadership_card");
+    .select("user_id, email, display_name, avatar_url, updated_at, job_title, job_title_color, hide_from_leadership_card, hide_job_title");
   const byEmail = new Map<string, TeamProfile>();
   const byId = new Map<string, TeamProfile>();
   (data ?? []).forEach((p: any) => {
@@ -39,6 +39,7 @@ async function refresh() {
       job_title: p.job_title ?? null,
       job_title_color: p.job_title_color ?? null,
       hide_from_leadership_card: p.hide_from_leadership_card ?? false,
+      hide_job_title: p.hide_job_title ?? false,
     };
     if (p.email) byEmail.set(p.email.toLowerCase(), tp);
     byId.set(p.user_id, tp);
