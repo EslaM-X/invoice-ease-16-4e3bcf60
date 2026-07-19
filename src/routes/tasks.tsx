@@ -18,7 +18,7 @@ import {
   ClipboardList, Plus, CheckCircle2, XCircle, Play, Flag, MessageSquare,
   Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
   X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
-  FileText, Truck,
+  FileText, Truck, Phone,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { List, type RowComponentProps } from "react-window";
@@ -53,6 +53,7 @@ type Task = {
   updated_at: string;
   invoice_id: string | null;
   delivery_receipt_ids: string[] | null;
+  contact_phone: string | null;
 };
 type Comment = { id: string; task_id: string; author_id: string; body: string; created_at: string };
 
@@ -96,8 +97,8 @@ function TasksPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
-  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[] }>({
-    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [],
+  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[]; contact_phone: string }>({
+    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "",
   });
 
   // Invoice-status hydration for filter chip (closed / open / none)
@@ -218,7 +219,8 @@ function TasksPage() {
 
   const submitCreate = async () => {
     if (!form.title.trim() || !form.assignee_id) { toast.error(isAr ? "أدخل العنوان واختر المكلَّف" : "Title and assignee required"); return; }
-    const { error } = await supabase.from("tasks" as any).insert({
+    const phone = form.contact_phone.trim() || null;
+    const insertRes: any = await (supabase.from("tasks" as any).insert({
       title: form.title.trim(),
       description: form.description.trim() || null,
       assignee_id: form.assignee_id,
@@ -227,11 +229,45 @@ function TasksPage() {
       due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
       invoice_id: form.invoice_id,
       delivery_receipt_ids: form.delivery_receipt_ids,
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success(isAr ? "تم إسناد المهمة" : "Task assigned");
+      contact_phone: phone,
+    }) as any).select("id").maybeSingle();
+    if (insertRes?.error) { toast.error(insertRes.error.message); return; }
+    const createdId: string | null = insertRes?.data?.id ?? null;
+
+    // 🔔 Instant notification (push + email) — urgency by priority
+    try {
+      const prioTag = form.priority === "urgent"
+        ? (isAr ? "🚨 عاجل جداً" : "🚨 URGENT")
+        : form.priority === "high"
+          ? (isAr ? "🔥 أولوية عالية" : "🔥 High priority")
+          : form.priority === "low"
+            ? (isAr ? "🟢 أولوية منخفضة" : "🟢 Low priority")
+            : (isAr ? "🔔 مهمة جديدة" : "🔔 New task");
+      const bodyParts = [
+        form.description.trim() || form.title.trim(),
+        phone ? (isAr ? `📞 للتواصل: ${phone}` : `📞 Contact: ${phone}`) : null,
+        form.due_date ? (isAr ? `⏰ الاستحقاق: ${fmtDateTime(new Date(form.due_date).toISOString(), lang)}` : `⏰ Due: ${fmtDateTime(new Date(form.due_date).toISOString(), lang)}`) : null,
+      ].filter(Boolean).join(" · ");
+      await supabase.from("notifications").insert({
+        user_id: form.assignee_id,
+        type: form.priority === "urgent" || form.priority === "high" ? "task_urgent" : "task_assigned",
+        title: `${prioTag} — ${form.title.trim()}`,
+        body: bodyParts,
+        link: `/tasks?id=${createdId ?? ""}`,
+        meta: {
+          task_id: createdId,
+          priority: form.priority,
+          contact_phone: phone,
+          invoice_id: form.invoice_id,
+        },
+      } as any);
+    } catch (e) {
+      console.error("[tasks] notify failed", e);
+    }
+
+    toast.success(isAr ? "تم إسناد المهمة وإرسال إشعار" : "Task assigned & notified");
     setCreateOpen(false);
-    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [] });
+    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "" });
     load();
   };
 
@@ -616,13 +652,27 @@ function TasksPage() {
                 <Input type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
               </div>
             </div>
-            <TaskInvoicePicker
-              invoiceId={form.invoice_id}
-              drIds={form.delivery_receipt_ids}
-              onChange={({ invoiceId, drIds }) => setForm({ ...form, invoice_id: invoiceId, delivery_receipt_ids: drIds })}
-              isAr={isAr}
-            />
-          </div>
+              <div>
+                <label className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {isAr ? "رقم للتواصل (اختياري)" : "Contact phone (optional)"}
+                </label>
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  dir="ltr"
+                  value={form.contact_phone}
+                  onChange={e => setForm({ ...form, contact_phone: e.target.value })}
+                  placeholder={isAr ? "مثال: مهندس الموقع 010xxxxxxxx" : "e.g. site engineer 010xxxxxxxx"}
+                />
+              </div>
+              <TaskInvoicePicker
+                invoiceId={form.invoice_id}
+                drIds={form.delivery_receipt_ids}
+                onChange={({ invoiceId, drIds }) => setForm({ ...form, invoice_id: invoiceId, delivery_receipt_ids: drIds })}
+                isAr={isAr}
+              />
+            </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
             <Button onClick={submitCreate}>{isAr ? "إسناد" : "Assign"}</Button>
@@ -655,6 +705,17 @@ function TasksPage() {
                   {openTask.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(openTask.started_at, lang)} />}
                   {openTask.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(openTask.completed_at, lang)} />}
                 </div>
+
+                {openTask.contact_phone && (
+                  <a
+                    href={`tel:${openTask.contact_phone}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold ring-1 ring-primary/20 hover:bg-primary/20 transition-colors tabular-nums"
+                    dir="ltr"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    {openTask.contact_phone}
+                  </a>
+                )}
 
                 {openTask.invoice_id && (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2">

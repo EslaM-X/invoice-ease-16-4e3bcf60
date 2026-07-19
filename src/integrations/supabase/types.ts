@@ -3289,6 +3289,7 @@ export type Database = {
           assigned_by: string
           assignee_id: string
           completed_at: string | null
+          contact_phone: string | null
           created_at: string
           delivery_receipt_ids: string[]
           description: string | null
@@ -3305,6 +3306,7 @@ export type Database = {
           assigned_by: string
           assignee_id: string
           completed_at?: string | null
+          contact_phone?: string | null
           created_at?: string
           delivery_receipt_ids?: string[]
           description?: string | null
@@ -3321,6 +3323,7 @@ export type Database = {
           assigned_by?: string
           assignee_id?: string
           completed_at?: string | null
+          contact_phone?: string | null
           created_at?: string
           delivery_receipt_ids?: string[]
           description?: string | null
