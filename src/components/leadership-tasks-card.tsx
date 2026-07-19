@@ -592,7 +592,7 @@ function LeaderColumn({
         ) : (
           <ul className="space-y-2">
             {tasks.map((t) => (
-              <TaskRow key={t.id} task={t} isAr={isAr} />
+              <TaskRow key={t.id} task={t} isAr={isAr} onOpen={onOpenTask} />
             ))}
           </ul>
         )}
