@@ -481,6 +481,7 @@ function Dashboard() {
 
 
       {uiReady && !ui.isCardHidden(LEADERSHIP_TASKS_KEY) && <LeadershipTasksCard />}
+      {uiReady && <CooHideToggle />}
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded && uiReady ? "done" : "loading"}>
         {!uiReady
