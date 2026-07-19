@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Bell, BellRing, CheckCheck, Trash2, Circle, AlertTriangle, Inbox,
-  Archive, UserCircle2, CheckCircle2,
+  Archive, UserCircle2, CheckCircle2, ExternalLink, Check, Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -60,6 +60,8 @@ export function TaskNotificationsCenter({
   const profiles = useTeamProfiles();
   const [items, setItems] = useState<Notif[]>([]);
   const [tab, setTab] = useState<Tab>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "new" | "urgent">("all");
+  const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
   const [loading, setLoading] = useState(true);
   // task_id -> { status, assignee_id, assigned_by }
   const [taskInfo, setTaskInfo] = useState<Record<string, { status: string; assignee_id: string; assigned_by: string }>>({});
@@ -121,12 +123,14 @@ export function TaskNotificationsCenter({
   const archived = useMemo(() => items.filter(n => isTaskDone(n)), [items, taskInfo]);
 
   const filtered = useMemo(() => {
-    if (tab === "archive") return archived;
-    let base = active;
+    let base = tab === "archive" ? archived : active;
     if (tab === "urgent") base = base.filter(isUrgent);
     else if (tab === "unread") base = base.filter(n => !n.read_at);
+    if (typeFilter === "urgent") base = base.filter(n => isUrgent(n));
+    else if (typeFilter === "new") base = base.filter(n => !isUrgent(n));
+    if (prioFilter !== "all") base = base.filter(n => priorityOf(n) === prioFilter);
     return base;
-  }, [active, archived, tab]);
+  }, [active, archived, tab, typeFilter, prioFilter]);
 
   const unreadCount = active.filter(n => !n.read_at).length;
   const urgentOpen = active.filter(n => isUrgent(n)).length;
@@ -253,6 +257,57 @@ export function TaskNotificationsCenter({
         })}
       </div>
 
+      {/* Sub-filters: Type + Priority */}
+      <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-amber-400/10">
+        <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-100/50 uppercase tracking-wide">
+          <Filter className="h-3 w-3" />
+          {isAr ? "النوع" : "Type"}
+        </div>
+        {([
+          { k: "all",    ar: "الكل",  en: "All" },
+          { k: "new",    ar: "جديدة", en: "New" },
+          { k: "urgent", ar: "عاجلة", en: "Urgent" },
+        ] as { k: "all" | "new" | "urgent"; ar: string; en: string }[]).map(t => (
+          <button
+            key={t.k}
+            onClick={() => setTypeFilter(t.k)}
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold border transition-all ${
+              typeFilter === t.k
+                ? "bg-amber-400/90 text-black border-amber-400"
+                : "bg-white/[0.03] text-amber-100/70 hover:bg-white/10 border-amber-400/15"
+            }`}
+          >
+            {isAr ? t.ar : t.en}
+          </button>
+        ))}
+        <span className="mx-1 h-4 w-px bg-amber-400/20" />
+        <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-100/50 uppercase tracking-wide">
+          {isAr ? "الأولوية" : "Priority"}
+        </div>
+        {(["all", "urgent", "high", "normal", "low"] as ("all" | Priority)[]).map(p => {
+          const meta = p === "all" ? null : PRIO_META[p as Priority];
+          const label = p === "all"
+            ? (isAr ? "الكل" : "All")
+            : (isAr ? meta!.ar : meta!.en);
+          const active = prioFilter === p;
+          return (
+            <button
+              key={p}
+              onClick={() => setPrioFilter(p)}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold border transition-all ${
+                active
+                  ? "bg-amber-400/90 text-black border-amber-400"
+                  : "bg-white/[0.03] text-amber-100/70 hover:bg-white/10 border-amber-400/15"
+              }`}
+            >
+              {meta && <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+
       {/* List */}
       <div className="max-h-[28rem] overflow-y-auto -mx-1 px-1 space-y-2">
         {loading ? (
@@ -283,10 +338,13 @@ export function TaskNotificationsCenter({
             ? (isAr ? "مهمة عاجلة" : "Urgent task")
             : (isAr ? "مهمة جديدة" : "New task");
           return (
-            <button
+            <div
               key={n.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleClick(n)}
-              className={`w-full text-start rounded-xl border p-3 transition-all group ${
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(n); } }}
+              className={`w-full text-start rounded-xl border p-3 transition-all group cursor-pointer relative ${
                 isArchived
                   ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] opacity-70"
                   : glow
@@ -308,8 +366,7 @@ export function TaskNotificationsCenter({
                       : <Circle className="h-2.5 w-2.5 text-white/20" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  {/* Type + Priority pills */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1 pe-16">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${
                       urgent ? "bg-red-500/15 text-red-200 ring-red-500/40" : "bg-amber-400/15 text-amber-200 ring-amber-400/40"
                     }`}>
@@ -336,7 +393,6 @@ export function TaskNotificationsCenter({
                     <div className="mt-1 text-[12px] text-amber-100/70 line-clamp-2 leading-relaxed">{n.body}</div>
                   )}
 
-                  {/* Assigner row */}
                   <div className="mt-2 flex items-center gap-2">
                     {assignerAvatar ? (
                       <img
@@ -364,7 +420,32 @@ export function TaskNotificationsCenter({
                   </div>
                 </div>
               </div>
-            </button>
+
+              <div className="absolute top-2 end-2 flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                {unread && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); markRead(n.id); }}
+                    title={isAr ? "وضع كمقروء" : "Mark as read"}
+                    aria-label={isAr ? "وضع كمقروء" : "Mark as read"}
+                    className="rounded-md p-1.5 bg-amber-400/10 hover:bg-amber-400/25 text-amber-200 ring-1 ring-amber-400/30 transition-colors"
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                )}
+                {n?.meta?.task_id && onOpenTask && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleClick(n); }}
+                    title={isAr ? "فتح المهمة" : "Open task"}
+                    aria-label={isAr ? "فتح المهمة" : "Open task"}
+                    className="rounded-md p-1.5 bg-amber-400/10 hover:bg-amber-400/25 text-amber-200 ring-1 ring-amber-400/30 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
