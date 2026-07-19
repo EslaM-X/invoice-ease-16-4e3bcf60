@@ -287,6 +287,8 @@ export function LeadershipTasksCard() {
   const meId = effective.id;
   const ceoId = ceoProfile?.user_id ?? null;
   const cooId = cooProfile?.user_id ?? null;
+  const isSelfCoo = viewerEmail === COO_SELF_EMAIL;
+  const hideCooColumn = isSelfCoo || !!cooProfile?.hide_from_leadership_card;
 
   async function refresh() {
     if (!meId || (!ceoId && !cooId)) { setTasks([]); setLoaded(true); return; }
