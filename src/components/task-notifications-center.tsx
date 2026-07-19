@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Bell, BellRing, CheckCheck, Trash2, Circle, AlertTriangle, Inbox,
-  Archive, UserCircle2, CheckCircle2,
+  Archive, UserCircle2, CheckCircle2, ExternalLink, Check, Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 
