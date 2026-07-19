@@ -652,13 +652,27 @@ function TasksPage() {
                 <Input type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
               </div>
             </div>
-            <TaskInvoicePicker
-              invoiceId={form.invoice_id}
-              drIds={form.delivery_receipt_ids}
-              onChange={({ invoiceId, drIds }) => setForm({ ...form, invoice_id: invoiceId, delivery_receipt_ids: drIds })}
-              isAr={isAr}
-            />
-          </div>
+              <div>
+                <label className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {isAr ? "رقم للتواصل (اختياري)" : "Contact phone (optional)"}
+                </label>
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  dir="ltr"
+                  value={form.contact_phone}
+                  onChange={e => setForm({ ...form, contact_phone: e.target.value })}
+                  placeholder={isAr ? "مثال: مهندس الموقع 010xxxxxxxx" : "e.g. site engineer 010xxxxxxxx"}
+                />
+              </div>
+              <TaskInvoicePicker
+                invoiceId={form.invoice_id}
+                drIds={form.delivery_receipt_ids}
+                onChange={({ invoiceId, drIds }) => setForm({ ...form, invoice_id: invoiceId, delivery_receipt_ids: drIds })}
+                isAr={isAr}
+              />
+            </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
             <Button onClick={submitCreate}>{isAr ? "إسناد" : "Assign"}</Button>
