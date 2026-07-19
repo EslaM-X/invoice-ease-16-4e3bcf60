@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
+import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
@@ -74,6 +75,8 @@ type Task = {
   status: "pending" | "in_progress" | "done" | "cancelled";
   due_date: string | null;
   created_at: string;
+  invoice_id: string | null;
+  delivery_receipt_ids: string[] | null;
 };
 
 
@@ -285,7 +288,7 @@ export function LeadershipTasksCard() {
     const ids = [ceoId, cooId].filter(Boolean) as string[];
     const { data } = await supabase
       .from("tasks")
-      .select("id,title,description,assignee_id,assigned_by,priority,status,due_date,created_at")
+      .select("id,title,description,assignee_id,assigned_by,priority,status,due_date,created_at,invoice_id,delivery_receipt_ids")
       .eq("assignee_id", meId)
       .in("assigned_by", ids)
       // Ascending order = stable positions. New inserts naturally append at the
@@ -615,6 +618,16 @@ function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {priorityChip(task.priority, isAr)}
               {statusChip(task.status, isAr)}
+              {task.invoice_id && (
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                  <TaskInvoiceChip
+                    invoiceId={task.invoice_id}
+                    drCount={task.delivery_receipt_ids?.length ?? 0}
+                    isAr={isAr}
+                    size="xs"
+                  />
+                </span>
+              )}
               {due && (
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ring-1 ${
                   overdue ? "bg-red-500/15 text-red-300 ring-red-400/40" : "bg-black/40 text-amber-100/70 ring-amber-400/20"

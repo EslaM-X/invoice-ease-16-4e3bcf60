@@ -18,9 +18,13 @@ import {
   ClipboardList, Plus, CheckCircle2, XCircle, Play, Flag, MessageSquare,
   Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
   X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
+  FileText, Truck,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { List, type RowComponentProps } from "react-window";
 import { toast } from "sonner";
+import { TaskInvoicePicker } from "@/components/task-invoice-picker";
+import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 
 
 export const Route = createFileRoute("/tasks")({
@@ -47,6 +51,8 @@ type Task = {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  invoice_id: string | null;
+  delivery_receipt_ids: string[] | null;
 };
 type Comment = { id: string; task_id: string; author_id: string; body: string; created_at: string };
 
@@ -82,6 +88,7 @@ function TasksPage() {
   const [view, setView] = useState<"inbox" | "done" | "sent" | "all">("inbox");
   const [prioFilter, setPrioFilter] = useState<TaskPriority | "all">("all");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [invFilter, setInvFilter] = useState<"all" | "closed" | "open" | "none">("all");
   const [search, setSearch] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -89,9 +96,12 @@ function TasksPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
-  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string }>({
-    title: "", description: "", assignee_id: "", priority: "normal", due_date: "",
+  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[] }>({
+    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [],
   });
+
+  // Invoice-status hydration for filter chip (closed / open / none)
+  const [invStatusMap, setInvStatusMap] = useState<Record<string, string | null>>({});
 
   // Position-preserving merge: keep existing row identity/order; only new
   // ids append. Rows that disappear from the server are removed. This prevents
@@ -151,6 +161,22 @@ function TasksPage() {
 
   const openTask = useMemo(() => tasks.find(t => t.id === openId) ?? null, [tasks, openId]);
 
+  // Hydrate invoice statuses for any linked invoices so the filter can distinguish
+  // closed (after-sales) vs open (customer) tasks without a per-row fetch.
+  useEffect(() => {
+    const needed = Array.from(new Set(tasks.map(t => t.invoice_id).filter((x): x is string => !!x && !(x in invStatusMap))));
+    if (needed.length === 0) return;
+    supabase.from("invoices").select("id, status").in("id", needed)
+      .then(({ data }) => {
+        if (!data) return;
+        setInvStatusMap(prev => {
+          const next = { ...prev };
+          for (const r of data as any[]) next[r.id] = r.status ?? null;
+          return next;
+        });
+      });
+  }, [tasks]);
+
   // Filter only — no re-sort. The fetched order (newest first by created_at)
   // is the single source of truth for position, so applying a filter, changing
   // view, or typing in search never moves an existing row.
@@ -161,12 +187,21 @@ function TasksPage() {
     else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
     if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
     if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
+    if (invFilter !== "all") {
+      list = list.filter(t => {
+        if (invFilter === "none") return !t.invoice_id;
+        if (!t.invoice_id) return false;
+        const s = invStatusMap[t.invoice_id];
+        const closed = s === "completed";
+        return invFilter === "closed" ? closed : !closed;
+      });
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(t => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q));
     }
     return list;
-  }, [tasks, view, prioFilter, statusFilter, search, user?.id]);
+  }, [tasks, view, prioFilter, statusFilter, invFilter, invStatusMap, search, user?.id]);
 
 
 
@@ -190,11 +225,13 @@ function TasksPage() {
       assigned_by: user!.id,
       priority: form.priority,
       due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      invoice_id: form.invoice_id,
+      delivery_receipt_ids: form.delivery_receipt_ids,
     });
     if (error) { toast.error(error.message); return; }
     toast.success(isAr ? "تم إسناد المهمة" : "Task assigned");
     setCreateOpen(false);
-    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "" });
+    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [] });
     load();
   };
 
@@ -411,6 +448,20 @@ function TasksPage() {
                 ))}
               </ChipRow>
             </FilterGroup>
+            <FilterGroup label={isAr ? "الفاتورة" : "Invoice"}>
+              <ChipRow>
+                <Chip active={invFilter === "all"} onClick={() => setInvFilter("all")}>{isAr ? "الكل" : "All"}</Chip>
+                <Chip active={invFilter === "closed"} onClick={() => setInvFilter("closed")}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  {isAr ? "خدمة ما بعد البيع" : "After-sales"}
+                </Chip>
+                <Chip active={invFilter === "open"} onClick={() => setInvFilter("open")}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  {isAr ? "عميل" : "Customer"}
+                </Chip>
+                <Chip active={invFilter === "none"} onClick={() => setInvFilter("none")}>{isAr ? "بدون فاتورة" : "No invoice"}</Chip>
+              </ChipRow>
+            </FilterGroup>
           </div>
         </aside>
 
@@ -493,6 +544,16 @@ function TasksPage() {
                         <span className={`h-2 w-2 rounded-full ${PRIO_META[t.priority].dot} shrink-0`} title={isAr ? PRIO_META[t.priority].ar : PRIO_META[t.priority].en} />
                         <Icon className={`h-4 w-4 shrink-0 ${STATUS_META[t.status].tone}`} />
                         <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.title}</span>
+                        {t.invoice_id && (
+                          <span className="hidden md:inline-flex shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <TaskInvoiceChip
+                              invoiceId={t.invoice_id}
+                              drCount={t.delivery_receipt_ids?.length ?? 0}
+                              isAr={isAr}
+                              size="xs"
+                            />
+                          </span>
+                        )}
                         <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
                           {assignee?.display_name || assignee?.email || "—"}
                         </span>
@@ -516,7 +577,7 @@ function TasksPage() {
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isAr ? "مهمة جديدة" : "New task"}</DialogTitle>
           </DialogHeader>
@@ -555,6 +616,12 @@ function TasksPage() {
                 <Input type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
               </div>
             </div>
+            <TaskInvoicePicker
+              invoiceId={form.invoice_id}
+              drIds={form.delivery_receipt_ids}
+              onChange={({ invoiceId, drIds }) => setForm({ ...form, invoice_id: invoiceId, delivery_receipt_ids: drIds })}
+              isAr={isAr}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
@@ -588,6 +655,43 @@ function TasksPage() {
                   {openTask.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(openTask.started_at, lang)} />}
                   {openTask.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(openTask.completed_at, lang)} />}
                 </div>
+
+                {openTask.invoice_id && (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      {isAr ? "الفاتورة المرتبطة" : "Linked invoice"}
+                    </div>
+                    <TaskInvoiceChip
+                      invoiceId={openTask.invoice_id}
+                      drCount={openTask.delivery_receipt_ids?.length ?? 0}
+                      isAr={isAr}
+                      size="sm"
+                    />
+                    {openTask.delivery_receipt_ids && openTask.delivery_receipt_ids.length > 0 && (
+                      <div className="pt-1">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5 mb-1">
+                          <Truck className="h-3.5 w-3.5" />
+                          {isAr ? "محاضر الاستلام" : "Delivery receipts"}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {openTask.delivery_receipt_ids.map((drId) => (
+                            <Link
+                              key={drId}
+                              to="/delivery-receipts/$id"
+                              params={{ id: drId }}
+                              className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium ring-1 ring-primary/20 hover:bg-primary/20 transition-colors tabular-nums"
+                            >
+                              <Truck className="h-3 w-3" />
+                              {drId.slice(0, 6)}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
 
                 <div className="flex flex-wrap gap-2">
                   {openTask.assignee_id === user?.id && openTask.status === "pending" && (
@@ -853,6 +957,16 @@ function VirtualTaskRow({ index, style, ariaAttributes, rows, profiles, selected
         <span className={`h-2 w-2 rounded-full ${PRIO_META[t.priority].dot} shrink-0`} title={isAr ? PRIO_META[t.priority].ar : PRIO_META[t.priority].en} />
         <Icon className={`h-4 w-4 shrink-0 ${STATUS_META[t.status].tone}`} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.title}</span>
+        {t.invoice_id && (
+          <span className="hidden md:inline-flex shrink-0" onClick={(e) => e.stopPropagation()}>
+            <TaskInvoiceChip
+              invoiceId={t.invoice_id}
+              drCount={t.delivery_receipt_ids?.length ?? 0}
+              isAr={isAr}
+              size="xs"
+            />
+          </span>
+        )}
         <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
           {assignee?.display_name || assignee?.email || "—"}
         </span>
