@@ -8,11 +8,13 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { fmtDateTime } from "@/lib/utils-money";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2, XCircle, Play, Flag, MessageSquare, Send, Trash2,
-  Circle, CircleDot, FileText, Truck, Phone, ExternalLink,
+  Circle, CircleDot, FileText, Truck, Phone, ExternalLink, Pencil, Save, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
@@ -104,6 +106,17 @@ export function TaskDetailDialog({
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<{
+    title: string;
+    description: string;
+    priority: TaskPriority;
+    due_date: string;
+    contact_phone: string;
+  }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "" });
+
+  const canEdit = !!task && (isManager || task.assigned_by === user?.id);
 
   const loadTask = async () => {
     if (!taskId) { setTask(null); return; }
@@ -116,9 +129,40 @@ export function TaskDetailDialog({
     setComments(((data as any) ?? []) as Comment[]);
   };
 
-  useEffect(() => { loadTask(); loadComments(); setNewComment(""); }, [taskId]);
+  useEffect(() => { loadTask(); loadComments(); setNewComment(""); setEditing(false); }, [taskId]);
   useRealtimeTable("tasks" as any, () => { if (taskId) loadTask(); });
   useRealtimeTable("task_comments" as any, () => { if (taskId) loadComments(); });
+
+  // Sync edit form from latest task whenever we're not actively editing.
+  useEffect(() => {
+    if (!task || editing) return;
+    setForm({
+      title: task.title ?? "",
+      description: task.description ?? "",
+      priority: task.priority,
+      due_date: task.due_date ? task.due_date.slice(0, 10) : "",
+      contact_phone: task.contact_phone ?? "",
+    });
+  }, [task, editing]);
+
+  const saveEdits = async () => {
+    if (!task) return;
+    const title = form.title.trim();
+    if (!title) { toast.error(isAr ? "العنوان مطلوب" : "Title is required"); return; }
+    setSaving(true);
+    const patch: any = {
+      title,
+      description: form.description.trim() || null,
+      priority: form.priority,
+      due_date: form.due_date || null,
+      contact_phone: form.contact_phone.trim() || null,
+    };
+    const { error } = await supabase.from("tasks" as any).update(patch).eq("id", task.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isAr ? "تم حفظ التعديلات" : "Changes saved");
+    setEditing(false);
+  };
 
   const updateStatus = async (status: TaskStatus) => {
     if (!task) return;
@@ -159,17 +203,61 @@ export function TaskDetailDialog({
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {task.description && (
-                <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{task.description}</div>
+              {editing ? (
+                <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "العنوان" : "Title"}</label>
+                    <Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الوصف" : "Description"}</label>
+                    <Textarea rows={3} value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الأولوية" : "Priority"}</label>
+                      <Select value={form.priority} onValueChange={(v) => setForm(f => ({ ...f, priority: v as TaskPriority }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(["urgent","high","normal","low"] as TaskPriority[]).map(p => (
+                            <SelectItem key={p} value={p}>{isAr ? PRIO_META[p].ar : PRIO_META[p].en}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الاستحقاق" : "Due date"}</label>
+                      <Input type="date" value={form.due_date} onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "رقم التواصل" : "Contact phone"}</label>
+                      <Input value={form.contact_phone} onChange={(e) => setForm(f => ({ ...f, contact_phone: e.target.value }))} dir="ltr" />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={saveEdits} disabled={saving}>
+                      <Save className="h-4 w-4 me-1" />{isAr ? "حفظ" : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>
+                      <X className="h-4 w-4 me-1" />{isAr ? "إلغاء" : "Cancel"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {task.description && (
+                    <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{task.description}</div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    <Meta label={isAr ? "أسندها" : "Assigned by"} value={profiles.byId(task.assigned_by)?.display_name || "—"} />
+                    <Meta label={isAr ? "المكلَّف" : "Assignee"} value={profiles.byId(task.assignee_id)?.display_name || "—"} />
+                    <Meta label={isAr ? "الإسناد" : "Created"} value={fmtDateTime(task.created_at, lang)} />
+                    {task.due_date && <Meta label={isAr ? "الاستحقاق" : "Due"} value={fmtDateTime(task.due_date, lang)} />}
+                    {task.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(task.started_at, lang)} />}
+                    {task.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(task.completed_at, lang)} />}
+                  </div>
+                </>
               )}
-              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                <Meta label={isAr ? "أسندها" : "Assigned by"} value={profiles.byId(task.assigned_by)?.display_name || "—"} />
-                <Meta label={isAr ? "المكلَّف" : "Assignee"} value={profiles.byId(task.assignee_id)?.display_name || "—"} />
-                <Meta label={isAr ? "الإسناد" : "Created"} value={fmtDateTime(task.created_at, lang)} />
-                {task.due_date && <Meta label={isAr ? "الاستحقاق" : "Due"} value={fmtDateTime(task.due_date, lang)} />}
-                {task.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(task.started_at, lang)} />}
-                {task.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(task.completed_at, lang)} />}
-              </div>
 
               {task.contact_phone && (
                 <a
@@ -219,6 +307,11 @@ export function TaskDetailDialog({
               )}
 
               <div className="flex flex-wrap gap-2">
+                {canEdit && !editing && (
+                  <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                    <Pencil className="h-4 w-4 me-1" />{isAr ? "تعديل" : "Edit"}
+                  </Button>
+                )}
                 {task.assignee_id === user?.id && task.status === "pending" && (
                   <Button size="sm" onClick={() => updateStatus("in_progress")}>
                     <Play className="h-4 w-4 me-1" />{isAr ? "بدء التنفيذ" : "Start"}
