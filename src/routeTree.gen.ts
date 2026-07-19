@@ -73,6 +73,7 @@ import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-recei
 import { Route as DeliveryReceiptsArchiveRouteImport } from './routes/delivery-receipts.archive'
 import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
 import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
+import { Route as AdminLeadershipViewersRouteImport } from './routes/admin_.leadership-viewers'
 import { Route as AdminAccessStudioRouteImport } from './routes/admin_.access-studio'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -410,6 +411,11 @@ const ApiXChatRoute = ApiXChatRouteImport.update({
   path: '/api/x-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLeadershipViewersRoute = AdminLeadershipViewersRouteImport.update({
+  id: '/admin_/leadership-viewers',
+  path: '/admin/leadership-viewers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAccessStudioRoute = AdminAccessStudioRouteImport.update({
   id: '/admin_/access-studio',
   path: '/admin/access-studio',
@@ -558,6 +564,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/access-studio': typeof AdminAccessStudioRoute
+  '/admin/leadership-viewers': typeof AdminLeadershipViewersRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -640,6 +647,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/access-studio': typeof AdminAccessStudioRoute
+  '/admin/leadership-viewers': typeof AdminLeadershipViewersRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -723,6 +731,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin_/access-studio': typeof AdminAccessStudioRoute
+  '/admin_/leadership-viewers': typeof AdminLeadershipViewersRoute
   '/api/x-chat': typeof ApiXChatRoute
   '/delivery-receipts/$id': typeof DeliveryReceiptsIdRoute
   '/delivery-receipts/archive': typeof DeliveryReceiptsArchiveRoute
@@ -807,6 +816,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/access-studio'
+    | '/admin/leadership-viewers'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -889,6 +899,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/access-studio'
+    | '/admin/leadership-viewers'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -971,6 +982,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin_/access-studio'
+    | '/admin_/leadership-viewers'
     | '/api/x-chat'
     | '/delivery-receipts/$id'
     | '/delivery-receipts/archive'
@@ -1054,6 +1066,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AdminAccessStudioRoute: typeof AdminAccessStudioRoute
+  AdminLeadershipViewersRoute: typeof AdminLeadershipViewersRoute
   ApiXChatRoute: typeof ApiXChatRoute
   DeliveryReceiptsIdRoute: typeof DeliveryReceiptsIdRoute
   DeliveryReceiptsArchiveRoute: typeof DeliveryReceiptsArchiveRoute
@@ -1530,6 +1543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiXChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/leadership-viewers': {
+      id: '/admin_/leadership-viewers'
+      path: '/admin/leadership-viewers'
+      fullPath: '/admin/leadership-viewers'
+      preLoaderRoute: typeof AdminLeadershipViewersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/access-studio': {
       id: '/admin_/access-studio'
       path: '/admin/access-studio'
@@ -1703,6 +1723,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AdminAccessStudioRoute: AdminAccessStudioRoute,
+  AdminLeadershipViewersRoute: AdminLeadershipViewersRoute,
   ApiXChatRoute: ApiXChatRoute,
   DeliveryReceiptsIdRoute: DeliveryReceiptsIdRoute,
   DeliveryReceiptsArchiveRoute: DeliveryReceiptsArchiveRoute,
