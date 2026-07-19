@@ -106,8 +106,17 @@ export function TaskDetailDialog({
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<{
+    title: string;
+    description: string;
+    priority: TaskPriority;
+    due_date: string;
+    contact_phone: string;
+  }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "" });
 
-  const loadTask = async () => {
+  const canEdit = !!task && (isManager || task.assigned_by === user?.id);
     if (!taskId) { setTask(null); return; }
     const { data } = await supabase.from("tasks" as any).select("*").eq("id", taskId).maybeSingle();
     setTask((data as any) ?? null);
