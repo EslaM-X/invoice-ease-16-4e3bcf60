@@ -9,6 +9,7 @@ import { useRealtimeTable } from "@/lib/realtime";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 import { TaskDetailDialog } from "@/components/task-detail-dialog";
 import { TaskNotificationsCenter } from "@/components/task-notifications-center";
+import { RoleBadge } from "@/components/role-badge";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
@@ -564,8 +565,9 @@ function LeaderColumn({
             <LeaderIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
             <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">{leader.short}</span>
           </div>
-          <div className="mt-0.5 truncate text-base font-bold leading-tight text-amber-100 sm:text-lg">
-            {leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}
+          <div className="mt-0.5 flex items-center gap-2 truncate text-base font-bold leading-tight text-amber-100 sm:text-lg">
+            <span className="truncate">{leader.displayOverride || profile?.display_name || leader.email.split("@")[0]}</span>
+            <RoleBadge email={leader.email} size="sm" />
           </div>
           <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-amber-100/70 sm:text-xs">
             {roleLabel}
