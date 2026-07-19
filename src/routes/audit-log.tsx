@@ -8,6 +8,7 @@ import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import { useRealtimeTable } from "@/lib/realtime";
 import { ShieldCheck, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { ExecutiveGate } from "@/components/executive-gate";
+import { RoleBadge } from "@/components/role-badge";
 
 export const Route = createFileRoute("/audit-log")({
   component: () => (
