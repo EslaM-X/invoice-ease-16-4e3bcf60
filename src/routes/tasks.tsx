@@ -161,6 +161,22 @@ function TasksPage() {
 
   const openTask = useMemo(() => tasks.find(t => t.id === openId) ?? null, [tasks, openId]);
 
+  // Hydrate invoice statuses for any linked invoices so the filter can distinguish
+  // closed (after-sales) vs open (customer) tasks without a per-row fetch.
+  useEffect(() => {
+    const needed = Array.from(new Set(tasks.map(t => t.invoice_id).filter((x): x is string => !!x && !(x in invStatusMap))));
+    if (needed.length === 0) return;
+    supabase.from("invoices").select("id, status").in("id", needed)
+      .then(({ data }) => {
+        if (!data) return;
+        setInvStatusMap(prev => {
+          const next = { ...prev };
+          for (const r of data as any[]) next[r.id] = r.status ?? null;
+          return next;
+        });
+      });
+  }, [tasks]);
+
   // Filter only — no re-sort. The fetched order (newest first by created_at)
   // is the single source of truth for position, so applying a filter, changing
   // view, or typing in search never moves an existing row.
@@ -171,12 +187,21 @@ function TasksPage() {
     else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
     if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
     if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
+    if (invFilter !== "all") {
+      list = list.filter(t => {
+        if (invFilter === "none") return !t.invoice_id;
+        if (!t.invoice_id) return false;
+        const s = invStatusMap[t.invoice_id];
+        const closed = s === "completed";
+        return invFilter === "closed" ? closed : !closed;
+      });
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(t => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q));
     }
     return list;
-  }, [tasks, view, prioFilter, statusFilter, search, user?.id]);
+  }, [tasks, view, prioFilter, statusFilter, invFilter, invStatusMap, search, user?.id]);
 
 
 
