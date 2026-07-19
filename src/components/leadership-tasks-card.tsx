@@ -290,14 +290,23 @@ export function LeadershipTasksCard() {
   const isSelfCoo = viewerEmail === COO_SELF_EMAIL;
   const hideCooColumn = isSelfCoo || !!cooProfile?.hide_from_leadership_card;
 
+  // When the COO views his own dashboard, restrict the "assigned by" filter
+  // to the CEO only — his own self-assigned tasks (if any) must never appear
+  // inside this card. Re-evaluated on every login / user swap via `meId`.
+  const allowedAssignerIds = useMemo(() => {
+    const list: string[] = [];
+    if (ceoId) list.push(ceoId);
+    if (!isSelfCoo && cooId) list.push(cooId);
+    return list;
+  }, [ceoId, cooId, isSelfCoo]);
+
   async function refresh() {
-    if (!meId || (!ceoId && !cooId)) { setTasks([]); setLoaded(true); return; }
-    const ids = [ceoId, cooId].filter(Boolean) as string[];
+    if (!meId || allowedAssignerIds.length === 0) { setTasks([]); setLoaded(true); return; }
     const { data } = await supabase
       .from("tasks")
       .select("id,title,description,assignee_id,assigned_by,priority,status,due_date,created_at,invoice_id,delivery_receipt_ids")
       .eq("assignee_id", meId)
-      .in("assigned_by", ids)
+      .in("assigned_by", allowedAssignerIds)
       // Ascending order = stable positions. New inserts naturally append at the
       // end; existing rows never shift when other rows are added / removed.
       .order("created_at", { ascending: true })
@@ -316,6 +325,7 @@ export function LeadershipTasksCard() {
     });
     setLoaded(true);
   }
+
 
 
   useEffect(() => { if (allowed) void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, meId, ceoId, cooId]);
