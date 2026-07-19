@@ -131,7 +131,7 @@ function SalesRange() {
   useRealtimeTable("invoice_items", () => load(), [from, to, user?.id]);
   useRealtimeTable("products", () => load(), [from, to, user?.id]);
 
-  const { rows, totalUnits, totalValue, byCollection } = useMemo(() => {
+  const { rows, totalUnits, totalValue, linesValue, byCollection } = useMemo(() => {
     const invMap = new Map(invoices.map((i) => [i.id, i]));
     const map = new Map<string, Row>();
     for (const it of items) {
@@ -166,14 +166,16 @@ function SalesRange() {
     }
     const rows = Array.from(map.values()).sort((a, b) => b.qty - a.qty);
     const totalUnits = rows.reduce((s, r) => s + r.qty, 0);
-    const totalValue = rows.reduce((s, r) => s + r.total_value, 0);
+    const linesValue = rows.reduce((s, r) => s + r.total_value, 0);
+    // Match "My Sales": sum of final invoice totals (includes VAT, shipping, minus discount)
+    const totalValue = invoices.reduce((s, i) => s + (Number(i.total) || 0), 0);
     const byCollection = new Map<string, { units: number; value: number; distinct: number }>();
     for (const r of rows) {
       const c = byCollection.get(r.collection) ?? { units: 0, value: 0, distinct: 0 };
       c.units += r.qty; c.value += r.total_value; c.distinct += 1;
       byCollection.set(r.collection, c);
     }
-    return { rows, totalUnits, totalValue, byCollection };
+    return { rows, totalUnits, totalValue, linesValue, byCollection };
   }, [invoices, items, products]);
 
   const exportXlsx = () => {
@@ -295,8 +297,9 @@ function SalesRange() {
           <div className="text-3xl font-bold flex items-center gap-2 mt-1"><Boxes className="h-6 w-6 text-primary" /> {totalUnits}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{tt("إجمالي القيمة", "Total value")}</div>
+          <div className="text-xs text-muted-foreground">{tt("إجمالي القيمة (مطابق لمبيعاتي)", "Total value (matches My Sales)")}</div>
           <div className="text-3xl font-bold mt-1">{fmtMoney(totalValue)}</div>
+          <div className="text-[11px] text-muted-foreground mt-1">{tt("شامل الضريبة والشحن، بعد الخصم", "Includes VAT & shipping, after discount")} · {tt("بنود المنتجات", "Product lines")}: {fmtMoney(linesValue)}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">{tt("عدد المنتجات المختلفة / الفواتير", "Distinct products / invoices")}</div>
@@ -374,7 +377,7 @@ function SalesRange() {
                 <tr className="border-t-2">
                   <td className="p-3" colSpan={6}>{tt("الإجمالي", "Total")}</td>
                   <td className="p-3 text-primary text-lg">{totalUnits}</td>
-                  <td className="p-3">{fmtMoney(totalValue)}</td>
+                  <td className="p-3">{fmtMoney(linesValue)}</td>
                   <td></td>
                 </tr>
               </tfoot>
