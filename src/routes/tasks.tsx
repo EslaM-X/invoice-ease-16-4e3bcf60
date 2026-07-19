@@ -230,8 +230,8 @@ function TasksPage() {
       invoice_id: form.invoice_id,
       delivery_receipt_ids: form.delivery_receipt_ids,
       contact_phone: phone,
-    }).select("id").maybeSingle();
-    if (error) { toast.error(error.message); return; }
+    }).select("id").maybeSingle() as any;
+    const createdId = (created as any)?.id ?? null;
 
     // 🔔 Instant notification (push + email) — urgency by priority
     try {
