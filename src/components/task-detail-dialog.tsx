@@ -307,6 +307,11 @@ export function TaskDetailDialog({
               )}
 
               <div className="flex flex-wrap gap-2">
+                {canEdit && !editing && (
+                  <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                    <Pencil className="h-4 w-4 me-1" />{isAr ? "تعديل" : "Edit"}
+                  </Button>
+                )}
                 {task.assignee_id === user?.id && task.status === "pending" && (
                   <Button size="sm" onClick={() => updateStatus("in_progress")}>
                     <Play className="h-4 w-4 me-1" />{isAr ? "بدء التنفيذ" : "Start"}
