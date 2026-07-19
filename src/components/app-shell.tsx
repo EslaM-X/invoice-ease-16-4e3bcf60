@@ -539,6 +539,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Sparkles className="h-4 w-4 text-[#c9a84c]" /> {lang === "ar" ? "استوديو الصلاحيات" : "Access Studio"}
             </Link>
           )}
+          {isSuperAdmin && !effectiveUser.isPreviewing && (
+            <Link
+              to="/admin/leadership-viewers"
+              onClick={() => setOpen(false)}
+              className={`group relative flex items-center gap-3 rounded-md ps-9 pe-3 py-2 text-sm font-medium transition ${
+                location.pathname.startsWith("/admin/leadership-viewers")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4 text-amber-500" /> {lang === "ar" ? "مشاهدو كارت القيادة" : "Leadership Viewers"}
+            </Link>
+          )}
         </GroupNav>
         )}
       </nav>
