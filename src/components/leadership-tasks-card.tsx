@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
+import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
