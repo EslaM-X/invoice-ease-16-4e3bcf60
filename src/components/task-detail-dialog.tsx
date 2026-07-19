@@ -268,28 +268,34 @@ export function TaskDetailDialog({
                 </>
               )}
 
-              {task.contact_phone && (() => {
-                const raw = task.contact_phone!;
+              {(task.contact_phone || task.contact_name) && (() => {
+                const raw = task.contact_phone || "";
                 const digits = raw.replace(/[^\d]/g, "");
+                const who = task.contact_name?.trim();
                 const waMsg = encodeURIComponent(
                   isAr
-                    ? `السلام عليكم، بخصوص المهمة: ${task.title}${task.invoice_id ? ` (فاتورة ${task.invoice_id.slice(0,6)})` : ""}`
-                    : `Hello, regarding the task: ${task.title}${task.invoice_id ? ` (invoice ${task.invoice_id.slice(0,6)})` : ""}`
+                    ? `السلام عليكم${who ? ` ${who}` : ""}، بخصوص المهمة: ${task.title}${task.invoice_id ? ` (فاتورة ${task.invoice_id.slice(0,6)})` : ""}`
+                    : `Hello${who ? ` ${who}` : ""}, regarding the task: ${task.title}${task.invoice_id ? ` (invoice ${task.invoice_id.slice(0,6)})` : ""}`
                 );
                 const waUrl = `https://wa.me/${digits}?text=${waMsg}`;
                 return (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5">
                       <Phone className="h-3.5 w-3.5" />
-                      {isAr ? "رقم التواصل" : "Contact number"}
+                      {isAr ? "جهة التواصل" : "Contact"}
                     </div>
-                    {/* Full, selectable, readable number */}
-                    <div
-                      dir="ltr"
-                      className="select-all font-mono text-lg font-bold tracking-wider text-foreground tabular-nums break-all"
-                    >
-                      {raw}
-                    </div>
+                    {who && (
+                      <div className="text-sm font-semibold text-foreground">{who}</div>
+                    )}
+                    {raw && (
+                      <div
+                        dir="ltr"
+                        className="select-all font-mono text-lg font-bold tracking-wider text-foreground tabular-nums break-all"
+                      >
+                        {raw}
+                      </div>
+                    )}
+                    {raw && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       <a
                         href={`tel:${raw}`}
