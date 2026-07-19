@@ -25,6 +25,7 @@ import { List, type RowComponentProps } from "react-window";
 import { toast } from "sonner";
 import { TaskInvoicePicker } from "@/components/task-invoice-picker";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
+import { TaskDetailDialog } from "@/components/task-detail-dialog";
 
 
 export const Route = createFileRoute("/tasks")({
