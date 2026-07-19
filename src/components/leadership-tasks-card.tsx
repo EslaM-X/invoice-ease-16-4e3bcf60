@@ -449,7 +449,8 @@ export function LeadershipTasksCard() {
           isAr={isAr}
           leader={CEO}
           profile={ceoProfile}
-          tasks={ceoTasks}
+          tasks={ceoActive}
+          archive={ceoArchive}
           loaded={loaded}
           flash={flash.ceo}
           onOpenTask={setOpenTaskId}
@@ -458,11 +459,13 @@ export function LeadershipTasksCard() {
           isAr={isAr}
           leader={COO}
           profile={cooProfile}
-          tasks={cooTasks}
+          tasks={cooActive}
+          archive={cooArchive}
           loaded={loaded}
           flash={flash.coo}
           onOpenTask={setOpenTaskId}
         />
+
       </div>
 
       {/* Task notifications center — inside the leadership card */}
