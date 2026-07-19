@@ -338,10 +338,13 @@ export function TaskNotificationsCenter({
             ? (isAr ? "مهمة عاجلة" : "Urgent task")
             : (isAr ? "مهمة جديدة" : "New task");
           return (
-            <button
+            <div
               key={n.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleClick(n)}
-              className={`w-full text-start rounded-xl border p-3 transition-all group ${
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(n); } }}
+              className={`w-full text-start rounded-xl border p-3 transition-all group cursor-pointer relative ${
                 isArchived
                   ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] opacity-70"
                   : glow
@@ -363,8 +366,7 @@ export function TaskNotificationsCenter({
                       : <Circle className="h-2.5 w-2.5 text-white/20" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  {/* Type + Priority pills */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1 pe-16">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${
                       urgent ? "bg-red-500/15 text-red-200 ring-red-500/40" : "bg-amber-400/15 text-amber-200 ring-amber-400/40"
                     }`}>
@@ -391,7 +393,6 @@ export function TaskNotificationsCenter({
                     <div className="mt-1 text-[12px] text-amber-100/70 line-clamp-2 leading-relaxed">{n.body}</div>
                   )}
 
-                  {/* Assigner row */}
                   <div className="mt-2 flex items-center gap-2">
                     {assignerAvatar ? (
                       <img
@@ -419,7 +420,32 @@ export function TaskNotificationsCenter({
                   </div>
                 </div>
               </div>
-            </button>
+
+              <div className="absolute top-2 end-2 flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                {unread && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); markRead(n.id); }}
+                    title={isAr ? "وضع كمقروء" : "Mark as read"}
+                    aria-label={isAr ? "وضع كمقروء" : "Mark as read"}
+                    className="rounded-md p-1.5 bg-amber-400/10 hover:bg-amber-400/25 text-amber-200 ring-1 ring-amber-400/30 transition-colors"
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                )}
+                {n?.meta?.task_id && onOpenTask && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleClick(n); }}
+                    title={isAr ? "فتح المهمة" : "Open task"}
+                    aria-label={isAr ? "فتح المهمة" : "Open task"}
+                    className="rounded-md p-1.5 bg-amber-400/10 hover:bg-amber-400/25 text-amber-200 ring-1 ring-amber-400/30 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
