@@ -8,6 +8,7 @@ import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 import { TaskDetailDialog } from "@/components/task-detail-dialog";
+import { TaskNotificationsCenter } from "@/components/task-notifications-center";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
