@@ -63,8 +63,8 @@ function versioned(url: string | null, version: string | number | null | undefin
  * CEO (k.elsharbatly) and the COO — Chief Operating Officer (e.hesham),
  * split into two halves.
  */
-const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com", "cfo@steinheim-eg.com"]);
 const COO_SELF_EMAIL = "e.hesham@steinheim-eg.com";
+const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com", "cfo@steinheim-eg.com", COO_SELF_EMAIL]);
 
 const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي — CEO", roleEn: "CEO — Chief Executive Officer", short: "CEO", displayOverride: null as string | null, Icon: Crown };
 const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", displayOverride: "Eslam Hesham" as string | null, Icon: Briefcase };
@@ -287,6 +287,8 @@ export function LeadershipTasksCard() {
   const meId = effective.id;
   const ceoId = ceoProfile?.user_id ?? null;
   const cooId = cooProfile?.user_id ?? null;
+  const isSelfCoo = viewerEmail === COO_SELF_EMAIL;
+  const hideCooColumn = isSelfCoo || !!cooProfile?.hide_from_leadership_card;
 
   async function refresh() {
     if (!meId || (!ceoId && !cooId)) { setTasks([]); setLoaded(true); return; }
@@ -442,9 +444,9 @@ export function LeadershipTasksCard() {
       </div>
 
       {/* Two halves — stack on mobile, side-by-side on md+ */}
-      <div className={`relative mt-4 grid gap-3 sm:gap-4 ${cooProfile?.hide_from_leadership_card ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+      <div className={`relative mt-4 grid gap-3 sm:gap-4 ${hideCooColumn ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
         {/* Vertical gold divider */}
-        {!cooProfile?.hide_from_leadership_card && (
+        {!hideCooColumn && (
           <div aria-hidden className="pointer-events-none absolute inset-y-2 left-1/2 hidden w-px -translate-x-1/2 md:block"
                style={{ background: "linear-gradient(to bottom, transparent, rgba(233,199,126,0.35), transparent)" }} />
         )}
@@ -459,7 +461,7 @@ export function LeadershipTasksCard() {
           flash={flash.ceo}
           onOpenTask={setOpenTaskId}
         />
-        {!cooProfile?.hide_from_leadership_card && (
+        {!hideCooColumn && (
           <LeaderColumn
             isAr={isAr}
             leader={COO}
