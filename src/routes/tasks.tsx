@@ -56,6 +56,7 @@ type Task = {
   invoice_id: string | null;
   delivery_receipt_ids: string[] | null;
   contact_phone: string | null;
+  contact_name: string | null;
 };
 type Comment = { id: string; task_id: string; author_id: string; body: string; created_at: string };
 
@@ -99,8 +100,8 @@ function TasksPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
-  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[]; contact_phone: string }>({
-    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "",
+  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[]; contact_phone: string; contact_name: string }>({
+    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "", contact_name: "",
   });
 
   // Invoice-status hydration for filter chip (closed / open / none)
@@ -222,6 +223,7 @@ function TasksPage() {
   const submitCreate = async () => {
     if (!form.title.trim() || !form.assignee_id) { toast.error(isAr ? "أدخل العنوان واختر المكلَّف" : "Title and assignee required"); return; }
     const phone = form.contact_phone.trim() || null;
+    const contactName = form.contact_name.trim() || null;
     const insertRes: any = await (supabase.from("tasks" as any).insert({
       title: form.title.trim(),
       description: form.description.trim() || null,
@@ -232,6 +234,7 @@ function TasksPage() {
       invoice_id: form.invoice_id,
       delivery_receipt_ids: form.delivery_receipt_ids,
       contact_phone: phone,
+      contact_name: contactName,
     }) as any).select("id").maybeSingle();
     if (insertRes?.error) { toast.error(insertRes.error.message); return; }
     const createdId: string | null = insertRes?.data?.id ?? null;
@@ -245,9 +248,14 @@ function TasksPage() {
           : form.priority === "low"
             ? (isAr ? "🟢 أولوية منخفضة" : "🟢 Low priority")
             : (isAr ? "🔔 مهمة جديدة" : "🔔 New task");
+      const contactLabel = phone
+        ? (contactName
+            ? (isAr ? `📞 ${contactName}: ${phone}` : `📞 ${contactName}: ${phone}`)
+            : (isAr ? `📞 للتواصل: ${phone}` : `📞 Contact: ${phone}`))
+        : null;
       const bodyParts = [
         form.description.trim() || form.title.trim(),
-        phone ? (isAr ? `📞 للتواصل: ${phone}` : `📞 Contact: ${phone}`) : null,
+        contactLabel,
         form.due_date ? (isAr ? `⏰ الاستحقاق: ${fmtDateTime(new Date(form.due_date).toISOString(), lang)}` : `⏰ Due: ${fmtDateTime(new Date(form.due_date).toISOString(), lang)}`) : null,
       ].filter(Boolean).join(" · ");
       await supabase.from("notifications").insert({
@@ -260,6 +268,7 @@ function TasksPage() {
           task_id: createdId,
           priority: form.priority,
           contact_phone: phone,
+          contact_name: contactName,
           invoice_id: form.invoice_id,
         },
       } as any);
@@ -269,7 +278,7 @@ function TasksPage() {
 
     toast.success(isAr ? "تم إسناد المهمة وإرسال إشعار" : "Task assigned & notified");
     setCreateOpen(false);
-    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "" });
+    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "", contact_name: "" });
     load();
   };
 
@@ -656,19 +665,31 @@ function TasksPage() {
                 <Input type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
               </div>
             </div>
-              <div>
-                <label className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                  <Phone className="h-3 w-3" />
-                  {isAr ? "رقم للتواصل (اختياري)" : "Contact phone (optional)"}
-                </label>
-                <Input
-                  type="tel"
-                  inputMode="tel"
-                  dir="ltr"
-                  value={form.contact_phone}
-                  onChange={e => setForm({ ...form, contact_phone: e.target.value })}
-                  placeholder={isAr ? "مثال: مهندس الموقع 010xxxxxxxx" : "e.g. site engineer 010xxxxxxxx"}
-                />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    {isAr ? "اسم جهة الاتصال (اختياري)" : "Contact name (optional)"}
+                  </label>
+                  <Input
+                    value={form.contact_name}
+                    onChange={e => setForm({ ...form, contact_name: e.target.value })}
+                    placeholder={isAr ? "مثال: م. أحمد - مهندس التشطيب" : "e.g. Eng. Ahmed - site engineer"}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {isAr ? "رقم للتواصل (اختياري)" : "Contact phone (optional)"}
+                  </label>
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    dir="ltr"
+                    value={form.contact_phone}
+                    onChange={e => setForm({ ...form, contact_phone: e.target.value })}
+                    placeholder={isAr ? "010xxxxxxxx" : "010xxxxxxxx"}
+                  />
+                </div>
               </div>
               <TaskInvoicePicker
                 invoiceId={form.invoice_id}

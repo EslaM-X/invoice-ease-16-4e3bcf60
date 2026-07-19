@@ -43,6 +43,7 @@ type Task = {
   invoice_id: string | null;
   delivery_receipt_ids: string[] | null;
   contact_phone: string | null;
+  contact_name: string | null;
 };
 type Comment = { id: string; task_id: string; author_id: string; body: string; created_at: string };
 
@@ -115,7 +116,8 @@ export function TaskDetailDialog({
     priority: TaskPriority;
     due_date: string;
     contact_phone: string;
-  }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "" });
+    contact_name: string;
+  }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "", contact_name: "" });
 
   const canEdit = !!task && (isManager || task.assigned_by === user?.id);
 
@@ -143,6 +145,7 @@ export function TaskDetailDialog({
       priority: task.priority,
       due_date: task.due_date ? task.due_date.slice(0, 10) : "",
       contact_phone: task.contact_phone ?? "",
+      contact_name: task.contact_name ?? "",
     });
   }, [task, editing]);
 
@@ -157,6 +160,7 @@ export function TaskDetailDialog({
       priority: form.priority,
       due_date: form.due_date || null,
       contact_phone: form.contact_phone.trim() || null,
+      contact_name: form.contact_name.trim() || null,
     };
     const { error } = await supabase.from("tasks" as any).update(patch).eq("id", task.id);
     setSaving(false);
@@ -231,6 +235,10 @@ export function TaskDetailDialog({
                       <Input type="date" value={form.due_date} onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))} />
                     </div>
                     <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "اسم جهة الاتصال" : "Contact name"}</label>
+                      <Input value={form.contact_name} onChange={(e) => setForm(f => ({ ...f, contact_name: e.target.value }))} placeholder={isAr ? "م. أحمد - مهندس التشطيب" : "Eng. Ahmed - site engineer"} />
+                    </div>
+                    <div>
                       <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "رقم التواصل" : "Contact phone"}</label>
                       <Input value={form.contact_phone} onChange={(e) => setForm(f => ({ ...f, contact_phone: e.target.value }))} dir="ltr" />
                     </div>
@@ -260,28 +268,34 @@ export function TaskDetailDialog({
                 </>
               )}
 
-              {task.contact_phone && (() => {
-                const raw = task.contact_phone!;
+              {(task.contact_phone || task.contact_name) && (() => {
+                const raw = task.contact_phone || "";
                 const digits = raw.replace(/[^\d]/g, "");
+                const who = task.contact_name?.trim();
                 const waMsg = encodeURIComponent(
                   isAr
-                    ? `السلام عليكم، بخصوص المهمة: ${task.title}${task.invoice_id ? ` (فاتورة ${task.invoice_id.slice(0,6)})` : ""}`
-                    : `Hello, regarding the task: ${task.title}${task.invoice_id ? ` (invoice ${task.invoice_id.slice(0,6)})` : ""}`
+                    ? `السلام عليكم${who ? ` ${who}` : ""}، بخصوص المهمة: ${task.title}${task.invoice_id ? ` (فاتورة ${task.invoice_id.slice(0,6)})` : ""}`
+                    : `Hello${who ? ` ${who}` : ""}, regarding the task: ${task.title}${task.invoice_id ? ` (invoice ${task.invoice_id.slice(0,6)})` : ""}`
                 );
                 const waUrl = `https://wa.me/${digits}?text=${waMsg}`;
                 return (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5">
                       <Phone className="h-3.5 w-3.5" />
-                      {isAr ? "رقم التواصل" : "Contact number"}
+                      {isAr ? "جهة التواصل" : "Contact"}
                     </div>
-                    {/* Full, selectable, readable number */}
-                    <div
-                      dir="ltr"
-                      className="select-all font-mono text-lg font-bold tracking-wider text-foreground tabular-nums break-all"
-                    >
-                      {raw}
-                    </div>
+                    {who && (
+                      <div className="text-sm font-semibold text-foreground">{who}</div>
+                    )}
+                    {raw && (
+                      <div
+                        dir="ltr"
+                        className="select-all font-mono text-lg font-bold tracking-wider text-foreground tabular-nums break-all"
+                      >
+                        {raw}
+                      </div>
+                    )}
+                    {raw && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       <a
                         href={`tel:${raw}`}
@@ -318,6 +332,7 @@ export function TaskDetailDialog({
                         {isAr ? "نسخ" : "Copy"}
                       </button>
                     </div>
+                    )}
                   </div>
                 );
               })()}
