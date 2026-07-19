@@ -2309,6 +2309,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           hide_from_leadership_card: boolean
+          hide_job_title: boolean
           id: string
           job_title: string | null
           job_title_color: string | null
@@ -2328,6 +2329,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           hide_from_leadership_card?: boolean
+          hide_job_title?: boolean
           id?: string
           job_title?: string | null
           job_title_color?: string | null
@@ -2347,6 +2349,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           hide_from_leadership_card?: boolean
+          hide_job_title?: boolean
           id?: string
           job_title?: string | null
           job_title_color?: string | null
