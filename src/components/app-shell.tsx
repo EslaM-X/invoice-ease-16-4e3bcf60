@@ -171,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <div className="mx-5 mb-3 h-px bg-sidebar-border" />
-      <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-3 [scrollbar-width:thin]">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-3 gold-scroll">
         <Link to="/invoices/new" onClick={() => setOpen(false)}
           className="mb-4 flex items-center justify-center gap-2 rounded-md bg-sidebar-primary px-3 py-2.5 text-[13px] font-semibold uppercase tracking-[0.18em] text-sidebar-primary-foreground transition hover:opacity-90 active:scale-[0.98]">
           <Plus className="h-4 w-4" /> {t("new_invoice")}
