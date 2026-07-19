@@ -51,6 +51,8 @@ type Task = {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  invoice_id: string | null;
+  delivery_receipt_ids: string[] | null;
 };
 type Comment = { id: string; task_id: string; author_id: string; body: string; created_at: string };
 
