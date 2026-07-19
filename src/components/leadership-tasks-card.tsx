@@ -601,17 +601,18 @@ function LeaderColumn({
   );
 }
 
-function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
+function TaskRow({ task, isAr, onOpen }: { task: Task; isAr: boolean; onOpen: (id: string) => void }) {
   const overdue = task.due_date && task.status !== "done" && new Date(task.due_date).getTime() < Date.now();
   const due = task.due_date
     ? new Date(task.due_date).toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "short", day: "numeric" })
     : null;
   return (
     <li>
-      <Link
-        to="/tasks"
+      <button
+        type="button"
+        onClick={() => onOpen(task.id)}
         aria-label={`${task.title}${task.due_date ? " — " + (isAr ? "الاستحقاق " : "due ") + new Date(task.due_date).toLocaleDateString(isAr ? "ar-EG" : "en-US") : ""}`}
-        className={`group block rounded-lg bg-black/40 p-2.5 ring-1 transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+        className={`group block w-full text-start rounded-lg bg-black/40 p-2.5 ring-1 transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
           overdue ? "ring-red-400/40" : "ring-amber-400/10 hover:ring-amber-400/30"
         }`}
         style={overdue ? { borderInlineStart: "3px solid rgba(248,113,113,0.7)" } : undefined}
@@ -647,7 +648,7 @@ function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
             </div>
           </div>
         </div>
-      </Link>
+      </button>
     </li>
   );
 }
