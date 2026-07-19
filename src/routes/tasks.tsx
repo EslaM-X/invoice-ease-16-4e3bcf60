@@ -88,6 +88,7 @@ function TasksPage() {
   const [view, setView] = useState<"inbox" | "done" | "sent" | "all">("inbox");
   const [prioFilter, setPrioFilter] = useState<TaskPriority | "all">("all");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [invFilter, setInvFilter] = useState<"all" | "closed" | "open" | "none">("all");
   const [search, setSearch] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -95,9 +96,12 @@ function TasksPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
-  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string }>({
-    title: "", description: "", assignee_id: "", priority: "normal", due_date: "",
+  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[] }>({
+    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [],
   });
+
+  // Invoice-status hydration for filter chip (closed / open / none)
+  const [invStatusMap, setInvStatusMap] = useState<Record<string, string | null>>({});
 
   // Position-preserving merge: keep existing row identity/order; only new
   // ids append. Rows that disappear from the server are removed. This prevents
