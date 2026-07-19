@@ -123,12 +123,14 @@ export function TaskNotificationsCenter({
   const archived = useMemo(() => items.filter(n => isTaskDone(n)), [items, taskInfo]);
 
   const filtered = useMemo(() => {
-    if (tab === "archive") return archived;
-    let base = active;
+    let base = tab === "archive" ? archived : active;
     if (tab === "urgent") base = base.filter(isUrgent);
     else if (tab === "unread") base = base.filter(n => !n.read_at);
+    if (typeFilter === "urgent") base = base.filter(n => isUrgent(n));
+    else if (typeFilter === "new") base = base.filter(n => !isUrgent(n));
+    if (prioFilter !== "all") base = base.filter(n => priorityOf(n) === prioFilter);
     return base;
-  }, [active, archived, tab]);
+  }, [active, archived, tab, typeFilter, prioFilter]);
 
   const unreadCount = active.filter(n => !n.read_at).length;
   const urgentOpen = active.filter(n => isUrgent(n)).length;
