@@ -297,8 +297,9 @@ function SalesRange() {
           <div className="text-3xl font-bold flex items-center gap-2 mt-1"><Boxes className="h-6 w-6 text-primary" /> {totalUnits}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">{tt("إجمالي القيمة", "Total value")}</div>
+          <div className="text-xs text-muted-foreground">{tt("إجمالي القيمة (مطابق لمبيعاتي)", "Total value (matches My Sales)")}</div>
           <div className="text-3xl font-bold mt-1">{fmtMoney(totalValue)}</div>
+          <div className="text-[11px] text-muted-foreground mt-1">{tt("شامل الضريبة والشحن، بعد الخصم", "Includes VAT & shipping, after discount")} · {tt("بنود المنتجات", "Product lines")}: {fmtMoney(linesValue)}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">{tt("عدد المنتجات المختلفة / الفواتير", "Distinct products / invoices")}</div>
