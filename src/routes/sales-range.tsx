@@ -131,7 +131,7 @@ function SalesRange() {
   useRealtimeTable("invoice_items", () => load(), [from, to, user?.id]);
   useRealtimeTable("products", () => load(), [from, to, user?.id]);
 
-  const { rows, totalUnits, totalValue, byCollection } = useMemo(() => {
+  const { rows, totalUnits, totalValue, linesValue, byCollection } = useMemo(() => {
     const invMap = new Map(invoices.map((i) => [i.id, i]));
     const map = new Map<string, Row>();
     for (const it of items) {
