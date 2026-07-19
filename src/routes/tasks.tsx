@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { TaskInvoicePicker } from "@/components/task-invoice-picker";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 import { TaskDetailDialog } from "@/components/task-detail-dialog";
+import { TaskNotificationsCenter } from "@/components/task-notifications-center";
 
 
 export const Route = createFileRoute("/tasks")({
@@ -444,6 +445,8 @@ function TasksPage() {
           </Button>
         </div>
       )}
+
+      <TaskNotificationsCenter onOpenTask={(id) => setOpenId(id)} />
 
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Sidebar */}

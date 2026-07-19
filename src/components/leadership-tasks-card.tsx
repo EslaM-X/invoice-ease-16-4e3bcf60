@@ -8,6 +8,7 @@ import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 import { TaskDetailDialog } from "@/components/task-detail-dialog";
+import { TaskNotificationsCenter } from "@/components/task-notifications-center";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
@@ -454,6 +455,11 @@ export function LeadershipTasksCard() {
           flash={flash.coo}
           onOpenTask={setOpenTaskId}
         />
+      </div>
+
+      {/* Task notifications center — inside the leadership card */}
+      <div className="relative mt-3">
+        <TaskNotificationsCenter variant="compact" onOpenTask={setOpenTaskId} />
       </div>
 
       <TaskDetailDialog taskId={openTaskId} onClose={() => setOpenTaskId(null)} showOpenInPage />

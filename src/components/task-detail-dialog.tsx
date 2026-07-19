@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2, XCircle, Play, Flag, MessageSquare, Send, Trash2,
-  Circle, CircleDot, FileText, Truck, Phone, ExternalLink, Pencil, Save, X,
+  Circle, CircleDot, FileText, Truck, Phone, PhoneCall, MessageCircle,
+  Copy, ExternalLink, Pencil, Save, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
@@ -259,16 +260,67 @@ export function TaskDetailDialog({
                 </>
               )}
 
-              {task.contact_phone && (
-                <a
-                  href={`tel:${task.contact_phone}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold ring-1 ring-primary/20 hover:bg-primary/20 transition-colors tabular-nums"
-                  dir="ltr"
-                >
-                  <Phone className="h-3.5 w-3.5" />
-                  {task.contact_phone}
-                </a>
-              )}
+              {task.contact_phone && (() => {
+                const raw = task.contact_phone!;
+                const digits = raw.replace(/[^\d]/g, "");
+                const waMsg = encodeURIComponent(
+                  isAr
+                    ? `السلام عليكم، بخصوص المهمة: ${task.title}${task.invoice_id ? ` (فاتورة ${task.invoice_id.slice(0,6)})` : ""}`
+                    : `Hello, regarding the task: ${task.title}${task.invoice_id ? ` (invoice ${task.invoice_id.slice(0,6)})` : ""}`
+                );
+                const waUrl = `https://wa.me/${digits}?text=${waMsg}`;
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5" />
+                      {isAr ? "رقم التواصل" : "Contact number"}
+                    </div>
+                    {/* Full, selectable, readable number */}
+                    <div
+                      dir="ltr"
+                      className="select-all font-mono text-lg font-bold tracking-wider text-foreground tabular-nums break-all"
+                    >
+                      {raw}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <a
+                        href={`tel:${raw}`}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
+                      >
+                        <PhoneCall className="h-3.5 w-3.5" />
+                        {isAr ? "مكالمة" : "Call"}
+                      </a>
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 text-white px-3 py-1.5 text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        {isAr ? "واتساب" : "WhatsApp"}
+                      </a>
+                      <a
+                        href={`sms:${raw}`}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-muted text-foreground px-3 py-1.5 text-xs font-semibold hover:bg-muted/80 transition-colors"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        {isAr ? "رسالة" : "SMS"}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(raw);
+                          toast.success(isAr ? "تم نسخ الرقم" : "Number copied");
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        {isAr ? "نسخ" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {task.invoice_id && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
