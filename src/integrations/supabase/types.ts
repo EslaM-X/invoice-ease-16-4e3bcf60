@@ -2281,6 +2281,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          hide_from_leadership_card: boolean
           id: string
           job_title: string | null
           job_title_color: string | null
@@ -2299,6 +2300,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          hide_from_leadership_card?: boolean
           id?: string
           job_title?: string | null
           job_title_color?: string | null
@@ -2317,6 +2319,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          hide_from_leadership_card?: boolean
           id?: string
           job_title?: string | null
           job_title_color?: string | null
