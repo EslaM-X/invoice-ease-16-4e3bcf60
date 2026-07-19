@@ -457,6 +457,11 @@ export function LeadershipTasksCard() {
         />
       </div>
 
+      {/* Task notifications center — inside the leadership card */}
+      <div className="relative mt-3">
+        <TaskNotificationsCenter variant="compact" onOpenTask={setOpenTaskId} />
+      </div>
+
       <TaskDetailDialog taskId={openTaskId} onClose={() => setOpenTaskId(null)} showOpenInPage />
 
       <div className="relative mt-3 flex justify-end">
