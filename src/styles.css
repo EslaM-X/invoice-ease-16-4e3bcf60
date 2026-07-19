@@ -496,6 +496,61 @@ aside[class*="bg-sidebar"] .bg-sidebar-primary:hover {
     background: color-mix(in oklab, var(--brand-gold) 85%, transparent);
   }
 
+  /* ─── Luxe Noir & Gold scrollbar (sidebar + generic) ──────────────── */
+  .gold-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--brand-gold) 60%, transparent) transparent;
+  }
+  .gold-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .gold-scroll::-webkit-scrollbar-track {
+    background:
+      linear-gradient(180deg,
+        oklch(0 0 0 / 0.55),
+        oklch(0 0 0 / 0.30) 50%,
+        oklch(0 0 0 / 0.55));
+    border-radius: 999px;
+    margin: 6px 2px;
+    box-shadow:
+      inset 1px 0 0 color-mix(in oklab, var(--brand-gold) 10%, transparent),
+      inset -1px 0 0 color-mix(in oklab, var(--brand-gold) 6%, transparent);
+  }
+  .gold-scroll::-webkit-scrollbar-thumb {
+    background:
+      linear-gradient(180deg,
+        color-mix(in oklab, var(--brand-gold) 95%, white 10%) 0%,
+        color-mix(in oklab, var(--brand-gold) 75%, transparent) 45%,
+        color-mix(in oklab, var(--brand-gold) 55%, black 10%) 100%);
+    border-radius: 999px;
+    border: 2px solid oklch(0 0 0 / 0.55);
+    background-clip: padding-box;
+    box-shadow:
+      0 0 6px color-mix(in oklab, var(--brand-gold) 45%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 30%, transparent),
+      inset 0 -1px 0 oklch(0 0 0 / 0.4);
+    transition: background 200ms ease, box-shadow 200ms ease;
+  }
+  .gold-scroll::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg,
+        color-mix(in oklab, var(--brand-gold) 100%, white 20%) 0%,
+        color-mix(in oklab, var(--brand-gold) 88%, transparent) 50%,
+        color-mix(in oklab, var(--brand-gold) 70%, black 5%) 100%);
+    box-shadow:
+      0 0 14px color-mix(in oklab, var(--brand-gold) 75%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 45%, transparent),
+      inset 0 -1px 0 oklch(0 0 0 / 0.45);
+  }
+  .gold-scroll::-webkit-scrollbar-thumb:active {
+    background: color-mix(in oklab, var(--brand-gold) 92%, white 10%);
+    box-shadow:
+      0 0 18px color-mix(in oklab, var(--brand-gold) 90%, transparent),
+      inset 0 0 0 1px color-mix(in oklab, white 40%, transparent);
+  }
+  .gold-scroll::-webkit-scrollbar-corner { background: transparent; }
+
   /* Leadership avatar shimmer while the image loads (blur-up) */
   .leadership-avatar-shimmer {
     background: linear-gradient(
