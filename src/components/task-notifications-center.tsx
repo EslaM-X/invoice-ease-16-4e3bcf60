@@ -60,6 +60,8 @@ export function TaskNotificationsCenter({
   const profiles = useTeamProfiles();
   const [items, setItems] = useState<Notif[]>([]);
   const [tab, setTab] = useState<Tab>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "new" | "urgent">("all");
+  const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
   const [loading, setLoading] = useState(true);
   // task_id -> { status, assignee_id, assigned_by }
   const [taskInfo, setTaskInfo] = useState<Record<string, { status: string; assignee_id: string; assigned_by: string }>>({});
