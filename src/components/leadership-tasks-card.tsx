@@ -617,6 +617,17 @@ function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {priorityChip(task.priority, isAr)}
               {statusChip(task.status, isAr)}
+              {task.invoice_id && (
+                <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                  <TaskInvoiceChip
+                    invoiceId={task.invoice_id}
+                    drCount={task.delivery_receipt_ids?.length ?? 0}
+                    isAr={isAr}
+                    size="xs"
+                    tone="dark"
+                  />
+                </span>
+              )}
               {due && (
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ring-1 ${
                   overdue ? "bg-red-500/15 text-red-300 ring-red-400/40" : "bg-black/40 text-amber-100/70 ring-amber-400/20"
