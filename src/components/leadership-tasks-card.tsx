@@ -328,7 +328,7 @@ export function LeadershipTasksCard() {
 
 
 
-  useEffect(() => { if (allowed) void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, meId, ceoId, cooId]);
+  useEffect(() => { if (allowed) void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, meId, ceoId, cooId, isSelfCoo]);
 
   // Realtime: reconcile by id, patch in place — never re-fetch or re-sort.
   // This keeps every visible row locked to its position across INSERT/UPDATE/DELETE.
@@ -338,7 +338,7 @@ export function LeadershipTasksCard() {
     const nrow = payload?.new as Task | undefined;
     const orow = payload?.old as Task | undefined;
     const belongsHere = (r?: Task) =>
-      !!r && r.assignee_id === meId && (r.assigned_by === ceoId || r.assigned_by === cooId);
+      !!r && r.assignee_id === meId && allowedAssignerIds.includes(r.assigned_by);
 
     setTasks((prev) => {
       if (evt === "DELETE" && orow) {
