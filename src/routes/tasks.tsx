@@ -706,6 +706,17 @@ function TasksPage() {
                   {openTask.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(openTask.completed_at, lang)} />}
                 </div>
 
+                {openTask.contact_phone && (
+                  <a
+                    href={`tel:${openTask.contact_phone}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold ring-1 ring-primary/20 hover:bg-primary/20 transition-colors tabular-nums"
+                    dir="ltr"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    {openTask.contact_phone}
+                  </a>
+                )}
+
                 {openTask.invoice_id && (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5">
