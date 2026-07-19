@@ -74,6 +74,8 @@ type Task = {
   status: "pending" | "in_progress" | "done" | "cancelled";
   due_date: string | null;
   created_at: string;
+  invoice_id: string | null;
+  delivery_receipt_ids: string[] | null;
 };
 
 
