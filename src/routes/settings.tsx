@@ -87,6 +87,8 @@ function SettingsPage() {
 
       <AppearanceSettings />
 
+      <HideJobTitleToggle />
+
       <XCalendar />
 
       <NotificationSettings />
