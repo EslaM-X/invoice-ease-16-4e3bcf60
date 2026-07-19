@@ -279,6 +279,7 @@ export function LeadershipTasksCard() {
   const [priorityFilter, setPriorityFilter] = useState<"all" | Task["priority"]>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | Task["status"]>("all");
   const [flash, setFlash] = useState<{ ceo: boolean; coo: boolean }>({ ceo: false, coo: false });
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   const meId = effective.id;
   const ceoId = ceoProfile?.user_id ?? null;
