@@ -195,7 +195,7 @@ function TasksPage() {
     let list = tasks;
     if (view === "inbox") list = list.filter(t => t.assignee_id === user?.id && t.status !== "done" && t.status !== "cancelled");
     else if (view === "done") list = list.filter(t => t.assignee_id === user?.id && (t.status === "done" || t.status === "cancelled"));
-    else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id);
+    else if (view === "sent") list = list.filter(t => t.assigned_by === user?.id && (statusFilter !== "all" || (t.status !== "done" && t.status !== "cancelled")));
     if (prioFilter !== "all") list = list.filter(t => t.priority === prioFilter);
     if (statusFilter !== "all") list = list.filter(t => t.status === statusFilter);
     if (invFilter !== "all") {
