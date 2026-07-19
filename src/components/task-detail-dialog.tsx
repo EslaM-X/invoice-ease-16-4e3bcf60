@@ -117,6 +117,8 @@ export function TaskDetailDialog({
   }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "" });
 
   const canEdit = !!task && (isManager || task.assigned_by === user?.id);
+
+  const loadTask = async () => {
     if (!taskId) { setTask(null); return; }
     const { data } = await supabase.from("tasks" as any).select("*").eq("id", taskId).maybeSingle();
     setTask((data as any) ?? null);
