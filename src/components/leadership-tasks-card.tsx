@@ -10,6 +10,7 @@ import { TaskInvoiceChip } from "@/components/task-invoice-chip";
 import { TaskDetailDialog } from "@/components/task-detail-dialog";
 import { TaskNotificationsCenter } from "@/components/task-notifications-center";
 import { RoleBadge } from "@/components/role-badge";
+import { useLeadershipViewers } from "@/lib/use-leadership-viewers";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
@@ -64,7 +65,6 @@ function versioned(url: string | null, version: string | number | null | undefin
  * split into two halves.
  */
 const COO_SELF_EMAIL = "e.hesham@steinheim-eg.com";
-const ALLOWED_VIEWERS = new Set(["esraa@steinheim-eg.com", "f.hesham@steinheim-eg.com", "cfo@steinheim-eg.com", COO_SELF_EMAIL]);
 
 const CEO = { email: "k.elsharbatly@steinheim-eg.com", roleAr: "المدير التنفيذي — CEO", roleEn: "CEO — Chief Executive Officer", short: "CEO", displayOverride: null as string | null, Icon: Crown };
 const COO = { email: "e.hesham@steinheim-eg.com",      roleAr: "مدير العمليات التنفيذي — COO", roleEn: "COO — Chief Operating Officer", short: "COO", displayOverride: "Eslam Hesham" as string | null, Icon: Briefcase };
@@ -271,6 +271,7 @@ export function LeadershipTasksCard() {
   const isAr = lang === "ar";
   const effective = useEffectiveUser();
   const viewerEmail = (effective.email ?? "").trim().toLowerCase();
+  const { emails: ALLOWED_VIEWERS } = useLeadershipViewers();
   const allowed = ALLOWED_VIEWERS.has(viewerEmail);
 
   const team = useTeamProfiles();
