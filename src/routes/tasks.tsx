@@ -923,8 +923,12 @@ function VirtualTaskRow({ index, style, ariaAttributes, rows, profiles, selected
             />
           </span>
         )}
-        <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[140px]">
-          {assignee?.display_name || assignee?.email || "—"}
+        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground truncate max-w-[240px]">
+          <span className="text-muted-foreground/70">{isAr ? "من" : "From"}</span>
+          <span className="font-medium text-foreground/80 truncate max-w-[100px]">{profiles.byId(t.assigned_by)?.display_name || profiles.byId(t.assigned_by)?.email || "—"}</span>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <span className="text-muted-foreground/70">{isAr ? "إلى" : "To"}</span>
+          <span className="font-medium text-foreground/80 truncate max-w-[100px]">{assignee?.display_name || assignee?.email || "—"}</span>
         </span>
         {t.due_date && (
           <span className={`hidden md:inline-flex items-center gap-1 text-xs tabular-nums ${overdue ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
