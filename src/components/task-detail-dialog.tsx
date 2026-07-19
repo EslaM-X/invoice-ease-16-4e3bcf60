@@ -203,17 +203,61 @@ export function TaskDetailDialog({
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {task.description && (
-                <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{task.description}</div>
+              {editing ? (
+                <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "العنوان" : "Title"}</label>
+                    <Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الوصف" : "Description"}</label>
+                    <Textarea rows={3} value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الأولوية" : "Priority"}</label>
+                      <Select value={form.priority} onValueChange={(v) => setForm(f => ({ ...f, priority: v as TaskPriority }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(["urgent","high","normal","low"] as TaskPriority[]).map(p => (
+                            <SelectItem key={p} value={p}>{isAr ? PRIO_META[p].ar : PRIO_META[p].en}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الاستحقاق" : "Due date"}</label>
+                      <Input type="date" value={form.due_date} onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "رقم التواصل" : "Contact phone"}</label>
+                      <Input value={form.contact_phone} onChange={(e) => setForm(f => ({ ...f, contact_phone: e.target.value }))} dir="ltr" />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={saveEdits} disabled={saving}>
+                      <Save className="h-4 w-4 me-1" />{isAr ? "حفظ" : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>
+                      <X className="h-4 w-4 me-1" />{isAr ? "إلغاء" : "Cancel"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {task.description && (
+                    <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{task.description}</div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    <Meta label={isAr ? "أسندها" : "Assigned by"} value={profiles.byId(task.assigned_by)?.display_name || "—"} />
+                    <Meta label={isAr ? "المكلَّف" : "Assignee"} value={profiles.byId(task.assignee_id)?.display_name || "—"} />
+                    <Meta label={isAr ? "الإسناد" : "Created"} value={fmtDateTime(task.created_at, lang)} />
+                    {task.due_date && <Meta label={isAr ? "الاستحقاق" : "Due"} value={fmtDateTime(task.due_date, lang)} />}
+                    {task.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(task.started_at, lang)} />}
+                    {task.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(task.completed_at, lang)} />}
+                  </div>
+                </>
               )}
-              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                <Meta label={isAr ? "أسندها" : "Assigned by"} value={profiles.byId(task.assigned_by)?.display_name || "—"} />
-                <Meta label={isAr ? "المكلَّف" : "Assignee"} value={profiles.byId(task.assignee_id)?.display_name || "—"} />
-                <Meta label={isAr ? "الإسناد" : "Created"} value={fmtDateTime(task.created_at, lang)} />
-                {task.due_date && <Meta label={isAr ? "الاستحقاق" : "Due"} value={fmtDateTime(task.due_date, lang)} />}
-                {task.started_at && <Meta label={isAr ? "بدأت" : "Started"} value={fmtDateTime(task.started_at, lang)} />}
-                {task.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(task.completed_at, lang)} />}
-              </div>
 
               {task.contact_phone && (
                 <a
