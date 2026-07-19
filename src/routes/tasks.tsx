@@ -89,7 +89,14 @@ function TasksPage() {
   const [newComment, setNewComment] = useState("");
 
   // Filters
+  const isCEO = (user?.email || "").toLowerCase() === "k.elsharbatly@steinheim-eg.com";
   const [view, setView] = useState<"inbox" | "done" | "sent" | "all">("inbox");
+  const viewInitRef = useRef(false);
+  useEffect(() => {
+    if (!user?.id || viewInitRef.current) return;
+    viewInitRef.current = true;
+    if (isCEO) setView("sent");
+  }, [user?.id, isCEO]);
   const [prioFilter, setPrioFilter] = useState<TaskPriority | "all">("all");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [invFilter, setInvFilter] = useState<"all" | "closed" | "open" | "none">("all");
