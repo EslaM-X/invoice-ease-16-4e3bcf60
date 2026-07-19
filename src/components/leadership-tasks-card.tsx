@@ -461,7 +461,7 @@ export function LeadershipTasksCard() {
           flash={flash.ceo}
           onOpenTask={setOpenTaskId}
         />
-        {!cooProfile?.hide_from_leadership_card && (
+        {!hideCooColumn && (
           <LeaderColumn
             isAr={isAr}
             leader={COO}
