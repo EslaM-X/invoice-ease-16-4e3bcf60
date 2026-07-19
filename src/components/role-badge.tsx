@@ -14,6 +14,7 @@ export function RoleBadge({ email, userId, className = "", size = "xs" }: Props)
   const profile = userId ? team.byId(userId) : email ? team.byEmail(email) : null;
   const title = profile?.job_title?.trim();
   if (!title) return null;
+  if (profile?.hide_job_title) return null;
   const color = profile?.job_title_color || "#c9a84c";
   const pad = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-[1px] text-[10px]";
   return (
