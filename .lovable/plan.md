@@ -1,33 +1,41 @@
-## Goal
-Allow managers (`e.hesham` and `k.elsharbatly`) to attach an **invoice** (and any of its linked **delivery receipts**) to a task when assigning it to Esraa or F. Hesham. The attached invoice shows a badge:
-- **مقفولة (Closed)** → "خدمة ما بعد البيع" (After-sales service)
-- **مفتوحة (Open)** → "عميل" (Customer)
+## الهدف
+عند الضغط على أي مهمة من كارت "مهام القيادة" في لوحة التحكم، تُفتح نافذة تفاصيل المهمة الكاملة (نفس النافذة الموجودة في صفحة "المهام") مباشرةً في اللوحة — بدون التنقّل — بحيث يستطيع المُسنَد إليه بدء المهمة، إنهاءها، إلغائها، إضافة تعليق، فتح الفاتورة/محاضر الاستلام المرتبطة، والاتصال برقم التواصل.
 
-## Changes
+## الخطوات
 
-### 1. Database (migration)
-Add optional link columns to `public.tasks`:
-- `invoice_id uuid references public.invoices(id) on delete set null`
-- `delivery_receipt_ids uuid[]` (array — one task may reference multiple receipts of the same invoice)
+### 1) استخراج نافذة تفاصيل المهمة إلى مكوّن قابل لإعادة الاستخدام
+- إنشاء `src/components/task-detail-dialog.tsx` يحتوي على منطق الحوار الحالي في `src/routes/tasks.tsx` (الأسطر ~683–825) دون تكرار الكود:
+  - Props: `taskId: string | null`, `onClose: () => void`.
+  - يجلب المهمة + التعليقات من `tasks` و`task_comments` مع `useRealtimeTable` (نفس القنوات الفريدة عبر `uniqueRealtimeTopic`).
+  - يعرض: العنوان، الأولوية، الحالة، تواريخ الاستحقاق/البدء/الإكمال، الوصف، شارة الفاتورة (`TaskInvoiceChip`)، رقم التواصل كـ chip قابل للاتصال (`tel:`)، قائمة المُسنَد إليهم، ورابط سريع "فتح الفاتورة" و"محاضر الاستلام المرتبطة".
+  - أزرار الإجراءات (تظهر فقط للـ`assignee_id === user?.id` أو للمدير):
+    - "بدء المهمة" (pending → in_progress، يضبط `started_at`).
+    - "إنهاء" (→ done، يضبط `completed_at`).
+    - "إلغاء" (→ cancelled).
+    - "إعادة فتح" لو done/cancelled (للمدير فقط).
+  - قسم التعليقات مع إدخال جديد (نفس منطق `task_comments` insert الحالي).
+- تحديث `src/routes/tasks.tsx` لاستيراد واستخدام هذا المكوّن بدل الحوار المضمّن (سلوك مطابق تمامًا — بدون تغيير وظيفي).
 
-Index `invoice_id`. Keep existing RLS as-is (link columns follow the task's own permissions).
+### 2) دمج الحوار داخل كارت لوحة التحكم
+- في `src/components/leadership-tasks-card.tsx`:
+  - إضافة `useState<string | null>` لـ `openTaskId` على مستوى الكارت.
+  - تحويل `TaskRow` من `<Link to="/tasks">` إلى `<button>` يستدعي `onOpen(task.id)` — مع الحفاظ على كامل التصميم الحالي (Noir & Gold، حلقة overdue، chips).
+  - `TaskInvoiceChip` يبقى مع `stopPropagation` كما هو.
+  - عرض `<TaskDetailDialog taskId={openTaskId} onClose={() => setOpenTaskId(null)} />` مرّة واحدة داخل الكارت.
 
-### 2. Task creation dialog (`src/routes/tasks.tsx`)
-In the create-task form, when the assignee is Esraa or F. Hesham, show a new optional section **"ربط بفاتورة"**:
-- Smart search input (invoice number, customer name, phone) — debounced query against `invoices` returning last 50 matches with `status`, `customer_name`, `total`.
-- After picking an invoice: show its badge (Closed→"خدمة ما بعد البيع", Open→"عميل") and a multi-select list of its delivery receipts (number + date) to attach.
-- Save `invoice_id` + `delivery_receipt_ids` on insert.
+### 3) رابط احتياطي "فتح في صفحة المهام"
+- داخل حوار التفاصيل، إضافة زر ثانوي صغير "فتح في صفحة المهام" يحوّل إلى `/tasks` (للمستخدم الذي يريد الفلاتر والبحث). لا يغيّر سلوك التنقّل الرئيسي.
 
-### 3. Task row & detail view
-- On each task card/row show a compact chip: invoice number + colored badge (Closed=amber "خدمة ما بعد البيع" / Open=blue "عميل"), plus a count of linked DRs.
-- In the task detail dialog, list linked DRs as clickable links opening `/delivery-receipts/$id`, and invoice link to `/invoices/$id`.
+### 4) الأذونات والأمان
+- كل تحديثات الحالة والتعليقات تمر عبر RLS الحالي على `tasks` و`task_comments` — لا حاجة لأي migration.
+- لا تغييرات في قاعدة البيانات.
 
-### 4. Leadership card (`src/components/leadership-tasks-card.tsx`)
-Mirror the same UI: the quick-create composer used by managers gets the same invoice search + DR multi-select, and rendered task items show the invoice chip + badge.
+## تفاصيل تقنية
+- إعادة الاستخدام تضمن أن أي تحسين مستقبلي على تفاصيل المهمة يظهر في المكانين معًا.
+- الاشتراكات (`useRealtimeTable`) تُنشَأ داخل المكوّن الجديد فقط عند وجود `taskId` غير فارغ لتفادي اشتراكات فارغة على لوحة التحكم.
+- لا تغييرات على `nav-catalog`, `router`, أو أي RPC.
 
-### 5. Filter
-Add an "invoice status" filter in the tasks page toolbar: All / خدمة ما بعد البيع (closed) / عميل (open) / بدون فاتورة.
-
-## Out of scope
-- No change to invoice or delivery receipt schemas.
-- No change to permissions for other users; regular assignees just see the read-only chip.
+## ملفات ستُعدَّل
+- **جديد**: `src/components/task-detail-dialog.tsx`
+- **تعديل**: `src/routes/tasks.tsx` (استبدال الحوار المضمّن بالمكوّن الجديد)
+- **تعديل**: `src/components/leadership-tasks-card.tsx` (فتح الحوار من صف المهمة)

@@ -7,6 +7,7 @@ import { useEffectiveUser } from "@/lib/use-effective-user";
 import { useTeamProfiles } from "@/lib/team-profiles";
 import { useRealtimeTable } from "@/lib/realtime";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
+import { TaskDetailDialog } from "@/components/task-detail-dialog";
 
 /**
  * Build a Supabase Storage image-transform URL. Falls back to the original
@@ -278,6 +279,7 @@ export function LeadershipTasksCard() {
   const [priorityFilter, setPriorityFilter] = useState<"all" | Task["priority"]>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | Task["status"]>("all");
   const [flash, setFlash] = useState<{ ceo: boolean; coo: boolean }>({ ceo: false, coo: false });
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   const meId = effective.id;
   const ceoId = ceoProfile?.user_id ?? null;
@@ -441,6 +443,7 @@ export function LeadershipTasksCard() {
           tasks={ceoTasks}
           loaded={loaded}
           flash={flash.ceo}
+          onOpenTask={setOpenTaskId}
         />
         <LeaderColumn
           isAr={isAr}
@@ -449,8 +452,11 @@ export function LeadershipTasksCard() {
           tasks={cooTasks}
           loaded={loaded}
           flash={flash.coo}
+          onOpenTask={setOpenTaskId}
         />
       </div>
+
+      <TaskDetailDialog taskId={openTaskId} onClose={() => setOpenTaskId(null)} showOpenInPage />
 
       <div className="relative mt-3 flex justify-end">
         <Link to="/tasks" className="text-[11px] font-medium text-amber-200/80 hover:text-amber-200 hover:underline">
@@ -501,7 +507,7 @@ function FilterGroup<T extends string>({
 }
 
 function LeaderColumn({
-  isAr, leader, profile, tasks, loaded, flash,
+  isAr, leader, profile, tasks, loaded, flash, onOpenTask,
 }: {
   isAr: boolean;
   leader: typeof CEO;
@@ -509,6 +515,7 @@ function LeaderColumn({
   tasks: Task[];
   loaded: boolean;
   flash: boolean;
+  onOpenTask: (id: string) => void;
 }) {
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
@@ -585,7 +592,7 @@ function LeaderColumn({
         ) : (
           <ul className="space-y-2">
             {tasks.map((t) => (
-              <TaskRow key={t.id} task={t} isAr={isAr} />
+              <TaskRow key={t.id} task={t} isAr={isAr} onOpen={onOpenTask} />
             ))}
           </ul>
         )}
@@ -594,17 +601,18 @@ function LeaderColumn({
   );
 }
 
-function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
+function TaskRow({ task, isAr, onOpen }: { task: Task; isAr: boolean; onOpen: (id: string) => void }) {
   const overdue = task.due_date && task.status !== "done" && new Date(task.due_date).getTime() < Date.now();
   const due = task.due_date
     ? new Date(task.due_date).toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "short", day: "numeric" })
     : null;
   return (
     <li>
-      <Link
-        to="/tasks"
+      <button
+        type="button"
+        onClick={() => onOpen(task.id)}
         aria-label={`${task.title}${task.due_date ? " — " + (isAr ? "الاستحقاق " : "due ") + new Date(task.due_date).toLocaleDateString(isAr ? "ar-EG" : "en-US") : ""}`}
-        className={`group block rounded-lg bg-black/40 p-2.5 ring-1 transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+        className={`group block w-full text-start rounded-lg bg-black/40 p-2.5 ring-1 transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
           overdue ? "ring-red-400/40" : "ring-amber-400/10 hover:ring-amber-400/30"
         }`}
         style={overdue ? { borderInlineStart: "3px solid rgba(248,113,113,0.7)" } : undefined}
@@ -640,7 +648,7 @@ function TaskRow({ task, isAr }: { task: Task; isAr: boolean }) {
             </div>
           </div>
         </div>
-      </Link>
+      </button>
     </li>
   );
 }
