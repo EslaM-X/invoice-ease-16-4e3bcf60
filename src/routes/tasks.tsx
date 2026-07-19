@@ -18,7 +18,7 @@ import {
   ClipboardList, Plus, CheckCircle2, XCircle, Play, Flag, MessageSquare,
   Send, Trash2, AlertTriangle, Inbox, Send as SendIcon, Search,
   X, ChevronRight, Circle, CircleDot, Timer, Keyboard, UserPlus,
-  FileText, Truck,
+  FileText, Truck, Phone,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { List, type RowComponentProps } from "react-window";
