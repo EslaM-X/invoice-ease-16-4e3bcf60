@@ -656,6 +656,43 @@ function TasksPage() {
                   {openTask.completed_at && <Meta label={isAr ? "انتهت" : "Completed"} value={fmtDateTime(openTask.completed_at, lang)} />}
                 </div>
 
+                {openTask.invoice_id && (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      {isAr ? "الفاتورة المرتبطة" : "Linked invoice"}
+                    </div>
+                    <TaskInvoiceChip
+                      invoiceId={openTask.invoice_id}
+                      drCount={openTask.delivery_receipt_ids?.length ?? 0}
+                      isAr={isAr}
+                      size="sm"
+                    />
+                    {openTask.delivery_receipt_ids && openTask.delivery_receipt_ids.length > 0 && (
+                      <div className="pt-1">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1.5 mb-1">
+                          <Truck className="h-3.5 w-3.5" />
+                          {isAr ? "محاضر الاستلام" : "Delivery receipts"}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {openTask.delivery_receipt_ids.map((drId) => (
+                            <Link
+                              key={drId}
+                              to="/delivery-receipts/$id"
+                              params={{ id: drId }}
+                              className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium ring-1 ring-primary/20 hover:bg-primary/20 transition-colors tabular-nums"
+                            >
+                              <Truck className="h-3 w-3" />
+                              {drId.slice(0, 6)}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+
                 <div className="flex flex-wrap gap-2">
                   {openTask.assignee_id === user?.id && openTask.status === "pending" && (
                     <Button size="sm" onClick={() => updateStatus(openTask, "in_progress")}>
