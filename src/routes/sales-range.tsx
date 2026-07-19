@@ -166,14 +166,16 @@ function SalesRange() {
     }
     const rows = Array.from(map.values()).sort((a, b) => b.qty - a.qty);
     const totalUnits = rows.reduce((s, r) => s + r.qty, 0);
-    const totalValue = rows.reduce((s, r) => s + r.total_value, 0);
+    const linesValue = rows.reduce((s, r) => s + r.total_value, 0);
+    // Match "My Sales": sum of final invoice totals (includes VAT, shipping, minus discount)
+    const totalValue = invoices.reduce((s, i) => s + (Number(i.total) || 0), 0);
     const byCollection = new Map<string, { units: number; value: number; distinct: number }>();
     for (const r of rows) {
       const c = byCollection.get(r.collection) ?? { units: 0, value: 0, distinct: 0 };
       c.units += r.qty; c.value += r.total_value; c.distinct += 1;
       byCollection.set(r.collection, c);
     }
-    return { rows, totalUnits, totalValue, byCollection };
+    return { rows, totalUnits, totalValue, linesValue, byCollection };
   }, [invoices, items, products]);
 
   const exportXlsx = () => {
