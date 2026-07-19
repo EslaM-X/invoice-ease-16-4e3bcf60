@@ -363,6 +363,14 @@ export function LeadershipTasksCard() {
   const ceoTasks = useMemo(() => filtered.filter((t) => t.assigned_by === ceoId), [filtered, ceoId]);
   const cooTasks = useMemo(() => filtered.filter((t) => t.assigned_by === cooId), [filtered, cooId]);
 
+  // Split each column into active vs archive (done/cancelled).
+  const isArchived = (t: Task) => t.status === "done" || t.status === "cancelled";
+  const ceoActive = useMemo(() => ceoTasks.filter((t) => !isArchived(t)), [ceoTasks]);
+  const ceoArchive = useMemo(() => ceoTasks.filter(isArchived), [ceoTasks]);
+  const cooActive = useMemo(() => cooTasks.filter((t) => !isArchived(t)), [cooTasks]);
+  const cooArchive = useMemo(() => cooTasks.filter(isArchived), [cooTasks]);
+
+
 
   if (!allowed) return null;
 
