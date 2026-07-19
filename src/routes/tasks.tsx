@@ -97,8 +97,8 @@ function TasksPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
-  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[] }>({
-    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [],
+  const [form, setForm] = useState<{ title: string; description: string; assignee_id: string; priority: TaskPriority; due_date: string; invoice_id: string | null; delivery_receipt_ids: string[]; contact_phone: string }>({
+    title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [], contact_phone: "",
   });
 
   // Invoice-status hydration for filter chip (closed / open / none)
