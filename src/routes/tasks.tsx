@@ -616,6 +616,12 @@ function TasksPage() {
                 <Input type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
               </div>
             </div>
+            <TaskInvoicePicker
+              invoiceId={form.invoice_id}
+              drIds={form.delivery_receipt_ids}
+              onChange={({ invoiceId, drIds }) => setForm({ ...form, invoice_id: invoiceId, delivery_receipt_ids: drIds })}
+              isAr={isAr}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{isAr ? "إلغاء" : "Cancel"}</Button>
