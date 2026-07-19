@@ -442,10 +442,12 @@ export function LeadershipTasksCard() {
       </div>
 
       {/* Two halves — stack on mobile, side-by-side on md+ */}
-      <div className="relative mt-4 grid gap-3 sm:gap-4 md:grid-cols-2">
+      <div className={`relative mt-4 grid gap-3 sm:gap-4 ${cooProfile?.hide_from_leadership_card ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
         {/* Vertical gold divider */}
-        <div aria-hidden className="pointer-events-none absolute inset-y-2 left-1/2 hidden w-px -translate-x-1/2 md:block"
-             style={{ background: "linear-gradient(to bottom, transparent, rgba(233,199,126,0.35), transparent)" }} />
+        {!cooProfile?.hide_from_leadership_card && (
+          <div aria-hidden className="pointer-events-none absolute inset-y-2 left-1/2 hidden w-px -translate-x-1/2 md:block"
+               style={{ background: "linear-gradient(to bottom, transparent, rgba(233,199,126,0.35), transparent)" }} />
+        )}
 
         <LeaderColumn
           isAr={isAr}
@@ -457,16 +459,18 @@ export function LeadershipTasksCard() {
           flash={flash.ceo}
           onOpenTask={setOpenTaskId}
         />
-        <LeaderColumn
-          isAr={isAr}
-          leader={COO}
-          profile={cooProfile}
-          tasks={cooActive}
-          archive={cooArchive}
-          loaded={loaded}
-          flash={flash.coo}
-          onOpenTask={setOpenTaskId}
-        />
+        {!cooProfile?.hide_from_leadership_card && (
+          <LeaderColumn
+            isAr={isAr}
+            leader={COO}
+            profile={cooProfile}
+            tasks={cooActive}
+            archive={cooArchive}
+            loaded={loaded}
+            flash={flash.coo}
+            onOpenTask={setOpenTaskId}
+          />
+        )}
 
       </div>
 
