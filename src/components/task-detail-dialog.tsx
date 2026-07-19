@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2, XCircle, Play, Flag, MessageSquare, Send, Trash2,
-  Circle, CircleDot, FileText, Truck, Phone, ExternalLink, Pencil, Save, X,
+  Circle, CircleDot, FileText, Truck, Phone, PhoneCall, MessageCircle,
+  Copy, ExternalLink, Pencil, Save, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TaskInvoiceChip } from "@/components/task-invoice-chip";
