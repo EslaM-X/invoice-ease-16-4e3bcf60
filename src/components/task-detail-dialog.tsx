@@ -43,6 +43,7 @@ type Task = {
   invoice_id: string | null;
   delivery_receipt_ids: string[] | null;
   contact_phone: string | null;
+  contact_name: string | null;
 };
 type Comment = { id: string; task_id: string; author_id: string; body: string; created_at: string };
 
@@ -115,7 +116,8 @@ export function TaskDetailDialog({
     priority: TaskPriority;
     due_date: string;
     contact_phone: string;
-  }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "" });
+    contact_name: string;
+  }>({ title: "", description: "", priority: "normal", due_date: "", contact_phone: "", contact_name: "" });
 
   const canEdit = !!task && (isManager || task.assigned_by === user?.id);
 
@@ -143,6 +145,7 @@ export function TaskDetailDialog({
       priority: task.priority,
       due_date: task.due_date ? task.due_date.slice(0, 10) : "",
       contact_phone: task.contact_phone ?? "",
+      contact_name: task.contact_name ?? "",
     });
   }, [task, editing]);
 
@@ -157,6 +160,7 @@ export function TaskDetailDialog({
       priority: form.priority,
       due_date: form.due_date || null,
       contact_phone: form.contact_phone.trim() || null,
+      contact_name: form.contact_name.trim() || null,
     };
     const { error } = await supabase.from("tasks" as any).update(patch).eq("id", task.id);
     setSaving(false);
@@ -229,6 +233,10 @@ export function TaskDetailDialog({
                     <div>
                       <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "الاستحقاق" : "Due date"}</label>
                       <Input type="date" value={form.due_date} onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "اسم جهة الاتصال" : "Contact name"}</label>
+                      <Input value={form.contact_name} onChange={(e) => setForm(f => ({ ...f, contact_name: e.target.value }))} placeholder={isAr ? "م. أحمد - مهندس التشطيب" : "Eng. Ahmed - site engineer"} />
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold uppercase text-muted-foreground">{isAr ? "رقم التواصل" : "Contact phone"}</label>
