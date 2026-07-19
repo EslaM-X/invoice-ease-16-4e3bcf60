@@ -137,11 +137,21 @@ export function TaskNotificationsCenter({
     if (!user || items.length === 0) return;
     if (!confirm(isAr ? "مسح كل إشعارات المهام؟" : "Clear all task notifications?")) return;
     const ids = items.map(n => n.id);
-    setItems([]);
-    const { error } = await supabase.from("notifications").delete().in("id", ids);
-    if (error) { toast.error(error.message); load(); }
-    else toast.success(isAr ? "تم المسح" : "Cleared");
+    setItems([]); // optimistic — realtime DELETE keeps other tabs in sync
+    const { error, count } = await supabase
+      .from("notifications")
+      .delete({ count: "exact" })
+      .in("id", ids)
+      .eq("user_id", user.id);
+    if (error) { toast.error(error.message); load(); return; }
+    if ((count ?? 0) === 0) {
+      toast.error(isAr ? "تعذّر المسح — تحقق من الصلاحيات" : "Nothing was cleared — permission issue");
+      load();
+      return;
+    }
+    toast.success(isAr ? "تم المسح" : "Cleared");
   };
+
 
   const handleClick = async (n: Notif) => {
     if (!n.read_at) await markRead(n.id);

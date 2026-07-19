@@ -363,6 +363,14 @@ export function LeadershipTasksCard() {
   const ceoTasks = useMemo(() => filtered.filter((t) => t.assigned_by === ceoId), [filtered, ceoId]);
   const cooTasks = useMemo(() => filtered.filter((t) => t.assigned_by === cooId), [filtered, cooId]);
 
+  // Split each column into active vs archive (done/cancelled).
+  const isArchived = (t: Task) => t.status === "done" || t.status === "cancelled";
+  const ceoActive = useMemo(() => ceoTasks.filter((t) => !isArchived(t)), [ceoTasks]);
+  const ceoArchive = useMemo(() => ceoTasks.filter(isArchived), [ceoTasks]);
+  const cooActive = useMemo(() => cooTasks.filter((t) => !isArchived(t)), [cooTasks]);
+  const cooArchive = useMemo(() => cooTasks.filter(isArchived), [cooTasks]);
+
+
 
   if (!allowed) return null;
 
@@ -441,7 +449,8 @@ export function LeadershipTasksCard() {
           isAr={isAr}
           leader={CEO}
           profile={ceoProfile}
-          tasks={ceoTasks}
+          tasks={ceoActive}
+          archive={ceoArchive}
           loaded={loaded}
           flash={flash.ceo}
           onOpenTask={setOpenTaskId}
@@ -450,11 +459,13 @@ export function LeadershipTasksCard() {
           isAr={isAr}
           leader={COO}
           profile={cooProfile}
-          tasks={cooTasks}
+          tasks={cooActive}
+          archive={cooArchive}
           loaded={loaded}
           flash={flash.coo}
           onOpenTask={setOpenTaskId}
         />
+
       </div>
 
       {/* Task notifications center — inside the leadership card */}
@@ -513,12 +524,13 @@ function FilterGroup<T extends string>({
 }
 
 function LeaderColumn({
-  isAr, leader, profile, tasks, loaded, flash, onOpenTask,
+  isAr, leader, profile, tasks, archive, loaded, flash, onOpenTask,
 }: {
   isAr: boolean;
   leader: typeof CEO;
   profile: { display_name: string | null; email: string | null; avatar_url: string | null; updated_at?: string | null } | null;
   tasks: Task[];
+  archive: Task[];
   loaded: boolean;
   flash: boolean;
   onOpenTask: (id: string) => void;
@@ -526,10 +538,10 @@ function LeaderColumn({
   const LeaderIcon = leader.Icon;
   const roleLabel = isAr ? leader.roleAr : leader.roleEn;
   const articleRef = useRef<HTMLElement | null>(null);
-  // Version-tag the URL with the profile's updated_at so re-uploads to the
-  // same storage path immediately break the previous cached bitmap.
+  const [showArchive, setShowArchive] = useState(false);
   const versionedUrl = versioned(profile?.avatar_url ?? null, profile?.updated_at ?? null);
   rememberAvatar(leader.email, versionedUrl);
+  const list = showArchive ? archive : tasks;
   return (
     <article
       ref={articleRef}
@@ -538,12 +550,10 @@ function LeaderColumn({
         flash ? "ring-2 ring-amber-300/70 shadow-[0_0_40px_-8px_rgba(233,199,126,0.55)]" : "ring-amber-400/20"
       }`}
     >
-      {/* Leader header — grid keeps text container flexible on all widths */}
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
         <LeaderAvatar
           url={versionedUrl}
           name={profile?.display_name ?? null}
-
           email={leader.email}
           size={224}
           prefetchRef={articleRef}
@@ -574,7 +584,40 @@ function LeaderColumn({
 
       <div aria-hidden className="my-3 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(233,199,126,0.35), transparent)" }} />
 
-      {/* Task list — visible scroll surface, keyboard-scrollable */}
+      {/* Active / Archive toggle */}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1 rounded-full bg-black/40 p-0.5 ring-1 ring-amber-400/20">
+          <button
+            type="button"
+            onClick={() => setShowArchive(false)}
+            aria-pressed={!showArchive}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition ${
+              !showArchive
+                ? "bg-gradient-to-b from-amber-400 to-amber-600 text-neutral-950 shadow"
+                : "text-amber-100/70 hover:text-amber-100"
+            }`}
+          >
+            {isAr ? "الحالية" : "Active"}
+            <span className="tabular-nums opacity-80">{tasks.length}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowArchive(true)}
+            aria-pressed={showArchive}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition ${
+              showArchive
+                ? "bg-gradient-to-b from-emerald-400 to-emerald-600 text-neutral-950 shadow"
+                : "text-amber-100/70 hover:text-amber-100"
+            }`}
+            title={isAr ? "المهام المنجزة/الملغاة" : "Completed / cancelled"}
+          >
+            <CheckCircle2 className="h-3 w-3" />
+            {isAr ? "الأرشيف" : "Archive"}
+            <span className="tabular-nums opacity-80">{archive.length}</span>
+          </button>
+        </div>
+      </div>
+
       <div
         className="leadership-scroll max-h-[60vh] min-h-[180px] overflow-y-auto sm:max-h-[420px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
         tabIndex={0}
@@ -587,17 +630,23 @@ function LeaderColumn({
               <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-900/70 ring-1 ring-amber-400/10" />
             ))}
           </div>
-        ) : tasks.length === 0 ? (
+        ) : list.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
             <Sparkles className="h-6 w-6 text-amber-300/50" aria-hidden />
-            <span className="text-xs font-medium text-amber-100/70">{isAr ? "لا مهام حالياً" : "No tasks right now"}</span>
-            <span className="text-[10px] text-amber-100/40">
-              {isAr ? `في انتظار مهام من ${roleLabel}` : `Awaiting tasks from ${roleLabel}`}
+            <span className="text-xs font-medium text-amber-100/70">
+              {showArchive
+                ? (isAr ? "لا مهام في الأرشيف بعد" : "Archive is empty")
+                : (isAr ? "لا مهام حالياً" : "No tasks right now")}
             </span>
+            {!showArchive && (
+              <span className="text-[10px] text-amber-100/40">
+                {isAr ? `في انتظار مهام من ${roleLabel}` : `Awaiting tasks from ${roleLabel}`}
+              </span>
+            )}
           </div>
         ) : (
           <ul className="space-y-2">
-            {tasks.map((t) => (
+            {list.map((t) => (
               <TaskRow key={t.id} task={t} isAr={isAr} onOpen={onOpenTask} />
             ))}
           </ul>
@@ -606,6 +655,7 @@ function LeaderColumn({
     </article>
   );
 }
+
 
 function TaskRow({ task, isAr, onOpen }: { task: Task; isAr: boolean; onOpen: (id: string) => void }) {
   const overdue = task.due_date && task.status !== "done" && new Date(task.due_date).getTime() < Date.now();
