@@ -18,6 +18,7 @@ import { useEffectiveUser } from "@/lib/use-effective-user";
 import { IncomingShipmentsStrip } from "@/components/incoming-shipments-strip";
 import { CloseableInvoicesCard } from "@/components/closeable-invoices-card";
 import { LeadershipTasksCard } from "@/components/leadership-tasks-card";
+import { CooHideToggle } from "@/components/coo-hide-toggle";
 import { NoirKpiCard, type NoirTone } from "@/components/noir-kpi-card";
 import { DistributorApprovalsCard } from "@/components/distributor-approvals-card";
 import { PendingAccountsCard } from "@/components/pending-accounts-card";
@@ -480,6 +481,7 @@ function Dashboard() {
 
 
       {uiReady && !ui.isCardHidden(LEADERSHIP_TASKS_KEY) && <LeadershipTasksCard />}
+      {uiReady && <CooHideToggle />}
 
       <div className="stagger grid gap-3 grid-cols-2 lg:grid-cols-3" data-first-paint={loaded && uiReady ? "done" : "loading"}>
         {!uiReady

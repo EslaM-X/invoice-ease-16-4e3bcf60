@@ -10,6 +10,7 @@ export type TeamProfile = {
   updated_at: string | null;
   job_title: string | null;
   job_title_color: string | null;
+  hide_from_leadership_card: boolean | null;
 };
 
 
@@ -24,7 +25,7 @@ const listeners = new Set<() => void>();
 async function refresh() {
   const { data } = await supabase
     .from("profiles")
-    .select("user_id, email, display_name, avatar_url, updated_at, job_title, job_title_color");
+    .select("user_id, email, display_name, avatar_url, updated_at, job_title, job_title_color, hide_from_leadership_card");
   const byEmail = new Map<string, TeamProfile>();
   const byId = new Map<string, TeamProfile>();
   (data ?? []).forEach((p: any) => {
@@ -36,6 +37,7 @@ async function refresh() {
       updated_at: p.updated_at ?? null,
       job_title: p.job_title ?? null,
       job_title_color: p.job_title_color ?? null,
+      hide_from_leadership_card: p.hide_from_leadership_card ?? false,
     };
     if (p.email) byEmail.set(p.email.toLowerCase(), tp);
     byId.set(p.user_id, tp);

@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS hide_from_leadership_card boolean NOT NULL DEFAULT false;
