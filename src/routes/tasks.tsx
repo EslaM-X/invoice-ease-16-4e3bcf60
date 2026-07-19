@@ -200,11 +200,13 @@ function TasksPage() {
       assigned_by: user!.id,
       priority: form.priority,
       due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      invoice_id: form.invoice_id,
+      delivery_receipt_ids: form.delivery_receipt_ids,
     });
     if (error) { toast.error(error.message); return; }
     toast.success(isAr ? "تم إسناد المهمة" : "Task assigned");
     setCreateOpen(false);
-    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "" });
+    setForm({ title: "", description: "", assignee_id: "", priority: "normal", due_date: "", invoice_id: null, delivery_receipt_ids: [] });
     load();
   };
 
