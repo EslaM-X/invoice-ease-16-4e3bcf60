@@ -308,40 +308,25 @@ function CartTab({ distributor, onSubmitted }: { distributor: any; onSubmitted: 
     if (!customerName.trim()) { toast.error(isAr ? "اكتب اسم العميل" : "Customer name required"); return; }
     setSubmitting(true);
     try {
-      const invoiceNumber = `D-${Date.now().toString().slice(-8)}`;
-      const { data: inv, error } = await (supabase.from as any)("invoices").insert({
-        user_id: user.id,
-        invoice_number: invoiceNumber,
-        customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim() || null,
-        customer_address: shippingAddress.trim() || null,
-        shipping_address: shippingAddress.trim() || null,
-        customer_category: category || null,
-        sales_channel: "distributor",
-        sales_event_id: eventId || null,
-        subtotal, discount: 0, total: subtotal,
-        notes: notes.trim() || null,
-        status: "draft",
-        source: "distributor",
-        distributor_id: distributor.id,
-        approval_status: "pending",
-        language: lang,
-
-      }).select().single();
+      const { error } = await (supabase as any).rpc("create_distributor_invoice", {
+        _customer_name: customerName.trim(),
+        _customer_phone: customerPhone.trim() || null,
+        _customer_address: shippingAddress.trim() || null,
+        _shipping_address: shippingAddress.trim() || null,
+        _customer_category: category || null,
+        _sales_event_id: eventId || null,
+        _notes: notes.trim() || null,
+        _language: lang,
+        _items: cart.map((l) => ({
+          product_id: l.product.id,
+          product_name: l.product.name,
+          serial_number: l.product.serial_number,
+          color: l.product.color,
+          quantity: l.qty,
+          unit_price: l.product.price,
+        })),
+      });
       if (error) throw error;
-      const items = cart.map((l) => ({
-        invoice_id: inv.id,
-        product_id: l.product.id,
-        product_name: l.product.name,
-        serial_number: l.product.serial_number,
-        color: l.product.color,
-        quantity: l.qty,
-        unit_price: l.product.price,
-        discount: 0,
-        line_total: l.product.price * l.qty,
-      }));
-      const { error: itemsErr } = await (supabase.from as any)("invoice_items").insert(items);
-      if (itemsErr) throw itemsErr;
       setCart([]);
       setCustomerName(""); setCustomerPhone(""); setShippingAddress(""); setNotes("");
       setCategory(""); setEventId("");
