@@ -4290,6 +4290,20 @@ export type Database = {
             }
             Returns: string
           }
+      create_distributor_invoice: {
+        Args: {
+          _customer_address: string
+          _customer_category: string
+          _customer_name: string
+          _customer_phone: string
+          _items: Json
+          _language: string
+          _notes: string
+          _sales_event_id: string
+          _shipping_address: string
+        }
+        Returns: string
+      }
       create_invoice:
         | {
             Args: {
