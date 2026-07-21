@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { toast } from "sonner";
-import { Wallet, TrendingUp, Trash2, Plus, Loader2, Receipt, XCircle } from "lucide-react";
+import { Wallet, TrendingUp, Trash2, Plus, Loader2, Receipt, XCircle, Eye, Pencil, Truck } from "lucide-react";
 
 type Balance = {
   distributor_id: string;
