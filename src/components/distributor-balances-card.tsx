@@ -183,7 +183,7 @@ function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose:
                         <Eye className="h-3 w-3" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6" title={isAr ? "تعديل" : "Edit"}
-                        onClick={() => { onClose(); navigate({ to: "/invoices_/$id/edit", params: { id: iv.id } }); }}>
+                        onClick={() => { onClose(); navigate({ to: "/invoices/$id/edit", params: { id: iv.id } }); }}>
                         <Pencil className="h-3 w-3" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6 text-sky-600" title={isAr ? "إضافة شحن" : "Add shipment"}
