@@ -96,6 +96,7 @@ export function DistributorBalancesCard() {
 function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const navigate = useNavigate();
   const [bal, setBal] = useState<Balance | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
