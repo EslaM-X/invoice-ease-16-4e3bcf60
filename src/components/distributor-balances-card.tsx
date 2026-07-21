@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useRealtimeTable } from "@/lib/realtime";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtMoney, fmtDate } from "@/lib/utils-money";
 import { toast } from "sonner";
-import { Wallet, TrendingUp, Trash2, Plus, Loader2, Receipt, XCircle } from "lucide-react";
+import { Wallet, TrendingUp, Trash2, Plus, Loader2, Receipt, XCircle, Eye, Pencil, Truck } from "lucide-react";
 
 type Balance = {
   distributor_id: string;
@@ -95,6 +96,7 @@ export function DistributorBalancesCard() {
 function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const navigate = useNavigate();
   const [bal, setBal] = useState<Balance | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -176,6 +178,18 @@ function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose:
                   </td>
                   <td className="p-2 text-end">
                     <div className="flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" title={isAr ? "فتح الفاتورة" : "Open invoice"}
+                        onClick={() => { onClose(); navigate({ to: "/invoices/$id", params: { id: iv.id } }); }}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" title={isAr ? "تعديل" : "Edit"}
+                        onClick={() => { onClose(); navigate({ to: "/invoices_/$id/edit", params: { id: iv.id } }); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-sky-600" title={isAr ? "إضافة شحن" : "Add shipment"}
+                        onClick={() => { onClose(); navigate({ to: "/delivery-receipts/new", search: { invoiceId: iv.id } }); }}>
+                        <Truck className="h-3 w-3" />
+                      </Button>
                       {iv.approval_status !== "rejected" && (
                         <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" title={isAr ? "رفض" : "Reject"} onClick={() => rejectInvoice(iv.id)}>
                           <XCircle className="h-3 w-3" />
