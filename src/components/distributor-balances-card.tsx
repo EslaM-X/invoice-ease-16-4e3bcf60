@@ -178,6 +178,18 @@ function DistributorDetailsDialog({ id, onClose }: { id: string | null; onClose:
                   </td>
                   <td className="p-2 text-end">
                     <div className="flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" title={isAr ? "فتح الفاتورة" : "Open invoice"}
+                        onClick={() => { onClose(); navigate({ to: "/invoices/$id", params: { id: iv.id } }); }}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" title={isAr ? "تعديل" : "Edit"}
+                        onClick={() => { onClose(); navigate({ to: "/invoices_/$id/edit", params: { id: iv.id } }); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-sky-600" title={isAr ? "إضافة شحن" : "Add shipment"}
+                        onClick={() => { onClose(); navigate({ to: "/delivery-receipts/new", search: { invoiceId: iv.id } }); }}>
+                        <Truck className="h-3 w-3" />
+                      </Button>
                       {iv.approval_status !== "rejected" && (
                         <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" title={isAr ? "رفض" : "Reject"} onClick={() => rejectInvoice(iv.id)}>
                           <XCircle className="h-3 w-3" />
