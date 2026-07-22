@@ -263,38 +263,51 @@ function InTransitPage() {
     return { inStock, inTransit, transitProducts, reserved, sold };
   }, [rows, reservedByProductMap, soldByProduct]);
 
-  // ====== Smart alerts ======
-  // critical: reserved in invoices, but 0 in stock AND 0 incoming  → must order NOW
-  // shortfall: reserved > in_stock + in_transit                    → partial coverage
-  // covered: reserved > in_stock (covered only by incoming)        → info
+  // ====== Smart alerts (unified source of truth: get_inventory_shortage_alerts RPC) ======
+  //   critical  → stock 0 AND incoming 0 → must order NOW
+  //   shortfall → needed > stock + incoming → partial coverage
+  //   awaiting  → covered by incoming only  → info
   type Alert = {
     product: Product;
     reserved: number;
     inStock: number;
     inTransit: number;
-    shortBy: number; // reserved - (inStock + inTransit), clamped >=0
+    shortBy: number;
     severity: "critical" | "shortfall" | "covered";
   };
   const alerts = useMemo<Alert[]>(() => {
     const out: Alert[] = [];
-    products.forEach((p) => {
-      const reserved = reservedByProductMap[p.id] ?? 0;
-      if (reserved <= 0) return;
-      const inStock = p.stock_quantity ?? 0;
-      const inTransit = rows.find((r) => r.product_id === p.id)?.in_transit ?? 0;
-      const coverage = inStock + inTransit;
-      if (reserved <= inStock) return; // fully covered by stock
-      const shortBy = Math.max(0, reserved - coverage);
-      let severity: Alert["severity"];
-      if (inStock === 0 && inTransit === 0) severity = "critical";
-      else if (reserved > coverage) severity = "shortfall";
-      else severity = "covered";
-      out.push({ product: p, reserved, inStock, inTransit, shortBy, severity });
-    });
+    for (const row of alertRows) {
+      // Build a Product stub in case the product isn't in the loaded products slice.
+      const p: Product = productMap.get(row.product_id) ?? {
+        id: row.product_id,
+        name: row.product_name,
+        serial_number: row.serial_number ?? null,
+        color: row.color ?? null,
+        image_url: row.image_url ?? null,
+        stock_quantity: Number(row.stock_quantity || 0),
+        collection: row.collection ?? null,
+        low_stock_threshold: 0,
+        cost_price: null,
+        price: null,
+      };
+      const sev: Alert["severity"] =
+        row.severity === "critical" ? "critical"
+        : row.severity === "shortfall" ? "shortfall"
+        : "covered";
+      out.push({
+        product: p,
+        reserved: Number(row.needed_qty || 0),
+        inStock: Number(row.stock_quantity || 0),
+        inTransit: Number(row.incoming_qty || 0),
+        shortBy: Number(row.net_shortage || 0),
+        severity: sev,
+      });
+    }
     const rank = { critical: 0, shortfall: 1, covered: 2 } as const;
     out.sort((a, b) => rank[a.severity] - rank[b.severity] || b.shortBy - a.shortBy || b.reserved - a.reserved);
     return out;
-  }, [products, rows, reservedByProductMap]);
+  }, [alertRows, productMap]);
 
   const criticalCount = alerts.filter((a) => a.severity === "critical").length;
   const shortfallCount = alerts.filter((a) => a.severity === "shortfall").length;
