@@ -85,6 +85,8 @@ function InTransitPage() {
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const [alertRows, setAlertRows] = useState<any[]>([]);
+  const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  const [reloading, setReloading] = useState(false);
   const load = async () => {
     const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }, { data: alertsData }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
