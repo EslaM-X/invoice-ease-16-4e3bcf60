@@ -490,11 +490,15 @@ function TeamChatPage() {
                     })()}
                   </div>
                 </div>
+                <WallpaperPicker value={wallpaper} onChange={changeWallpaper} rtl={rtl} />
               </div>
 
               <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5 bg-gradient-to-b from-muted/20 via-background to-muted/10"
+                className={cn(
+                  "flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5",
+                  WALLPAPER_STYLES[wallpaper]
+                )}
               >
                 <AnimatePresence initial={false}>
                   {messages.map((m, i) => {
