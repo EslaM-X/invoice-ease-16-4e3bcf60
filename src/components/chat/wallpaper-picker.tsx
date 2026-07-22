@@ -122,8 +122,13 @@ export function WallpaperPicker({
         .from("chat-wallpapers")
         .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
       if (error) throw error;
-      await onUploadCustom(path);
-      toast.success(rtl ? "تم رفع الخلفية" : "Wallpaper uploaded");
+      if (scope === "room" && canAdminRoom && onUploadRoomCustom) {
+        await onUploadRoomCustom(path);
+        toast.success(rtl ? "تم تعيين خلفية الجروب" : "Group wallpaper set");
+      } else {
+        await onUploadCustom(path);
+        toast.success(rtl ? "تم رفع الخلفية" : "Wallpaper uploaded");
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
     } finally {
@@ -132,6 +137,10 @@ export function WallpaperPicker({
     }
   };
 
+  const pickPreset = (p: WallpaperPreset) => {
+    if (scope === "room" && canAdminRoom && onSetRoomPreset) return onSetRoomPreset(p);
+    return onSelectPreset(p);
+  };
 
   const isCustom = value.type === "custom";
 
@@ -156,24 +165,72 @@ export function WallpaperPicker({
           </DialogTitle>
           <DialogDescription>
             {rtl
-              ? "اختر خلفية جاهزة أو ارفع صورتك بجودة استوديو، وطبّقها لكل الشاتات أو للمحادثة الحالية فقط."
-              : "Pick a curated preset or upload your own studio-grade image, applied to all chats or just this one."}
+              ? "اختر خلفية جاهزة أو ارفع صورتك بجودة استوديو."
+              : "Pick a curated preset or upload your own studio-grade image."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between rounded-xl border p-3 bg-muted/30">
-          <div className="text-xs">
-            <div className="font-semibold text-sm">
-              {rtl ? "خلفية لهذه المحادثة فقط" : "Only for this conversation"}
-            </div>
-            <div className="text-muted-foreground">
-              {rtl
-                ? "لو مقفول، الاختيار بيتحفظ كخلفية افتراضية لكل الشاتات."
-                : "When off, the choice becomes your default for every chat."}
-            </div>
+        {/* Scope tabs */}
+        {canAdminRoom && (
+          <div className="grid grid-cols-2 gap-1 p-1 rounded-full bg-muted/60 border">
+            <button
+              type="button"
+              onClick={() => setScope("self")}
+              className={cn(
+                "text-xs font-semibold py-2 rounded-full transition",
+                scope === "self" ? "bg-card shadow ring-1 ring-[color:var(--brand-gold,#d4af37)]/30" : "text-muted-foreground"
+              )}
+            >
+              {rtl ? "خلفيتي أنا" : "My wallpaper"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope("room")}
+              className={cn(
+                "text-xs font-semibold py-2 rounded-full transition flex items-center justify-center gap-1",
+                scope === "room" ? "bg-card shadow ring-1 ring-[color:var(--brand-gold,#d4af37)]/40" : "text-muted-foreground"
+              )}
+            >
+              <span className="text-[color:var(--brand-gold,#d4af37)]">★</span>
+              {rtl ? "خلفية للجروب كله" : "Group wallpaper"}
+            </button>
           </div>
-          <Switch checked={applyPerRoom} onCheckedChange={onTogglePerRoom} />
-        </div>
+        )}
+
+        {scope === "self" && (
+          <div className="flex items-center justify-between rounded-xl border p-3 bg-muted/30">
+            <div className="text-xs">
+              <div className="font-semibold text-sm">
+                {rtl ? "خلفية لهذه المحادثة فقط" : "Only for this conversation"}
+              </div>
+              <div className="text-muted-foreground">
+                {rtl
+                  ? "لو مقفول، الاختيار بيتحفظ كخلفية افتراضية لكل الشاتات."
+                  : "When off, the choice becomes your default for every chat."}
+              </div>
+            </div>
+            <Switch checked={applyPerRoom} onCheckedChange={onTogglePerRoom} />
+          </div>
+        )}
+
+        {scope === "room" && (
+          <div className="rounded-xl border-2 border-[color:var(--brand-gold,#d4af37)]/40 bg-gradient-to-br from-[color:var(--brand-gold,#d4af37)]/10 to-transparent p-3 text-xs">
+            <div className="font-bold text-sm text-[color:var(--brand-gold,#d4af37)]">
+              ★ {rtl ? "وضع الإدارة" : "Admin mode"}
+            </div>
+            <div className="text-muted-foreground mt-0.5">
+              {rtl
+                ? "الخلفية دي هتظهر لكل الأعضاء في الجروب (إلا لو حدّ عامل خلفية شخصية)."
+                : "This wallpaper shows for everyone in the group (unless a member set their own)."}
+            </div>
+            {hasRoomWallpaper && onClearRoomWallpaper && (
+              <Button variant="outline" size="sm" onClick={() => onClearRoomWallpaper()} className="mt-2 rounded-full">
+                <Trash2 className="h-3.5 w-3.5 me-1" />
+                {rtl ? "مسح خلفية الجروب" : "Clear group wallpaper"}
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Upload / current custom */}
         <div className="rounded-xl border p-3 bg-gradient-to-br from-card to-muted/40">
