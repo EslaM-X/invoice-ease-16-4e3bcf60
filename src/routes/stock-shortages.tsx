@@ -76,9 +76,13 @@ function StockShortagesPage() {
   const ar = lang === "ar";
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isExec = useIsExecutive();
 
   const [rows, setRows] = useState<ShortageRow[] | null>(null);
+  const [rawById, setRawById] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  const [auditMode, setAuditMode] = useState(false);
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -99,6 +103,7 @@ function StockShortagesPage() {
   const [reqQty, setReqQty] = useState<number>(0);
   const [reqNote, setReqNote] = useState("");
   const [reqSaving, setReqSaving] = useState(false);
+
 
 
   const [includeAwaiting, setIncludeAwaiting] = useState(false);
