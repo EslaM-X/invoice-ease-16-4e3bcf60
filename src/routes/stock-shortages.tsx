@@ -129,7 +129,7 @@ function StockShortagesPage() {
     return rows.map((r) => {
       const oldest = r.invoices.reduce((m, i) => Math.min(m, new Date(i.created_at).getTime()), now);
       const ageDays = Math.max(0, Math.floor((now - oldest) / dayMs));
-      const net = Math.max(0, r.needed_qty - r.incoming_qty);
+      const net = Math.max(0, Number(r.net_shortage || 0));
       // Score: aged shortages weigh more; each day adds pressure.
       const priorityScore = net * (1 + ageDays / 3);
       const urgency: "critical" | "waiting" | "covered" =
@@ -157,7 +157,7 @@ function StockShortagesPage() {
           });
           if (invs.length === 0) return null;
           const needed = invs.reduce((s, i) => s + (i.quantity || 0), 0);
-          const net = Math.max(0, needed - r.incoming_qty);
+          const net = Math.max(0, needed - (Number(r.stock_quantity || 0) + Number(r.incoming_qty || 0)));
           return { ...r, invoices: invs, needed_qty: needed, net };
         })
         .filter(Boolean) as typeof list;
