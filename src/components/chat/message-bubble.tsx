@@ -32,6 +32,8 @@ export type ChatMsg = {
   sender_avatar_url?: string | null;
   sender_job_title?: string | null;
   sender_job_title_color?: string | null;
+  read_by_count?: number;
+  read_by_user_ids?: string[];
   __pending?: boolean;
 };
 
