@@ -839,10 +839,12 @@ function TeamChatPage() {
                           attachmentUrls={attachmentUrls}
                           isGroup={activeRoom.type === "group"}
                           isRead={true}
+                          highlightQuery={inChatSearchOpen ? inChatQuery.trim() : ""}
                           onReply={setReplyTo}
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
                         />
+
                       </div>
                     );
                   })}
