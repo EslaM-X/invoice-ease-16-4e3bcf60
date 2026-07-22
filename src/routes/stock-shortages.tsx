@@ -13,10 +13,11 @@ import {
 import {
   AlertTriangle, Package, TruckIcon, RefreshCw, Search, Copy, Download,
   ShoppingCart, ChevronDown, ChevronUp, Flame, Clock, CheckSquare, Square,
-  ClipboardList, Send,
+  ClipboardList, Send, ShieldCheck, Code2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { useIsExecutive } from "@/lib/use-executive";
 
 
 export const Route = createFileRoute("/stock-shortages")({
