@@ -34,6 +34,17 @@ type ShortageInvoice = {
   quantity: number;
   created_at: string;
   status: string;
+  delivery_status: string | null;
+};
+
+type IncomingPO = {
+  po_id: string;
+  po_number: string;
+  supplier_name: string | null;
+  status: string;
+  shipment_code: string | null;
+  expected_arrival_at: string | null;
+  qty: number;
 };
 
 type ShortageRow = {
@@ -47,8 +58,12 @@ type ShortageRow = {
   stock_quantity: number;
   incoming_qty: number;
   needed_qty: number;
+  from_stock: number;
+  from_incoming: number;
   net_shortage: number;
+  severity: "critical" | "shortfall" | "awaiting" | "covered";
   invoices: ShortageInvoice[];
+  incoming_pos: IncomingPO[];
 };
 
 type SortKey = "priority" | "shortage" | "oldest" | "name";
@@ -85,14 +100,44 @@ function StockShortagesPage() {
   const [reqSaving, setReqSaving] = useState(false);
 
 
+  const [includeAwaiting, setIncludeAwaiting] = useState(false);
+  const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set());
+  const [deliveryFilters, setDeliveryFilters] = useState<Set<string>>(new Set());
+
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("get_stock_shortages" as any);
+    const { data, error } = await supabase.rpc("get_inventory_shortage_alerts" as any);
     if (error) {
       toast.error(error.message);
       setRows([]);
     } else {
-      setRows((data as any) ?? []);
+      const mapped: ShortageRow[] = ((data as any[]) ?? []).map((r) => ({
+        product_id: r.product_id,
+        product_name: r.product_name,
+        serial_number: r.serial_number,
+        color: r.color,
+        collection: r.collection,
+        image_url: r.image_url,
+        is_spare_part: r.is_spare_part,
+        stock_quantity: Number(r.stock_quantity || 0),
+        incoming_qty: Number(r.incoming_qty || 0),
+        needed_qty: Number(r.needed_qty || 0),
+        from_stock: Number(r.from_stock || 0),
+        from_incoming: Number(r.from_incoming || 0),
+        net_shortage: Number(r.net_shortage || 0),
+        severity: r.severity,
+        invoices: ((r.sources as any[]) ?? []).map((s) => ({
+          invoice_id: s.invoice_id,
+          invoice_number: s.invoice_number,
+          customer_name: s.customer_name,
+          quantity: Number(s.reserved_qty ?? s.quantity ?? 0),
+          created_at: s.created_at,
+          status: s.status ?? "",
+          delivery_status: s.delivery_status ?? null,
+        })),
+        incoming_pos: ((r.incoming_pos as any[]) ?? []) as IncomingPO[],
+      }));
+      setRows(mapped);
     }
     setLoading(false);
   };
@@ -143,16 +188,22 @@ function StockShortagesPage() {
     let list = enriched;
     if (urgencyOnly !== "all") list = list.filter((r) => r.urgency === urgencyOnly);
 
-    // Date range filter: keep only invoices within [from, to], drop rows with no matches.
-    const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
-    const toMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
-    if (fromMs !== null || toMs !== null) {
+    // Default: only true shortages (net > 0). Toggle to also include awaiting-arrival rows.
+    if (!includeAwaiting) list = list.filter((r) => r.net > 0);
+
+    // Invoice status filters (financial + delivery). Empty set = no filter.
+    const dateFromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
+    const dateToMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
+    const applyFilters = dateFromMs !== null || dateToMs !== null || statusFilters.size > 0 || deliveryFilters.size > 0;
+    if (applyFilters) {
       list = list
         .map((r) => {
           const invs = r.invoices.filter((i) => {
+            if (statusFilters.size > 0 && !statusFilters.has(i.status || "")) return false;
+            if (deliveryFilters.size > 0 && !deliveryFilters.has(i.delivery_status || "pending")) return false;
             const t = new Date(i.created_at).getTime();
-            if (fromMs !== null && t < fromMs) return false;
-            if (toMs !== null && t > toMs) return false;
+            if (dateFromMs !== null && t < dateFromMs) return false;
+            if (dateToMs !== null && t > dateToMs) return false;
             return true;
           });
           if (invs.length === 0) return null;
@@ -162,6 +213,7 @@ function StockShortagesPage() {
         })
         .filter(Boolean) as typeof list;
     }
+
 
     if (needle) {
       list = list.filter(
@@ -188,7 +240,7 @@ function StockShortagesPage() {
       }
     });
     return sorted;
-  }, [enriched, q, sortBy, urgencyOnly, dateFrom, dateTo]);
+  }, [enriched, q, sortBy, urgencyOnly, dateFrom, dateTo, includeAwaiting, statusFilters, deliveryFilters]);
 
   // ----- Grouped by collection for smart display -----
   const grouped = useMemo(() => {
@@ -441,7 +493,62 @@ function StockShortagesPage() {
             </Button>
           )}
         </div>
+
+        {/* Invoice-status audit filters */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber-500/15 bg-black/20 px-3 py-2">
+          <span className="text-[10px] uppercase tracking-wider text-amber-500/70 font-semibold">
+            {ar ? "فلترة/تدقيق حالة الفواتير" : "Invoice status audit"}
+          </span>
+          <FilterChipGroup
+            label={ar ? "المالية" : "Financial"}
+            options={[
+              { key: "pending", label: ar ? "معلقة" : "Pending" },
+              { key: "completed", label: ar ? "مكتملة" : "Completed" },
+              { key: "paid", label: ar ? "مدفوعة" : "Paid" },
+            ]}
+            active={statusFilters}
+            onToggle={(k) => setStatusFilters((prev) => {
+              const next = new Set(prev);
+              if (next.has(k)) next.delete(k); else next.add(k);
+              return next;
+            })}
+          />
+          <FilterChipGroup
+            label={ar ? "التسليم" : "Delivery"}
+            options={[
+              { key: "pending", label: ar ? "لم يبدأ" : "Not started" },
+              { key: "partial", label: ar ? "جزئي" : "Partial" },
+              { key: "delivered", label: ar ? "مسلّم بالكامل" : "Delivered" },
+            ]}
+            active={deliveryFilters}
+            onToggle={(k) => setDeliveryFilters((prev) => {
+              const next = new Set(prev);
+              if (next.has(k)) next.delete(k); else next.add(k);
+              return next;
+            })}
+          />
+          <label className="inline-flex items-center gap-1.5 text-xs text-amber-100/80 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeAwaiting}
+              onChange={(e) => setIncludeAwaiting(e.target.checked)}
+              className="accent-amber-500"
+            />
+            {ar ? "أظهر أيضًا المنتجات المغطاة بالقادم فقط" : "Include awaiting-arrival items"}
+          </label>
+          {(statusFilters.size > 0 || deliveryFilters.size > 0 || includeAwaiting) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setStatusFilters(new Set()); setDeliveryFilters(new Set()); setIncludeAwaiting(false); }}
+              className="h-7 px-2 text-amber-300 hover:text-amber-200"
+            >
+              {ar ? "إعادة ضبط" : "Reset"}
+            </Button>
+          )}
+        </div>
       </div>
+
 
       {/* Body */}
       {loading && !rows ? (
@@ -690,7 +797,12 @@ function ShortageCard({
                         <div className="font-semibold text-rose-300 tabular-nums">
                           {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-amber-100/50">{inv.status}</div>
+                        <div className="mt-0.5 flex items-center justify-end gap-1">
+                          <span className="text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 border border-amber-500/25 text-amber-200/80 bg-amber-500/5">
+                            {inv.status || "—"}
+                          </span>
+                          <DeliveryStatusBadge status={inv.delivery_status} ar={ar} />
+                        </div>
                       </div>
                       <button
                         onClick={() =>
@@ -714,6 +826,39 @@ function ShortageCard({
                     </span>
                   </div>
                 )}
+                {/* Coverage breakdown */}
+                <div className="px-3 py-2 border-t border-amber-500/15 bg-black/20 text-[11px] text-amber-100/80 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>{ar ? "تغطية من المخزون:" : "From stock:"} <b className="text-emerald-300 tabular-nums">{row.from_stock}</b></span>
+                  <span>{ar ? "من الشحنات القادمة:" : "From incoming:"} <b className="text-blue-300 tabular-nums">{row.from_incoming}</b></span>
+                  <span>{ar ? "نقص صافي:" : "Net short:"} <b className={`tabular-nums ${row.net_shortage > 0 ? "text-red-300" : "text-emerald-300"}`}>{row.net_shortage}</b></span>
+                </div>
+                {row.incoming_pos.length > 0 && (
+                  <div className="border-t border-amber-500/15 bg-blue-500/[0.03]">
+                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-blue-300/80 font-semibold border-b border-blue-500/15">
+                      {ar ? "أوامر شراء قادمة تغطي هذا المنتج" : "Incoming POs covering this item"}
+                    </div>
+                    <div className="divide-y divide-blue-500/10">
+                      {row.incoming_pos.map((po) => (
+                        <div key={po.po_id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-blue-100 truncate">
+                              {po.po_number}
+                              {po.shipment_code && <span className="ms-2 text-blue-100/50">· {po.shipment_code}</span>}
+                            </div>
+                            <div className="text-[10px] text-blue-100/60 truncate">
+                              {po.supplier_name ?? "—"}
+                              {po.expected_arrival_at && ` · ETA ${new Date(po.expected_arrival_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}`}
+                              <span className="ms-1 uppercase">· {po.status}</span>
+                            </div>
+                          </div>
+                          <div className="text-end shrink-0 font-semibold text-blue-200 tabular-nums">
+                            +{po.qty}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -722,6 +867,21 @@ function ShortageCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function DeliveryStatusBadge({ status, ar }: { status: string | null; ar: boolean }) {
+  const s = (status || "pending").toLowerCase();
+  const meta =
+    s === "delivered" || s === "completed"
+      ? { cls: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10", label: ar ? "مسلّم" : "Delivered" }
+      : s === "partial"
+      ? { cls: "border-amber-500/40 text-amber-300 bg-amber-500/10", label: ar ? "جزئي" : "Partial" }
+      : { cls: "border-slate-500/40 text-slate-300 bg-slate-500/10", label: ar ? "لم يبدأ" : "Pending" };
+  return (
+    <span className={`text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 border ${meta.cls}`}>
+      {meta.label}
+    </span>
   );
 }
 
@@ -748,6 +908,38 @@ function UrgencyBadge({
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
       {ar ? "مغطى" : "Covered"}
     </span>
+  );
+}
+
+function FilterChipGroup({
+  label, options, active, onToggle,
+}: {
+  label: string;
+  options: { key: string; label: string }[];
+  active: Set<string>;
+  onToggle: (k: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-amber-100/50 me-1">{label}:</span>
+      {options.map((o) => {
+        const on = active.has(o.key);
+        return (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => onToggle(o.key)}
+            className={`px-2 py-0.5 rounded-md border text-[11px] transition ${
+              on
+                ? "bg-amber-500/15 border-amber-500/50 text-amber-100"
+                : "border-amber-500/20 text-amber-100/60 hover:border-amber-500/40 hover:text-amber-100"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
