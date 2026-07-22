@@ -1,51 +1,32 @@
 
-## المشكلة الفعلية (بعد فحص القاعدة والدوال)
+## قبل ما تدوس "إعادة البناء" — الحالة الفعلية
 
-الأرقام في **متتبع المخزون** و**تسوية المخزون من الورق** بتيجي من 3 دوال (`get_sold_qty_by_product`, `get_delivered_qty_by_product`, `get_reserved_qty_by_product`) بالإضافة لدالة `rebuild_inventory_from_source_of_truth`. الفحص كشف تعارضين حقيقيين يفسّرون الأعطال اللي بتشوفها:
+### تقرير النواقص
+هيتحدّث تلقائيًا. دالة `rebuild_inventory_from_source_of_truth` في آخر خطوة بتنادي `recompute_missing_shortages()` — أي بعد الضغط مرة واحدة الأرصدة + النواقص + متتبع المخزون كلهم يعاد حسابهم في نفس اللحظة.
 
-**١) "تم تسليمه" أكبر من "تم بيعه"** (مستحيل منطقيًا، وظاهر في السكرين شوت — مثال `STM-50-F800-009` سولد 16 / ديليفرد 19):
-- `get_sold_qty_by_product` بيستبعد الفواتير `draft/voided/cancelled`.
-- `get_delivered_qty_by_product` بيستبعد فقط محضر التسليم الملغي، **ومش بيستبعد** محاضر التسليم المرتبطة بفواتير `voided/cancelled/draft`. النتيجة: بند اتسلّم ثم الفاتورة اتلغت أو رجعت درافت → بيتحسب "متسلّم" بس مش "متباع".
-- كمان `sold` بيستخدم `can_access_user_data(i.user_id)` و `delivered` بيستخدم `can_access_user_data(dr.user_id)` — لو الفاتورة لموزّع ومحضر التسليم مسجّل باسم أدمن (أو العكس)، هيبان فرق.
+### حالة أوامر الشراء (كل الـ 11)
 
-**٢) "قادم في الطريق / في المخزن" بيظهر 0 لأصناف موجودة فعلاً**:
-- الرقم "في المخزن" في المتتبع بيتقرا من `products.stock_quantity` بعد ما زر **"إعادة بناء المخزون من المصادر الحقيقية"** صفّر كل حاجة وبناها من `po_receipt_items − delivery_receipt_items`.
-- كل الـ POs الحالية عندها receipt lines (اتأكدت)، لكن الرصيد النهائي = مستلم − متسلَّم. أي انحراف في دالة "delivered" (نفس مشكلة #١) بيخلي منتجات ترصيدها الحقيقي موجب لكن الرصيد المخزّن = 0 (لأن الـ GREATEST(...,0) بيقصّها).
-- كمان لو محضر تسليم مرتبط بفاتورة `voided` — إعادة البناء بتخصمه من المخزون بالغلط ونتيجة المنتج تنزل صفر رغم إنه موجود على الرف.
+| PO | Status | مطلوب | مستلم فعلاً | ملاحظة |
+|---|---|---|---|---|
+| PO-2026-0001 | received | 75 | 75 | ✓ كامل |
+| PO-2026-0002 | in_warehouse | 236 | **168** | ⚠ ناقص 68 وحدة لم تُستلم بعد |
+| PO-2026-0003 | received | 1222 | 1222 | ✓ كامل |
+| PO-2026-0004 | received | 43 | 43 | ✓ كامل |
+| PO-2026-0005 | received | 33 | 33 | ✓ كامل |
+| PO-2026-0006 | received | 11 | 11 | ✓ كامل |
+| PO-2026-0007 | received | 15 | 15 | ✓ كامل |
+| PO-2026-0008 | received | 34 | 34 | ✓ كامل |
+| PO-2026-0009 | received | 18 | 18 | ✓ كامل |
+| PO-2026-0010 | received | 34 | 34 | ✓ كامل |
+| PO-2026-0011 | **priced** | 38 | 0 | ℹ آخر أمر — لسه مش مستلم، هيظهر في "قادم في الطريق" فقط، **مش هيضاف للمخزون** لحد ما تستلمه |
 
-**٣) الـ Path B في `get_delivered_qty_by_product`** (المطابقة عبر `product_name` داخل نفس الفاتورة) بتشتغل حتى لو الفاتورة `voided` — نفس الجذر بيتكرر.
+**كل بنود الـ POs معرّفة على منتج (0 unmapped lines)** — يعني إعادة البناء هتحسب كل الكميات المستلمة بشكل صحيح.
 
-## الخطة (SQL فقط — بدون أي تعديل على الفواتير أو محاضر التسليم كسجلات)
+### تنبيهات مهمة قبل الضغط
 
-### 1. توحيد فلتر حالة الفاتورة عبر كل الدوال
-تعديل الدوال دي لتستبعد الفواتير `draft/voided/cancelled` من حساب "المُسلَّم"، بحيث `delivered ≤ sold` دايمًا:
+1. **PO-2026-0002**: 68 وحدة مطلوبة لكن مش مسجّل ليها استلام في `po_receipts`. لو الوحدات دي فعلاً وصلت المخزن يبقى لازم تسجّل استلامها من صفحة الـ PO قبل إعادة البناء، وإلا هتفضل غير محسوبة.
+2. **PO-2026-0011**: `priced` — مقصود إنه مش في المخزون لحد ما تستلمه. لو المفروض بقى في المخزن، حدّث حالته وسجّل الاستلام قبل الضغط.
+3. أي منتج عليه محاضر تسليم مرتبطة بفواتير `voided/draft` — بعد الإصلاح اللي عملته دلوقتي هترجع تُحسب في المخزون تلقائيًا (وده الجزء اللي كان بيصفّر منتجات موجودة).
 
-- `get_delivered_qty_by_product`: إضافة `JOIN invoices i ON i.id = dr.invoice_id` وشرط `COALESCE(i.status,'') NOT IN ('draft','voided','cancelled')` قبل حساب Path A و Path B.
-- `rebuild_inventory_from_source_of_truth`: نفس الفلتر داخل CTE `delivered_linked` و `delivered_orphan`، بحيث محاضر التسليم لفواتير ملغاة/مسودّة **مش بتخصم** من المخزون.
-- توحيد `can_access_user_data` بحيث كلاهما يستخدم `i.user_id` (بدل `dr.user_id` في delivered) عشان الأرقام تكون متسقة لنفس المستخدم.
-
-### 2. دالة تشخيصية جديدة `inventory_discrepancy_report()`
-ترجع لكل منتج: `received`, `delivered_counted`, `delivered_excluded_by_invoice_status`, `sold`, `stock_quantity_now`, `expected_stock`, `delta`. تُستخدم داخل صفحة "تسوية المخزون من الورق" لتوضّح بالظبط منين جه كل رقم قبل أي إعادة بناء.
-
-### 3. إعادة تشغيل `rebuild_inventory_from_source_of_truth` بعد الإصلاح
-بعد اعتماد التعديلات أعلاه — تشغيل الدالة مرة واحدة يعيد ضبط `products.stock_quantity` على القيمة الصحيحة (مستلم − متسلَّم-من-فواتير-فعّالة). المنتجات اللي بتظهر 0 وهي موجودة هترجع لرصيدها الحقيقي تلقائيًا.
-
-### 4. لا تغيير في:
-- بيانات الفواتير، `invoice_items`، `delivery_receipts`، `delivery_receipt_items`، `purchase_orders`، `po_receipt_items` — كلها تبقى كما هي كسجلات.
-- الواجهة (`in-transit.tsx` / `inventory-reconcile.tsx`) — بس هتبدأ تعرض أرقام صحيحة تلقائيًا؛ ممكن إضافة زر "عرض التقرير التشخيصي" لاحقًا لو حبيت.
-
-## تفاصيل تقنية (مرجع)
-
-```text
-delivered_counted(product) =
-  Σ dri.quantity  WHERE dr.status ≠ 'cancelled'
-                    AND invoice.status NOT IN (draft, voided, cancelled)
-                    AND ii.product_id IS NOT NULL         -- Path A
-              +  Path B (same invoice-status filter)
-              +  orphan-by-serial (unchanged; no invoice link exists)
-
-expected_stock(product) = Σ po_receipt_items.quantity − delivered_counted
-                          (clamped ≥ 0)
-```
-
-كل التغييرات في migration واحدة `CREATE OR REPLACE FUNCTION`؛ لا DROP TABLE ولا حذف صفوف.
+### الخلاصة
+مافيش خطة تنفيذ جديدة مطلوبة — دي إجابة على سؤالك. تقدر تضغط "إعادة البناء" بأمان بعد ما تراجع البندين رقم 1 و 2 فوق (خصوصًا PO-2026-0002 و 0011).
