@@ -421,20 +421,42 @@ function InTransitPage() {
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-violet-500/10 via-primary/5 to-transparent p-5">
         <div className="absolute -end-12 -top-12 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="relative">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-700 shadow-sm">
-              <Truck className="h-5 w-5" />
-            </span>
-            {isAr ? "متتبع المخزون" : "Inventory Tracker"}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            {isAr
-              ? "كل منتج بكميته الموجودة في المخزن وكمياته القادمة من أوامر الشراء (تم الطلب / تم الشحن / في المخزن)."
-              : "Every product with on-hand stock and incoming quantities from active POs (Ordered / Shipped / In Warehouse)."}
-          </p>
+        <div className="relative flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-700 shadow-sm">
+                <Truck className="h-5 w-5" />
+              </span>
+              {isAr ? "متتبع المخزون" : "Inventory Tracker"}
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {isAr
+                ? "كل منتج بكميته الموجودة في المخزن وكمياته القادمة من أوامر الشراء (تم الطلب / تم الشحن / في المخزن)."
+                : "Every product with on-hand stock and incoming quantities from active POs (Ordered / Shipped / In Warehouse)."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {lastLoaded && (
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {isAr ? "آخر تحديث" : "Updated"}: {lastLoaded.toLocaleTimeString(isAr ? "ar-EG-u-nu-latn" : "en-GB")}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={recompute} disabled={reloading}>
+              <RefreshCw className={`h-4 w-4 me-2 ${reloading ? "animate-spin" : ""}`} />
+              {isAr ? "إعادة حساب الآن" : "Recompute now"}
+            </Button>
+            {isExec && (
+              <Link to="/inventory-consistency">
+                <Button variant="outline" size="sm">
+                  <ShieldCheck className="h-4 w-4 me-2" />
+                  {isAr ? "فحص الاتساق" : "Consistency"}
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard icon={Boxes} label={isAr ? "إجمالي المخزون" : "Total in stock"} value={totals.inStock} color="text-emerald-600" bg="bg-emerald-500/10" />
