@@ -858,6 +858,38 @@ function UrgencyBadge({
   );
 }
 
+function FilterChipGroup({
+  label, options, active, onToggle,
+}: {
+  label: string;
+  options: { key: string; label: string }[];
+  active: Set<string>;
+  onToggle: (k: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-amber-100/50 me-1">{label}:</span>
+      {options.map((o) => {
+        const on = active.has(o.key);
+        return (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => onToggle(o.key)}
+            className={`px-2 py-0.5 rounded-md border text-[11px] transition ${
+              on
+                ? "bg-amber-500/15 border-amber-500/50 text-amber-100"
+                : "border-amber-500/20 text-amber-100/60 hover:border-amber-500/40 hover:text-amber-100"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function KPI({ label, value, tone }: { label: string; value: number; tone: "amber" | "rose" | "emerald" | "red" }) {
   const toneMap: Record<string, string> = {
     amber: "text-amber-300 border-amber-500/25 bg-amber-500/5",
