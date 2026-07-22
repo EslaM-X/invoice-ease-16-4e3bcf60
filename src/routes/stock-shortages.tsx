@@ -188,16 +188,22 @@ function StockShortagesPage() {
     let list = enriched;
     if (urgencyOnly !== "all") list = list.filter((r) => r.urgency === urgencyOnly);
 
-    // Date range filter: keep only invoices within [from, to], drop rows with no matches.
-    const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
-    const toMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
-    if (fromMs !== null || toMs !== null) {
+    // Default: only true shortages (net > 0). Toggle to also include awaiting-arrival rows.
+    if (!includeAwaiting) list = list.filter((r) => r.net > 0);
+
+    // Invoice status filters (financial + delivery). Empty set = no filter.
+    const dateFromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
+    const dateToMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
+    const applyFilters = dateFromMs !== null || dateToMs !== null || statusFilters.size > 0 || deliveryFilters.size > 0;
+    if (applyFilters) {
       list = list
         .map((r) => {
           const invs = r.invoices.filter((i) => {
+            if (statusFilters.size > 0 && !statusFilters.has(i.status || "")) return false;
+            if (deliveryFilters.size > 0 && !deliveryFilters.has(i.delivery_status || "pending")) return false;
             const t = new Date(i.created_at).getTime();
-            if (fromMs !== null && t < fromMs) return false;
-            if (toMs !== null && t > toMs) return false;
+            if (dateFromMs !== null && t < dateFromMs) return false;
+            if (dateToMs !== null && t > dateToMs) return false;
             return true;
           });
           if (invs.length === 0) return null;
@@ -207,6 +213,7 @@ function StockShortagesPage() {
         })
         .filter(Boolean) as typeof list;
     }
+
 
     if (needle) {
       list = list.filter(
