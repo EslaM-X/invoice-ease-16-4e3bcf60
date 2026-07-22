@@ -1,3 +1,4 @@
+import { useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import { Copy, MoreHorizontal, Reply, SmilePlus, Trash2, CheckCheck, Check } from "lucide-react";
 import { VoicePlayer } from "@/components/chat/voice-player";
 import { QUICK_REACTIONS } from "@/components/chat/emoji-picker";
@@ -37,8 +41,33 @@ export type ChatMsg = {
   __pending?: boolean;
 };
 
+/** Highlight all occurrences of `q` inside `text` (case-insensitive). */
+function highlightText(text: string, q: string): ReactNode {
+  if (!q) return text;
+  const needle = q.toLowerCase();
+  const parts: ReactNode[] = [];
+  let i = 0;
+  const lower = text.toLowerCase();
+  while (i < text.length) {
+    const idx = lower.indexOf(needle, i);
+    if (idx === -1) {
+      parts.push(text.slice(i));
+      break;
+    }
+    if (idx > i) parts.push(text.slice(i, idx));
+    parts.push(
+      <mark key={`m-${idx}`} className="chat-hl">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+    );
+    i = idx + q.length;
+  }
+  return <>{parts}</>;
+}
+
 export function MessageBubble({
   msg, mine, showAvatar, showName, rtl, voiceUrl, attachmentUrls, isGroup, isRead,
+  highlightQuery = "",
   onReply, onDelete, onToggleReaction,
 }: {
   msg: ChatMsg;
@@ -50,6 +79,7 @@ export function MessageBubble({
   attachmentUrls?: Record<string, string>;
   isGroup: boolean;
   isRead: boolean;
+  highlightQuery?: string;
   onReply: (m: ChatMsg) => void;
   onDelete: (m: ChatMsg) => void;
   onToggleReaction: (m: ChatMsg, emoji: string) => void;
@@ -62,6 +92,32 @@ export function MessageBubble({
   // Reaction aggregation
   const reactionAgg = new Map<string, number>();
   for (const r of msg.reactions ?? []) reactionAgg.set(r.emoji, (reactionAgg.get(r.emoji) ?? 0) + 1);
+
+  // ---- Long-press on mobile → open action sheet ----
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const pressTimer = useRef<number | null>(null);
+  const pressFired = useRef(false);
+
+  const startPress = () => {
+    pressFired.current = false;
+    if (pressTimer.current) window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => {
+      pressFired.current = true;
+      // Haptic buzz if the device supports it
+      if ("vibrate" in navigator) {
+        try { (navigator as any).vibrate?.(15); } catch {}
+      }
+      setSheetOpen(true);
+    }, 380);
+  };
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
+  const bodyNode = msg.body ? highlightText(msg.body, highlightQuery) : null;
 
   return (
     <motion.div
@@ -86,8 +142,17 @@ export function MessageBubble({
 
       <div className={cn("flex flex-col max-w-[85%] sm:max-w-[70%]", mine ? "items-end" : "items-start")}>
         <div
+          onTouchStart={startPress}
+          onTouchEnd={cancelPress}
+          onTouchMove={cancelPress}
+          onTouchCancel={cancelPress}
+          onContextMenu={(e) => {
+            // Right-click / long-press on Android chrome → open sheet
+            e.preventDefault();
+            setSheetOpen(true);
+          }}
           className={cn(
-            "relative px-3 py-2 rounded-2xl text-sm shadow-sm break-words",
+            "relative px-3 py-2 rounded-2xl text-sm shadow-sm break-words select-text",
             mine
               ? "bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-ee-md"
               : "bg-card border border-border/60 rounded-es-md backdrop-blur-sm",
@@ -117,7 +182,7 @@ export function MessageBubble({
               mine ? "bg-white/15 border-white/50" : "bg-muted/60 border-primary/50"
             )}>
               <div className="font-semibold opacity-80 truncate">{msg.reply_to.sender_display_name}</div>
-              <div className="opacity-70 truncate">
+              <div className="opacity-70 truncate chat-emoji">
                 {msg.reply_to.message_type === "voice"
                   ? (rtl ? "🎤 رسالة صوتية" : "🎤 Voice message")
                   : msg.reply_to.message_type === "image"
@@ -143,10 +208,10 @@ export function MessageBubble({
                   </a>
                 );
               })}
-              {msg.body && <div className="whitespace-pre-wrap leading-relaxed">{msg.body}</div>}
+              {msg.body && <div className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</div>}
             </div>
           ) : (
-            <div className="whitespace-pre-wrap leading-relaxed">{msg.body}</div>
+            <div className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</div>
           )}
 
           <div className={cn(
@@ -161,11 +226,11 @@ export function MessageBubble({
             )}
           </div>
 
-          {/* Hover action toolbar — luxury noir glass */}
+          {/* Desktop hover toolbar — luxury noir glass */}
           <div
             className={cn(
-              "absolute -top-4 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-all duration-150 translate-y-1 group-hover/msg:translate-y-0",
-              "flex items-center gap-0.5 rounded-full px-1 py-0.5 z-20",
+              "hidden sm:flex absolute -top-4 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-all duration-150 translate-y-1 group-hover/msg:translate-y-0",
+              "items-center gap-0.5 rounded-full px-1 py-0.5 z-20",
               "bg-[linear-gradient(135deg,rgba(20,20,22,0.95),rgba(35,30,20,0.95))] text-white",
               "ring-1 ring-[color:var(--brand-gold,#d4af37)]/40 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.55),0_0_0_1px_rgba(212,175,55,0.15)]",
               "backdrop-blur-xl",
@@ -185,7 +250,7 @@ export function MessageBubble({
                       key={e}
                       type="button"
                       onClick={() => onToggleReaction(msg, e)}
-                      className="h-9 w-9 rounded-full hover:bg-white/10 text-lg transition-transform hover:scale-125"
+                      className="emoji-native h-9 w-9 rounded-full hover:bg-white/10 text-lg transition-transform hover:scale-125"
                     >
                       {e}
                     </button>
@@ -230,7 +295,7 @@ export function MessageBubble({
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={() => onToggleReaction(msg, emoji)}
-                className="text-xs bg-card border rounded-full px-2 py-0.5 shadow-sm hover:bg-accent transition"
+                className="emoji-native text-xs bg-card border rounded-full px-2 py-0.5 shadow-sm hover:bg-accent transition"
               >
                 {emoji} <span className="opacity-70 tabular-nums">{count}</span>
               </motion.button>
@@ -238,6 +303,60 @@ export function MessageBubble({
           </div>
         )}
       </div>
+
+      {/* Mobile long-press action sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" dir={rtl ? "rtl" : "ltr"} className="p-0 rounded-t-3xl border-[color:var(--brand-gold,#d4af37)]/25 bg-[linear-gradient(180deg,rgba(20,20,22,0.98),rgba(15,15,17,0.98))] text-white">
+          <SheetHeader className="p-4 pb-2">
+            <SheetTitle className="text-white text-sm">
+              {rtl ? "خيارات الرسالة" : "Message actions"}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-2">
+            <div className="flex justify-around bg-white/5 rounded-full p-1 mb-3">
+              {QUICK_REACTIONS.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => { onToggleReaction(msg, e); setSheetOpen(false); }}
+                  className="emoji-native h-11 w-11 rounded-full hover:bg-white/10 text-2xl transition active:scale-90"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="divide-y divide-white/10">
+            <button
+              onClick={() => { onReply(msg); setSheetOpen(false); }}
+              className="w-full text-start px-5 py-4 flex items-center gap-3 hover:bg-white/5 active:bg-white/10"
+            >
+              <Reply className="h-5 w-5 text-[color:var(--brand-gold,#d4af37)]" />
+              <span className="font-medium">{rtl ? "رد" : "Reply"}</span>
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(msg.body ?? "");
+                toast.success(rtl ? "تم النسخ" : "Copied");
+                setSheetOpen(false);
+              }}
+              className="w-full text-start px-5 py-4 flex items-center gap-3 hover:bg-white/5 active:bg-white/10"
+            >
+              <Copy className="h-5 w-5 text-[color:var(--brand-gold,#d4af37)]" />
+              <span className="font-medium">{rtl ? "نسخ" : "Copy"}</span>
+            </button>
+            {mine && (
+              <button
+                onClick={() => { onDelete(msg); setSheetOpen(false); }}
+                className="w-full text-start px-5 py-4 flex items-center gap-3 hover:bg-red-500/10 active:bg-red-500/20 text-red-300"
+              >
+                <Trash2 className="h-5 w-5" />
+                <span className="font-medium">{rtl ? "حذف" : "Delete"}</span>
+              </button>
+            )}
+          </div>
+          <div className="h-[max(env(safe-area-inset-bottom),0.75rem)]" />
+        </SheetContent>
+      </Sheet>
     </motion.div>
   );
 }
