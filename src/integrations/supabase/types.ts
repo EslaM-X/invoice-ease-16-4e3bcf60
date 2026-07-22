@@ -387,6 +387,8 @@ export type Database = {
         Row: {
           last_seen_at: string
           status: string
+          typing_at: string | null
+          typing_room_id: string | null
           updated_at: string
           user_email: string | null
           user_id: string
@@ -394,6 +396,8 @@ export type Database = {
         Insert: {
           last_seen_at?: string
           status?: string
+          typing_at?: string | null
+          typing_room_id?: string | null
           updated_at?: string
           user_email?: string | null
           user_id: string
@@ -401,6 +405,8 @@ export type Database = {
         Update: {
           last_seen_at?: string
           status?: string
+          typing_at?: string | null
+          typing_room_id?: string | null
           updated_at?: string
           user_email?: string | null
           user_id?: string
