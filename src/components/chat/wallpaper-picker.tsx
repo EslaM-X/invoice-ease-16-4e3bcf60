@@ -63,6 +63,12 @@ export function WallpaperPicker({
   value, customUrl, onSelectPreset, onUploadCustom, onClearCustom,
   applyPerRoom, onTogglePerRoom, hasRoomOverride, onResetToDefault,
   rtl, userId,
+  // Admin-only room-wallpaper controls
+  canAdminRoom = false,
+  onSetRoomPreset,
+  onUploadRoomCustom,
+  onClearRoomWallpaper,
+  hasRoomWallpaper = false,
 }: {
   value: WallpaperValue;
   customUrl?: string | null;
@@ -75,11 +81,17 @@ export function WallpaperPicker({
   onResetToDefault: () => Promise<void> | void;
   rtl: boolean;
   userId: string;
+  canAdminRoom?: boolean;
+  onSetRoomPreset?: (p: WallpaperPreset) => Promise<void> | void;
+  onUploadRoomCustom?: (path: string) => Promise<void> | void;
+  onClearRoomWallpaper?: () => Promise<void> | void;
+  hasRoomWallpaper?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
+  const [scope, setScope] = useState<"self" | "room">("self");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File | undefined | null) => {

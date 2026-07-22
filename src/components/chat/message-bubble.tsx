@@ -9,9 +9,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { Copy, MoreHorizontal, Reply, SmilePlus, Trash2, CheckCheck, Check } from "lucide-react";
+import { Copy, MoreHorizontal, Reply, SmilePlus, Trash2, CheckCheck, Check, Info } from "lucide-react";
 import { VoicePlayer } from "@/components/chat/voice-player";
 import { QUICK_REACTIONS } from "@/components/chat/emoji-picker";
+import { MessageInfoDialog } from "@/components/chat/message-info-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -95,6 +96,7 @@ export function MessageBubble({
 
   // ---- Long-press on mobile → open action sheet ----
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const pressTimer = useRef<number | null>(null);
   const pressFired = useRef(false);
 
@@ -275,6 +277,11 @@ export function MessageBubble({
                   <Reply className="h-3.5 w-3.5 me-2" />{rtl ? "رد" : "Reply"}
                 </DropdownMenuItem>
                 {mine && (
+                  <DropdownMenuItem className="focus:bg-white/10 focus:text-[color:var(--brand-gold,#d4af37)]" onClick={() => setInfoOpen(true)}>
+                    <Info className="h-3.5 w-3.5 me-2" />{rtl ? "معلومات الرسالة" : "Message info"}
+                  </DropdownMenuItem>
+                )}
+                {mine && (
                   <>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem onClick={() => onDelete(msg)} className="text-red-400 focus:text-red-300 focus:bg-white/10">
@@ -345,18 +352,29 @@ export function MessageBubble({
               <span className="font-medium">{rtl ? "نسخ" : "Copy"}</span>
             </button>
             {mine && (
-              <button
-                onClick={() => { onDelete(msg); setSheetOpen(false); }}
-                className="w-full text-start px-5 py-4 flex items-center gap-3 hover:bg-red-500/10 active:bg-red-500/20 text-red-300"
-              >
-                <Trash2 className="h-5 w-5" />
-                <span className="font-medium">{rtl ? "حذف" : "Delete"}</span>
-              </button>
+              <>
+                <button
+                  onClick={() => { setInfoOpen(true); setSheetOpen(false); }}
+                  className="w-full text-start px-5 py-4 flex items-center gap-3 hover:bg-white/5 active:bg-white/10"
+                >
+                  <Info className="h-5 w-5 text-[color:var(--brand-gold,#d4af37)]" />
+                  <span className="font-medium">{rtl ? "معلومات الرسالة" : "Message info"}</span>
+                </button>
+                <button
+                  onClick={() => { onDelete(msg); setSheetOpen(false); }}
+                  className="w-full text-start px-5 py-4 flex items-center gap-3 hover:bg-red-500/10 active:bg-red-500/20 text-red-300"
+                >
+                  <Trash2 className="h-5 w-5" />
+                  <span className="font-medium">{rtl ? "حذف" : "Delete"}</span>
+                </button>
+              </>
             )}
           </div>
           <div className="h-[max(env(safe-area-inset-bottom),0.75rem)]" />
         </SheetContent>
       </Sheet>
+
+      <MessageInfoDialog open={infoOpen} onOpenChange={setInfoOpen} messageId={mine ? msg.id : null} rtl={rtl} />
     </motion.div>
   );
 }

@@ -537,6 +537,7 @@ export type Database = {
           name: string | null
           type: string
           updated_at: string
+          wallpaper: Json | null
         }
         Insert: {
           avatar_url?: string | null
@@ -549,6 +550,7 @@ export type Database = {
           name?: string | null
           type?: string
           updated_at?: string
+          wallpaper?: Json | null
         }
         Update: {
           avatar_url?: string | null
@@ -561,6 +563,7 @@ export type Database = {
           name?: string | null
           type?: string
           updated_at?: string
+          wallpaper?: Json | null
         }
         Relationships: []
       }
@@ -4264,6 +4267,22 @@ export type Database = {
       change_delivery_receipt_status: {
         Args: { _new_status: string; _reason?: string; _receipt_id: string }
         Returns: string
+      }
+      chat_is_room_admin: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      chat_remove_member: {
+        Args: { _room_id: string; _target_user: string }
+        Returns: undefined
+      }
+      chat_set_member_role: {
+        Args: { _role: string; _room_id: string; _target_user: string }
+        Returns: undefined
+      }
+      chat_set_room_wallpaper: {
+        Args: { _room_id: string; _wallpaper: Json }
+        Returns: undefined
       }
       consume_needs_order_for_product: {
         Args: { _delta: number; _product_id: string }
