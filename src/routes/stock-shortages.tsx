@@ -700,6 +700,7 @@ function StockShortagesPage() {
 
 function ShortageCard({
   row, ar, isOpen, onToggle, selected, onSelectChange, openRequests, onRequest,
+  auditMode, raw,
 }: {
   row: ShortageRow & { net: number; ageDays: number; urgency: "critical" | "waiting" | "covered" };
   ar: boolean;
@@ -709,7 +710,11 @@ function ShortageCard({
   onSelectChange: (v: boolean) => void;
   openRequests: number;
   onRequest: (invoice?: { id: string; number: string }) => void;
+  auditMode?: boolean;
+  raw?: any;
 }) {
+
+
 
   const urgencyRing =
     row.urgency === "critical"
