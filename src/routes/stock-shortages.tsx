@@ -117,36 +117,44 @@ function StockShortagesPage() {
       toast.error(error.message);
       setRows([]);
     } else {
-      const mapped: ShortageRow[] = ((data as any[]) ?? []).map((r) => ({
-        product_id: r.product_id,
-        product_name: r.product_name,
-        serial_number: r.serial_number,
-        color: r.color,
-        collection: r.collection,
-        image_url: r.image_url,
-        is_spare_part: r.is_spare_part,
-        stock_quantity: Number(r.stock_quantity || 0),
-        incoming_qty: Number(r.incoming_qty || 0),
-        needed_qty: Number(r.needed_qty || 0),
-        from_stock: Number(r.from_stock || 0),
-        from_incoming: Number(r.from_incoming || 0),
-        net_shortage: Number(r.net_shortage || 0),
-        severity: r.severity,
-        invoices: ((r.sources as any[]) ?? []).map((s) => ({
-          invoice_id: s.invoice_id,
-          invoice_number: s.invoice_number,
-          customer_name: s.customer_name,
-          quantity: Number(s.reserved_qty ?? s.quantity ?? 0),
-          created_at: s.created_at,
-          status: s.status ?? "",
-          delivery_status: s.delivery_status ?? null,
-        })),
-        incoming_pos: ((r.incoming_pos as any[]) ?? []) as IncomingPO[],
-      }));
+      const arr = (data as any[]) ?? [];
+      const rawMap: Record<string, any> = {};
+      const mapped: ShortageRow[] = arr.map((r) => {
+        rawMap[r.product_id] = r;
+        return {
+          product_id: r.product_id,
+          product_name: r.product_name,
+          serial_number: r.serial_number,
+          color: r.color,
+          collection: r.collection,
+          image_url: r.image_url,
+          is_spare_part: r.is_spare_part,
+          stock_quantity: Number(r.stock_quantity || 0),
+          incoming_qty: Number(r.incoming_qty || 0),
+          needed_qty: Number(r.needed_qty || 0),
+          from_stock: Number(r.from_stock || 0),
+          from_incoming: Number(r.from_incoming || 0),
+          net_shortage: Number(r.net_shortage || 0),
+          severity: r.severity,
+          invoices: ((r.sources as any[]) ?? []).map((s) => ({
+            invoice_id: s.invoice_id,
+            invoice_number: s.invoice_number,
+            customer_name: s.customer_name,
+            quantity: Number(s.reserved_qty ?? s.quantity ?? 0),
+            created_at: s.created_at,
+            status: s.status ?? "",
+            delivery_status: s.delivery_status ?? null,
+          })),
+          incoming_pos: ((r.incoming_pos as any[]) ?? []) as IncomingPO[],
+        };
+      });
       setRows(mapped);
+      setRawById(rawMap);
+      setLastLoaded(new Date());
     }
     setLoading(false);
   };
+
 
   const loadRequests = async () => {
     const { data } = await supabase
