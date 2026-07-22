@@ -21,11 +21,13 @@ import {
   listChatRooms, listChatMessages, sendChatMessage, markRoomRead,
   listCompanyMembers, createChatRoom, deleteChatMessage,
   toggleReaction, setTypingState, updatePresence,
+  markMessagesRead, getChatWallpaper, setChatWallpaper,
 } from "@/lib/chat.functions";
 import { toast } from "sonner";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
 import { useRoomPresence } from "@/lib/use-chat-presence";
+import { WallpaperPicker, WALLPAPER_STYLES, type WallpaperPreset } from "@/components/chat/wallpaper-picker";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/team-chat")({
@@ -51,14 +53,33 @@ function TeamChatPage() {
   const reactFn = useServerFn(toggleReaction);
   const typingFn = useServerFn(setTypingState);
   const presenceFn = useServerFn(updatePresence);
+  const markReadsFn = useServerFn(markMessagesRead);
+  const getWallpaperFn = useServerFn(getChatWallpaper);
+  const setWallpaperFn = useServerFn(setChatWallpaper);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [wallpaper, setWallpaper] = useState<WallpaperPreset>("noir");
+  const [pendingMessages, setPendingMessages] = useState<ChatMsg[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
+
+  // Load wallpaper preference once
+  useEffect(() => {
+    getWallpaperFn().then((r: any) => {
+      const p = (r?.wallpaper?.preset ?? "noir") as WallpaperPreset;
+      if (p in WALLPAPER_STYLES) setWallpaper(p);
+    }).catch(() => {});
+  }, [getWallpaperFn]);
+
+  const changeWallpaper = useCallback(async (p: WallpaperPreset) => {
+    setWallpaper(p);
+    try { await setWallpaperFn({ data: { preset: p } }); } catch (err: any) { toast.error(err?.message ?? "Failed"); }
+  }, [setWallpaperFn]);
+
 
   const roomsQ = useQuery({
     queryKey: ["chat-rooms"],
@@ -127,6 +148,11 @@ function TeamChatPage() {
         { event: "*", schema: "public", table: "chat_reactions" },
         () => qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] })
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_message_reads", filter: `room_id=eq.${activeRoomId}` },
+        () => qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] })
+      )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [activeRoomId, qc]);
@@ -192,11 +218,29 @@ function TeamChatPage() {
   }, [messagesQ.data?.messages, voiceUrls, attachmentUrls]);
 
   const onSendText = useCallback(async (body: string, replyId: string | null) => {
-    if (!activeRoomId) return;
-    await sendMessage({ data: { room_id: activeRoomId, body, message_type: "text", reply_to_id: replyId ?? undefined } });
-    qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
-    qc.invalidateQueries({ queryKey: ["chat-rooms"] });
-  }, [activeRoomId, sendMessage, qc]);
+    if (!activeRoomId || !user?.id) return;
+    const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimistic: ChatMsg = {
+      id: tempId,
+      sender_id: user.id,
+      body,
+      message_type: "text",
+      created_at: new Date().toISOString(),
+      sender_display_name: (user.user_metadata as any)?.display_name ?? user.email ?? "You",
+      sender_avatar_url: (user.user_metadata as any)?.avatar_url ?? null,
+      __pending: true,
+    };
+    setPendingMessages((prev) => [...prev, optimistic]);
+    try {
+      await sendMessage({ data: { room_id: activeRoomId, body, message_type: "text", reply_to_id: replyId ?? undefined } });
+      qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed");
+    } finally {
+      setPendingMessages((prev) => prev.filter((m) => m.id !== tempId));
+    }
+  }, [activeRoomId, sendMessage, qc, user]);
 
   const onSendVoice = useCallback(async (blob: Blob, durationSeconds: number) => {
     if (!activeRoomId) return;
@@ -256,7 +300,35 @@ function TeamChatPage() {
     }
   }, [deleteMsg, qc, activeRoomId, rtl]);
 
-  const messages: ChatMsg[] = messagesQ.data?.messages ?? [];
+  const serverMessages: ChatMsg[] = messagesQ.data?.messages ?? [];
+  const messages: ChatMsg[] = useMemo(() => {
+    if (pendingMessages.length === 0) return serverMessages;
+    // Drop optimistic entries whose body already appears in the last server messages
+    const recentServerBodies = new Set(
+      serverMessages.slice(-10)
+        .filter((m) => m.sender_id === user?.id && m.message_type === "text")
+        .map((m) => (m.body ?? "").trim())
+    );
+    const stillPending = pendingMessages.filter(
+      (m) => !recentServerBodies.has((m.body ?? "").trim())
+    );
+    return [...serverMessages, ...stillPending];
+  }, [serverMessages, pendingMessages, user?.id]);
+
+  // Mark visible messages as read (excluding own)
+  useEffect(() => {
+    if (!activeRoomId || !user?.id) return;
+    const unreadIds = serverMessages
+      .filter((m) =>
+        m.sender_id !== user.id &&
+        !(m.read_by_user_ids ?? []).includes(user.id) &&
+        !m.__pending &&
+        !m.id.startsWith("pending-")
+      )
+      .map((m) => m.id);
+    if (unreadIds.length === 0) return;
+    markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
+  }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
   // Typing display names
   const typingNames = useMemo(() => {
@@ -418,11 +490,15 @@ function TeamChatPage() {
                     })()}
                   </div>
                 </div>
+                <WallpaperPicker value={wallpaper} onChange={changeWallpaper} rtl={rtl} />
               </div>
 
               <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5 bg-gradient-to-b from-muted/20 via-background to-muted/10"
+                className={cn(
+                  "flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5",
+                  WALLPAPER_STYLES[wallpaper]
+                )}
               >
                 <AnimatePresence initial={false}>
                   {messages.map((m, i) => {

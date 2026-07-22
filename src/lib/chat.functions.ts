@@ -247,10 +247,25 @@ export const listChatMessages = createServerFn({ method: "GET" })
       : { data: [] as any[] };
     const replyMap = new Map((replyRows ?? []).map((r: any) => [r.id, r]));
 
+    // Hydrate read receipts
+    const { data: readRows } = msgIds.length
+      ? await supabase
+          .from("chat_message_reads")
+          .select("message_id, user_id")
+          .in("message_id", msgIds)
+      : { data: [] as any[] };
+    const readMap = new Map<string, string[]>();
+    for (const r of readRows ?? []) {
+      const arr = readMap.get(r.message_id) ?? [];
+      arr.push(r.user_id);
+      readMap.set(r.message_id, arr);
+    }
+
     const enriched = msgs.map((m: any) => {
       const p = pMap.get(m.sender_id);
       const reply = m.reply_to_id ? replyMap.get(m.reply_to_id) : null;
       const replySender = reply ? pMap.get(reply.sender_id) : null;
+      const readers = (readMap.get(m.id) ?? []).filter((uid) => uid !== m.sender_id);
       return {
         ...m,
         sender_display_name: p?.display_name ?? m.sender_email ?? "Member",
@@ -258,6 +273,8 @@ export const listChatMessages = createServerFn({ method: "GET" })
         sender_job_title: p?.job_title ?? null,
         sender_job_title_color: p?.job_title_color ?? null,
         reactions: rMap.get(m.id) ?? [],
+        read_by_user_ids: readers,
+        read_by_count: readers.length,
         reply_to: reply
           ? {
               id: reply.id,
@@ -270,6 +287,65 @@ export const listChatMessages = createServerFn({ method: "GET" })
       };
     });
     return { messages: enriched };
+  });
+
+// Mark a batch of messages as read for the current user
+export const markMessagesRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        room_id: z.string().uuid(),
+        message_ids: z.array(z.string().uuid()).min(1).max(200),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const rows = data.message_ids.map((mid) => ({
+      message_id: mid,
+      user_id: userId,
+      room_id: data.room_id,
+    }));
+    const { error } = await supabase
+      .from("chat_message_reads")
+      .upsert(rows, { onConflict: "message_id,user_id", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+    return { ok: true, count: rows.length };
+  });
+
+// Get / set current user's chat wallpaper preference
+export const getChatWallpaper = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_wallpaper")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return { wallpaper: (data?.chat_wallpaper as any) ?? { preset: "noir" } };
+  });
+
+export const setChatWallpaper = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        preset: z.string().min(1).max(40),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("user_ui_preferences")
+      .upsert(
+        { user_id: userId, chat_wallpaper: { preset: data.preset } },
+        { onConflict: "user_id" }
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 

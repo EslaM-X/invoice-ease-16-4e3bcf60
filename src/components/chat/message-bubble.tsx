@@ -32,6 +32,8 @@ export type ChatMsg = {
   sender_avatar_url?: string | null;
   sender_job_title?: string | null;
   sender_job_title_color?: string | null;
+  read_by_count?: number;
+  read_by_user_ids?: string[];
   __pending?: boolean;
 };
 
@@ -149,13 +151,13 @@ export function MessageBubble({
 
           <div className={cn(
             "flex items-center gap-1 mt-1 text-[10px]",
-            mine ? "justify-end opacity-80" : "justify-end opacity-60"
+            mine ? "justify-end opacity-90" : "justify-end opacity-60"
           )}>
             <span>{time}</span>
             {mine && !msg.__pending && (
-              isRead
-                ? <CheckCheck className="h-3 w-3" />
-                : <Check className="h-3 w-3" />
+              (msg.read_by_count ?? 0) > 0
+                ? <CheckCheck className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" aria-label={`Seen by ${msg.read_by_count}`} />
+                : <Check className="h-3.5 w-3.5" aria-label="Sent" />
             )}
           </div>
 
