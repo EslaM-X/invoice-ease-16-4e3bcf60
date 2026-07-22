@@ -30,6 +30,16 @@ import {
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
+  head: () => ({
+    meta: [
+      { title: "Sign in — Steinheim Suite" },
+      { name: "description", content: "Sign in to Steinheim Suite to access your invoices, inventory, customers, and team workspace. Staff and distributor accounts supported." },
+      { property: "og:title", content: "Sign in — Steinheim Suite" },
+      { property: "og:description", content: "Sign in to access your Steinheim Suite workspace: invoices, inventory, customers, and team." },
+      { property: "og:url", content: "https://invoice-ease-16.lovable.app/auth" },
+    ],
+    links: [{ rel: "canonical", href: "https://invoice-ease-16.lovable.app/auth" }],
+  }),
 });
 
 function AuthPage() {

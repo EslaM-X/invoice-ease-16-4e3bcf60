@@ -22,7 +22,18 @@ import type { SalesEvent } from "@/lib/data";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { addBusinessDays } from "@/lib/delivery-terms";
 
-export const Route = createFileRoute("/invoices/")({ component: () => <AppShell><InvoicesList /></AppShell> });
+export const Route = createFileRoute("/invoices/")({
+  component: () => <AppShell><InvoicesList /></AppShell>,
+  head: () => ({
+    meta: [
+      { title: "Invoices — Steinheim Suite" },
+      { name: "description", content: "Browse, search, and manage every issued invoice with statuses, payments, deliveries, and audit history in Steinheim Suite." },
+      { property: "og:title", content: "Invoices — Steinheim Suite" },
+      { property: "og:description", content: "Browse, search, and manage every issued invoice with statuses, payments, and audit history." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+});
 
 function InvoicesList() {
   const { user } = useAuth();

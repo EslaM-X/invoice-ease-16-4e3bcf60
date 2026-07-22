@@ -14,7 +14,18 @@ import { CardsSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { RestockOrderDialog } from "@/components/restock-order-dialog";
 
-export const Route = createFileRoute("/inventory")({ component: () => <AppShell><Inventory /></AppShell> });
+export const Route = createFileRoute("/inventory")({
+  component: () => <AppShell><Inventory /></AppShell>,
+  head: () => ({
+    meta: [
+      { title: "Inventory — Steinheim Suite" },
+      { name: "description", content: "Live product inventory with stock levels, serial numbers, colors, low-stock alerts, and movement history in Steinheim Suite." },
+      { property: "og:title", content: "Inventory — Steinheim Suite" },
+      { property: "og:description", content: "Live product inventory with stock levels, serial numbers, low-stock alerts, and movement history." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+});
 
 function Inventory() {
   const { user } = useAuth();
@@ -170,7 +181,7 @@ function Inventory() {
                   <div className="flex gap-3">
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                        <img src={p.image_url} alt={`${p.name}${p.color ? ` — ${p.color}` : ""} product photo`} className="h-full w-full object-cover" />
                       ) : (
                         <Boxes className="h-full w-full p-3 text-muted-foreground" />
                       )}
@@ -264,7 +275,7 @@ function Inventory() {
                       <td className="px-3 py-2 font-medium">
                         <div className="flex items-center gap-2">
                           {p?.image_url ? (
-                            <img src={p.image_url} alt={p.name} className="h-8 w-8 rounded border object-cover" />
+                            <img src={p.image_url} alt={`${p.name} product photo`} className="h-8 w-8 rounded border object-cover" />
                           ) : (
                             <div className="h-8 w-8 rounded border bg-muted" />
                           )}

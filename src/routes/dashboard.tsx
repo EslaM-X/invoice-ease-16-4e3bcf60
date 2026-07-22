@@ -43,7 +43,18 @@ function dashboardOrderWithLeadership(order: string[]) {
   return next;
 }
 
-export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
+export const Route = createFileRoute("/dashboard")({
+  component: DashboardPage,
+  head: () => ({
+    meta: [
+      { title: "Dashboard — Steinheim Suite" },
+      { name: "description", content: "Live business dashboard: sales, invoices, low-stock alerts, tasks, and team activity across your Steinheim Suite workspace." },
+      { property: "og:title", content: "Dashboard — Steinheim Suite" },
+      { property: "og:description", content: "Live business dashboard: sales, invoices, low-stock alerts, tasks, and team activity." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+});
 
 function DashboardPage() {
   return <AppShell><Dashboard /></AppShell>;
@@ -411,6 +422,8 @@ function Dashboard() {
               type="button"
               onClick={toggle}
               title={hidden ? (lang === "ar" ? "إظهار الأرقام" : "Show numbers") : (lang === "ar" ? "إخفاء الأرقام" : "Hide numbers")}
+              aria-label={hidden ? (lang === "ar" ? "إظهار الأرقام" : "Show numbers") : (lang === "ar" ? "إخفاء الأرقام" : "Hide numbers")}
+              aria-pressed={hidden}
               className="noir-press noir-ripple focus-gold grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#c9a84c]/30 bg-[#161616]/70 text-[#f5e7b8] backdrop-blur hover:border-[#c9a84c]/60 hover:bg-[#161616]"
             >
               {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

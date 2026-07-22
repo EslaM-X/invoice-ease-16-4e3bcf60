@@ -15,6 +15,7 @@ import { Route as TeamChatRouteImport } from './routes/team-chat'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StockShortagesRouteImport } from './routes/stock-shortages'
 import { Route as StockIntakeRouteImport } from './routes/stock-intake'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
@@ -120,6 +121,11 @@ const StockShortagesRoute = StockShortagesRouteImport.update({
 const StockIntakeRoute = StockIntakeRouteImport.update({
   id: '/stock-intake',
   path: '/stock-intake',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShippingOrderRoute = ShippingOrderRouteImport.update({
@@ -562,6 +568,7 @@ export interface FileRoutesByFullPath {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/stock-intake': typeof StockIntakeRoute
   '/stock-shortages': typeof StockShortagesRoute
   '/tasks': typeof TasksRoute
@@ -646,6 +653,7 @@ export interface FileRoutesByTo {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/stock-intake': typeof StockIntakeRoute
   '/stock-shortages': typeof StockShortagesRoute
   '/tasks': typeof TasksRoute
@@ -731,6 +739,7 @@ export interface FileRoutesById {
   '/scan-and-sell': typeof ScanAndSellRoute
   '/settings': typeof SettingsRoute
   '/shipping-order': typeof ShippingOrderRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/stock-intake': typeof StockIntakeRoute
   '/stock-shortages': typeof StockShortagesRoute
   '/tasks': typeof TasksRoute
@@ -817,6 +826,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/sitemap.xml'
     | '/stock-intake'
     | '/stock-shortages'
     | '/tasks'
@@ -901,6 +911,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/sitemap.xml'
     | '/stock-intake'
     | '/stock-shortages'
     | '/tasks'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/scan-and-sell'
     | '/settings'
     | '/shipping-order'
+    | '/sitemap.xml'
     | '/stock-intake'
     | '/stock-shortages'
     | '/tasks'
@@ -1070,6 +1082,7 @@ export interface RootRouteChildren {
   ScanAndSellRoute: typeof ScanAndSellRoute
   SettingsRoute: typeof SettingsRoute
   ShippingOrderRoute: typeof ShippingOrderRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StockIntakeRoute: typeof StockIntakeRoute
   StockShortagesRoute: typeof StockShortagesRoute
   TasksRoute: typeof TasksRoute
@@ -1148,6 +1161,13 @@ declare module '@tanstack/react-router' {
       path: '/stock-intake'
       fullPath: '/stock-intake'
       preLoaderRoute: typeof StockIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shipping-order': {
@@ -1734,6 +1754,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScanAndSellRoute: ScanAndSellRoute,
   SettingsRoute: SettingsRoute,
   ShippingOrderRoute: ShippingOrderRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   StockIntakeRoute: StockIntakeRoute,
   StockShortagesRoute: StockShortagesRoute,
   TasksRoute: TasksRoute,

@@ -31,8 +31,7 @@ export const Route = createRootRoute({
       { name: "twitter:title", content: "Steinheim Suite — نظام الإدارة المتكامل" },
       { property: "og:description", content: "Steinheim Suite — نظام إدارة شامل للفواتير، المخزون، العملاء، ومركز الاتصال." },
       { name: "twitter:description", content: "Steinheim Suite — نظام إدارة شامل للفواتير، المخزون، العملاء، ومركز الاتصال." },
-      { property: "og:image", content: "/og-image.png" },
-      { name: "twitter:image", content: "/og-image.png" },
+      { property: "og:site_name", content: "Steinheim Suite" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
       { name: "theme-color", content: "#0b0b0c" },
@@ -55,6 +54,31 @@ export const Route = createRootRoute({
       { rel: "mask-icon", href: `/icon-512.png${assetVersionQuery}`, color: "#0b0b0c" },
       { rel: "manifest", href: `/manifest.webmanifest${assetVersionQuery}` },
       { rel: "stylesheet", href: appCss },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://invoice-ease-16.lovable.app/#organization",
+              name: "Steinheim Suite",
+              url: "https://invoice-ease-16.lovable.app/",
+              logo: "https://invoice-ease-16.lovable.app/icon-512.png",
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://invoice-ease-16.lovable.app/#website",
+              name: "Steinheim Suite",
+              url: "https://invoice-ease-16.lovable.app/",
+              publisher: { "@id": "https://invoice-ease-16.lovable.app/#organization" },
+              inLanguage: ["ar", "en"],
+            },
+          ],
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,

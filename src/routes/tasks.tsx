@@ -30,6 +30,15 @@ import { TaskNotificationsCenter } from "@/components/task-notifications-center"
 
 
 export const Route = createFileRoute("/tasks")({
+  head: () => ({
+    meta: [
+      { title: "Tasks — Steinheim Suite" },
+      { name: "description", content: "Assign, prioritize, and track team tasks with comments, due dates, invoice links, and real-time notifications in Steinheim Suite." },
+      { property: "og:title", content: "Tasks — Steinheim Suite" },
+      { property: "og:description", content: "Assign, prioritize, and track team tasks with comments, due dates, and notifications." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: () => <AppShell><TasksPage /></AppShell>,
 });
 

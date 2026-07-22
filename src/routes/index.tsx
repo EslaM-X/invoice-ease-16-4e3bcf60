@@ -12,7 +12,36 @@ import {
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import steinheimLogoWhite from "@/assets/steinheim-logo-white.png";
 
-export const Route = createFileRoute("/")({ component: Landing });
+export const Route = createFileRoute("/")({
+  component: Landing,
+  head: () => ({
+    meta: [
+      { title: "Steinheim Suite — Smart Invoicing, Inventory & CRM" },
+      { name: "description", content: "Steinheim Suite is an all-in-one luxury business management platform: smart invoices, live inventory, customers CRM, call center, and reports — in Arabic & English." },
+      { property: "og:title", content: "Steinheim Suite — Smart Invoicing, Inventory & CRM" },
+      { property: "og:description", content: "All-in-one luxury business management platform: invoicing, inventory, CRM, call center, and reports for premium teams and distributors." },
+      { property: "og:url", content: "https://invoice-ease-16.lovable.app/" },
+      { property: "og:image", content: "https://invoice-ease-16.lovable.app/og-image.png" },
+      { name: "twitter:image", content: "https://invoice-ease-16.lovable.app/og-image.png" },
+      { name: "twitter:title", content: "Steinheim Suite — Smart Invoicing, Inventory & CRM" },
+      { name: "twitter:description", content: "All-in-one luxury business management platform: invoicing, inventory, CRM, call center, and reports." },
+    ],
+    links: [{ rel: "canonical", href: "https://invoice-ease-16.lovable.app/" }],
+    scripts: [{
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Steinheim Suite",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web, iOS, Android, Windows, macOS",
+        url: "https://invoice-ease-16.lovable.app/",
+        description: "All-in-one luxury business management platform for invoicing, inventory, CRM, call center, and reports.",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      }),
+    }],
+  }),
+});
 
 function Landing() {
   const { user, loading } = useAuth();
@@ -63,10 +92,10 @@ function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label={isAr ? "تغيير اللغة" : "Change language"}>
               <Languages className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={toggle}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={toggle} aria-label={isAr ? (theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن") : (theme === "dark" ? "Light mode" : "Dark mode")}>
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <Link to="/auth"><Button size="sm" className="rounded-full px-5 shadow-glow">{t("login")}</Button></Link>

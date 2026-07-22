@@ -23,7 +23,18 @@ import { CloudUpload } from "lucide-react";
 import type { SalesEvent } from "@/lib/data";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 
-export const Route = createFileRoute("/customers")({ component: () => <AppShell><Customers /></AppShell> });
+export const Route = createFileRoute("/customers")({
+  component: () => <AppShell><Customers /></AppShell>,
+  head: () => ({
+    meta: [
+      { title: "Customers CRM — Steinheim Suite" },
+      { name: "description", content: "Manage customer profiles, purchase history, balances, ratings, and communications inside your Steinheim Suite workspace." },
+      { property: "og:title", content: "Customers CRM — Steinheim Suite" },
+      { property: "og:description", content: "Manage customer profiles, purchase history, balances, and communications." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+});
 
 function Customers() {
   const { user } = useAuth();
