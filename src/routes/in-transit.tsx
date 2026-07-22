@@ -126,7 +126,14 @@ function InTransitPage() {
     } else {
       setItems([]);
     }
+    setLastLoaded(new Date());
   };
+
+  const recompute = async () => {
+    setReloading(true);
+    try { await load(); } finally { setReloading(false); }
+  };
+
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
