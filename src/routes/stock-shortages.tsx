@@ -614,6 +614,8 @@ function StockShortagesPage() {
                     onSelectChange={(v) => setSelected((p) => ({ ...p, [r.product_id]: v }))}
                     openRequests={openReqs[r.product_id] ?? 0}
                     onRequest={(inv) => openRequest(r.product_id, r.product_name, r.net, inv)}
+                    auditMode={auditMode}
+                    raw={rawById[r.product_id]}
                   />
                 ))}
 
