@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Square, Trash2, Send } from "lucide-react";
 import { toast } from "sonner";
+import { VoicePlayer } from "@/components/chat/voice-player";
 
 const MAX_SECONDS = 15 * 60; // 15 minutes
 
@@ -125,11 +126,8 @@ export function VoiceRecorder({
         >
           <Trash2 className="h-4 w-4" />
         </Button>
-        <div className="flex-1 min-w-0 flex items-center gap-2 px-1">
-          <PreviewPlayer url={url} />
-          <span className="text-[11px] font-mono text-foreground/70 shrink-0 tabular-nums">
-            {fmt(seconds)}
-          </span>
+        <div className="flex-1 min-w-0">
+          <VoicePlayer url={url} durationSeconds={seconds} tone="neutral" />
         </div>
         <Button
           size="icon"
