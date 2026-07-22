@@ -4510,6 +4510,10 @@ export type Database = {
       is_company_member: { Args: never; Returns: boolean }
       is_distributor: { Args: { _user_id?: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }
+      is_invoice_shortage_eligible: {
+        Args: { _delivery_status: string; _status: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin_email: { Args: { _email: string }; Returns: boolean }
       is_task_manager: { Args: never; Returns: boolean }
