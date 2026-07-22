@@ -14,7 +14,18 @@ import { CardsSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { RestockOrderDialog } from "@/components/restock-order-dialog";
 
-export const Route = createFileRoute("/inventory")({ component: () => <AppShell><Inventory /></AppShell> });
+export const Route = createFileRoute("/inventory")({
+  component: () => <AppShell><Inventory /></AppShell>,
+  head: () => ({
+    meta: [
+      { title: "Inventory — Steinheim Suite" },
+      { name: "description", content: "Live product inventory with stock levels, serial numbers, colors, low-stock alerts, and movement history in Steinheim Suite." },
+      { property: "og:title", content: "Inventory — Steinheim Suite" },
+      { property: "og:description", content: "Live product inventory with stock levels, serial numbers, low-stock alerts, and movement history." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+});
 
 function Inventory() {
   const { user } = useAuth();

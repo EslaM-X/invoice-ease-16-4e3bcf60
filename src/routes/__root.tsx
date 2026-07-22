@@ -55,6 +55,31 @@ export const Route = createRootRoute({
       { rel: "manifest", href: `/manifest.webmanifest${assetVersionQuery}` },
       { rel: "stylesheet", href: appCss },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://invoice-ease-16.lovable.app/#organization",
+              name: "Steinheim Suite",
+              url: "https://invoice-ease-16.lovable.app/",
+              logo: "https://invoice-ease-16.lovable.app/icon-512.png",
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://invoice-ease-16.lovable.app/#website",
+              name: "Steinheim Suite",
+              url: "https://invoice-ease-16.lovable.app/",
+              publisher: { "@id": "https://invoice-ease-16.lovable.app/#organization" },
+              inLanguage: ["ar", "en"],
+            },
+          ],
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
