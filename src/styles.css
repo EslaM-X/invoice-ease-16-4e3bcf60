@@ -1394,18 +1394,17 @@ html { scroll-behavior: smooth; }
   }
 }
 
-/* iOS-style emoji font stack — used inside chat surfaces. Falls back to native
-   Apple Color Emoji on iOS/macOS; other platforms use their best emoji font. */
+/* iOS-style emoji font stack — scoped to emoji spans so URLs, code, and Arabic/Latin
+   text keep their normal font. Falls back gracefully on non-Apple platforms. */
 .emoji-native,
 .chat-emoji {
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
-    "Twemoji Mozilla", "EmojiOne Color", "Android Emoji", sans-serif;
+    "Twemoji Mozilla", "EmojiOne Color", "Android Emoji", inherit;
   font-variant-emoji: emoji;
 }
-/* Ensure emoji-mart's native picker uses the same stack when it falls back */
 em-emoji-picker { --font-family: inherit; }
 
-/* Search-match highlight inside chat message bodies */
+/* Search-match highlight — three intensities driven by [data-hl] on the chat root */
 .chat-hl {
   background: color-mix(in oklab, var(--brand-gold, #d4af37) 55%, transparent);
   color: #111;
@@ -1413,3 +1412,35 @@ em-emoji-picker { --font-family: inherit; }
   padding: 0 2px;
   font-weight: 600;
 }
+[data-hl="soft"] .chat-hl {
+  background: color-mix(in oklab, var(--brand-gold, #d4af37) 28%, transparent);
+  color: inherit;
+}
+[data-hl="strong"] .chat-hl {
+  background: color-mix(in oklab, var(--brand-gold, #d4af37) 85%, transparent);
+  color: #0a0a0a;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--brand-gold, #d4af37) 60%, transparent);
+}
+[data-hl="off"] .chat-hl {
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  padding: 0;
+}
+
+/* Larger, luxury bubble typography for chat */
+.chat-body { line-height: 1.6; letter-spacing: 0.01em; }
+.chat-body p { margin: 0; }
+.chat-body a {
+  color: color-mix(in oklab, var(--brand-gold, #d4af37) 85%, currentColor);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: color-mix(in oklab, currentColor 12%, transparent);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+

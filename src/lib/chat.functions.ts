@@ -581,3 +581,181 @@ export const listRoomPresence = createServerFn({ method: "GET" })
       .in("user_id", data.user_ids);
     return { presence: rows ?? [] };
   });
+
+// -------- Group admin + wallpaper + info --------
+
+/** Full member list for a room with roles and profile hydration. */
+export const listRoomMembers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ room_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: mems, error } = await supabase
+      .from("chat_room_members")
+      .select("user_id, user_email, role, joined_at")
+      .eq("room_id", data.room_id);
+    if (error) throw new Error(error.message);
+    const ids = (mems ?? []).map((m: any) => m.user_id);
+    const { data: profiles } = ids.length
+      ? await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
+          .in("user_id", ids)
+      : { data: [] as any[] };
+    const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+    return {
+      members: (mems ?? []).map((m: any) => {
+        const p = pMap.get(m.user_id);
+        return {
+          user_id: m.user_id,
+          email: p?.email ?? m.user_email ?? null,
+          display_name: p?.display_name ?? m.user_email ?? "Member",
+          avatar_url: p?.avatar_url ?? null,
+          job_title: p?.job_title ?? null,
+          job_title_color: p?.job_title_color ?? null,
+          role: m.role ?? "member",
+          joined_at: m.joined_at ?? null,
+          is_me: m.user_id === userId,
+        };
+      }),
+    };
+  });
+
+/** Info about who saw / can see a specific message. */
+export const getMessageInfo = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ message_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: msg, error } = await supabase
+      .from("chat_messages")
+      .select("id, room_id, sender_id, created_at")
+      .eq("id", data.message_id)
+      .maybeSingle();
+    if (error || !msg) throw new Error(error?.message ?? "not_found");
+
+    const { data: mems } = await supabase
+      .from("chat_room_members")
+      .select("user_id")
+      .eq("room_id", msg.room_id);
+    const memberIds = (mems ?? []).map((m: any) => m.user_id).filter((u: string) => u !== msg.sender_id);
+
+    const { data: reads } = await supabase
+      .from("chat_message_reads")
+      .select("user_id, created_at")
+      .eq("message_id", data.message_id);
+    const seenMap = new Map((reads ?? []).map((r: any) => [r.user_id, r.created_at]));
+
+    const { data: presence } = memberIds.length
+      ? await supabase
+          .from("chat_presence")
+          .select("user_id, status, last_seen_at")
+          .in("user_id", memberIds)
+      : { data: [] as any[] };
+    const pMap = new Map((presence ?? []).map((p: any) => [p.user_id, p]));
+
+    const { data: profiles } = memberIds.length
+      ? await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, email")
+          .in("user_id", memberIds)
+      : { data: [] as any[] };
+    const prMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+
+    const sentAt = new Date(msg.created_at).getTime();
+    const rows = memberIds.map((uid: string) => {
+      const seenAt = seenMap.get(uid) ?? null;
+      const pres = pMap.get(uid);
+      const lastSeen = pres?.last_seen_at ? new Date(pres.last_seen_at).getTime() : 0;
+      const onlineNow = pres?.status !== "offline" && lastSeen && Date.now() - lastSeen < 90_000;
+      const delivered = !!seenAt || lastSeen >= sentAt;
+      const pr = prMap.get(uid);
+      return {
+        user_id: uid,
+        display_name: pr?.display_name ?? pr?.email ?? "Member",
+        avatar_url: pr?.avatar_url ?? null,
+        seen_at: seenAt,
+        delivered,
+        online_now: !!onlineNow,
+      };
+    });
+
+    return {
+      sent_at: msg.created_at,
+      seen: rows.filter((r) => r.seen_at).sort((a, b) => (b.seen_at! < a.seen_at! ? -1 : 1)),
+      delivered: rows.filter((r) => !r.seen_at && r.delivered),
+      pending: rows.filter((r) => !r.delivered),
+      online_count: rows.filter((r) => r.online_now).length,
+      total_recipients: rows.length,
+    };
+  });
+
+/** Get the room-level (admin-set) wallpaper. */
+export const getRoomWallpaper = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ room_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: r } = await supabase
+      .from("chat_rooms")
+      .select("wallpaper")
+      .eq("id", data.room_id)
+      .maybeSingle();
+    return { wallpaper: (r?.wallpaper as any) ?? null };
+  });
+
+export const setRoomWallpaper = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      room_id: z.string().uuid(),
+      wallpaper: z.any().nullable(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("chat_set_room_wallpaper", {
+      _room_id: data.room_id,
+      _wallpaper: data.wallpaper,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setMemberRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      room_id: z.string().uuid(),
+      target_user: z.string().uuid(),
+      role: z.enum(["admin", "member"]),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("chat_set_member_role", {
+      _room_id: data.room_id,
+      _target_user: data.target_user,
+      _role: data.role,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removeMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      room_id: z.string().uuid(),
+      target_user: z.string().uuid(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("chat_remove_member", {
+      _room_id: data.room_id,
+      _target_user: data.target_user,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

@@ -222,10 +222,16 @@ function TeamChatPage() {
     };
   }, [user?.id, presenceFn]);
 
-  // Notifications permission bootstrap
+  // Notifications permission bootstrap — auto-request on first visit for every account
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     setNotifyEnabled(Notification.permission === "granted");
+    if (Notification.permission === "default") {
+      // Fire once, silently; if the browser blocks it, the toolbar bell still lets the user retry.
+      Notification.requestPermission().then((perm) => {
+        setNotifyEnabled(perm === "granted");
+      }).catch(() => {});
+    }
   }, []);
 
   const enableNotifications = useCallback(async () => {
