@@ -8,6 +8,8 @@ import { Palette, Check, Upload, Trash2, Loader2, Image as ImageIcon } from "luc
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ImageCropperDialog } from "@/components/chat/image-cropper";
+
 
 export type WallpaperPreset =
   | "noir"
@@ -76,6 +78,8 @@ export function WallpaperPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File | undefined | null) => {
@@ -88,13 +92,23 @@ export function WallpaperPicker({
       toast.error(rtl ? "أقصى حد 15 ميجا" : "Max 15MB");
       return;
     }
+    // Load into a data URL and open the cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result as string);
+      setCropOpen(true);
+    };
+    reader.onerror = () => toast.error(rtl ? "فشل قراءة الصورة" : "Failed to read image");
+    reader.readAsDataURL(file);
+  };
+
+  const uploadCroppedBlob = async (blob: Blob) => {
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
       const { error } = await supabase.storage
         .from("chat-wallpapers")
-        .upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
+        .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
       if (error) throw error;
       await onUploadCustom(path);
       toast.success(rtl ? "تم رفع الخلفية" : "Wallpaper uploaded");
@@ -102,8 +116,10 @@ export function WallpaperPicker({
       toast.error(err?.message ?? "Failed");
     } finally {
       setUploading(false);
+      setCropSrc(null);
     }
   };
+
 
   const isCustom = value.type === "custom";
 
@@ -238,6 +254,17 @@ export function WallpaperPicker({
           </Button>
         )}
       </DialogContent>
+
+      <ImageCropperDialog
+        open={cropOpen}
+        onOpenChange={(v) => { setCropOpen(v); if (!v) setCropSrc(null); }}
+        srcDataUrl={cropSrc}
+        aspect={9 / 16}
+        targetWidth={1440}
+        rtl={rtl}
+        onCropped={uploadCroppedBlob}
+      />
     </Dialog>
   );
 }
+

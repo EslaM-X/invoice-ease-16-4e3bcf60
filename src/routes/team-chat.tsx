@@ -526,20 +526,22 @@ function TeamChatPage() {
         {/* Sidebar */}
         <div
           className={cn(
-            "w-full md:w-80 md:shrink-0 md:border-e flex-col",
+            "w-full md:w-80 md:shrink-0 md:border-e flex-col bg-background",
             activeRoomId ? "hidden md:flex" : "flex"
           )}
         >
-          <div className="p-3 border-b flex items-center justify-between bg-gradient-to-b from-card to-card/70 backdrop-blur">
-            <h2 className="font-bold text-base flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              {rtl ? "الشات الداخلي" : "Team Chat"}
+          <div className="p-3 border-b flex items-center justify-between bg-gradient-to-b from-card via-card to-muted/40 shadow-[0_2px_0_0_color-mix(in_oklab,var(--brand-gold,#d4af37)_18%,transparent)]">
+            <h2 className="font-bold text-base flex items-center gap-2 text-foreground">
+              <span className="h-8 w-8 rounded-full grid place-items-center bg-gradient-to-br from-[color:var(--brand-gold,#d4af37)]/25 to-primary/25 ring-1 ring-[color:var(--brand-gold,#d4af37)]/40">
+                <MessageSquare className="h-4 w-4 text-[color:var(--brand-gold,#d4af37)]" />
+              </span>
+              <span className="tracking-tight">{rtl ? "الشات الداخلي" : "Team Chat"}</span>
             </h2>
             <div className="flex items-center gap-1">
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-9 w-9 rounded-full"
+                className="h-9 w-9 rounded-full border border-transparent hover:border-[color:var(--brand-gold,#d4af37)]/30 hover:bg-[color:var(--brand-gold,#d4af37)]/10"
                 onClick={enableNotifications}
                 title={rtl ? "الإشعارات" : "Notifications"}
                 aria-label="Notifications"
@@ -567,18 +569,18 @@ function TeamChatPage() {
               />
             </div>
           </div>
-          <div className="p-2 border-b">
+          <div className="p-2.5 border-b bg-card">
             <div className="relative">
               <Search className={cn("h-4 w-4 absolute top-1/2 -translate-y-1/2 text-muted-foreground", rtl ? "right-3" : "left-3")} />
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={rtl ? "بحث..." : "Search..."}
-                className={cn("bg-muted/40 border-0 rounded-full h-9", rtl ? "pr-9" : "pl-9")}
+                placeholder={rtl ? "بحث في المحادثات..." : "Search conversations..."}
+                className={cn("bg-muted/70 border border-border/70 rounded-full h-10 shadow-sm focus-visible:ring-2 focus-visible:ring-[color:var(--brand-gold,#d4af37)]/40", rtl ? "pr-9" : "pl-9")}
               />
             </div>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 bg-background">
             {filteredRooms.length === 0 && (
               <div className="p-6 text-center text-sm text-muted-foreground">
                 {searchTerm
@@ -591,18 +593,19 @@ function TeamChatPage() {
               const otherMember = r.type === "direct" ? (r.members ?? []).find((m: any) => !m.is_me) : null;
               const online = otherMember ? isOnline(otherMember.user_id) : false;
               const roomTyping = typingUserIds.length > 0 && r.id === activeRoomId;
+              const isActive = activeRoomId === r.id;
               return (
                 <button
                   key={r.id}
                   onClick={() => setActiveRoomId(r.id)}
                   className={cn(
-                    "w-full text-start p-3 flex items-center gap-3 border-b transition-all",
-                    "hover:bg-accent/50 active:bg-accent",
-                    activeRoomId === r.id && "bg-accent"
+                    "w-full text-start p-3 flex items-center gap-3 border-b border-border/60 transition-all",
+                    "hover:bg-accent/60 active:bg-accent",
+                    isActive && "bg-gradient-to-r from-[color:var(--brand-gold,#d4af37)]/12 via-accent/60 to-transparent border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
                   )}
                 >
                   <div className="relative shrink-0">
-                    <Avatar className="h-14 w-14 ring-2 ring-[color:var(--brand-gold,#d4af37)]/40 shadow-md">
+                    <Avatar className="h-14 w-14 ring-2 ring-[color:var(--brand-gold,#d4af37)]/50 shadow-md">
                       {r.avatar_url && <AvatarImage src={r.avatar_url} />}
                       <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-bold text-lg">
                         {label.charAt(0).toUpperCase()}
@@ -614,14 +617,14 @@ function TeamChatPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-sm truncate">{label}</span>
+                      <span className="font-semibold text-sm truncate text-foreground">{label}</span>
                       {r.unread_count > 0 && (
-                        <Badge className="h-5 min-w-5 px-1.5 text-[10px] rounded-full bg-primary shadow">
+                        <Badge className="h-5 min-w-5 px-1.5 text-[10px] rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black font-bold shadow">
                           {r.unread_count}
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                    <div className="text-xs text-muted-foreground truncate mt-0.5 chat-emoji">
                       {roomTyping
                         ? <span className="text-primary italic">{rtl ? "يكتب الآن..." : "typing..."}</span>
                         : (r.last_message_preview ?? (rtl ? "ابدأ المحادثة" : "Start chatting"))}
@@ -632,6 +635,7 @@ function TeamChatPage() {
             })}
           </ScrollArea>
         </div>
+
 
         {/* Conversation */}
         <div className={cn("flex-1 flex-col min-w-0", activeRoomId ? "flex" : "hidden md:flex")}>
@@ -839,10 +843,12 @@ function TeamChatPage() {
                           attachmentUrls={attachmentUrls}
                           isGroup={activeRoom.type === "group"}
                           isRead={true}
+                          highlightQuery={inChatSearchOpen ? inChatQuery.trim() : ""}
                           onReply={setReplyTo}
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
                         />
+
                       </div>
                     );
                   })}
