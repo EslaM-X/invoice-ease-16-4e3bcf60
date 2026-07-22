@@ -1,29 +1,51 @@
-## Changes
 
-### 1. "Clear all" notifications actually removes them
-In `src/components/task-notifications-center.tsx`:
-- Change "مسح الكل" to hard-delete rows from `notifications` for the current user (filtered to task notifications) instead of just marking read.
-- Update local state to empty the list immediately; realtime DELETE events keep other tabs/devices in sync.
-- Keep "تعليم الكل مقروء" as a separate soft action.
+## المشكلة الفعلية (بعد فحص القاعدة والدوال)
 
-### 2. Archive for completed tasks in the dashboard card
-In `src/components/leadership-tasks-card.tsx`:
-- Split each column (my-tasks / exec-coordination) into two views: **Active** (default) and **Archive** (completed only).
-- Add a small "أرشيف" toggle button (with count badge) in each column header, styled in Noir & Gold. Clicking flips that column between active and archive lists.
-- Active list filters out `status = 'done'`; archive shows only `status = 'done'`, sorted by `updated_at` desc, capped (e.g. 20).
-- Realtime: existing `useRealtimeTable` on `tasks` already updates both views instantly when status flips to done.
-- Clicking any archived task still opens `TaskDetailDialog` (read/edit as usual).
+الأرقام في **متتبع المخزون** و**تسوية المخزون من الورق** بتيجي من 3 دوال (`get_sold_qty_by_product`, `get_delivered_qty_by_product`, `get_reserved_qty_by_product`) بالإضافة لدالة `rebuild_inventory_from_source_of_truth`. الفحص كشف تعارضين حقيقيين يفسّرون الأعطال اللي بتشوفها:
 
-### 3. Tasks page defaults to "Assigned to me"
-In `src/routes/tasks.tsx`:
-- Set the initial filter/tab to "المهام المسندة لي" (`assignee_id = currentUser`) on first load for every user.
-- If the page already uses URL search params for filters, seed the default so the URL reflects it; otherwise set the initial state value.
-- Do not force it on every navigation — only when no explicit filter is present, so users can still switch tabs freely within the session.
+**١) "تم تسليمه" أكبر من "تم بيعه"** (مستحيل منطقيًا، وظاهر في السكرين شوت — مثال `STM-50-F800-009` سولد 16 / ديليفرد 19):
+- `get_sold_qty_by_product` بيستبعد الفواتير `draft/voided/cancelled`.
+- `get_delivered_qty_by_product` بيستبعد فقط محضر التسليم الملغي، **ومش بيستبعد** محاضر التسليم المرتبطة بفواتير `voided/cancelled/draft`. النتيجة: بند اتسلّم ثم الفاتورة اتلغت أو رجعت درافت → بيتحسب "متسلّم" بس مش "متباع".
+- كمان `sold` بيستخدم `can_access_user_data(i.user_id)` و `delivered` بيستخدم `can_access_user_data(dr.user_id)` — لو الفاتورة لموزّع ومحضر التسليم مسجّل باسم أدمن (أو العكس)، هيبان فرق.
 
-### 4. Real-time guarantees
-- Notifications center: already subscribed via `useRealtimeTable('notifications')` — DELETE events will propagate; ensure the handler removes items on DELETE (not only INSERT/UPDATE).
-- Leadership card & tasks page: rely on existing `tasks` realtime subscription; no new channel needed.
+**٢) "قادم في الطريق / في المخزن" بيظهر 0 لأصناف موجودة فعلاً**:
+- الرقم "في المخزن" في المتتبع بيتقرا من `products.stock_quantity` بعد ما زر **"إعادة بناء المخزون من المصادر الحقيقية"** صفّر كل حاجة وبناها من `po_receipt_items − delivery_receipt_items`.
+- كل الـ POs الحالية عندها receipt lines (اتأكدت)، لكن الرصيد النهائي = مستلم − متسلَّم. أي انحراف في دالة "delivered" (نفس مشكلة #١) بيخلي منتجات ترصيدها الحقيقي موجب لكن الرصيد المخزّن = 0 (لأن الـ GREATEST(...,0) بيقصّها).
+- كمان لو محضر تسليم مرتبط بفاتورة `voided` — إعادة البناء بتخصمه من المخزون بالغلط ونتيجة المنتج تنزل صفر رغم إنه موجود على الرف.
 
-## Out of scope
-- No schema changes (no new `archived_at` column — "done" status is the archive signal).
-- No changes to task creation, assignment, or notification dispatch logic.
+**٣) الـ Path B في `get_delivered_qty_by_product`** (المطابقة عبر `product_name` داخل نفس الفاتورة) بتشتغل حتى لو الفاتورة `voided` — نفس الجذر بيتكرر.
+
+## الخطة (SQL فقط — بدون أي تعديل على الفواتير أو محاضر التسليم كسجلات)
+
+### 1. توحيد فلتر حالة الفاتورة عبر كل الدوال
+تعديل الدوال دي لتستبعد الفواتير `draft/voided/cancelled` من حساب "المُسلَّم"، بحيث `delivered ≤ sold` دايمًا:
+
+- `get_delivered_qty_by_product`: إضافة `JOIN invoices i ON i.id = dr.invoice_id` وشرط `COALESCE(i.status,'') NOT IN ('draft','voided','cancelled')` قبل حساب Path A و Path B.
+- `rebuild_inventory_from_source_of_truth`: نفس الفلتر داخل CTE `delivered_linked` و `delivered_orphan`، بحيث محاضر التسليم لفواتير ملغاة/مسودّة **مش بتخصم** من المخزون.
+- توحيد `can_access_user_data` بحيث كلاهما يستخدم `i.user_id` (بدل `dr.user_id` في delivered) عشان الأرقام تكون متسقة لنفس المستخدم.
+
+### 2. دالة تشخيصية جديدة `inventory_discrepancy_report()`
+ترجع لكل منتج: `received`, `delivered_counted`, `delivered_excluded_by_invoice_status`, `sold`, `stock_quantity_now`, `expected_stock`, `delta`. تُستخدم داخل صفحة "تسوية المخزون من الورق" لتوضّح بالظبط منين جه كل رقم قبل أي إعادة بناء.
+
+### 3. إعادة تشغيل `rebuild_inventory_from_source_of_truth` بعد الإصلاح
+بعد اعتماد التعديلات أعلاه — تشغيل الدالة مرة واحدة يعيد ضبط `products.stock_quantity` على القيمة الصحيحة (مستلم − متسلَّم-من-فواتير-فعّالة). المنتجات اللي بتظهر 0 وهي موجودة هترجع لرصيدها الحقيقي تلقائيًا.
+
+### 4. لا تغيير في:
+- بيانات الفواتير، `invoice_items`، `delivery_receipts`، `delivery_receipt_items`، `purchase_orders`، `po_receipt_items` — كلها تبقى كما هي كسجلات.
+- الواجهة (`in-transit.tsx` / `inventory-reconcile.tsx`) — بس هتبدأ تعرض أرقام صحيحة تلقائيًا؛ ممكن إضافة زر "عرض التقرير التشخيصي" لاحقًا لو حبيت.
+
+## تفاصيل تقنية (مرجع)
+
+```text
+delivered_counted(product) =
+  Σ dri.quantity  WHERE dr.status ≠ 'cancelled'
+                    AND invoice.status NOT IN (draft, voided, cancelled)
+                    AND ii.product_id IS NOT NULL         -- Path A
+              +  Path B (same invoice-status filter)
+              +  orphan-by-serial (unchanged; no invoice link exists)
+
+expected_stock(product) = Σ po_receipt_items.quantity − delivered_counted
+                          (clamped ≥ 0)
+```
+
+كل التغييرات في migration واحدة `CREATE OR REPLACE FUNCTION`؛ لا DROP TABLE ولا حذف صفوف.
