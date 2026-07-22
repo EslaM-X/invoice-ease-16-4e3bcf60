@@ -34,6 +34,17 @@ type ShortageInvoice = {
   quantity: number;
   created_at: string;
   status: string;
+  delivery_status: string | null;
+};
+
+type IncomingPO = {
+  po_id: string;
+  po_number: string;
+  supplier_name: string | null;
+  status: string;
+  shipment_code: string | null;
+  expected_arrival_at: string | null;
+  qty: number;
 };
 
 type ShortageRow = {
@@ -47,8 +58,12 @@ type ShortageRow = {
   stock_quantity: number;
   incoming_qty: number;
   needed_qty: number;
+  from_stock: number;
+  from_incoming: number;
   net_shortage: number;
+  severity: "critical" | "shortfall" | "awaiting" | "covered";
   invoices: ShortageInvoice[];
+  incoming_pos: IncomingPO[];
 };
 
 type SortKey = "priority" | "shortage" | "oldest" | "name";
