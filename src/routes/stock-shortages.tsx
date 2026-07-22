@@ -826,6 +826,39 @@ function ShortageCard({
                     </span>
                   </div>
                 )}
+                {/* Coverage breakdown */}
+                <div className="px-3 py-2 border-t border-amber-500/15 bg-black/20 text-[11px] text-amber-100/80 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>{ar ? "تغطية من المخزون:" : "From stock:"} <b className="text-emerald-300 tabular-nums">{row.from_stock}</b></span>
+                  <span>{ar ? "من الشحنات القادمة:" : "From incoming:"} <b className="text-blue-300 tabular-nums">{row.from_incoming}</b></span>
+                  <span>{ar ? "نقص صافي:" : "Net short:"} <b className={`tabular-nums ${row.net_shortage > 0 ? "text-red-300" : "text-emerald-300"}`}>{row.net_shortage}</b></span>
+                </div>
+                {row.incoming_pos.length > 0 && (
+                  <div className="border-t border-amber-500/15 bg-blue-500/[0.03]">
+                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-blue-300/80 font-semibold border-b border-blue-500/15">
+                      {ar ? "أوامر شراء قادمة تغطي هذا المنتج" : "Incoming POs covering this item"}
+                    </div>
+                    <div className="divide-y divide-blue-500/10">
+                      {row.incoming_pos.map((po) => (
+                        <div key={po.po_id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-blue-100 truncate">
+                              {po.po_number}
+                              {po.shipment_code && <span className="ms-2 text-blue-100/50">· {po.shipment_code}</span>}
+                            </div>
+                            <div className="text-[10px] text-blue-100/60 truncate">
+                              {po.supplier_name ?? "—"}
+                              {po.expected_arrival_at && ` · ETA ${new Date(po.expected_arrival_at).toLocaleDateString(ar ? "ar-EG-u-nu-latn" : "en-GB")}`}
+                              <span className="ms-1 uppercase">· {po.status}</span>
+                            </div>
+                          </div>
+                          <div className="text-end shrink-0 font-semibold text-blue-200 tabular-nums">
+                            +{po.qty}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -834,6 +867,21 @@ function ShortageCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function DeliveryStatusBadge({ status, ar }: { status: string | null; ar: boolean }) {
+  const s = (status || "pending").toLowerCase();
+  const meta =
+    s === "delivered" || s === "completed"
+      ? { cls: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10", label: ar ? "مسلّم" : "Delivered" }
+      : s === "partial"
+      ? { cls: "border-amber-500/40 text-amber-300 bg-amber-500/10", label: ar ? "جزئي" : "Partial" }
+      : { cls: "border-slate-500/40 text-slate-300 bg-slate-500/10", label: ar ? "لم يبدأ" : "Pending" };
+  return (
+    <span className={`text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 border ${meta.cls}`}>
+      {meta.label}
+    </span>
   );
 }
 
