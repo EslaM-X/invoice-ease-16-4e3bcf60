@@ -69,6 +69,7 @@ type PO = {
 function InTransitPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
+  const isExec = useIsExecutive();
   const isAr = lang === "ar";
   const COLLECTIONS = useCollectionCodes();
 
