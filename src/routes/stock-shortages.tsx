@@ -493,7 +493,62 @@ function StockShortagesPage() {
             </Button>
           )}
         </div>
+
+        {/* Invoice-status audit filters */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber-500/15 bg-black/20 px-3 py-2">
+          <span className="text-[10px] uppercase tracking-wider text-amber-500/70 font-semibold">
+            {ar ? "فلترة/تدقيق حالة الفواتير" : "Invoice status audit"}
+          </span>
+          <FilterChipGroup
+            label={ar ? "المالية" : "Financial"}
+            options={[
+              { key: "pending", label: ar ? "معلقة" : "Pending" },
+              { key: "completed", label: ar ? "مكتملة" : "Completed" },
+              { key: "paid", label: ar ? "مدفوعة" : "Paid" },
+            ]}
+            active={statusFilters}
+            onToggle={(k) => setStatusFilters((prev) => {
+              const next = new Set(prev);
+              if (next.has(k)) next.delete(k); else next.add(k);
+              return next;
+            })}
+          />
+          <FilterChipGroup
+            label={ar ? "التسليم" : "Delivery"}
+            options={[
+              { key: "pending", label: ar ? "لم يبدأ" : "Not started" },
+              { key: "partial", label: ar ? "جزئي" : "Partial" },
+              { key: "delivered", label: ar ? "مسلّم بالكامل" : "Delivered" },
+            ]}
+            active={deliveryFilters}
+            onToggle={(k) => setDeliveryFilters((prev) => {
+              const next = new Set(prev);
+              if (next.has(k)) next.delete(k); else next.add(k);
+              return next;
+            })}
+          />
+          <label className="inline-flex items-center gap-1.5 text-xs text-amber-100/80 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeAwaiting}
+              onChange={(e) => setIncludeAwaiting(e.target.checked)}
+              className="accent-amber-500"
+            />
+            {ar ? "أظهر أيضًا المنتجات المغطاة بالقادم فقط" : "Include awaiting-arrival items"}
+          </label>
+          {(statusFilters.size > 0 || deliveryFilters.size > 0 || includeAwaiting) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setStatusFilters(new Set()); setDeliveryFilters(new Set()); setIncludeAwaiting(false); }}
+              className="h-7 px-2 text-amber-300 hover:text-amber-200"
+            >
+              {ar ? "إعادة ضبط" : "Reset"}
+            </Button>
+          )}
+        </div>
       </div>
+
 
       {/* Body */}
       {loading && !rows ? (
