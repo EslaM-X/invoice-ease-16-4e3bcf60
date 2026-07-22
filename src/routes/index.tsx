@@ -269,7 +269,10 @@ function Landing() {
         </div>
       </section>
 
+      </main>
+
       <footer className="border-t border-border/40 py-8">
+
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <img src={theme === "dark" ? steinheimLogoWhite : steinheimLogo} alt="Steinheim" className="h-5 w-auto" />
