@@ -300,7 +300,35 @@ function TeamChatPage() {
     }
   }, [deleteMsg, qc, activeRoomId, rtl]);
 
-  const messages: ChatMsg[] = messagesQ.data?.messages ?? [];
+  const serverMessages: ChatMsg[] = messagesQ.data?.messages ?? [];
+  const messages: ChatMsg[] = useMemo(() => {
+    if (pendingMessages.length === 0) return serverMessages;
+    // Drop optimistic entries whose body already appears in the last server messages
+    const recentServerBodies = new Set(
+      serverMessages.slice(-10)
+        .filter((m) => m.sender_id === user?.id && m.message_type === "text")
+        .map((m) => (m.body ?? "").trim())
+    );
+    const stillPending = pendingMessages.filter(
+      (m) => !recentServerBodies.has((m.body ?? "").trim())
+    );
+    return [...serverMessages, ...stillPending];
+  }, [serverMessages, pendingMessages, user?.id]);
+
+  // Mark visible messages as read (excluding own)
+  useEffect(() => {
+    if (!activeRoomId || !user?.id) return;
+    const unreadIds = serverMessages
+      .filter((m) =>
+        m.sender_id !== user.id &&
+        !(m.read_by_user_ids ?? []).includes(user.id) &&
+        !m.__pending &&
+        !m.id.startsWith("pending-")
+      )
+      .map((m) => m.id);
+    if (unreadIds.length === 0) return;
+    markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
+  }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
   // Typing display names
   const typingNames = useMemo(() => {
