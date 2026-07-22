@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /invoices
+Disallow: /inventory
+Disallow: /customers
+Disallow: /tasks
+Disallow: /distributor
+Disallow: /distributors
+Disallow: /reports
+Disallow: /settings
+Disallow: /api/
+Disallow: /lovable/
+Disallow: /.mcp/
+Disallow: /.well-known/
+
+Sitemap: https://invoice-ease-16.lovable.app/sitemap.xml

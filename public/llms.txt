@@ -1,0 +1,12 @@
+# Steinheim Suite
+
+> Steinheim Suite is an integrated business management platform for invoicing, live inventory, customers, call center, shipping, and reporting — built for premium teams and distributors.
+
+Steinheim Suite unifies smart invoices, QR/barcode selling, live stock and low-stock alerts, customer CRM with balances, distributor workflows, shipping orders, audit trail, biometric login, offline PWA operation, and role-based permissions in a single luxury, Arabic/English interface.
+
+## Pages
+
+- [Home](/): Product overview, feature highlights, and pricing entry point for Steinheim Suite.
+- [Sign in](/auth): Sign-in and account access for Steinheim Suite users, staff, and distributors.
+- [Trust & Security](/trust): Security, privacy, and reliability commitments for Steinheim Suite.
+- [Download apps](/download): Desktop and mobile install links for the Steinheim Suite PWA and Electron builds.
