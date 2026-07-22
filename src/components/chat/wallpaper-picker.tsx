@@ -254,6 +254,17 @@ export function WallpaperPicker({
           </Button>
         )}
       </DialogContent>
+
+      <ImageCropperDialog
+        open={cropOpen}
+        onOpenChange={(v) => { setCropOpen(v); if (!v) setCropSrc(null); }}
+        srcDataUrl={cropSrc}
+        aspect={9 / 16}
+        targetWidth={1440}
+        rtl={rtl}
+        onCropped={uploadCroppedBlob}
+      />
     </Dialog>
   );
 }
+
