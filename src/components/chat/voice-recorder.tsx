@@ -114,26 +114,28 @@ export function VoiceRecorder({
   if (blob) {
     const url = URL.createObjectURL(blob);
     return (
-      <div className="flex items-center gap-1.5 flex-1 min-w-0 bg-muted/50 rounded-full px-2 py-1">
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 bg-gradient-to-r from-[color:var(--brand-gold,#d4af37)]/15 to-primary/10 ring-1 ring-[color:var(--brand-gold,#d4af37)]/30 rounded-full px-2 py-1.5">
         <Button
           size="icon"
           variant="ghost"
           onClick={discard}
           disabled={busy}
-          className="h-8 w-8 shrink-0 rounded-full"
+          className="h-8 w-8 shrink-0 rounded-full text-destructive hover:bg-destructive/10"
           title={rtl ? "حذف" : "Discard"}
         >
-          <Trash2 className="h-4 w-4 text-destructive" />
+          <Trash2 className="h-4 w-4" />
         </Button>
-        <audio src={url} controls preload="metadata" className="h-8 flex-1 min-w-0" />
-        <span className="text-[11px] font-mono text-muted-foreground shrink-0 px-1 tabular-nums">
-          {fmt(seconds)}
-        </span>
+        <div className="flex-1 min-w-0 flex items-center gap-2 px-1">
+          <PreviewPlayer url={url} />
+          <span className="text-[11px] font-mono text-foreground/70 shrink-0 tabular-nums">
+            {fmt(seconds)}
+          </span>
+        </div>
         <Button
           size="icon"
           onClick={send}
           disabled={busy}
-          className="h-9 w-9 shrink-0 rounded-full shadow"
+          className="h-9 w-9 shrink-0 rounded-full shadow-lg bg-gradient-to-br from-[color:var(--brand-gold,#d4af37)] to-primary text-primary-foreground"
           title={rtl ? "إرسال" : "Send"}
         >
           <Send className="h-4 w-4" />

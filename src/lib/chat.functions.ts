@@ -314,7 +314,8 @@ export const markMessagesRead = createServerFn({ method: "POST" })
     return { ok: true, count: rows.length };
   });
 
-// Get / set current user's chat wallpaper preference
+// Get / set current user's chat wallpaper preference.
+// Shape: { default: {type,preset?,path?}, rooms: { [room_id]: {type,preset?,path?} } }
 export const getChatWallpaper = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -324,7 +325,13 @@ export const getChatWallpaper = createServerFn({ method: "GET" })
       .select("chat_wallpaper")
       .eq("user_id", userId)
       .maybeSingle();
-    return { wallpaper: (data?.chat_wallpaper as any) ?? { preset: "noir" } };
+    const raw = (data?.chat_wallpaper as any) ?? null;
+    if (raw && typeof raw === "object" && !("default" in raw) && "preset" in raw) {
+      return { wallpaper: { default: { type: "preset", preset: raw.preset }, rooms: {} } };
+    }
+    return {
+      wallpaper: raw ?? { default: { type: "preset", preset: "noir" }, rooms: {} },
+    };
   });
 
 export const setChatWallpaper = createServerFn({ method: "POST" })
@@ -332,20 +339,54 @@ export const setChatWallpaper = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
       .object({
-        preset: z.string().min(1).max(40),
+        scope: z.enum(["default", "room"]),
+        room_id: z.string().uuid().optional().nullable(),
+        action: z.enum(["preset", "custom", "clear"]),
+        preset: z.string().min(1).max(40).optional(),
+        path: z.string().min(1).max(500).optional(),
       })
       .parse(d)
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: existing } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_wallpaper")
+      .eq("user_id", userId)
+      .maybeSingle();
+    let current: any = existing?.chat_wallpaper ?? null;
+    if (!current || typeof current !== "object" || !("default" in current)) {
+      const legacyPreset = current && current.preset ? current.preset : "noir";
+      current = { default: { type: "preset", preset: legacyPreset }, rooms: {} };
+    }
+    if (!current.rooms || typeof current.rooms !== "object") current.rooms = {};
+
+    const value =
+      data.action === "preset"
+        ? { type: "preset", preset: data.preset ?? "noir" }
+        : data.action === "custom"
+        ? { type: "custom", path: data.path ?? "" }
+        : null;
+
+    if (data.scope === "default") {
+      if (value) current.default = value;
+    } else {
+      if (!data.room_id) throw new Error("room_id required for room scope");
+      if (data.action === "clear") {
+        delete current.rooms[data.room_id];
+      } else if (value) {
+        current.rooms[data.room_id] = value;
+      }
+    }
+
     const { error } = await supabase
       .from("user_ui_preferences")
       .upsert(
-        { user_id: userId, chat_wallpaper: { preset: data.preset } },
+        { user_id: userId, chat_wallpaper: current },
         { onConflict: "user_id" }
       );
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, wallpaper: current };
   });
 
 
