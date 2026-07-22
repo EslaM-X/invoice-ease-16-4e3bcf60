@@ -189,22 +189,29 @@ export const listChatMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z
-      .object({ room_id: z.string().uuid(), limit: z.number().min(1).max(200).optional() })
+      .object({
+        room_id: z.string().uuid(),
+        limit: z.number().min(1).max(200).optional(),
+        before_created_at: z.string().optional(),
+      })
       .parse(d)
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: msgs, error } = await supabase
+    let q = supabase
       .from("chat_messages")
       .select("*")
       .eq("room_id", data.room_id)
       .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-      .limit(data.limit ?? 200);
+      .order("created_at", { ascending: false })
+      .limit(data.limit ?? 50);
+    if (data.before_created_at) q = q.lt("created_at", data.before_created_at);
+    const { data: msgsDesc, error } = await q;
     if (error) throw new Error(error.message);
+    const msgs = (msgsDesc ?? []).slice().reverse();
 
-    // Hydrate sender profile (display_name, avatar, job_title, color)
-    const senderIds = Array.from(new Set((msgs ?? []).map((m: any) => m.sender_id)));
+    // Hydrate sender profile
+    const senderIds = Array.from(new Set(msgs.map((m: any) => m.sender_id)));
     const { data: profiles } = senderIds.length
       ? await supabase
           .from("profiles")
@@ -212,15 +219,59 @@ export const listChatMessages = createServerFn({ method: "GET" })
           .in("user_id", senderIds)
       : { data: [] as any[] };
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
-    const enriched = (msgs ?? []).map((m: any) => ({
-      ...m,
-      sender_display_name: pMap.get(m.sender_id)?.display_name ?? m.sender_email ?? "Member",
-      sender_avatar_url: pMap.get(m.sender_id)?.avatar_url ?? null,
-      sender_job_title: pMap.get(m.sender_id)?.job_title ?? null,
-      sender_job_title_color: pMap.get(m.sender_id)?.job_title_color ?? null,
-    }));
+
+    // Hydrate reactions
+    const msgIds = msgs.map((m: any) => m.id);
+    const { data: reactions } = msgIds.length
+      ? await supabase
+          .from("chat_reactions")
+          .select("message_id, user_id, emoji")
+          .in("message_id", msgIds)
+      : { data: [] as any[] };
+    const rMap = new Map<string, Array<{ emoji: string; user_id: string }>>();
+    for (const r of reactions ?? []) {
+      const arr = rMap.get(r.message_id) ?? [];
+      arr.push({ emoji: r.emoji, user_id: r.user_id });
+      rMap.set(r.message_id, arr);
+    }
+
+    // Hydrate reply-to snapshots
+    const replyIds = Array.from(
+      new Set(msgs.map((m: any) => m.reply_to_id).filter(Boolean))
+    ) as string[];
+    const { data: replyRows } = replyIds.length
+      ? await supabase
+          .from("chat_messages")
+          .select("id, sender_id, body, message_type, voice_note_url")
+          .in("id", replyIds)
+      : { data: [] as any[] };
+    const replyMap = new Map((replyRows ?? []).map((r: any) => [r.id, r]));
+
+    const enriched = msgs.map((m: any) => {
+      const p = pMap.get(m.sender_id);
+      const reply = m.reply_to_id ? replyMap.get(m.reply_to_id) : null;
+      const replySender = reply ? pMap.get(reply.sender_id) : null;
+      return {
+        ...m,
+        sender_display_name: p?.display_name ?? m.sender_email ?? "Member",
+        sender_avatar_url: p?.avatar_url ?? null,
+        sender_job_title: p?.job_title ?? null,
+        sender_job_title_color: p?.job_title_color ?? null,
+        reactions: rMap.get(m.id) ?? [],
+        reply_to: reply
+          ? {
+              id: reply.id,
+              body: reply.body,
+              message_type: reply.message_type,
+              voice_note_url: reply.voice_note_url,
+              sender_display_name: replySender?.display_name ?? "Member",
+            }
+          : null,
+      };
+    });
     return { messages: enriched };
   });
+
 
 // Update current user's chat display profile (job title + color).
 export const updateChatProfile = createServerFn({ method: "POST" })
