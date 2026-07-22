@@ -293,7 +293,7 @@ export function WallpaperPicker({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => { onSelectPreset(p.id); }}
+                  onClick={() => { pickPreset(p.id); }}
                   className={cn(
                     "relative h-20 rounded-xl overflow-hidden ring-2 transition-all",
                     active
