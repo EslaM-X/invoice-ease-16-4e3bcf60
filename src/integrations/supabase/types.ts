@@ -4473,6 +4473,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      inventory_discrepancy_report: {
+        Args: never
+        Returns: {
+          delivered_counted: number
+          delivered_excluded_by_invoice_status: number
+          delta: number
+          expected_stock: number
+          product_id: string
+          product_name: string
+          received: number
+          serial_number: string
+          sold: number
+          stock_quantity_now: number
+        }[]
+      }
       invoice_uncovered_shortage: {
         Args: { _invoice_id: string }
         Returns: {
