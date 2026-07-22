@@ -411,9 +411,29 @@ function StockShortagesPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Button variant="outline" size="sm" onClick={load}>
-              <RefreshCw className="h-4 w-4 me-2" /> {ar ? "تحديث" : "Refresh"}
+            {lastLoaded && (
+              <span className="text-[11px] text-amber-100/60 tabular-nums">
+                {ar ? "آخر تحديث" : "Updated"}: {lastLoaded.toLocaleTimeString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 me-2 ${loading ? "animate-spin" : ""}`} /> {ar ? "إعادة حساب الآن" : "Recompute now"}
             </Button>
+            {isExec && (
+              <>
+                <Button
+                  variant={auditMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAuditMode((v) => !v)}
+                  className={auditMode ? "bg-emerald-600 hover:bg-emerald-500 text-white" : ""}
+                >
+                  <Code2 className="h-4 w-4 me-2" /> {ar ? "وضع التدقيق" : "Audit mode"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate({ to: "/inventory-consistency" })}>
+                  <ShieldCheck className="h-4 w-4 me-2" /> {ar ? "فحص الاتساق" : "Consistency"}
+                </Button>
+              </>
+            )}
             <Button variant="outline" size="sm" onClick={copySummary} disabled={filtered.length === 0}>
               <Copy className="h-4 w-4 me-2" /> {ar ? "نسخ" : "Copy"}
             </Button>
