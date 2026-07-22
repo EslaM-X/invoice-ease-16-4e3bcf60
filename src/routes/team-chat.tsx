@@ -21,11 +21,13 @@ import {
   listChatRooms, listChatMessages, sendChatMessage, markRoomRead,
   listCompanyMembers, createChatRoom, deleteChatMessage,
   toggleReaction, setTypingState, updatePresence,
+  markMessagesRead, getChatWallpaper, setChatWallpaper,
 } from "@/lib/chat.functions";
 import { toast } from "sonner";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
 import { useRoomPresence } from "@/lib/use-chat-presence";
+import { WallpaperPicker, WALLPAPER_STYLES, type WallpaperPreset } from "@/components/chat/wallpaper-picker";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/team-chat")({
