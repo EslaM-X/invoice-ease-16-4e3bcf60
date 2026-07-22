@@ -240,7 +240,7 @@ function StockShortagesPage() {
       }
     });
     return sorted;
-  }, [enriched, q, sortBy, urgencyOnly, dateFrom, dateTo]);
+  }, [enriched, q, sortBy, urgencyOnly, dateFrom, dateTo, includeAwaiting, statusFilters, deliveryFilters]);
 
   // ----- Grouped by collection for smart display -----
   const grouped = useMemo(() => {
