@@ -4386,6 +4386,27 @@ export type Database = {
           product_id: string
         }[]
       }
+      get_inventory_shortage_alerts: {
+        Args: never
+        Returns: {
+          collection: string
+          color: string
+          from_incoming: number
+          from_stock: number
+          image_url: string
+          incoming_pos: Json
+          incoming_qty: number
+          is_spare_part: boolean
+          needed_qty: number
+          net_shortage: number
+          product_id: string
+          product_name: string
+          serial_number: string
+          severity: string
+          sources: Json
+          stock_quantity: number
+        }[]
+      }
       get_my_approval_state: {
         Args: never
         Returns: {
