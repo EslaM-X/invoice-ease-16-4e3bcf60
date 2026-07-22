@@ -103,6 +103,7 @@ function Landing() {
         </div>
       </header>
 
+      <main>
       {/* Hero */}
       <section className="relative mx-auto max-w-6xl px-6 pt-16 pb-24 text-center sm:pt-24">
         {/* Big logo */}
@@ -111,11 +112,12 @@ function Landing() {
             <div className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-foreground/5 via-transparent to-foreground/10 blur-2xl" />
             <div className={`relative rounded-full p-1 ring-1 ${theme === "dark" ? "ring-white/15" : "ring-black/10"} shadow-glow`}>
               <div className={`rounded-full p-6 sm:p-8 ${theme === "dark" ? "bg-black" : "bg-black"}`}>
-                <img src={steinheimLogoWhite} alt="Steinheim" className="h-20 w-auto sm:h-28 object-contain" />
+                <img src={steinheimLogoWhite} alt="Steinheim" width={224} height={224} fetchPriority="high" decoding="async" className="h-20 w-auto sm:h-28 object-contain" />
               </div>
             </div>
           </div>
         </div>
+
 
         <div
           className="animate-hero-up mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-silver bg-card/60 px-4 py-1.5 text-[11px] font-medium text-muted-foreground backdrop-blur"
@@ -267,7 +269,10 @@ function Landing() {
         </div>
       </section>
 
+      </main>
+
       <footer className="border-t border-border/40 py-8">
+
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <img src={theme === "dark" ? steinheimLogoWhite : steinheimLogo} alt="Steinheim" className="h-5 w-auto" />
