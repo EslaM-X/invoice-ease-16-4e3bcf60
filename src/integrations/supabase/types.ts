@@ -320,6 +320,42 @@ export type Database = {
           },
         ]
       }
+      chat_message_reads: {
+        Row: {
+          message_id: string
+          read_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          message_id: string
+          read_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          message_id?: string
+          read_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reads_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           attachments: Json
@@ -448,6 +484,7 @@ export type Database = {
       chat_room_members: {
         Row: {
           id: string
+          is_admin: boolean
           joined_at: string
           last_read_at: string
           muted: boolean
@@ -458,6 +495,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          is_admin?: boolean
           joined_at?: string
           last_read_at?: string
           muted?: boolean
@@ -468,6 +506,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          is_admin?: boolean
           joined_at?: string
           last_read_at?: string
           muted?: boolean
@@ -3408,6 +3447,7 @@ export type Database = {
       }
       user_notification_preferences: {
         Row: {
+          chat_push_enabled: boolean
           created_at: string
           custom_sound_name: string | null
           custom_sound_url: string | null
@@ -3418,6 +3458,7 @@ export type Database = {
           vibration: string
         }
         Insert: {
+          chat_push_enabled?: boolean
           created_at?: string
           custom_sound_name?: string | null
           custom_sound_url?: string | null
@@ -3428,6 +3469,7 @@ export type Database = {
           vibration?: string
         }
         Update: {
+          chat_push_enabled?: boolean
           created_at?: string
           custom_sound_name?: string | null
           custom_sound_url?: string | null
@@ -3461,6 +3503,7 @@ export type Database = {
         Row: {
           cards_hidden: Json
           cards_order: Json
+          chat_wallpaper: Json
           created_at: string
           mobile_tabs: Json
           nav_hidden: Json
@@ -3472,6 +3515,7 @@ export type Database = {
         Insert: {
           cards_hidden?: Json
           cards_order?: Json
+          chat_wallpaper?: Json
           created_at?: string
           mobile_tabs?: Json
           nav_hidden?: Json
@@ -3483,6 +3527,7 @@ export type Database = {
         Update: {
           cards_hidden?: Json
           cards_order?: Json
+          chat_wallpaper?: Json
           created_at?: string
           mobile_tabs?: Json
           nav_hidden?: Json
