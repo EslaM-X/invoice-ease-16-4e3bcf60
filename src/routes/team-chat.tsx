@@ -218,11 +218,29 @@ function TeamChatPage() {
   }, [messagesQ.data?.messages, voiceUrls, attachmentUrls]);
 
   const onSendText = useCallback(async (body: string, replyId: string | null) => {
-    if (!activeRoomId) return;
-    await sendMessage({ data: { room_id: activeRoomId, body, message_type: "text", reply_to_id: replyId ?? undefined } });
-    qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
-    qc.invalidateQueries({ queryKey: ["chat-rooms"] });
-  }, [activeRoomId, sendMessage, qc]);
+    if (!activeRoomId || !user?.id) return;
+    const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimistic: ChatMsg = {
+      id: tempId,
+      sender_id: user.id,
+      body,
+      message_type: "text",
+      created_at: new Date().toISOString(),
+      sender_display_name: (user.user_metadata as any)?.display_name ?? user.email ?? "You",
+      sender_avatar_url: (user.user_metadata as any)?.avatar_url ?? null,
+      __pending: true,
+    };
+    setPendingMessages((prev) => [...prev, optimistic]);
+    try {
+      await sendMessage({ data: { room_id: activeRoomId, body, message_type: "text", reply_to_id: replyId ?? undefined } });
+      qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed");
+    } finally {
+      setPendingMessages((prev) => prev.filter((m) => m.id !== tempId));
+    }
+  }, [activeRoomId, sendMessage, qc, user]);
 
   const onSendVoice = useCallback(async (blob: Blob, durationSeconds: number) => {
     if (!activeRoomId) return;
