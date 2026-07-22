@@ -405,3 +405,62 @@ export const updatePresence = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export const toggleReaction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ message_id: z.string().uuid(), emoji: z.string().min(1).max(16) }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: existing } = await supabase
+      .from("chat_reactions")
+      .select("id")
+      .eq("message_id", data.message_id)
+      .eq("user_id", userId)
+      .eq("emoji", data.emoji)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from("chat_reactions").delete().eq("id", existing.id);
+      return { toggled: "removed" as const };
+    }
+    const { error } = await supabase.from("chat_reactions").insert({
+      message_id: data.message_id,
+      user_id: userId,
+      emoji: data.emoji,
+    });
+    if (error) throw new Error(error.message);
+    return { toggled: "added" as const };
+  });
+
+export const setTypingState = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ room_id: z.string().uuid().nullable() }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId, claims } = context;
+    await supabase.from("chat_presence").upsert({
+      user_id: userId,
+      user_email: (claims as any)?.email ?? null,
+      status: "online",
+      last_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      typing_room_id: data.room_id,
+      typing_at: data.room_id ? new Date().toISOString() : null,
+    });
+    return { ok: true };
+  });
+
+export const listRoomPresence = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ user_ids: z.array(z.string().uuid()) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    if (data.user_ids.length === 0) return { presence: [] };
+    const { data: rows } = await supabase
+      .from("chat_presence")
+      .select("user_id, status, last_seen_at, typing_room_id, typing_at")
+      .in("user_id", data.user_ids);
+    return { presence: rows ?? [] };
+  });
