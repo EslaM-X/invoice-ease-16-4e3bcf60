@@ -12,7 +12,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp, AlertTriangle, AlertCircle, Bell, ChevronDown, ChevronUp, FileSpreadsheet, FileText } from "lucide-react";
+import { Truck, Package, Boxes, Search, Calendar, ShoppingBag, Warehouse, X, TrendingUp, AlertTriangle, AlertCircle, Bell, ChevronDown, ChevronUp, FileSpreadsheet, FileText, RefreshCw, ShieldCheck } from "lucide-react";
+import { useIsExecutive } from "@/lib/use-executive";
 import { POTrackerDialog, statusBadge } from "@/components/po-tracker-dialog";
 import { RestockOrderDialog } from "@/components/restock-order-dialog";
 import { useCollectionCodes } from "@/lib/use-collections";
@@ -68,6 +69,7 @@ type PO = {
 function InTransitPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
+  const isExec = useIsExecutive();
   const isAr = lang === "ar";
   const COLLECTIONS = useCollectionCodes();
 
@@ -85,6 +87,8 @@ function InTransitPage() {
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const [alertRows, setAlertRows] = useState<any[]>([]);
+  const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  const [reloading, setReloading] = useState(false);
   const load = async () => {
     const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }, { data: alertsData }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
@@ -124,7 +128,14 @@ function InTransitPage() {
     } else {
       setItems([]);
     }
+    setLastLoaded(new Date());
   };
+
+  const recompute = async () => {
+    setReloading(true);
+    try { await load(); } finally { setReloading(false); }
+  };
+
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
@@ -410,20 +421,42 @@ function InTransitPage() {
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-violet-500/10 via-primary/5 to-transparent p-5">
         <div className="absolute -end-12 -top-12 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="relative">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-700 shadow-sm">
-              <Truck className="h-5 w-5" />
-            </span>
-            {isAr ? "متتبع المخزون" : "Inventory Tracker"}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            {isAr
-              ? "كل منتج بكميته الموجودة في المخزن وكمياته القادمة من أوامر الشراء (تم الطلب / تم الشحن / في المخزن)."
-              : "Every product with on-hand stock and incoming quantities from active POs (Ordered / Shipped / In Warehouse)."}
-          </p>
+        <div className="relative flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-700 shadow-sm">
+                <Truck className="h-5 w-5" />
+              </span>
+              {isAr ? "متتبع المخزون" : "Inventory Tracker"}
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {isAr
+                ? "كل منتج بكميته الموجودة في المخزن وكمياته القادمة من أوامر الشراء (تم الطلب / تم الشحن / في المخزن)."
+                : "Every product with on-hand stock and incoming quantities from active POs (Ordered / Shipped / In Warehouse)."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {lastLoaded && (
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {isAr ? "آخر تحديث" : "Updated"}: {lastLoaded.toLocaleTimeString(isAr ? "ar-EG-u-nu-latn" : "en-GB")}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={recompute} disabled={reloading}>
+              <RefreshCw className={`h-4 w-4 me-2 ${reloading ? "animate-spin" : ""}`} />
+              {isAr ? "إعادة حساب الآن" : "Recompute now"}
+            </Button>
+            {isExec && (
+              <Link to="/inventory-consistency">
+                <Button variant="outline" size="sm">
+                  <ShieldCheck className="h-4 w-4 me-2" />
+                  {isAr ? "فحص الاتساق" : "Consistency"}
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard icon={Boxes} label={isAr ? "إجمالي المخزون" : "Total in stock"} value={totals.inStock} color="text-emerald-600" bg="bg-emerald-500/10" />

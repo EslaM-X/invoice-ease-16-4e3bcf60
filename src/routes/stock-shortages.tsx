@@ -13,10 +13,11 @@ import {
 import {
   AlertTriangle, Package, TruckIcon, RefreshCw, Search, Copy, Download,
   ShoppingCart, ChevronDown, ChevronUp, Flame, Clock, CheckSquare, Square,
-  ClipboardList, Send,
+  ClipboardList, Send, ShieldCheck, Code2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { useIsExecutive } from "@/lib/use-executive";
 
 
 export const Route = createFileRoute("/stock-shortages")({
@@ -75,9 +76,13 @@ function StockShortagesPage() {
   const ar = lang === "ar";
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isExec = useIsExecutive();
 
   const [rows, setRows] = useState<ShortageRow[] | null>(null);
+  const [rawById, setRawById] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  const [auditMode, setAuditMode] = useState(false);
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -100,6 +105,7 @@ function StockShortagesPage() {
   const [reqSaving, setReqSaving] = useState(false);
 
 
+
   const [includeAwaiting, setIncludeAwaiting] = useState(false);
   const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set());
   const [deliveryFilters, setDeliveryFilters] = useState<Set<string>>(new Set());
@@ -111,36 +117,44 @@ function StockShortagesPage() {
       toast.error(error.message);
       setRows([]);
     } else {
-      const mapped: ShortageRow[] = ((data as any[]) ?? []).map((r) => ({
-        product_id: r.product_id,
-        product_name: r.product_name,
-        serial_number: r.serial_number,
-        color: r.color,
-        collection: r.collection,
-        image_url: r.image_url,
-        is_spare_part: r.is_spare_part,
-        stock_quantity: Number(r.stock_quantity || 0),
-        incoming_qty: Number(r.incoming_qty || 0),
-        needed_qty: Number(r.needed_qty || 0),
-        from_stock: Number(r.from_stock || 0),
-        from_incoming: Number(r.from_incoming || 0),
-        net_shortage: Number(r.net_shortage || 0),
-        severity: r.severity,
-        invoices: ((r.sources as any[]) ?? []).map((s) => ({
-          invoice_id: s.invoice_id,
-          invoice_number: s.invoice_number,
-          customer_name: s.customer_name,
-          quantity: Number(s.reserved_qty ?? s.quantity ?? 0),
-          created_at: s.created_at,
-          status: s.status ?? "",
-          delivery_status: s.delivery_status ?? null,
-        })),
-        incoming_pos: ((r.incoming_pos as any[]) ?? []) as IncomingPO[],
-      }));
+      const arr = (data as any[]) ?? [];
+      const rawMap: Record<string, any> = {};
+      const mapped: ShortageRow[] = arr.map((r) => {
+        rawMap[r.product_id] = r;
+        return {
+          product_id: r.product_id,
+          product_name: r.product_name,
+          serial_number: r.serial_number,
+          color: r.color,
+          collection: r.collection,
+          image_url: r.image_url,
+          is_spare_part: r.is_spare_part,
+          stock_quantity: Number(r.stock_quantity || 0),
+          incoming_qty: Number(r.incoming_qty || 0),
+          needed_qty: Number(r.needed_qty || 0),
+          from_stock: Number(r.from_stock || 0),
+          from_incoming: Number(r.from_incoming || 0),
+          net_shortage: Number(r.net_shortage || 0),
+          severity: r.severity,
+          invoices: ((r.sources as any[]) ?? []).map((s) => ({
+            invoice_id: s.invoice_id,
+            invoice_number: s.invoice_number,
+            customer_name: s.customer_name,
+            quantity: Number(s.reserved_qty ?? s.quantity ?? 0),
+            created_at: s.created_at,
+            status: s.status ?? "",
+            delivery_status: s.delivery_status ?? null,
+          })),
+          incoming_pos: ((r.incoming_pos as any[]) ?? []) as IncomingPO[],
+        };
+      });
       setRows(mapped);
+      setRawById(rawMap);
+      setLastLoaded(new Date());
     }
     setLoading(false);
   };
+
 
   const loadRequests = async () => {
     const { data } = await supabase
@@ -397,9 +411,29 @@ function StockShortagesPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Button variant="outline" size="sm" onClick={load}>
-              <RefreshCw className="h-4 w-4 me-2" /> {ar ? "تحديث" : "Refresh"}
+            {lastLoaded && (
+              <span className="text-[11px] text-amber-100/60 tabular-nums">
+                {ar ? "آخر تحديث" : "Updated"}: {lastLoaded.toLocaleTimeString(ar ? "ar-EG-u-nu-latn" : "en-GB")}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 me-2 ${loading ? "animate-spin" : ""}`} /> {ar ? "إعادة حساب الآن" : "Recompute now"}
             </Button>
+            {isExec && (
+              <>
+                <Button
+                  variant={auditMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAuditMode((v) => !v)}
+                  className={auditMode ? "bg-emerald-600 hover:bg-emerald-500 text-white" : ""}
+                >
+                  <Code2 className="h-4 w-4 me-2" /> {ar ? "وضع التدقيق" : "Audit mode"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate({ to: "/inventory-consistency" })}>
+                  <ShieldCheck className="h-4 w-4 me-2" /> {ar ? "فحص الاتساق" : "Consistency"}
+                </Button>
+              </>
+            )}
             <Button variant="outline" size="sm" onClick={copySummary} disabled={filtered.length === 0}>
               <Copy className="h-4 w-4 me-2" /> {ar ? "نسخ" : "Copy"}
             </Button>
@@ -580,6 +614,8 @@ function StockShortagesPage() {
                     onSelectChange={(v) => setSelected((p) => ({ ...p, [r.product_id]: v }))}
                     openRequests={openReqs[r.product_id] ?? 0}
                     onRequest={(inv) => openRequest(r.product_id, r.product_name, r.net, inv)}
+                    auditMode={auditMode}
+                    raw={rawById[r.product_id]}
                   />
                 ))}
 
@@ -664,6 +700,7 @@ function StockShortagesPage() {
 
 function ShortageCard({
   row, ar, isOpen, onToggle, selected, onSelectChange, openRequests, onRequest,
+  auditMode, raw,
 }: {
   row: ShortageRow & { net: number; ageDays: number; urgency: "critical" | "waiting" | "covered" };
   ar: boolean;
@@ -673,7 +710,11 @@ function ShortageCard({
   onSelectChange: (v: boolean) => void;
   openRequests: number;
   onRequest: (invoice?: { id: string; number: string }) => void;
+  auditMode?: boolean;
+  raw?: any;
 }) {
+
+
 
   const urgencyRing =
     row.urgency === "critical"
@@ -863,6 +904,16 @@ function ShortageCard({
             );
           })()}
 
+          {isOpen && auditMode && raw && (
+            <div className="mt-2 rounded-lg border border-emerald-500/25 bg-black/60 overflow-hidden">
+              <div className="px-2.5 py-1 text-[10px] uppercase tracking-wider text-emerald-300/80 border-b border-emerald-500/20">
+                {ar ? "استجابة RPC خام لهذا الصف" : "Raw RPC row"}
+              </div>
+              <pre className="max-h-64 overflow-auto p-2 text-[10px] leading-relaxed text-emerald-200 font-mono">
+{JSON.stringify(raw, null, 2)}
+              </pre>
+            </div>
+          )}
 
         </div>
       </div>

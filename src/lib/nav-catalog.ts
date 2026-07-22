@@ -58,6 +58,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "inventory_traceability", to: "/inventory-traceability", labelAr: "متتبع المخزون", labelEn: "Traceability", group: "inventory_group" },
   { key: "inventory_audit", to: "/inventory-audit", labelAr: "تدقيق المخزون", labelEn: "Inventory Audit", group: "inventory_group" },
   { key: "inventory_reconcile", to: "/inventory-reconcile", labelAr: "تسوية المخزون", labelEn: "Inventory Reconcile", group: "inventory_group" },
+  { key: "inventory_consistency", to: "/inventory-consistency", labelAr: "فحص الاتساق", labelEn: "Consistency Check", group: "inventory_group", requires: "executive" },
   { key: "defective_items", to: "/defective-items", labelAr: "المنتجات المعيبة", labelEn: "Defective Items", group: "inventory_group" },
   { key: "qr_price_list", to: "/qr-price-list", labelAr: "قائمة أسعار QR", labelEn: "QR Price List", group: "inventory_group" },
 
