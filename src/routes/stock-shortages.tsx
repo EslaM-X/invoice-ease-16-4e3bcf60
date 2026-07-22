@@ -797,7 +797,12 @@ function ShortageCard({
                         <div className="font-semibold text-rose-300 tabular-nums">
                           {inv.quantity} {ar ? "قطعة" : inv.quantity === 1 ? "unit" : "units"}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-amber-100/50">{inv.status}</div>
+                        <div className="mt-0.5 flex items-center justify-end gap-1">
+                          <span className="text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 border border-amber-500/25 text-amber-200/80 bg-amber-500/5">
+                            {inv.status || "—"}
+                          </span>
+                          <DeliveryStatusBadge status={inv.delivery_status} ar={ar} />
+                        </div>
                       </div>
                       <button
                         onClick={() =>
