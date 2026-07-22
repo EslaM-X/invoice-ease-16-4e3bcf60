@@ -53,14 +53,33 @@ function TeamChatPage() {
   const reactFn = useServerFn(toggleReaction);
   const typingFn = useServerFn(setTypingState);
   const presenceFn = useServerFn(updatePresence);
+  const markReadsFn = useServerFn(markMessagesRead);
+  const getWallpaperFn = useServerFn(getChatWallpaper);
+  const setWallpaperFn = useServerFn(setChatWallpaper);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [wallpaper, setWallpaper] = useState<WallpaperPreset>("noir");
+  const [pendingMessages, setPendingMessages] = useState<ChatMsg[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
+
+  // Load wallpaper preference once
+  useEffect(() => {
+    getWallpaperFn().then((r: any) => {
+      const p = (r?.wallpaper?.preset ?? "noir") as WallpaperPreset;
+      if (p in WALLPAPER_STYLES) setWallpaper(p);
+    }).catch(() => {});
+  }, [getWallpaperFn]);
+
+  const changeWallpaper = useCallback(async (p: WallpaperPreset) => {
+    setWallpaper(p);
+    try { await setWallpaperFn({ data: { preset: p } }); } catch (err: any) { toast.error(err?.message ?? "Failed"); }
+  }, [setWallpaperFn]);
+
 
   const roomsQ = useQuery({
     queryKey: ["chat-rooms"],
