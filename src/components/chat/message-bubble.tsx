@@ -161,28 +161,31 @@ export function MessageBubble({
             )}
           </div>
 
-          {/* Hover action toolbar */}
+          {/* Hover action toolbar — luxury noir glass */}
           <div
             className={cn(
-              "absolute -top-3 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity",
-              "flex items-center gap-0.5 bg-popover border rounded-full shadow-md px-1 py-0.5 z-10",
+              "absolute -top-4 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-all duration-150 translate-y-1 group-hover/msg:translate-y-0",
+              "flex items-center gap-0.5 rounded-full px-1 py-0.5 z-20",
+              "bg-[linear-gradient(135deg,rgba(20,20,22,0.95),rgba(35,30,20,0.95))] text-white",
+              "ring-1 ring-[color:var(--brand-gold,#d4af37)]/40 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.55),0_0_0_1px_rgba(212,175,55,0.15)]",
+              "backdrop-blur-xl",
               mine ? (rtl ? "-right-1" : "-left-1") : (rtl ? "-left-1" : "-right-1")
             )}
           >
             <Popover>
               <PopoverTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" aria-label={rtl ? "تفاعل" : "React"}>
+                <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full text-white/90 hover:text-[color:var(--brand-gold,#d4af37)] hover:bg-white/10" aria-label={rtl ? "تفاعل" : "React"}>
                   <SmilePlus className="h-3.5 w-3.5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="p-1 w-auto" align="center">
+              <PopoverContent className="p-1 w-auto border-[color:var(--brand-gold,#d4af37)]/30 bg-[linear-gradient(135deg,rgba(20,20,22,0.98),rgba(35,30,20,0.98))] text-white shadow-2xl" align="center">
                 <div className="flex gap-0.5">
                   {QUICK_REACTIONS.map((e) => (
                     <button
                       key={e}
                       type="button"
                       onClick={() => onToggleReaction(msg, e)}
-                      className="h-8 w-8 rounded-full hover:bg-accent text-lg transition-transform hover:scale-125"
+                      className="h-9 w-9 rounded-full hover:bg-white/10 text-lg transition-transform hover:scale-125"
                     >
                       {e}
                     </button>
@@ -190,26 +193,26 @@ export function MessageBubble({
                 </div>
               </PopoverContent>
             </Popover>
-            <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" onClick={() => onReply(msg)} aria-label={rtl ? "رد" : "Reply"}>
+            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full text-white/90 hover:text-[color:var(--brand-gold,#d4af37)] hover:bg-white/10" onClick={() => onReply(msg)} aria-label={rtl ? "رد" : "Reply"}>
               <Reply className="h-3.5 w-3.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" aria-label="More">
+                <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full text-white/90 hover:text-[color:var(--brand-gold,#d4af37)] hover:bg-white/10" aria-label="More">
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(msg.body ?? ""); toast.success(rtl ? "تم النسخ" : "Copied"); }}>
+              <DropdownMenuContent align="end" className="border-[color:var(--brand-gold,#d4af37)]/30 bg-[linear-gradient(135deg,rgba(20,20,22,0.98),rgba(35,30,20,0.98))] text-white">
+                <DropdownMenuItem className="focus:bg-white/10 focus:text-[color:var(--brand-gold,#d4af37)]" onClick={() => { navigator.clipboard.writeText(msg.body ?? ""); toast.success(rtl ? "تم النسخ" : "Copied"); }}>
                   <Copy className="h-3.5 w-3.5 me-2" />{rtl ? "نسخ" : "Copy"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onReply(msg)}>
+                <DropdownMenuItem className="focus:bg-white/10 focus:text-[color:var(--brand-gold,#d4af37)]" onClick={() => onReply(msg)}>
                   <Reply className="h-3.5 w-3.5 me-2" />{rtl ? "رد" : "Reply"}
                 </DropdownMenuItem>
                 {mine && (
                   <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onDelete(msg)} className="text-destructive focus:text-destructive">
+                    <DropdownMenuSeparator className="bg-white/10" />
+                    <DropdownMenuItem onClick={() => onDelete(msg)} className="text-red-400 focus:text-red-300 focus:bg-white/10">
                       <Trash2 className="h-3.5 w-3.5 me-2" />{rtl ? "حذف" : "Delete"}
                     </DropdownMenuItem>
                   </>

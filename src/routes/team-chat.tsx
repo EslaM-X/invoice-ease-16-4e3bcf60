@@ -11,10 +11,14 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search } from "lucide-react";
+import {
+  Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
+  Bell, BellOff, X, ArrowUp, ArrowDown,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
@@ -27,7 +31,10 @@ import { toast } from "sonner";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
 import { useRoomPresence } from "@/lib/use-chat-presence";
-import { WallpaperPicker, WALLPAPER_STYLES, type WallpaperPreset } from "@/components/chat/wallpaper-picker";
+import {
+  WallpaperPicker, WALLPAPER_STYLES,
+  type WallpaperPreset, type WallpaperValue,
+} from "@/components/chat/wallpaper-picker";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/team-chat")({
@@ -37,6 +44,16 @@ export const Route = createFileRoute("/team-chat")({
   },
   component: TeamChatPage,
 });
+
+type WallpaperState = {
+  default: WallpaperValue;
+  rooms: Record<string, WallpaperValue>;
+};
+
+const DEFAULT_WP: WallpaperState = {
+  default: { type: "preset", preset: "noir" },
+  rooms: {},
+};
 
 function TeamChatPage() {
   const { user } = useAuth();
@@ -61,25 +78,100 @@ function TeamChatPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [wallpaper, setWallpaper] = useState<WallpaperPreset>("noir");
+  const [wallpaperState, setWallpaperState] = useState<WallpaperState>(DEFAULT_WP);
+  const [applyPerRoom, setApplyPerRoom] = useState(false);
+  const [customWpUrls, setCustomWpUrls] = useState<Record<string, string>>({});
   const [pendingMessages, setPendingMessages] = useState<ChatMsg[]>([]);
+  const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
+  const [inChatQuery, setInChatQuery] = useState("");
+  const [searchIndex, setSearchIndex] = useState(0);
+  const [notifyEnabled, setNotifyEnabled] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
+  const lastNotifiedRef = useRef<string | null>(null);
 
   // Load wallpaper preference once
   useEffect(() => {
     getWallpaperFn().then((r: any) => {
-      const p = (r?.wallpaper?.preset ?? "noir") as WallpaperPreset;
-      if (p in WALLPAPER_STYLES) setWallpaper(p);
+      const wp = r?.wallpaper;
+      if (wp && wp.default) setWallpaperState(wp as WallpaperState);
     }).catch(() => {});
   }, [getWallpaperFn]);
 
-  const changeWallpaper = useCallback(async (p: WallpaperPreset) => {
-    setWallpaper(p);
-    try { await setWallpaperFn({ data: { preset: p } }); } catch (err: any) { toast.error(err?.message ?? "Failed"); }
-  }, [setWallpaperFn]);
+  // Determine active wallpaper (per-room override or default)
+  const activeWallpaper: WallpaperValue = useMemo(() => {
+    if (activeRoomId && wallpaperState.rooms[activeRoomId]) return wallpaperState.rooms[activeRoomId];
+    return wallpaperState.default;
+  }, [wallpaperState, activeRoomId]);
 
+  const hasRoomOverride = !!(activeRoomId && wallpaperState.rooms[activeRoomId]);
+
+  useEffect(() => { setApplyPerRoom(hasRoomOverride); }, [activeRoomId, hasRoomOverride]);
+
+  // Sign custom wallpaper URLs
+  useEffect(() => {
+    const paths = new Set<string>();
+    if (wallpaperState.default.type === "custom") paths.add(wallpaperState.default.path);
+    for (const v of Object.values(wallpaperState.rooms)) {
+      if (v.type === "custom") paths.add(v.path);
+    }
+    const missing = Array.from(paths).filter((p) => p && !customWpUrls[p]);
+    if (missing.length === 0) return;
+    (async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(
+        missing.map(async (p) => {
+          const { data } = await supabase.storage.from("chat-wallpapers").createSignedUrl(p, 86400);
+          if (data?.signedUrl) updates[p] = data.signedUrl;
+        })
+      );
+      if (Object.keys(updates).length) setCustomWpUrls((prev) => ({ ...prev, ...updates }));
+    })();
+  }, [wallpaperState, customWpUrls]);
+
+  const activeCustomUrl = activeWallpaper.type === "custom" ? customWpUrls[activeWallpaper.path] : null;
+
+  const applyPreset = useCallback(async (preset: WallpaperPreset) => {
+    const scope = applyPerRoom && activeRoomId ? "room" : "default";
+    try {
+      const r: any = await setWallpaperFn({
+        data: { scope, room_id: scope === "room" ? activeRoomId : undefined, action: "preset", preset },
+      });
+      if (r?.wallpaper) setWallpaperState(r.wallpaper);
+    } catch (err: any) { toast.error(err?.message ?? "Failed"); }
+  }, [applyPerRoom, activeRoomId, setWallpaperFn]);
+
+  const applyCustom = useCallback(async (path: string) => {
+    const scope = applyPerRoom && activeRoomId ? "room" : "default";
+    try {
+      const r: any = await setWallpaperFn({
+        data: { scope, room_id: scope === "room" ? activeRoomId : undefined, action: "custom", path },
+      });
+      if (r?.wallpaper) setWallpaperState(r.wallpaper);
+    } catch (err: any) { toast.error(err?.message ?? "Failed"); }
+  }, [applyPerRoom, activeRoomId, setWallpaperFn]);
+
+  const clearCustom = useCallback(async () => {
+    const scope = applyPerRoom && activeRoomId ? "room" : "default";
+    try {
+      const r: any = await setWallpaperFn({
+        data: { scope, room_id: scope === "room" ? activeRoomId : undefined, action: "preset", preset: "noir" },
+      });
+      if (r?.wallpaper) setWallpaperState(r.wallpaper);
+    } catch (err: any) { toast.error(err?.message ?? "Failed"); }
+  }, [applyPerRoom, activeRoomId, setWallpaperFn]);
+
+  const resetRoomOverride = useCallback(async () => {
+    if (!activeRoomId) return;
+    try {
+      const r: any = await setWallpaperFn({
+        data: { scope: "room", room_id: activeRoomId, action: "clear" },
+      });
+      if (r?.wallpaper) setWallpaperState(r.wallpaper);
+      setApplyPerRoom(false);
+    } catch (err: any) { toast.error(err?.message ?? "Failed"); }
+  }, [activeRoomId, setWallpaperFn]);
 
   const roomsQ = useQuery({
     queryKey: ["chat-rooms"],
@@ -130,6 +222,26 @@ function TeamChatPage() {
     };
   }, [user?.id, presenceFn]);
 
+  // Notifications permission bootstrap
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    setNotifyEnabled(Notification.permission === "granted");
+  }, []);
+
+  const enableNotifications = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error(rtl ? "المتصفح لا يدعم الإشعارات" : "Notifications not supported");
+      return;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      const granted = perm === "granted";
+      setNotifyEnabled(granted);
+      if (granted) toast.success(rtl ? "تم تفعيل الإشعارات" : "Notifications enabled");
+      else toast.error(rtl ? "تم رفض الإذن" : "Permission denied");
+    } catch {}
+  }, [rtl]);
+
   // Realtime per room
   useEffect(() => {
     if (!activeRoomId) return;
@@ -157,8 +269,9 @@ function TeamChatPage() {
     return () => { supabase.removeChannel(ch); };
   }, [activeRoomId, qc]);
 
-  // Global rooms refresh
+  // Global rooms + push notifications
   useEffect(() => {
+    if (!user?.id) return;
     const ch = supabase
       .channel(uniqueRealtimeTopic("chat-rooms-global"))
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_rooms" }, () => {
@@ -167,9 +280,43 @@ function TeamChatPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_room_members" }, () => {
         qc.invalidateQueries({ queryKey: ["chat-rooms"] });
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, (payload: any) => {
+        qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+        const msg = payload?.new;
+        if (!msg || msg.sender_id === user.id) return;
+        if (lastNotifiedRef.current === msg.id) return;
+        lastNotifiedRef.current = msg.id;
+        const isActive = msg.room_id === activeRoomId && !document.hidden;
+        if (isActive) return;
+        if (typeof window === "undefined" || !("Notification" in window)) return;
+        if (Notification.permission !== "granted") return;
+        // Only notify for rooms user is a member of
+        const roomInfo = (roomsQ.data?.rooms ?? []).find((r: any) => r.id === msg.room_id);
+        if (!roomInfo) return;
+        const title = roomInfo.display_name ?? (rtl ? "رسالة جديدة" : "New message");
+        const bodyText =
+          msg.message_type === "voice"
+            ? (rtl ? "🎤 رسالة صوتية" : "🎤 Voice message")
+            : msg.message_type === "image"
+              ? (rtl ? "📷 صورة" : "📷 Image")
+              : (msg.body ?? "").slice(0, 140);
+        try {
+          const n = new Notification(title, {
+            body: bodyText,
+            tag: `chat-${msg.room_id}`,
+            icon: roomInfo.avatar_url || "/favicon.ico",
+            silent: false,
+          });
+          n.onclick = () => {
+            window.focus();
+            setActiveRoomId(msg.room_id);
+            n.close();
+          };
+        } catch {}
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [qc]);
+  }, [qc, user?.id, activeRoomId, rtl, roomsQ.data?.rooms]);
 
   useEffect(() => {
     if (activeRoomId) {
@@ -303,7 +450,6 @@ function TeamChatPage() {
   const serverMessages: ChatMsg[] = messagesQ.data?.messages ?? [];
   const messages: ChatMsg[] = useMemo(() => {
     if (pendingMessages.length === 0) return serverMessages;
-    // Drop optimistic entries whose body already appears in the last server messages
     const recentServerBodies = new Set(
       serverMessages.slice(-10)
         .filter((m) => m.sender_id === user?.id && m.message_type === "text")
@@ -314,6 +460,26 @@ function TeamChatPage() {
     );
     return [...serverMessages, ...stillPending];
   }, [serverMessages, pendingMessages, user?.id]);
+
+  // In-chat search: indices of matching messages
+  const searchMatches = useMemo(() => {
+    const q = inChatQuery.trim().toLowerCase();
+    if (!q) return [] as string[];
+    return messages
+      .filter((m) => (m.body ?? "").toLowerCase().includes(q))
+      .map((m) => m.id);
+  }, [messages, inChatQuery]);
+
+  useEffect(() => { setSearchIndex(0); }, [inChatQuery, activeRoomId]);
+
+  useEffect(() => {
+    if (!inChatSearchOpen || searchMatches.length === 0) return;
+    const id = searchMatches[searchIndex % searchMatches.length];
+    const el = document.getElementById(`msg-${id}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [searchIndex, searchMatches, inChatSearchOpen]);
+
+  const currentMatchId = searchMatches.length > 0 ? searchMatches[searchIndex % searchMatches.length] : null;
 
   // Mark visible messages as read (excluding own)
   useEffect(() => {
@@ -330,13 +496,25 @@ function TeamChatPage() {
     markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
   }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
-  // Typing display names
   const typingNames = useMemo(() => {
     if (!activeRoom) return [];
     return (activeRoom.members ?? [])
       .filter((m: any) => typingUserIds.includes(m.user_id))
       .map((m: any) => (m.display_name ?? m.email ?? "?").split(" ")[0]);
   }, [activeRoom, typingUserIds]);
+
+  const wallpaperClass = activeWallpaper.type === "preset"
+    ? WALLPAPER_STYLES[activeWallpaper.preset as WallpaperPreset] ?? WALLPAPER_STYLES.noir
+    : "";
+
+  const wallpaperStyle: React.CSSProperties | undefined = activeWallpaper.type === "custom" && activeCustomUrl
+    ? {
+        backgroundImage: `linear-gradient(180deg,rgba(0,0,0,0.15),rgba(0,0,0,0.35)),url(${activeCustomUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }
+    : undefined;
 
   return (
     <AppShell>
@@ -357,23 +535,37 @@ function TeamChatPage() {
               <MessageSquare className="h-4 w-4 text-primary" />
               {rtl ? "الشات الداخلي" : "Team Chat"}
             </h2>
-            <NewChatDialog
-              open={newOpen}
-              onOpenChange={setNewOpen}
-              members={membersQ.data?.members ?? []}
-              currentUserId={user?.id ?? ""}
-              onCreate={async (payload) => {
-                try {
-                  const { room } = await createRoom({ data: payload });
-                  setNewOpen(false);
-                  setActiveRoomId(room.id);
-                  qc.invalidateQueries({ queryKey: ["chat-rooms"] });
-                } catch (err: any) {
-                  toast.error(err.message ?? "Failed");
-                }
-              }}
-              rtl={rtl}
-            />
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 rounded-full"
+                onClick={enableNotifications}
+                title={rtl ? "الإشعارات" : "Notifications"}
+                aria-label="Notifications"
+              >
+                {notifyEnabled
+                  ? <Bell className="h-4 w-4 text-[color:var(--brand-gold,#d4af37)]" />
+                  : <BellOff className="h-4 w-4 text-muted-foreground" />}
+              </Button>
+              <NewChatDialog
+                open={newOpen}
+                onOpenChange={setNewOpen}
+                members={membersQ.data?.members ?? []}
+                currentUserId={user?.id ?? ""}
+                onCreate={async (payload) => {
+                  try {
+                    const { room } = await createRoom({ data: payload });
+                    setNewOpen(false);
+                    setActiveRoomId(room.id);
+                    qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+                  } catch (err: any) {
+                    toast.error(err.message ?? "Failed");
+                  }
+                }}
+                rtl={rtl}
+              />
+            </div>
           </div>
           <div className="p-2 border-b">
             <div className="relative">
@@ -410,14 +602,14 @@ function TeamChatPage() {
                   )}
                 >
                   <div className="relative shrink-0">
-                    <Avatar className="h-11 w-11 ring-2 ring-primary/20 shadow-sm">
+                    <Avatar className="h-14 w-14 ring-2 ring-[color:var(--brand-gold,#d4af37)]/40 shadow-md">
                       {r.avatar_url && <AvatarImage src={r.avatar_url} />}
-                      <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-bold text-lg">
                         {label.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     {online && (
-                      <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card" />
+                      <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -455,50 +647,171 @@ function TeamChatPage() {
                 >
                   {rtl ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
                 </Button>
-                <div className="relative shrink-0">
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/30 shadow">
-                    {activeRoom.avatar_url && <AvatarImage src={activeRoom.avatar_url} />}
-                    <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
-                      {(activeRoom.display_name ?? "G").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {activeRoom.type === "direct" && (() => {
-                    const other = (activeRoom.members ?? []).find((m: any) => !m.is_me);
-                    return other && isOnline(other.user_id) ? (
-                      <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card" />
-                    ) : null;
-                  })()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold truncate">
-                    {activeRoom.display_name ?? (activeRoom.type === "direct" ? (rtl ? "محادثة مباشرة" : "Direct") : (rtl ? "جروب" : "Group"))}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {typingNames.length > 0 ? (
-                      <span className="text-primary italic">
-                        {typingNames.slice(0, 2).join(", ")} {rtl ? "يكتب..." : "typing..."}
-                      </span>
-                    ) : activeRoom.type === "group" ? (
-                      `${(activeRoom.members ?? []).length} ${rtl ? "عضو" : "members"}`
-                    ) : (() => {
-                      const other = (activeRoom.members ?? []).find((m: any) => !m.is_me);
-                      if (!other) return rtl ? "محادثة مباشرة" : "Direct chat";
-                      if (isOnline(other.user_id)) return rtl ? "متصل الآن" : "online";
-                      const ls = lastSeen(other.user_id);
-                      if (ls) return `${rtl ? "آخر ظهور " : "last seen "}${new Date(ls).toLocaleString(rtl ? "ar-EG" : undefined, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}`;
-                      return rtl ? "غير متصل" : "offline";
-                    })()}
-                  </div>
-                </div>
-                <WallpaperPicker value={wallpaper} onChange={changeWallpaper} rtl={rtl} />
+
+                {/* Header quick-jump popover */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-3 min-w-0 flex-1 text-start hover:bg-accent/40 rounded-xl px-2 py-1.5 transition group">
+                      <div className="relative shrink-0">
+                        <Avatar className="h-12 w-12 ring-2 ring-[color:var(--brand-gold,#d4af37)]/50 shadow-lg">
+                          {activeRoom.avatar_url && <AvatarImage src={activeRoom.avatar_url} />}
+                          <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-bold text-base">
+                            {(activeRoom.display_name ?? "G").charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {activeRoom.type === "direct" && (() => {
+                          const other = (activeRoom.members ?? []).find((m: any) => !m.is_me);
+                          return other && isOnline(other.user_id) ? (
+                            <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                          ) : null;
+                        })()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold truncate flex items-center gap-1">
+                          {activeRoom.display_name ?? (activeRoom.type === "direct" ? (rtl ? "محادثة مباشرة" : "Direct") : (rtl ? "جروب" : "Group"))}
+                          <ChevronDown className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition" />
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {typingNames.length > 0 ? (
+                            <span className="text-primary italic">
+                              {typingNames.slice(0, 2).join(", ")} {rtl ? "يكتب..." : "typing..."}
+                            </span>
+                          ) : activeRoom.type === "group" ? (
+                            `${(activeRoom.members ?? []).length} ${rtl ? "عضو" : "members"}`
+                          ) : (() => {
+                            const other = (activeRoom.members ?? []).find((m: any) => !m.is_me);
+                            if (!other) return rtl ? "محادثة مباشرة" : "Direct chat";
+                            if (isOnline(other.user_id)) return rtl ? "متصل الآن" : "online";
+                            const ls = lastSeen(other.user_id);
+                            if (ls) return `${rtl ? "آخر ظهور " : "last seen "}${new Date(ls).toLocaleString(rtl ? "ar-EG" : undefined, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}`;
+                            return rtl ? "غير متصل" : "offline";
+                          })()}
+                        </div>
+                      </div>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-80 max-h-[70vh] overflow-hidden" align="start" dir={rtl ? "rtl" : "ltr"}>
+                    <div className="p-3 border-b bg-gradient-to-b from-card to-muted/30">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {rtl ? "التنقل السريع" : "Quick jump"}
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-0.5">
+                        {rtl ? "اختر محادثة للانتقال إليها فورًا" : "Pick a chat to jump into"}
+                      </div>
+                    </div>
+                    <ScrollArea className="max-h-[52vh]">
+                      {rooms.map((r: any) => {
+                        const label = r.display_name ?? (rtl ? "محادثة" : "Chat");
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => setActiveRoomId(r.id)}
+                            className={cn(
+                              "w-full text-start p-2.5 flex items-center gap-3 hover:bg-accent transition",
+                              r.id === activeRoomId && "bg-accent/70"
+                            )}
+                          >
+                            <Avatar className="h-10 w-10 ring-1 ring-[color:var(--brand-gold,#d4af37)]/30">
+                              {r.avatar_url && <AvatarImage src={r.avatar_url} />}
+                              <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground text-sm">
+                                {label.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate">{label}</div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {r.last_message_preview ?? (rtl ? "لا رسائل بعد" : "No messages yet")}
+                              </div>
+                            </div>
+                            {r.unread_count > 0 && (
+                              <Badge className="bg-primary text-primary-foreground rounded-full h-5 min-w-5 px-1.5 text-[10px]">
+                                {r.unread_count}
+                              </Badge>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0"
+                  onClick={() => setInChatSearchOpen((v) => !v)}
+                  title={rtl ? "بحث في المحادثة" : "Search in chat"}
+                  aria-label="Search in chat"
+                >
+                  <Search className="h-5 w-5" />
+                </Button>
+
+                <WallpaperPicker
+                  value={activeWallpaper}
+                  customUrl={activeCustomUrl}
+                  onSelectPreset={applyPreset}
+                  onUploadCustom={applyCustom}
+                  onClearCustom={clearCustom}
+                  applyPerRoom={applyPerRoom}
+                  onTogglePerRoom={(v) => {
+                    setApplyPerRoom(v);
+                    if (!v && hasRoomOverride) resetRoomOverride();
+                  }}
+                  hasRoomOverride={hasRoomOverride}
+                  onResetToDefault={resetRoomOverride}
+                  rtl={rtl}
+                  userId={user?.id ?? ""}
+                />
               </div>
+
+              {/* In-chat search bar */}
+              {inChatSearchOpen && (
+                <div className="border-b bg-gradient-to-r from-card to-muted/40 px-3 py-2 flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    autoFocus
+                    value={inChatQuery}
+                    onChange={(e) => setInChatQuery(e.target.value)}
+                    placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
+                    className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
+                  />
+                  <span className="text-xs tabular-nums text-muted-foreground shrink-0">
+                    {searchMatches.length > 0
+                      ? `${(searchIndex % searchMatches.length) + 1}/${searchMatches.length}`
+                      : (inChatQuery ? (rtl ? "لا نتائج" : "no results") : "")}
+                  </span>
+                  <Button
+                    size="icon" variant="ghost" className="h-7 w-7"
+                    disabled={searchMatches.length === 0}
+                    onClick={() => setSearchIndex((i) => (i - 1 + searchMatches.length) % searchMatches.length)}
+                    aria-label="Previous match"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon" variant="ghost" className="h-7 w-7"
+                    disabled={searchMatches.length === 0}
+                    onClick={() => setSearchIndex((i) => (i + 1) % searchMatches.length)}
+                    aria-label="Next match"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon" variant="ghost" className="h-7 w-7"
+                    onClick={() => { setInChatSearchOpen(false); setInChatQuery(""); }}
+                    aria-label="Close search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
 
               <div
                 ref={scrollRef}
                 className={cn(
                   "flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5",
-                  WALLPAPER_STYLES[wallpaper]
+                  wallpaperClass
                 )}
+                style={wallpaperStyle}
               >
                 <AnimatePresence initial={false}>
                   {messages.map((m, i) => {
@@ -509,22 +822,28 @@ function TeamChatPage() {
                     const sameSenderAsNext = next && next.sender_id === m.sender_id;
                     const showName = !sameSenderAsPrev;
                     const showAvatar = !sameSenderAsNext;
+                    const isMatch = currentMatchId === m.id;
                     return (
-                      <MessageBubble
+                      <div
+                        id={`msg-${m.id}`}
                         key={m.id}
-                        msg={m}
-                        mine={mine}
-                        showAvatar={showAvatar}
-                        showName={showName}
-                        rtl={rtl}
-                        voiceUrl={m.voice_note_url ? voiceUrls[m.voice_note_url] : undefined}
-                        attachmentUrls={attachmentUrls}
-                        isGroup={activeRoom.type === "group"}
-                        isRead={true}
-                        onReply={setReplyTo}
-                        onDelete={onDelete}
-                        onToggleReaction={onToggleReaction}
-                      />
+                        className={cn(isMatch && "rounded-2xl ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 shadow-[0_0_0_4px_rgba(212,175,55,0.15)] transition")}
+                      >
+                        <MessageBubble
+                          msg={m}
+                          mine={mine}
+                          showAvatar={showAvatar}
+                          showName={showName}
+                          rtl={rtl}
+                          voiceUrl={m.voice_note_url ? voiceUrls[m.voice_note_url] : undefined}
+                          attachmentUrls={attachmentUrls}
+                          isGroup={activeRoom.type === "group"}
+                          isRead={true}
+                          onReply={setReplyTo}
+                          onDelete={onDelete}
+                          onToggleReaction={onToggleReaction}
+                        />
+                      </div>
                     );
                   })}
                 </AnimatePresence>
