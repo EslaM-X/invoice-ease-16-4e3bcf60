@@ -904,6 +904,16 @@ function ShortageCard({
             );
           })()}
 
+          {isOpen && auditMode && raw && (
+            <div className="mt-2 rounded-lg border border-emerald-500/25 bg-black/60 overflow-hidden">
+              <div className="px-2.5 py-1 text-[10px] uppercase tracking-wider text-emerald-300/80 border-b border-emerald-500/20">
+                {ar ? "استجابة RPC خام لهذا الصف" : "Raw RPC row"}
+              </div>
+              <pre className="max-h-64 overflow-auto p-2 text-[10px] leading-relaxed text-emerald-200 font-mono">
+{JSON.stringify(raw, null, 2)}
+              </pre>
+            </div>
+          )}
 
         </div>
       </div>
