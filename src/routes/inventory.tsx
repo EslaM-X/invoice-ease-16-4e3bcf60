@@ -181,7 +181,7 @@ function Inventory() {
                   <div className="flex gap-3">
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                        <img src={p.image_url} alt={`${p.name}${p.color ? ` — ${p.color}` : ""} product photo`} className="h-full w-full object-cover" />
                       ) : (
                         <Boxes className="h-full w-full p-3 text-muted-foreground" />
                       )}
@@ -275,7 +275,7 @@ function Inventory() {
                       <td className="px-3 py-2 font-medium">
                         <div className="flex items-center gap-2">
                           {p?.image_url ? (
-                            <img src={p.image_url} alt={p.name} className="h-8 w-8 rounded border object-cover" />
+                            <img src={p.image_url} alt={`${p.name} product photo`} className="h-8 w-8 rounded border object-cover" />
                           ) : (
                             <div className="h-8 w-8 rounded border bg-muted" />
                           )}
