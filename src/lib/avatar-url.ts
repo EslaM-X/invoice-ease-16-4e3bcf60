@@ -11,7 +11,9 @@
  *  - Gravatar: sets `?s=NN&d=identicon`.
  *  - Supabase storage: rewrites object URLs (public, signed, authenticated)
  *    and existing render URLs to `/storage/v1/render/image/...` while keeping
- *    signed tokens and forcing cover resize + quality=100.
+ *    signed tokens and forcing cover resize + quality=100. Modern browsers
+ *    receive AVIF/WebP automatically because Supabase honors the `Accept`
+ *    header for the render endpoint.
  *  - Anything else: returned unchanged.
  */
 
@@ -28,6 +30,18 @@ function getDpr(): number {
 
 function transformSize(px: number): number {
   return Math.min(MAX_TRANSFORM_PX, Math.max(MIN_TRANSFORM_PX, Math.round(px)));
+}
+
+function appendBust(url: string, bust?: string | number | null): string {
+  if (bust === undefined || bust === null || bust === "") return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("v", String(bust));
+    return u.toString();
+  } catch {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}v=${encodeURIComponent(String(bust))}`;
+  }
 }
 
 function withStorageTransform(url: string, px: number): string | null {
@@ -57,6 +71,8 @@ function withStorageTransform(url: string, px: number): string | null {
     out.searchParams.set("height", String(size));
     out.searchParams.set("resize", "cover");
     out.searchParams.set("quality", "100");
+    // `format=origin` disables format rewriting; omitting it lets Supabase pick
+    // AVIF/WebP automatically based on the browser's `Accept` header.
     return out.toString();
   } catch {
     return null;
@@ -67,14 +83,11 @@ function sizeFor(url: string, px: number): string {
   if (!url) return url;
   const target = transformSize(px);
 
-  // Google user content (photos from OAuth)
-  //   ...=s96-c  →  ...=s{px}-c-no  (`-no` = no square crop artifacts)
   const gm = url.match(/=s(\d+)(?:-c)?(?:-no)?(?=($|[&?]))/);
   if (gm) {
     return url.replace(gm[0], `=s${target}-c-no`);
   }
 
-  // Gravatar
   if (/gravatar\.com\/avatar\//i.test(url)) {
     const u = new URL(url);
     u.searchParams.set("s", String(target));
@@ -88,21 +101,63 @@ function sizeFor(url: string, px: number): string {
   return url;
 }
 
-/**
- * Returns the best `src` for the given CSS pixel size and current DPR.
- */
-export function getAvatarSrc(url: string | null | undefined, sizePx: number): string | undefined {
+/** Returns the best `src` for the given CSS pixel size and current DPR. */
+export function getAvatarSrc(
+  url: string | null | undefined,
+  sizePx: number,
+  bust?: string | number | null,
+): string | undefined {
   if (!url) return undefined;
-  return sizeFor(url, Math.round(sizePx * getDpr()));
+  const out = sizeFor(url, Math.round(sizePx * getDpr()));
+  return appendBust(out, bust);
+}
+
+/** Returns a `srcSet` covering 1x/2x/3x variants for the given CSS pixel size. */
+export function getAvatarSrcSet(
+  url: string | null | undefined,
+  sizePx: number,
+  bust?: string | number | null,
+): string | undefined {
+  if (!url) return undefined;
+  const a = appendBust(sizeFor(url, sizePx), bust);
+  const b = appendBust(sizeFor(url, sizePx * 2), bust);
+  const c = appendBust(sizeFor(url, sizePx * 3), bust);
+  return `${a} 1x, ${b} 2x, ${c} 3x`;
 }
 
 /**
- * Returns a `srcSet` covering 1x/2x/3x variants for the given CSS pixel size.
+ * Describes the actual variant that would be chosen for the given CSS size,
+ * so a diagnostics panel can flag undersampling versus the current DPR.
  */
-export function getAvatarSrcSet(url: string | null | undefined, sizePx: number): string | undefined {
-  if (!url) return undefined;
-  const a = sizeFor(url, sizePx);
-  const b = sizeFor(url, sizePx * 2);
-  const c = sizeFor(url, sizePx * 3);
-  return `${a} 1x, ${b} 2x, ${c} 3x`;
+export function describeAvatarChoice(url: string | null | undefined, sizePx: number) {
+  const dpr = getDpr();
+  const idealPx = Math.round(sizePx * dpr);
+  const chosenPx = transformSize(idealPx);
+  const original = url ?? null;
+  const transformed = url ? getAvatarSrc(url, sizePx) ?? null : null;
+  let transformedWidth: number | null = null;
+  let transformedHeight: number | null = null;
+  let quality: string | null = null;
+  if (transformed) {
+    try {
+      const u = new URL(transformed);
+      const w = u.searchParams.get("width");
+      const h = u.searchParams.get("height");
+      transformedWidth = w ? Number(w) : null;
+      transformedHeight = h ? Number(h) : null;
+      quality = u.searchParams.get("quality");
+    } catch {}
+  }
+  return {
+    dpr,
+    cssSize: sizePx,
+    idealPx,
+    chosenPx,
+    undersampled: chosenPx < idealPx,
+    quality,
+    transformedWidth,
+    transformedHeight,
+    original,
+    transformed,
+  };
 }
