@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 
@@ -12,8 +13,11 @@ export type Typer = { id: string; name: string; avatarUrl?: string | null };
  *
  * variant="line" is the full row above the composer (with avatars).
  * variant="inline" is a compact string for headers / sidebar rows.
+ *
+ * Memoized + GPU-friendly (CSS keyframes only) so it doesn't force a repaint
+ * of the virtualized message list on every render.
  */
-export function TypingIndicator({
+function TypingIndicatorImpl({
   typers,
   rtl,
   variant = "line",
@@ -45,14 +49,14 @@ export function TypingIndicator({
   }
 
   const dots = (
-    <span className="inline-flex items-end gap-0.5 leading-none" aria-hidden>
-      {[0, 150, 300].map((d) => (
-        <span
-          key={d}
-          className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:opacity-70"
-          style={{ animationDelay: `${d}ms` }}
-        />
-      ))}
+    <span
+      className="typing-dots inline-flex items-end gap-0.5 leading-none"
+      aria-hidden
+      style={{ contain: "strict", willChange: "transform" }}
+    >
+      <span className="typing-dot" />
+      <span className="typing-dot" style={{ animationDelay: "150ms" }} />
+      <span className="typing-dot" style={{ animationDelay: "300ms" }} />
     </span>
   );
 
@@ -79,6 +83,7 @@ export function TypingIndicator({
         className
       )}
       aria-live="polite"
+      style={{ contain: "layout paint" }}
     >
       {showAvatars && shown.length > 0 && (
         <div className={cn("flex", rtl ? "-space-x-reverse -space-x-2" : "-space-x-2")}>
@@ -112,3 +117,20 @@ function firstName(n?: string): string {
   if (!n) return "?";
   return n.trim().split(/\s+/)[0] || n.trim();
 }
+
+function sameTypers(a: Typer[], b: Typer[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id || a[i].name !== b[i].name || a[i].avatarUrl !== b[i].avatarUrl) return false;
+  }
+  return true;
+}
+
+export const TypingIndicator = memo(TypingIndicatorImpl, (prev, next) =>
+  prev.rtl === next.rtl &&
+  prev.variant === next.variant &&
+  prev.showAvatars === next.showAvatars &&
+  prev.className === next.className &&
+  sameTypers(prev.typers, next.typers)
+);
