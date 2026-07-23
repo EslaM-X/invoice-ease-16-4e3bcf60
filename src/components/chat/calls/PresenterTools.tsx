@@ -402,6 +402,25 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const next = m.order.filter((id) => existing.has(id));
       for (const id of orderRef.current) if (!next.includes(id) && existing.has(id)) next.push(id);
       orderRef.current = next;
+    } else if (m.t === "snapshot") {
+      // Full-state overwrite (used by revert-to-version)
+      itemsRef.current.clear();
+      orderRef.current = [];
+      const byId = new Map(m.items.map((it) => [it.id, it]));
+      for (const id of m.order) {
+        const it = byId.get(id);
+        if (it) {
+          itemsRef.current.set(id, it);
+          orderRef.current.push(id);
+        }
+      }
+    } else if (m.t === "ptr") {
+      cursorsRef.current.set(m.owner, {
+        x: m.x, y: m.y, color: m.color, kind: m.kind,
+        down: m.down, t: performance.now(),
+      });
+    } else if (m.t === "ptrgone") {
+      cursorsRef.current.delete(m.owner);
     }
   }, []);
 
