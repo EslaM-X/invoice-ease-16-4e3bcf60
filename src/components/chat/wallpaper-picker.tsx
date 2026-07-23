@@ -92,6 +92,7 @@ export function WallpaperPicker({
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [scope, setScope] = useState<"self" | "room">("self");
+  const [history, setHistory] = useState<WallpaperValue[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File | undefined | null) => {
