@@ -1,68 +1,41 @@
-# Chat: date separators + smart typing + mobile Telegram-like polish
+# خطة تطوير صفحة تسجيل الدخول — Maison Gold
 
-Three additions on top of the existing `src/routes/team-chat.tsx` chat, all responsive and mobile-first.
+## ما سيتغيّر
+- إزالة زر **"المتابعة باستخدام Google"** والفاصل "أو" وكل الدوال المرتبطة (`handleGoogle`, استيراد `lovable`, رسائل الخطأ التي تذكر Google).
+- إعادة تصميم كامل لـ `src/routes/auth.tsx` باتجاه **Maison Gold** الذي اخترته.
+- الحفاظ 100% على شعار Steinheim كصورة (لن يُعاد رسمه) مع إضافة هالة ذهبية نابضة وبريق حريري حوله فقط.
+- الحفاظ الكامل على كل المنطق الوظيفي:
+  - تبويبات: تسجيل الدخول / دخول موزعين / إنشاء حساب
+  - QR Price List CTA
+  - Windows Hello / Passkey + منطق `webauthn` كامل
+  - البريد + كلمة المرور + show/hide + "نسيت كلمة السر؟" + Remember me + Submit
+  - كل رسائل الحالة (البصمة، انتهاء الجلسة، خطأ الدخول)
+  - `signIn`, `signUp`, `signInDistributor`, `resetPasswordForEmail`
 
-## 1) WhatsApp-style date separators inside the message list
+## البنية البصرية (Maison Gold)
+- خلفية `#020202` عميقة + **بقعتان ذهبيتان متحركتان** (`blob-drift` بطيء 25s) + شبكة نقاط دقيقة.
+- بطاقة زجاجية بحواف مستديرة كبيرة (`rounded-[2.5rem]`)، `backdrop-blur-2xl`، حافة علوية ذهبية رفيعة، ظل عميق.
+- شعار Steinheim في العمود الأيسر مع هالة ذهبية نابضة + شريط ذهبي تحته يحمل انعكاس ضوء متحرك (shimmer).
+- Segmented control للتبويبات بمؤشر ذهبي منزلق (transition 500ms، `cubic-bezier(0.32, 0.72, 0, 1)` — إحساس iOS).
+- حقول الإدخال بخلفية `bg-white/[0.03]` وحلقة تركيز ذهبية شفافة.
+- زر الدخول ذهبي متدرّج مع تأثير بريق يمر عند الـ hover.
+- Toggle switch iOS-style لـ "تذكرني".
+- Micro-interactions: ارتفاع البطاقة عائم بطيء، hover magnetic على الأزرار، fade-in متسلسل عند التحميل، احترام `prefers-reduced-motion`.
 
-Add a sticky, centered date chip that appears before the first message of each day, computed from `message.created_at` in the user's local timezone.
+## الاستجابة (Responsive)
+- Desktop (lg+): عمودان — الهوية يسارًا، الفورم يمينًا (RTL).
+- Mobile: عمود واحد، شعار Steinheim مصغّر أعلى البطاقة، حشو أصغر، بدون هالات ضخمة، أزرار بحجم لمس مريح.
 
-Labels (bilingual, RTL-aware):
-- Today → "اليوم" / "Today"
-- Yesterday → "أمس" / "Yesterday"
-- Within last 7 days → weekday name (e.g. "الاثنين" / "Monday")
-- Older → localized full date (e.g. "12 يوليو 2026")
+## التوافق التقني
+- تعريف الـ keyframes الجديدة (`float-lux`, `blob-drift`, `shimmer`) داخل `<style>` مضمّن في نفس المكوّن (بدون تعديل `src/styles.css`).
+- الالتزام بتوكينات التصميم — الذهب المستخدم `#c9a84c / #f0d78c` هو نفس هوية Noir & Gold المخزّنة.
+- لا تغيير على أي ملف backend أو RLS أو auth logic.
 
-Rendering rules:
-- Injected as virtual rows inside the existing virtualized list so scroll offsets, history-prepend preservation, and search jump-to-index keep working.
-- The chip that corresponds to the topmost visible day sticks to the top of the viewport as you scroll (WhatsApp behavior), then swaps as the day changes.
-- Style matches the current Noir & Gold surface (soft dark pill, gold hairline, subtle blur), sized down on mobile.
+## الملفات المتأثرة
+- `src/routes/auth.tsx` — إعادة تصميم كاملة + حذف Google.
+- (لا شيء آخر — كل بقية النظام لن يمس.)
 
-## 2) Smart "typing…" indicator
-
-Replaces the current "X, Y typing…" text with a live, animated indicator both in the header and above the composer.
-
-Behavior:
-- 1 typer → "أحمد يكتب الآن…" / "Ahmed is typing…"
-- 2 typers → "أحمد ومحمد يكتبان الآن…" / "Ahmed and Mohamed are typing…"
-- 3 typers → "أحمد ومحمد و+1 يكتبون الآن…" / "Ahmed, Mohamed and 1 more are typing…"
-- 4+ typers → "عدة أعضاء يكتبون الآن…" / "Several people are typing…"
-
-Visuals:
-- Three bouncing dots animation next to the text, disabled automatically under `prefers-reduced-motion`.
-- Small round avatars of up to the first 3 typers stack next to the indicator in DMs/rooms.
-- In the rooms sidebar, the current row keeps its existing "typing…" hint but upgraded with the animated dots.
-- All wording flips correctly in RTL and uses proper Arabic dual/plural forms.
-
-Data source: the existing `useRoomPresence` `typingUserIds` — no schema change.
-
-## 3) Telegram-like mobile experience (phones only)
-
-Applied only under `md` breakpoint; desktop stays as it is today.
-
-Navigation model:
-- Single active pane: on mobile the sidebar and the chat never show side-by-side.
-- Room list is the default view. Tapping a room slides the chat pane in from the inline-end side (RTL-aware) with a short, smooth transition; a back arrow in the chat header slides back to the list.
-- Uses the browser history stack so the phone back gesture returns to the list instead of leaving the page.
-
-Layout & density on phones:
-- Full-viewport chat surface (`100dvh`), safe-area padding for notch/home indicator.
-- Denser header (avatar 40px, single-line title with truncation, subtitle shows online/last seen or the smart typing text).
-- Message bubbles use up to ~78% width, tighter vertical spacing, larger tap targets (44px min).
-- Composer pinned to the bottom above the on-screen keyboard, auto-grow up to ~5 lines, mic + attach + emoji as icon-only round buttons.
-- Floating "jump to latest" pill sits just above the composer when scrolled up, with unread count.
-- Sticky day chip and the smart typing indicator both remain visible and legible on small screens.
-- Popup notifier is auto-hidden on phones inside `/team-chat` (it already exists elsewhere in the app), to avoid covering the chat.
-
-## Responsiveness & QA
-
-- Verified across 360, 390, 414, 768, 1024, 1280, 1440, 1920 widths in both LTR and RTL using the existing overflow-guard test hook.
-- Reduced-motion honored for slide transitions, typing dots, and sticky-chip swaps.
-- No changes to database, RLS, or server functions.
-
-## Technical notes
-
-- Files touched: `src/routes/team-chat.tsx`, `src/components/chat/message-bubble.tsx` (spacing tokens only), new `src/components/chat/day-separator.tsx`, new `src/components/chat/typing-indicator.tsx`, small additions to `src/styles.css` for the sticky chip and bounce animation with reduced-motion guard.
-- Virtualizer: day separators become their own row type; `getVirtualItems()` renders either a message row or a separator row based on a precomputed `rows` array `(kind: "msg" | "day", ...)`.
-- Sticky chip: an absolutely positioned top overlay reads the top-most visible row's day from the virtualizer's `range` and updates on scroll (throttled via `requestAnimationFrame`).
-- Mobile pane switch: a `view: "list" | "chat"` state on `< md`, wired to `history.pushState`/`popstate` so the hardware back button returns to the list; on `md+` both panes render as today.
-- No new dependencies; date formatting uses `Intl.DateTimeFormat` with the current locale (`ar` / `en`).
+## التحقق قبل التسليم
+1. Playwright: زيارة `/auth` في LTR وRTL، أخذ لقطات على 1440×900 و390×844.
+2. تأكيد ظهور الشعار، عمل التبويبات، وجود حقول البريد/الباسورد، زر Windows Hello، وعدم وجود أي أثر لزر Google.
+3. اختبار محاولة تسجيل دخول وهمي للتأكد أن `handleSubmit` ما زال يعمل ويظهر رسالة الخطأ الصحيحة.

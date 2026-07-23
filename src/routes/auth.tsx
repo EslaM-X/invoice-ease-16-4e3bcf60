@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -237,18 +237,7 @@ function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    setBusy(true);
-    try {
-      const res = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/dashboard`,
-      });
-      if (res.error) throw res.error;
-    } catch (err: any) {
-      toast.error(err?.message ?? t("error_occurred"));
-      setBusy(false);
-    }
-  };
+
 
   const handleBiometricLogin = async (forEmail?: string) => {
     setBusy(true);
@@ -280,15 +269,15 @@ function AuthPage() {
       const isCancel = /NotAllowed|cancelled|canceled|aborted|timed? ?out/i.test(msg) || err?.name === "NotAllowedError";
       if (/expired|invalid|refresh/i.test(msg)) {
         setBiometricError(lang === "ar"
-          ? "انتهت جلسة هذا الحساب المحفوظة. استخدم كلمة المرور أو Google مرة واحدة لتجديد تسجيل الدخول السريع."
-          : "This saved account session expired. Use password or Google once to refresh fast sign-in.");
+          ? "انتهت جلسة هذا الحساب المحفوظة. استخدم كلمة المرور مرة واحدة لتجديد تسجيل الدخول السريع."
+          : "This saved account session expired. Use your password once to refresh fast sign-in.");
         toast.error(lang === "ar"
-          ? "انتهت صلاحية الجلسة. الرجاء تسجيل الدخول بكلمة السر أو Google لتجديدها."
-          : "Saved session expired. Please sign in with password or Google to refresh it.");
+          ? "انتهت صلاحية الجلسة. الرجاء تسجيل الدخول بكلمة السر لتجديدها."
+          : "Saved session expired. Please sign in with your password to refresh it.");
       } else if (isCancel) {
         setBiometricError(lang === "ar"
-          ? `تم إلغاء التحقق بـ ${deviceLabel}. يمكنك المتابعة بكلمة المرور أو Google.`
-          : `${deviceLabel} verification was cancelled. You can continue with password or Google.`);
+          ? `تم إلغاء التحقق بـ ${deviceLabel}. يمكنك المتابعة بكلمة المرور.`
+          : `${deviceLabel} verification was cancelled. You can continue with your password.`);
         toast.message(lang === "ar"
           ? "تم إلغاء التحقق — يمكنك تسجيل الدخول بكلمة السر بدلًا من ذلك."
           : "Verification cancelled — you can sign in with your password instead.");
@@ -343,14 +332,34 @@ function AuthPage() {
 
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.005_250)]">
-      {/* Layered platinum background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 50% -10%, oklch(0.86 0.01 250 / 0.18) 0px, transparent 55%), radial-gradient(ellipse at 10% 110%, oklch(0.72 0.01 250 / 0.14) 0px, transparent 50%), radial-gradient(ellipse at 90% 90%, oklch(0.6 0.008 250 / 0.12) 0px, transparent 50%)" }} />
-        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "linear-gradient(oklch(0.86 0.01 250) 1px, transparent 1px), linear-gradient(90deg, oklch(0.86 0.01 250) 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250_/_0.6)] to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250_/_0.4)] to-transparent" />
+    <div className="relative min-h-screen overflow-hidden bg-[#020202] text-[oklch(0.97_0.005_250)]">
+      <style>{`
+        @keyframes stein-blob { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(40px,-60px) scale(1.12); } 66% { transform: translate(-30px,30px) scale(0.92); } }
+        @keyframes stein-halo { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: .85; transform: scale(1.06); } }
+        @keyframes stein-shimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+        @keyframes stein-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes stein-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .stein-blob { animation: stein-blob 26s ease-in-out infinite; }
+        .stein-halo { animation: stein-halo 5s ease-in-out infinite; }
+        .stein-float { animation: stein-float 8s ease-in-out infinite; }
+        .stein-fade-up { animation: stein-fade-up .9s cubic-bezier(0.32,0.72,0,1) both; }
+        .stein-shimmer-track { position: relative; overflow: hidden; }
+        .stein-shimmer-track::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-120%); }
+        .stein-shimmer-track:hover::after { animation: stein-shimmer 1.4s ease forwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .stein-blob, .stein-halo, .stein-float, .stein-fade-up { animation: none !important; }
+        }
+      `}</style>
+      {/* Cinematic Noir & Gold backdrop */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="stein-blob absolute -top-[15%] -start-[10%] h-[65vw] w-[65vw] rounded-full bg-[radial-gradient(circle,oklch(0.78_0.11_82_/_0.22),transparent_65%)] blur-[110px]" />
+        <div className="stein-blob absolute -bottom-[15%] -end-[10%] h-[55vw] w-[55vw] rounded-full bg-[radial-gradient(circle,oklch(0.55_0.08_60_/_0.18),transparent_65%)] blur-[110px]" style={{ animationDelay: "-9s" }} />
+        <div className="stein-blob absolute top-1/3 start-1/3 h-[40vw] w-[40vw] rounded-full bg-[radial-gradient(circle,oklch(0.92_0.05_82_/_0.06),transparent_70%)] blur-[130px]" style={{ animationDelay: "-14s" }} />
+        <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: "radial-gradient(oklch(0.92_0.05_82) 0.5px, transparent 0.5px)", backgroundSize: "42px 42px" }} />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.55)] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.35)] to-transparent" />
       </div>
+
 
       <div className="absolute top-3 end-3 z-20 flex gap-2 no-print sm:top-4 sm:end-4">
         <Button variant="ghost" size="icon" className="text-white/90 hover:bg-white/10" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
@@ -363,30 +372,32 @@ function AuthPage() {
 
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-12 sm:gap-10 sm:px-6 sm:py-14 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10 lg:py-10">
         {/* Brand showcase */}
-        <div className="order-1 flex flex-col items-center text-center lg:order-none lg:items-start lg:text-start">
-          <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-none">
-            <div className="absolute -inset-8 rounded-full bg-[radial-gradient(circle,oklch(0.86_0.01_250_/_0.22),transparent_65%)] blur-2xl sm:-inset-10" />
-            <div className="relative rounded-3xl border border-[oklch(0.86_0.01_250_/_0.22)] bg-gradient-to-b from-[#141416] to-[#0b0b0c] p-5 shadow-[0_30px_80px_-20px_oklch(0.86_0.01_250_/_0.28)] sm:p-7 lg:p-8">
-              <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/5" />
-              <div className="pointer-events-none absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
+        <div className="order-1 flex flex-col items-center text-center lg:order-none lg:items-start lg:text-start stein-fade-up">
+          <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-none stein-float">
+            <div className="stein-halo pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle,oklch(0.78_0.11_82_/_0.35),transparent_65%)] blur-3xl sm:-inset-14" />
+            <div className="relative rounded-[2rem] border border-[oklch(0.78_0.11_82_/_0.28)] bg-[linear-gradient(180deg,#141210_0%,#0a0908_100%)] p-6 shadow-[0_40px_120px_-30px_oklch(0.78_0.11_82_/_0.45)] sm:p-8 lg:p-10">
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/5" />
+              <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.92_0.08_82)] to-transparent" />
+              <div className="pointer-events-none absolute inset-x-8 bottom-4 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.35)] to-transparent" />
               <img
                 src={brandLogo}
                 alt="Steinheim"
-                className="relative mx-auto h-32 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.86_0.01_250_/_0.45)] sm:h-44 md:h-52 lg:h-64"
+                className="relative mx-auto h-32 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.78_0.11_82_/_0.55)] sm:h-44 md:h-52 lg:h-64"
                 draggable={false}
               />
             </div>
           </div>
 
           <div className="mt-6 flex items-center gap-3 sm:mt-8">
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
-            <p className="font-latin text-[10px] font-semibold uppercase tracking-[0.45em] text-[oklch(0.86_0.01_250)] sm:text-[11px] sm:tracking-[0.55em]">
-              {lang === "ar" ? "Steinheim Suite" : "Steinheim Suite"}
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[oklch(0.78_0.11_82)] sm:w-10" />
+            <p className="font-latin text-[10px] font-semibold uppercase tracking-[0.45em] text-[oklch(0.92_0.08_82)] sm:text-[11px] sm:tracking-[0.55em]">
+              Steinheim Suite
             </p>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[oklch(0.78_0.11_82)] sm:w-10" />
           </div>
 
-          <h1 className="mt-4 max-w-md bg-gradient-to-b from-white to-[oklch(0.86_0.01_250)] bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:mt-5 sm:text-4xl lg:text-5xl">
+
+          <h1 className="mt-4 max-w-md bg-gradient-to-b from-white via-white to-[oklch(0.92_0.08_82)] bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:mt-5 sm:text-4xl lg:text-5xl">
             {lang === "ar" ? "إدارة احترافية. شبكة موزعين أوسع." : "Professional management. A wider distributor network."}
           </h1>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60 sm:mt-4 sm:text-base">
@@ -397,10 +408,11 @@ function AuthPage() {
         </div>
 
         {/* Auth card */}
-        <div className="order-2 w-full max-w-md justify-self-center lg:justify-self-end">
-        <div className="relative rounded-2xl border border-[oklch(0.86_0.01_250_/_0.2)] bg-[oklch(0.13_0.003_250_/_0.85)] p-5 text-white shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
-          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
-          <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg bg-white/5 p-1">
+        <div className="order-2 w-full max-w-md justify-self-center stein-fade-up lg:justify-self-end" style={{ animationDelay: "120ms" }}>
+        <div className="relative rounded-[1.75rem] border border-[oklch(0.78_0.11_82_/_0.22)] bg-[oklch(0.08_0.005_60_/_0.78)] p-5 text-white shadow-[0_50px_120px_-30px_oklch(0_0_0_/_0.85),inset_0_1px_0_oklch(0.92_0.08_82_/_0.12)] backdrop-blur-2xl sm:p-7">
+          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.92_0.08_82)] to-transparent" />
+          <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] ring-1 ring-inset ring-white/[0.04]" />
+          <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border border-white/5 bg-black/40 p-1.5">
             {([
               { key: "login", ar: "تسجيل الدخول", en: "Sign in" },
               { key: "distributor", ar: "دخول موزعين", en: "Distributor" },
@@ -410,11 +422,12 @@ function AuthPage() {
                 key={tab.key}
                 type="button"
                 onClick={() => setMode(tab.key)}
-                className={`rounded-md px-2 py-2 text-xs font-medium transition sm:text-sm ${
+                className={`rounded-xl px-2 py-2.5 text-xs font-semibold transition-all duration-500 sm:text-sm ${
                   mode === tab.key
-                    ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
-                    : "text-white/70 hover:text-white"
+                    ? "bg-gradient-to-b from-[oklch(0.92_0.08_82)] to-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.005_60)] shadow-[0_8px_24px_-8px_oklch(0.78_0.11_82_/_0.6)]"
+                    : "text-white/55 hover:text-white"
                 }`}
+                style={{ transitionTimingFunction: "cubic-bezier(0.32,0.72,0,1)" }}
               >
                 {lang === "ar" ? tab.ar : tab.en}
               </button>
@@ -739,27 +752,15 @@ function AuthPage() {
             <Button
               type="submit"
               disabled={busy}
-              className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+              className="stein-shimmer-track relative h-12 w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[oklch(0.78_0.11_82)] via-[oklch(0.92_0.08_82)] to-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.005_60)] font-bold tracking-wide shadow-[0_18px_40px_-14px_oklch(0.78_0.11_82_/_0.55)] transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-14px_oklch(0.78_0.11_82_/_0.75)] active:translate-y-0"
+              style={{ transitionTimingFunction: "cubic-bezier(0.32,0.72,0,1)" }}
             >
-              {mode === "signup" ? t("signup") : mode === "distributor" ? (lang === "ar" ? "دخول بوابة الموزعين" : "Distributor sign in") : t("login")}
+              <span className="relative z-10">{mode === "signup" ? t("signup") : mode === "distributor" ? (lang === "ar" ? "دخول بوابة الموزعين" : "Distributor sign in") : t("login")}</span>
             </Button>
           </form>
 
-          <div className="my-4 flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs text-white/50">{t("or")}</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
 
-          <Button
-            variant="outline"
-            className="w-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-            onClick={handleGoogle}
-            disabled={busy}
-          >
-            <svg className="me-2 h-4 w-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            {t("continue_with_google")}
-          </Button>
+
 
 
           <p className="mt-5 text-center text-sm text-white/50">
