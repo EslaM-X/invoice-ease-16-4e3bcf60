@@ -332,14 +332,34 @@ function AuthPage() {
 
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0b0b0c] text-[oklch(0.97_0.005_250)]">
-      {/* Layered platinum background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 50% -10%, oklch(0.86 0.01 250 / 0.18) 0px, transparent 55%), radial-gradient(ellipse at 10% 110%, oklch(0.72 0.01 250 / 0.14) 0px, transparent 50%), radial-gradient(ellipse at 90% 90%, oklch(0.6 0.008 250 / 0.12) 0px, transparent 50%)" }} />
-        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "linear-gradient(oklch(0.86 0.01 250) 1px, transparent 1px), linear-gradient(90deg, oklch(0.86 0.01 250) 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250_/_0.6)] to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250_/_0.4)] to-transparent" />
+    <div className="relative min-h-screen overflow-hidden bg-[#020202] text-[oklch(0.97_0.005_250)]">
+      <style>{`
+        @keyframes stein-blob { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(40px,-60px) scale(1.12); } 66% { transform: translate(-30px,30px) scale(0.92); } }
+        @keyframes stein-halo { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: .85; transform: scale(1.06); } }
+        @keyframes stein-shimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+        @keyframes stein-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes stein-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .stein-blob { animation: stein-blob 26s ease-in-out infinite; }
+        .stein-halo { animation: stein-halo 5s ease-in-out infinite; }
+        .stein-float { animation: stein-float 8s ease-in-out infinite; }
+        .stein-fade-up { animation: stein-fade-up .9s cubic-bezier(0.32,0.72,0,1) both; }
+        .stein-shimmer-track { position: relative; overflow: hidden; }
+        .stein-shimmer-track::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-120%); }
+        .stein-shimmer-track:hover::after { animation: stein-shimmer 1.4s ease forwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .stein-blob, .stein-halo, .stein-float, .stein-fade-up { animation: none !important; }
+        }
+      `}</style>
+      {/* Cinematic Noir & Gold backdrop */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="stein-blob absolute -top-[15%] -start-[10%] h-[65vw] w-[65vw] rounded-full bg-[radial-gradient(circle,oklch(0.78_0.11_82_/_0.22),transparent_65%)] blur-[110px]" />
+        <div className="stein-blob absolute -bottom-[15%] -end-[10%] h-[55vw] w-[55vw] rounded-full bg-[radial-gradient(circle,oklch(0.55_0.08_60_/_0.18),transparent_65%)] blur-[110px]" style={{ animationDelay: "-9s" }} />
+        <div className="stein-blob absolute top-1/3 start-1/3 h-[40vw] w-[40vw] rounded-full bg-[radial-gradient(circle,oklch(0.92_0.05_82_/_0.06),transparent_70%)] blur-[130px]" style={{ animationDelay: "-14s" }} />
+        <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: "radial-gradient(oklch(0.92_0.05_82) 0.5px, transparent 0.5px)", backgroundSize: "42px 42px" }} />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.55)] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.35)] to-transparent" />
       </div>
+
 
       <div className="absolute top-3 end-3 z-20 flex gap-2 no-print sm:top-4 sm:end-4">
         <Button variant="ghost" size="icon" className="text-white/90 hover:bg-white/10" onClick={() => setLang(lang === "ar" ? "en" : "ar")} aria-label="lang">
