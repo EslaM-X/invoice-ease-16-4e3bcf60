@@ -753,14 +753,32 @@ function TeamChatPage() {
 
   const jumpToMessageIndex = useCallback((idx: number) => {
     if (idx < 0 || idx >= messages.length) return;
-    rowVirtualizer.scrollToIndex(idx, { align: "center" });
-  }, [messages.length, rowVirtualizer]);
+    try {
+      rowVirtualizer.scrollToIndex(idx, { align: "center" });
+    } catch (err) {
+      console.error("[team-chat] scrollToIndex failed", err);
+      toast.error(rtl ? "تعذّر الانتقال للرسالة المطلوبة" : "Failed to jump to message");
+    }
+  }, [messages.length, rowVirtualizer, rtl]);
 
   useEffect(() => {
     if (!inChatSearchOpen || searchResults.length === 0) return;
     const target = searchResults[searchIndex % searchResults.length];
     if (target) jumpToMessageIndex(target.index);
   }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageIndex]);
+
+  // Global shortcut: Ctrl/⌘+F opens in-chat search when a room is active
+  useEffect(() => {
+    if (!activeRoomId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        setInChatSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeRoomId]);
 
   const currentMatchId = searchMatches.length > 0 ? searchMatches[searchIndex % searchMatches.length] : null;
 
