@@ -29,7 +29,7 @@ import {
   listCompanyMembers, createChatRoom, deleteChatMessage,
   toggleReaction, setTypingState, updatePresence,
   markMessagesRead, getChatWallpaper, setChatWallpaper,
-  getChatDensity, setChatDensity,
+  getChatDensity, setChatDensity, getChatLayout, setChatLayout,
 } from "@/lib/chat.functions";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
