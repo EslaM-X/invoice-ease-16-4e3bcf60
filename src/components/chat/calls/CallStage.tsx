@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PresenterTools } from "./PresenterTools";
 
 /* ------------------------------------------------------------------ */
 /*  Persisted preferences (screen-share surface + pinned participant) */
@@ -1264,6 +1265,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
             />
             <PinRestorer />
             <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
+            <PresenterTools rtl={rtl} />
             <RoomAudioRenderer />
             <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
             <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
