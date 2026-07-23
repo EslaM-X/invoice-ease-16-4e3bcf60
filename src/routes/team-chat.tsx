@@ -1267,10 +1267,8 @@ function TeamChatPage() {
                           <ChevronDown className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition" />
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {typingNames.length > 0 ? (
-                            <span className="text-primary italic">
-                              {typingNames.slice(0, 2).join(", ")} {rtl ? "يكتب..." : "typing..."}
-                            </span>
+                          {typers.length > 0 ? (
+                            <TypingIndicator typers={typers} rtl={rtl} variant="inline" />
                           ) : activeRoom.type === "group" ? (
                             `${(activeRoom.members ?? []).length} ${rtl ? "عضو" : "members"}`
                           ) : (() => {
