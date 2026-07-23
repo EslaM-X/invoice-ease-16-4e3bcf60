@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
@@ -600,7 +601,6 @@ function TeamChatPage() {
   const membersQ = useQuery({
     queryKey: ["company-members"],
     queryFn: () => fetchMembers(),
-    enabled: newOpen,
   });
 
   const rooms = roomsQ.data?.rooms ?? [];
@@ -611,13 +611,16 @@ function TeamChatPage() {
     return rooms.filter((r: any) => (r.display_name ?? "").toLowerCase().includes(s));
   }, [rooms, searchTerm]);
 
-  // Presence for all room members
+  // Presence for all room members + all company members (so the People tab
+  // shows availability even for users you haven't chatted with yet).
   const allMemberIds = useMemo(() => {
     const set = new Set<string>();
     for (const r of rooms) for (const m of r.members ?? []) set.add(m.user_id);
+    for (const m of membersQ.data?.members ?? []) set.add(m.user_id);
     return Array.from(set);
-  }, [rooms]);
-  const { isOnline, lastSeen, typingUserIds } = useRoomPresence(allMemberIds, activeRoomId, user?.id);
+  }, [rooms, membersQ.data?.members]);
+  const { isOnline, lastSeen, statusOf, typingUserIds } = useRoomPresence(allMemberIds, activeRoomId, user?.id);
+
 
   // Heartbeat presence
   useEffect(() => {
@@ -1279,67 +1282,176 @@ function TeamChatPage() {
               />
             </div>
           </div>
-          <div className="p-2.5 border-b bg-card">
-            <div className="relative">
-              <Search className={cn("h-4 w-4 absolute top-1/2 -translate-y-1/2 text-muted-foreground", rtl ? "right-3" : "left-3")} />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={rtl ? "بحث في المحادثات..." : "Search conversations..."}
-                className={cn("bg-muted/70 border border-border/70 rounded-full h-10 shadow-sm focus-visible:ring-2 focus-visible:ring-[color:var(--brand-gold,#d4af37)]/40", rtl ? "pr-9" : "pl-9")}
-              />
-            </div>
-          </div>
-          <ScrollArea className="flex-1 bg-background">
-            {filteredRooms.length === 0 && (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                {searchTerm
-                  ? (rtl ? "لا نتائج" : "No results")
-                  : (rtl ? "مفيش محادثات لسه. اعمل واحدة جديدة." : "No conversations yet. Start one.")}
+          <Tabs defaultValue="chats" className="flex-1 flex flex-col min-h-0">
+            <div className="px-2.5 pt-2.5 border-b bg-card">
+              <div className="relative mb-2">
+                <Search className={cn("h-4 w-4 absolute top-1/2 -translate-y-1/2 text-muted-foreground", rtl ? "right-3" : "left-3")} />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={rtl ? "بحث..." : "Search..."}
+                  className={cn("bg-muted/70 border border-border/70 rounded-full h-10 shadow-sm focus-visible:ring-2 focus-visible:ring-[color:var(--brand-gold,#d4af37)]/40", rtl ? "pr-9" : "pl-9")}
+                />
               </div>
-            )}
-            {filteredRooms.map((r: any) => {
-              const label = r.display_name ?? (r.type === "direct" ? (rtl ? "محادثة" : "Direct") : (rtl ? "جروب" : "Group"));
-              const otherMember = r.type === "direct" ? (r.members ?? []).find((m: any) => !m.is_me) : null;
-              const online = otherMember ? isOnline(otherMember.user_id) : false;
-              const roomTyping = typingUserIds.length > 0 && r.id === activeRoomId;
-              const isActive = activeRoomId === r.id;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => setActiveRoomId(r.id)}
-                  className={cn(
-                    "w-full text-start p-3 flex items-center gap-3 border-b border-border/60 transition-all",
-                    "hover:bg-accent/60 active:bg-accent",
-                    isActive && "bg-gradient-to-r from-[color:var(--brand-gold,#d4af37)]/12 via-accent/60 to-transparent border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
-                  )}
-                >
-                  <div className="relative shrink-0">
-                    <LuxuryAvatar url={r.avatar_url} name={label} size={74} ring="gold" showSkeleton={false} />
-                    {online && (
-                      <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-card" />
-                    )}
+              <TabsList className="w-full grid grid-cols-2 bg-muted/50">
+                <TabsTrigger value="chats" className="data-[state=active]:bg-[color:var(--brand-gold,#d4af37)]/15 data-[state=active]:text-foreground">
+                  <MessageSquare className="h-3.5 w-3.5 me-1.5" />
+                  {rtl ? "المحادثات" : "Chats"}
+                </TabsTrigger>
+                <TabsTrigger value="people" className="data-[state=active]:bg-[color:var(--brand-gold,#d4af37)]/15 data-[state=active]:text-foreground">
+                  <Users className="h-3.5 w-3.5 me-1.5" />
+                  {rtl ? "الأشخاص" : "People"}
+                  {(() => {
+                    const online = (membersQ.data?.members ?? []).filter((m: any) => statusOf(m.user_id) === "online").length;
+                    return online > 0 ? (
+                      <Badge className="ms-1.5 h-4 min-w-4 px-1 text-[10px] rounded-full bg-emerald-500 text-white">
+                        {online}
+                      </Badge>
+                    ) : null;
+                  })()}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="chats" className="flex-1 min-h-0 m-0">
+              <ScrollArea className="h-full bg-background">
+                {filteredRooms.length === 0 && (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    {searchTerm
+                      ? (rtl ? "لا نتائج" : "No results")
+                      : (rtl ? "مفيش محادثات لسه. اعمل واحدة جديدة." : "No conversations yet. Start one.")}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-sm truncate text-foreground">{label}</span>
-                      {r.unread_count > 0 && (
-                        <Badge className="h-5 min-w-5 px-1.5 text-[10px] rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black font-bold shadow">
-                          {r.unread_count}
-                        </Badge>
+                )}
+                {filteredRooms.map((r: any) => {
+                  const label = r.display_name ?? (r.type === "direct" ? (rtl ? "محادثة" : "Direct") : (rtl ? "جروب" : "Group"));
+                  const otherMember = r.type === "direct" ? (r.members ?? []).find((m: any) => !m.is_me) : null;
+                  const online = otherMember ? isOnline(otherMember.user_id) : false;
+                  const roomTyping = typingUserIds.length > 0 && r.id === activeRoomId;
+                  const isActive = activeRoomId === r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => setActiveRoomId(r.id)}
+                      className={cn(
+                        "w-full text-start p-3 flex items-center gap-3 border-b border-border/60 transition-all",
+                        "hover:bg-accent/60 active:bg-accent",
+                        isActive && "bg-gradient-to-r from-[color:var(--brand-gold,#d4af37)]/12 via-accent/60 to-transparent border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
                       )}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate mt-0.5 chat-emoji">
-                      {roomTyping
-                        ? <span className="text-primary italic">{rtl ? "يكتب الآن..." : "typing..."}</span>
-                        : (r.last_message_preview ?? (rtl ? "ابدأ المحادثة" : "Start chatting"))}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </ScrollArea>
+                    >
+                      <div className="relative shrink-0">
+                        <LuxuryAvatar url={r.avatar_url} name={label} size={74} ring="gold" showSkeleton={false} />
+                        {online && (
+                          <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-sm truncate text-foreground">{label}</span>
+                          {r.unread_count > 0 && (
+                            <Badge className="h-5 min-w-5 px-1.5 text-[10px] rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black font-bold shadow">
+                              {r.unread_count}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate mt-0.5 chat-emoji">
+                          {roomTyping
+                            ? <span className="text-primary italic">{rtl ? "يكتب الآن..." : "typing..."}</span>
+                            : (r.last_message_preview ?? (rtl ? "ابدأ المحادثة" : "Start chatting"))}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="people" className="flex-1 min-h-0 m-0">
+              <ScrollArea className="h-full bg-background">
+                {(() => {
+                  const s = searchTerm.trim().toLowerCase();
+                  const all = (membersQ.data?.members ?? [])
+                    .filter((m: any) => m.user_id !== user?.id)
+                    .filter((m: any) => !s || (m.display_name ?? "").toLowerCase().includes(s) || (m.email ?? "").toLowerCase().includes(s));
+
+                  const buckets: Record<"online" | "away" | "offline", any[]> = { online: [], away: [], offline: [] };
+                  for (const m of all) buckets[statusOf(m.user_id)].push(m);
+                  const order: Array<"online" | "away" | "offline"> = ["online", "away", "offline"];
+                  const dotColor = { online: "bg-emerald-500", away: "bg-amber-400", offline: "bg-muted-foreground/50" } as const;
+                  const labelMap = {
+                    online: rtl ? "متصل الآن" : "Online",
+                    away: rtl ? "بعيد" : "Away",
+                    offline: rtl ? "غير متصل" : "Offline",
+                  } as const;
+
+                  if (all.length === 0) {
+                    return (
+                      <div className="p-6 text-center text-sm text-muted-foreground">
+                        {rtl ? "لا يوجد مستخدمون" : "No users"}
+                      </div>
+                    );
+                  }
+
+                  const openDirect = async (uid: string) => {
+                    try {
+                      const { room } = await createRoom({ data: { type: "direct", member_ids: [uid] } });
+                      setActiveRoomId(room.id);
+                      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Failed");
+                    }
+                  };
+
+                  return order.map((k) =>
+                    buckets[k].length === 0 ? null : (
+                      <div key={k}>
+                        <div className="sticky top-0 z-10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 backdrop-blur border-b border-border/60 flex items-center gap-2">
+                          <span className={cn("h-2 w-2 rounded-full", dotColor[k])} />
+                          <span>{labelMap[k]}</span>
+                          <span className="opacity-60">· {buckets[k].length}</span>
+                        </div>
+                        {buckets[k].map((m: any) => {
+                          const ls = lastSeen(m.user_id);
+                          return (
+                            <button
+                              key={m.user_id}
+                              onClick={() => openDirect(m.user_id)}
+                              className="w-full text-start p-3 flex items-center gap-3 border-b border-border/60 hover:bg-accent/60 active:bg-accent transition-all"
+                            >
+                              <div className="relative shrink-0">
+                                <LuxuryAvatar url={m.avatar_url} name={m.display_name ?? m.email ?? "User"} size={56} ring="gold" showSkeleton={false} />
+                                <span className={cn(
+                                  "absolute bottom-0 end-0 h-3 w-3 rounded-full ring-2 ring-card",
+                                  dotColor[k]
+                                )} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm truncate text-foreground">
+                                  {m.display_name ?? m.email ?? "User"}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                  {k === "online"
+                                    ? (m.job_title ?? (rtl ? "متاح للمحادثة" : "Available"))
+                                    : k === "away"
+                                      ? (rtl ? "بعيد مؤقتًا" : "Away")
+                                      : ls
+                                        ? `${rtl ? "آخر ظهور " : "last seen "}${new Date(ls).toLocaleString(rtl ? "ar-EG" : undefined, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}`
+                                        : (rtl ? "غير متصل" : "Offline")}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )
+                  );
+                })()}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </div>
+
+
+
 
 
         {/* Conversation */}

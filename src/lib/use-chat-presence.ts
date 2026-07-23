@@ -64,6 +64,15 @@ export function useRoomPresence(userIds: string[], activeRoomId: string | null, 
     return now - new Date(r.last_seen_at).getTime() < ONLINE_WINDOW_MS;
   };
   const lastSeen = (uid: string) => rows[uid]?.last_seen_at ?? null;
+  const statusOf = (uid: string): "online" | "away" | "offline" => {
+    const r = rows[uid];
+    if (!r || !r.last_seen_at) return "offline";
+    const fresh = now - new Date(r.last_seen_at).getTime() < ONLINE_WINDOW_MS;
+    if (!fresh) return "offline";
+    if (r.status === "away") return "away";
+    if (r.status === "offline") return "offline";
+    return "online";
+  };
 
   const typingUserIds = useMemo(() => {
     if (!activeRoomId) return [];
@@ -78,5 +87,6 @@ export function useRoomPresence(userIds: string[], activeRoomId: string | null, 
       .map((r) => r.user_id);
   }, [rows, activeRoomId, myUserId, now]);
 
-  return { isOnline, lastSeen, typingUserIds };
+  return { isOnline, lastSeen, statusOf, typingUserIds };
+
 }
