@@ -18,8 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
   Bell, BellOff, X, ArrowUp, ArrowDown, Users2, Rows3, ArrowDownToLine, Loader2,
-  Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal,
+  Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal, Phone, Video,
 } from "lucide-react";
+import { startCall, joinCall, declineCall, leaveCall } from "@/lib/calls.functions";
+import { CallStage } from "@/components/chat/calls/CallStage";
+import { IncomingCallDialog } from "@/components/chat/calls/IncomingCallDialog";
+import { useIncomingCall } from "@/components/chat/calls/useIncomingCall";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { supabase } from "@/integrations/supabase/client";
