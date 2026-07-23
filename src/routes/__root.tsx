@@ -15,6 +15,7 @@ import { PwaVersionGuard } from "@/components/pwa-version-guard";
 import { StaleChunkGuard } from "@/components/stale-chunk-guard";
 import { ApprovalGate } from "@/components/approval-gate";
 import { LuxurySplash } from "@/components/luxury-splash";
+import { GlobalPresenceHeartbeat } from "@/components/global-presence-heartbeat";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
 import appCss from "../styles.css?url";
 
@@ -141,6 +142,7 @@ function RootComponent() {
             <LuxurySplash />
             <OfflineBanner />
             <ApprovalGate>
+              <GlobalPresenceHeartbeat />
               <Outlet />
             </ApprovalGate>
             <InstallPrompt />
