@@ -317,12 +317,7 @@ function AddMembersDialog({
                     onClick={() => toggle(u.user_id)}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-start transition ${on ? "bg-[color:var(--brand-gold,#d4af37)]/10" : "hover:bg-white/5"}`}
                   >
-                    <Avatar className="h-10 w-10 ring-1 ring-white/15">
-                      {u.avatar_url && <AvatarImage src={u.avatar_url} />}
-                      <AvatarFallback className="bg-white/10 text-white text-sm">
-                        {u.display_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <LuxuryAvatar url={u.avatar_url} name={u.display_name} size={40} ring="soft" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium truncate">{u.display_name}</span>
