@@ -191,7 +191,19 @@ const isPlacement = (t: Tool) => t === "text" || t === "sticky";
 /* -------------------------------------------------------------- */
 
 const STORAGE_PREFIX = "lk-presenter:v1:";
+const HISTORY_PREFIX = "lk-presenter-hist:v1:";
+const MAX_HISTORY = 30;
 const storageKey = (sharer: string) => STORAGE_PREFIX + sharer;
+const historyKey = (sharer: string) => HISTORY_PREFIX + sharer;
+
+type SessionSnap = { items: AnyItem[]; order: string[]; savedAt: number };
+type HistoryEntry = {
+  id: string;
+  at: number;
+  action: string;      // short action label
+  actor?: string;      // who caused it
+  snap: SessionSnap;   // full state after this action
+};
 
 function saveSession(sharer: string, items: AnyItem[], order: string[]) {
   try {
@@ -201,14 +213,27 @@ function saveSession(sharer: string, items: AnyItem[], order: string[]) {
     );
   } catch { /* quota / private mode */ }
 }
-function loadSession(sharer: string): { items: AnyItem[]; order: string[] } | null {
+function loadSession(sharer: string): SessionSnap | null {
   try {
     const raw = localStorage.getItem(storageKey(sharer));
     if (!raw) return null;
-    const p = JSON.parse(raw) as { items?: AnyItem[]; order?: string[] };
+    const p = JSON.parse(raw) as Partial<SessionSnap>;
     if (!Array.isArray(p.items) || !Array.isArray(p.order)) return null;
-    return { items: p.items, order: p.order };
+    return { items: p.items, order: p.order, savedAt: p.savedAt ?? Date.now() };
   } catch { return null; }
+}
+function loadHistory(sharer: string): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(historyKey(sharer));
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as HistoryEntry[];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function saveHistory(sharer: string, entries: HistoryEntry[]) {
+  try {
+    localStorage.setItem(historyKey(sharer), JSON.stringify(entries.slice(-MAX_HISTORY)));
+  } catch { /* ignore */ }
 }
 function itemToMsg(it: AnyItem): Msg | null {
   if (it.kind === "stroke") {
