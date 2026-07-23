@@ -1405,8 +1405,23 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
                 >
                   {permMode === "presenter" ? <Lock className="size-4" /> : <Users className="size-4" />}
                 </ToolButton>
+                <ToolButton
+                  label={rtl ? "سجل التعديلات (Y)" : "History timeline (Y)"}
+                  active={historyOpen}
+                  onClick={() => { setHistoryOpen((v) => !v); setPreviewOpen(false); }}
+                >
+                  <HistoryIcon className="size-4" />
+                </ToolButton>
+                <ToolButton
+                  label={rtl ? "معاينة اللوحة المحفوظة" : "Preview saved board"}
+                  active={previewOpen}
+                  onClick={() => { setPreviewOpen((v) => !v); setHistoryOpen(false); }}
+                >
+                  <ImageIcon className="size-4" />
+                </ToolButton>
               </>
             ) : null}
+
 
 
             <Sep />
