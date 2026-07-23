@@ -288,8 +288,22 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         itemsRef.current.clear();
         orderRef.current = [];
       }
+    } else if (m.t === "perm") {
+      setPermMode(m.mode);
     }
   }, []);
+
+  /* --------------- persistence (sharer-owned) --------------- */
+  const saveTimerRef = useRef<number | null>(null);
+  const scheduleSave = useCallback(() => {
+    if (!primarySharer || primarySharer !== localIdentity) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      const items = Array.from(itemsRef.current.values());
+      saveSession(primarySharer, items, [...orderRef.current]);
+    }, 400);
+  }, [primarySharer, localIdentity]);
+
 
   /* --------------- receive --------------- */
   useEffect(() => {
