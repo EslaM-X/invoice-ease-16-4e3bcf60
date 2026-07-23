@@ -1027,43 +1027,68 @@ function TeamChatPage() {
 
               {/* In-chat search bar */}
               {inChatSearchOpen && (
-                <div className="border-b bg-gradient-to-r from-card to-muted/40 px-3 py-2 flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Input
-                    autoFocus
-                    value={inChatQuery}
-                    onChange={(e) => setInChatQuery(e.target.value)}
-                    placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
-                    className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
-                  />
-                  <span className="text-xs tabular-nums text-muted-foreground shrink-0">
-                    {searchMatches.length > 0
-                      ? `${(searchIndex % searchMatches.length) + 1}/${searchMatches.length}`
-                      : (inChatQuery ? (rtl ? "لا نتائج" : "no results") : "")}
-                  </span>
-                  <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
-                    disabled={searchMatches.length === 0}
-                    onClick={() => setSearchIndex((i) => (i - 1 + searchMatches.length) % searchMatches.length)}
-                    aria-label="Previous match"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
-                    disabled={searchMatches.length === 0}
-                    onClick={() => setSearchIndex((i) => (i + 1) % searchMatches.length)}
-                    aria-label="Next match"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
-                    onClick={() => { setInChatSearchOpen(false); setInChatQuery(""); }}
-                    aria-label="Close search"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="border-b bg-gradient-to-r from-card to-muted/40">
+                  <div className="px-3 py-2 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      autoFocus
+                      value={inChatQuery}
+                      onChange={(e) => setInChatQuery(e.target.value)}
+                      placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
+                      className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
+                    />
+                    <span className="text-xs tabular-nums text-muted-foreground shrink-0">
+                      {searchResults.length > 0
+                        ? `${(searchIndex % searchResults.length) + 1}/${searchResults.length}`
+                        : (inChatQuery ? (rtl ? "لا نتائج" : "no results") : "")}
+                    </span>
+                    <Button
+                      size="icon" variant="ghost" className="h-7 w-7"
+                      disabled={searchResults.length === 0}
+                      onClick={() => setSearchIndex((i) => (i - 1 + searchResults.length) % searchResults.length)}
+                      aria-label="Previous match"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon" variant="ghost" className="h-7 w-7"
+                      disabled={searchResults.length === 0}
+                      onClick={() => setSearchIndex((i) => (i + 1) % searchResults.length)}
+                      aria-label="Next match"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon" variant="ghost" className="h-7 w-7"
+                      onClick={() => { setInChatSearchOpen(false); setInChatQuery(""); }}
+                      aria-label="Close search"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {searchResults.length > 0 && (
+                    <div className="max-h-56 overflow-y-auto border-t bg-background/60 backdrop-blur-sm">
+                      {searchResults.map((r, i) => {
+                        const active = i === (searchIndex % searchResults.length);
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => { setSearchIndex(i); jumpToMessageIndex(r.index); }}
+                            className={cn(
+                              "w-full text-start px-3 py-2 flex items-start gap-2 border-b border-border/40 hover:bg-accent/60 transition",
+                              active && "bg-[color:var(--brand-gold,#d4af37)]/10 border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
+                            )}
+                          >
+                            <span className="text-[10px] tabular-nums text-muted-foreground mt-0.5 shrink-0">
+                              {new Date(r.ts).toLocaleTimeString(rtl ? "ar-EG" : undefined, { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            <span className="text-xs text-foreground line-clamp-2 flex-1">{r.snippet}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1073,15 +1098,15 @@ function TeamChatPage() {
                 onScroll={onScroll}
                 className={cn(
                   "absolute inset-0 overflow-y-auto",
-                  densitySpacingClass,
+                  densityPaddingClass,
                   wallpaperClass
                 )}
                 style={{ ...wallpaperStyle, ...densityVars } as React.CSSProperties}
               >
                 {/* Top sentinel: load older */}
-                <div ref={topSentinelRef} className="flex justify-center py-2">
+                <div ref={topSentinelRef} className="flex justify-center pb-2" style={{ height: 48 }}>
                   {loadingOlder ? (
-                    <span className="inline-flex items-center gap-2 text-[11px] text-white/80 bg-black/40 backdrop-blur rounded-full px-3 py-1 border border-white/10">
+                    <span className="inline-flex items-center gap-2 text-[11px] text-white/80 bg-black/40 backdrop-blur rounded-full px-3 py-1 border border-white/10 h-fit">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       {rtl ? "تحميل الرسائل الأقدم..." : "Loading older messages..."}
                     </span>
@@ -1089,18 +1114,23 @@ function TeamChatPage() {
                     <button
                       type="button"
                       onClick={loadOlderMessages}
-                      className="text-[11px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur rounded-full px-3 py-1 border border-white/10 transition"
+                      className="text-[11px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur rounded-full px-3 py-1 border border-white/10 transition h-fit"
                     >
                       {rtl ? "تحميل الأقدم" : "Load older"}
                     </button>
                   ) : messages.length > 0 ? (
-                    <span className="text-[10px] text-white/40">
+                    <span className="text-[10px] text-white/40 h-fit">
                       {rtl ? "— بداية المحادثة —" : "— start of conversation —"}
                     </span>
                   ) : null}
                 </div>
-                <AnimatePresence initial={false}>
-                  {messages.map((m, i) => {
+
+                {/* Virtualized messages */}
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+                  {rowVirtualizer.getVirtualItems().map((vi) => {
+                    const i = vi.index;
+                    const m = messages[i];
+                    if (!m) return null;
                     const prev = messages[i - 1];
                     const next = messages[i + 1];
                     const mine = m.sender_id === user?.id;
@@ -1111,8 +1141,18 @@ function TeamChatPage() {
                     const isMatch = currentMatchId === m.id;
                     return (
                       <div
+                        key={vi.key}
+                        data-index={i}
+                        ref={rowVirtualizer.measureElement}
                         id={`msg-${m.id}`}
-                        key={m.id}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          transform: `translateY(${vi.start}px)`,
+                          paddingBottom: densityGapPx,
+                        }}
                         className={cn(isMatch && "rounded-2xl ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 shadow-[0_0_0_4px_rgba(212,175,55,0.15)] transition")}
                       >
                         <MessageBubble
@@ -1130,11 +1170,11 @@ function TeamChatPage() {
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
                         />
-
                       </div>
                     );
                   })}
-                </AnimatePresence>
+                </div>
+
 
                 {typingNames.length > 0 && (
                   <motion.div
