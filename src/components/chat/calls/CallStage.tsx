@@ -1627,6 +1627,7 @@ function ShareDiagnosticsMount({
       <LocalMediaStatusBadge rtl={rtl} />
       <MediaStateAnnouncer rtl={rtl} />
       <PinRestorer />
+      <NetworkResilience rtl={rtl} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
       <PresenterTools rtl={rtl} />
       <RoomAudioRenderer />
