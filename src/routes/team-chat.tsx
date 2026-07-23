@@ -1938,6 +1938,22 @@ function TeamChatPage() {
         iAmAdmin={(activeRoom?.my_role === "admin" || activeRoom?.my_role === "owner")}
         rtl={rtl}
       />
+
+      <IncomingCallDialog
+        call={incoming}
+        onAccept={handleAcceptIncoming}
+        onDecline={handleDeclineIncoming}
+      />
+      {activeCall && (
+        <CallStage
+          open={!!activeCall}
+          onClose={() => setActiveCall(null)}
+          url={activeCall.url}
+          token={activeCall.token}
+          video={activeCall.video}
+          onLeave={handleLeaveCall}
+        />
+      )}
     </AppShell>
   );
 }
