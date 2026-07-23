@@ -905,8 +905,14 @@ export const getMessageInfo = createServerFn({ method: "GET" })
       };
     });
 
+    const seenTimes = readsRows.map((r) => r.read_at).filter(Boolean) as string[];
+    const lastReadAt = seenTimes.length
+      ? seenTimes.reduce((a, b) => (a > b ? a : b))
+      : null;
+
     return {
       sent_at: msg.created_at,
+      last_read_at: lastReadAt,
       seen: rows.filter((r) => r.seen_at).sort((a, b) => (b.seen_at! < a.seen_at! ? -1 : 1)),
       delivered: rows.filter((r) => !r.seen_at && r.delivered),
       pending: rows.filter((r) => !r.delivered),
