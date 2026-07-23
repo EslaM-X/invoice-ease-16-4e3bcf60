@@ -1449,7 +1449,22 @@ function TeamChatPage() {
 
                 {/* Virtualized messages */}
                 <div data-virtual-track style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
-                  {rowVirtualizer.getVirtualItems().map((vi) => {
+                  {(() => {
+                    let virtualItems: ReturnType<typeof rowVirtualizer.getVirtualItems> = [];
+                    try {
+                      virtualItems = rowVirtualizer.getVirtualItems();
+                    } catch (err) {
+                      console.error("[team-chat] virtualizer.getVirtualItems failed", err, {
+                        count: messages.length,
+                        viewport: { w: window.innerWidth, h: window.innerHeight },
+                      });
+                      if (!overflowToastShownRef.current) {
+                        overflowToastShownRef.current = true;
+                        toast.error(rtl ? "تعذّر عرض قائمة الرسائل — تم تفعيل وضع مبسّط." : "Failed to render virtual list — simple mode enabled.");
+                      }
+                      return null;
+                    }
+                    return virtualItems.map((vi) => {
                     const i = vi.index;
                     const m = messages[i];
                     if (!m) return null;
