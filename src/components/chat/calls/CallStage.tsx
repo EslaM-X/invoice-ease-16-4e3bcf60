@@ -38,10 +38,32 @@ import { useI18n } from "@/lib/i18n";
 import {
   Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2,
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
-  MonitorUp, Keyboard, X,
+  MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+/* ------------------------------------------------------------------ */
+/*  Persisted preferences (screen-share surface + pinned participant) */
+/* ------------------------------------------------------------------ */
+
+type DisplaySurface = "monitor" | "window" | "browser";
+const LS_SURFACE = "call.screenShare.displaySurface";
+const LS_PIN = "call.pin.identity";
+const LS_AUTOSPK = "call.autoSpeakerReorder";
+
+function readLS(key: string, fallback: string): string {
+  try {
+    const v = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+    return v ?? fallback;
+  } catch { return fallback; }
+}
+function writeLS(key: string, value: string | null) {
+  try {
+    if (value == null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
+  } catch { /* ignore */ }
+}
 
 type Props = {
   open: boolean;
@@ -161,10 +183,12 @@ function StudioTile() {
     if (!layoutCtx) return;
     if (isPinned) {
       layoutCtx.pin.dispatch?.({ msg: "clear_pin" });
+      writeLS(LS_PIN, null);
     } else {
       layoutCtx.pin.dispatch?.({ msg: "set_pin", trackReference: trackRef });
+      writeLS(LS_PIN, `${participant.identity}::${source}`);
     }
-  }, [layoutCtx, isPinned, trackRef]);
+  }, [layoutCtx, isPinned, trackRef, participant.identity, source]);
 
   const label = rtl
     ? `${name}${isLocal ? " (أنت)" : ""} — ${
@@ -223,22 +247,86 @@ function StudioTile() {
 /*  Adaptive stage                                                    */
 /* ------------------------------------------------------------------ */
 
-function Stage() {
+function useAutoSpeaker(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => readLS(LS_AUTOSPK, "1") !== "0");
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    writeLS(LS_AUTOSPK, v ? "1" : "0");
+  }, []);
+  return [on, set];
+}
+
+/** Restore a previously-pinned participant when their track becomes available. */
+function PinRestorer() {
+  const layoutCtx = useMaybeLayoutContext();
+  const tracks = useTracks(
+    [{ source: Track.Source.Camera, withPlaceholder: false },
+     { source: Track.Source.ScreenShare, withPlaceholder: false }],
+    { onlySubscribed: false }
+  );
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !layoutCtx) return;
+    const saved = readLS(LS_PIN, "");
+    if (!saved) return;
+    const [identity, srcStr] = saved.split("::");
+    const match = tracks.find(
+      (t) => t.participant.identity === identity && String(t.source) === srcStr
+    );
+    if (match) {
+      layoutCtx.pin.dispatch?.({ msg: "set_pin", trackReference: match });
+      restoredRef.current = true;
+    }
+  }, [tracks, layoutCtx]);
+  return null;
+}
+
+function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
       { source: Track.Source.ScreenShare, withPlaceholder: false },
     ],
-    { onlySubscribed: false }
+    { onlySubscribed: false, updateOnlyOn: [
+        RoomEvent.ActiveSpeakersChanged,
+        RoomEvent.ParticipantConnected,
+        RoomEvent.ParticipantDisconnected,
+        RoomEvent.TrackPublished,
+        RoomEvent.TrackUnpublished,
+        RoomEvent.TrackSubscribed,
+        RoomEvent.TrackUnsubscribed,
+      ] }
   );
 
   const screenShareTracks = tracks.filter((t) => t.source === Track.Source.ScreenShare);
   const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
+
+  // Speaker-based ordering — active speakers first, then last-spoke recency, then join order.
+  const orderedCamera = useMemo(() => {
+    if (!autoSpeaker) return cameraTracks;
+    const score = (p: Participant) => {
+      const speaking = p.isSpeaking ? 1_000_000_000 : 0;
+      const lastSpoke = p.lastSpokeAt ? p.lastSpokeAt.getTime() : 0;
+      const joined = p.joinedAt ? -p.joinedAt.getTime() / 1000 : 0;
+      return speaking + lastSpoke + joined;
+    };
+    return [...cameraTracks].sort((a, b) => score(b.participant) - score(a.participant));
+  }, [cameraTracks, autoSpeaker]);
+
   const pinned = usePinnedTracks() ?? [];
-  const focusTrack = pinned[0] ?? screenShareTracks[0];
+  const activeSpeakerTrack = autoSpeaker
+    ? orderedCamera.find((t) => t.participant.isSpeaking)
+    : undefined;
+  const focusTrack =
+    pinned[0] ?? screenShareTracks[0] ?? (autoSpeaker && cameraTracks.length > 3 ? activeSpeakerTrack : undefined);
+
+  const allOrdered = useMemo(() => {
+    // screen shares first (typically pinned), then ordered cameras
+    return [...screenShareTracks, ...orderedCamera];
+  }, [screenShareTracks, orderedCamera]);
 
   if (focusTrack) {
-    const carousel = cameraTracks.length > 0 ? cameraTracks : tracks;
+    const carousel = orderedCamera.length > 0 ? orderedCamera : allOrdered;
     return (
       <FocusLayoutContainer style={{ height: "calc(100% - 128px)" }}>
         <CarouselLayout tracks={carousel}>
@@ -250,7 +338,7 @@ function Stage() {
   }
 
   return (
-    <GridLayout tracks={tracks} style={{ height: "calc(100% - 128px)" }}>
+    <GridLayout tracks={allOrdered} style={{ height: "calc(100% - 128px)" }}>
       <StudioTile />
     </GridLayout>
   );
@@ -263,49 +351,60 @@ function Stage() {
 function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
   const room = useRoomContext();
   const seenRef = useRef(false);
-  // key -> latest pending state; single delayed dispatch collapses rapid toggles
-  const pendingRef = useRef<Map<string, { timer: any; final: () => void }>>(new Map());
+  // Per-participant coalescing: one toast per person, showing the LATEST state,
+  // debounced by ~2.5s so rapid mic/cam/share flips don't spam the room.
+  const pendingRef = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
     if (!room) return;
 
-    const nameOf = (p: any) =>
-      p?.name || p?.identity || (rtl ? "مشارك" : "Participant");
+    const nameOf = (p: any) => p?.name || p?.identity || (rtl ? "مشارك" : "Participant");
+    const whoLabel = (p: any) =>
+      p?.identity === room.localParticipant?.identity ? (rtl ? "أنت" : "You") : nameOf(p);
 
-    const scheduleToast = (key: string, dispatch: () => void, delay = 900) => {
+    const schedule = (identity: string, buildLine: () => string, isPositive: boolean) => {
+      if (!seenRef.current) return;
+      const key = `p-${identity}`;
       const existing = pendingRef.current.get(key);
-      if (existing) clearTimeout(existing.timer);
+      if (existing) clearTimeout(existing);
       const timer = setTimeout(() => {
         pendingRef.current.delete(key);
-        dispatch();
-      }, delay);
-      pendingRef.current.set(key, { timer, final: dispatch });
+        const line = buildLine();
+        (isPositive ? toast.success : toast)(line, { id: key, duration: 3500 });
+      }, 2500);
+      pendingRef.current.set(key, timer);
     };
 
-    const whoLabel = (participant: any) =>
-      participant?.identity === room.localParticipant?.identity
-        ? (rtl ? "أنت" : "You")
-        : nameOf(participant);
+    const buildSummary = (participant: any, change: string) => {
+      const who = whoLabel(participant);
+      const mic = participant?.isMicrophoneEnabled;
+      const cam = participant?.isCameraEnabled;
+      const share = participant?.isScreenShareEnabled;
+      if (rtl) {
+        const bits: string[] = [];
+        bits.push(`🎙️ ${mic ? "مفتوح" : "مكتوم"}`);
+        bits.push(`📷 ${cam ? "مفتوحة" : "مقفولة"}`);
+        if (share) bits.push("🖥️ يشارك");
+        return `${who} — ${change} · ${bits.join(" · ")}`;
+      }
+      const bits: string[] = [];
+      bits.push(`🎙️ ${mic ? "on" : "muted"}`);
+      bits.push(`📷 ${cam ? "on" : "off"}`);
+      if (share) bits.push("🖥️ sharing");
+      return `${who} — ${change} · ${bits.join(" · ")}`;
+    };
 
     const onMuteChange = (pub: TrackPublication, participant: any, muted: boolean) => {
-      if (!seenRef.current) return;
-      const who = whoLabel(participant);
-      const toastId = `mute-${participant.identity}-${pub.source}`;
-      if (pub.source === Track.Source.Microphone) {
-        scheduleToast(toastId, () => {
-          const line = rtl
-            ? `${who}: ${muted ? "كتم الميكروفون" : "فتح الميكروفون"}`
-            : `${who} ${muted ? "muted the mic" : "unmuted the mic"}`;
-          (muted ? toast : toast.success)(line, { id: toastId, icon: "🎙️" });
-        });
-      } else if (pub.source === Track.Source.Camera) {
-        scheduleToast(toastId, () => {
-          const line = rtl
-            ? `${who}: ${muted ? "أغلق الكاميرا" : "فتح الكاميرا"}`
-            : `${who} ${muted ? "turned camera off" : "turned camera on"}`;
-          (muted ? toast : toast.success)(line, { id: toastId, icon: "📷" });
-        });
-      }
+      const src = pub.source;
+      if (src !== Track.Source.Microphone && src !== Track.Source.Camera) return;
+      const change = rtl
+        ? (src === Track.Source.Microphone
+            ? (muted ? "كتم الميكروفون" : "فتح الميكروفون")
+            : (muted ? "أغلق الكاميرا" : "فتح الكاميرا"))
+        : (src === Track.Source.Microphone
+            ? (muted ? "muted mic" : "unmuted mic")
+            : (muted ? "camera off" : "camera on"));
+      schedule(participant.identity, () => buildSummary(participant, change), !muted);
     };
 
     const onMuted = (pub: TrackPublication, participant: any) => onMuteChange(pub, participant, true);
@@ -313,14 +412,10 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
 
     const onShareChange = (pub: TrackPublication, participant: any, started: boolean) => {
       if (pub.source !== Track.Source.ScreenShare) return;
-      const who = whoLabel(participant);
-      const id = `share-${participant.identity}`;
-      scheduleToast(id, () => {
-        const line = rtl
-          ? `${who}: ${started ? "بدأ مشاركة الشاشة" : "أوقف مشاركة الشاشة"}`
-          : `${who} ${started ? "started screen share" : "stopped screen share"}`;
-        (started ? toast.success : toast)(line, { id, icon: "🖥️" });
-      }, 250);
+      const change = rtl
+        ? (started ? "بدأ مشاركة الشاشة" : "أوقف مشاركة الشاشة")
+        : (started ? "started screen share" : "stopped screen share");
+      schedule(participant.identity, () => buildSummary(participant, change), started);
     };
     const onPub = (pub: TrackPublication, participant: any) => onShareChange(pub, participant, true);
     const onUnpub = (pub: TrackPublication, participant: any) => onShareChange(pub, participant, false);
@@ -335,7 +430,7 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
     const t = setTimeout(() => { seenRef.current = true; }, 1200);
     return () => {
       clearTimeout(t);
-      pendingRef.current.forEach((v) => clearTimeout(v.timer));
+      pendingRef.current.forEach((v) => clearTimeout(v));
       pendingRef.current.clear();
       room.off(RoomEvent.TrackMuted, onMuted);
       room.off(RoomEvent.TrackUnmuted, onUnmuted);
@@ -500,6 +595,14 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [busy, setBusy] = useState(false);
   const isSharing = localParticipant?.isScreenShareEnabled ?? false;
+  const [surface, setSurface] = useState<DisplaySurface>(
+    () => (readLS(LS_SURFACE, "monitor") as DisplaySurface)
+  );
+
+  const chooseSurface = useCallback((s: DisplaySurface) => {
+    setSurface(s);
+    writeLS(LS_SURFACE, s);
+  }, []);
 
   const cleanup = useCallback(() => {
     tracks?.forEach((t) => { try { t.stop(); } catch { /* ignore */ } });
@@ -508,28 +611,31 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
   const openPicker = useCallback(async () => {
     if (isSharing) {
-      // stop existing share
       try { await localParticipant?.setScreenShareEnabled(false); } catch { /* ignore */ }
       return;
     }
     setBusy(true);
     try {
+      // Surface preference is a hint to Chrome/Edge (displaySurface constraint).
+      const videoConstraint = {
+        displaySurface: surface,
+      } as unknown as MediaTrackConstraints;
       const created = await createLocalScreenTracks({
         audio: true,
         resolution: ScreenSharePresets.h1080fps30.resolution,
-      });
+        // LiveKit forwards extra constraints to getDisplayMedia
+        video: videoConstraint as any,
+      } as any);
       setTracks(created);
     } catch (e: any) {
-      // AbortError = user cancelled the picker; stay silent
       if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
         toast.error(rtl ? `تعذّر بدء المشاركة: ${e?.message ?? ""}` : `Could not start share: ${e?.message ?? ""}`);
       }
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl]);
+  }, [isSharing, localParticipant, rtl, surface]);
 
-  // Attach preview stream when tracks exist
   useEffect(() => {
     if (!tracks || !videoRef.current) return;
     const videoTrack = tracks.find((t) => t.kind === Track.Kind.Video);
@@ -545,7 +651,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
       for (const track of tracks) {
         await localParticipant.publishTrack(track);
       }
-      setTracks(null); // dialog closes, tracks now owned by the room
+      setTracks(null);
       toast.success(rtl ? "بدأت مشاركة الشاشة بجودة عالية" : "Screen share started in high quality");
     } catch (e: any) {
       cleanup();
@@ -555,8 +661,34 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
   const cancel = useCallback(() => cleanup(), [cleanup]);
 
+  const surfaces: Array<{ id: DisplaySurface; icon: any; label: string }> = [
+    { id: "monitor", icon: Monitor,   label: rtl ? "شاشة كاملة" : "Full screen" },
+    { id: "window",  icon: AppWindow, label: rtl ? "نافذة" : "Window" },
+    { id: "browser", icon: Globe,     label: rtl ? "تبويب" : "Tab" },
+  ];
+
   return (
     <>
+      <div className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/5 p-0.5" role="group" aria-label={rtl ? "نوع مشاركة الشاشة" : "Screen share source"}>
+        {surfaces.map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => chooseSurface(id)}
+            aria-pressed={surface === id}
+            title={label}
+            aria-label={label}
+            className={cn(
+              "flex items-center gap-1 rounded px-2 py-1 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+              surface === id ? "bg-amber-500/25 text-amber-100" : "text-white/70 hover:text-white hover:bg-white/10"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden md:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+
       <button
         type="button"
         onClick={openPicker}
@@ -580,20 +712,32 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
         <span>{isSharing ? (rtl ? "إيقاف المشاركة" : "Stop share") : (rtl ? "مشاركة شاشة" : "Share screen")}</span>
       </button>
 
+      {/* Full-screen preview overlay before publishing */}
       <Dialog open={!!tracks} onOpenChange={(o) => { if (!o) cancel(); }}>
-        <DialogContent className="max-w-3xl bg-neutral-950 text-white border-white/10" dir={rtl ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>{rtl ? "معاينة مشاركة الشاشة" : "Screen share preview"}</DialogTitle>
+        <DialogContent
+          className="max-w-none w-screen h-[100dvh] rounded-none bg-black text-white border-0 p-0 flex flex-col"
+          dir={rtl ? "rtl" : "ltr"}
+        >
+          <DialogHeader className="px-6 pt-5 pb-2">
+            <DialogTitle className="text-lg">
+              {rtl ? "معاينة مشاركة الشاشة (ملء الشاشة)" : "Screen share preview (full screen)"}
+            </DialogTitle>
             <DialogDescription className="text-white/60">
               {rtl
-                ? "تأكد من المصدر الذي اخترته قبل إرساله لباقي المشاركين. تقدر ترجع وتختار مصدر مختلف."
-                : "Confirm the source you picked before sending it to the other participants."}
+                ? "دي المعاينة اللي هيشوفها باقي المشاركين — تأكد إنك مبسوط منها قبل ما تبعتها."
+                : "This is exactly what other participants will see. Confirm before publishing."}
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg overflow-hidden bg-black ring-1 ring-white/10 aspect-video">
-            <video ref={videoRef} className="h-full w-full object-contain" muted playsInline />
+          <div className="flex-1 min-h-0 bg-black flex items-center justify-center px-6">
+            <video
+              ref={videoRef}
+              className="h-full w-full object-contain rounded-lg ring-1 ring-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.6)]"
+              muted
+              playsInline
+              aria-label={rtl ? "معاينة الشاشة" : "Screen preview"}
+            />
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 px-6 py-5 border-t border-white/10">
             <Button variant="secondary" onClick={cancel}>
               <X className="h-4 w-4 mr-1" aria-hidden="true" />
               {rtl ? "إلغاء" : "Cancel"}
@@ -705,6 +849,60 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Live participant count badge                                      */
+/* ------------------------------------------------------------------ */
+
+function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
+  const participants = useParticipants(); // reactive to join/leave for everyone
+  const count = participants.length;
+  const label = rtl ? `${count} في المكالمة` : `${count} in call`;
+  return (
+    <div
+      className="absolute top-16 left-4 z-20 flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/55 px-3 py-1.5 text-xs font-semibold text-amber-100 backdrop-blur-xl shadow-lg"
+      dir={rtl ? "rtl" : "ltr"}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={label}
+      title={label}
+    >
+      <Users className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="tabular-nums">{count}</span>
+      <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Auto speaker-reorder toggle                                       */
+/* ------------------------------------------------------------------ */
+
+function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void }) {
+  const label = rtl
+    ? (on ? "ترتيب حسب المتحدث: مفعّل" : "ترتيب حسب المتحدث: متوقف")
+    : (on ? "Speaker sort: on" : "Speaker sort: off");
+  return (
+    <button
+      type="button"
+      onClick={() => setOn(!on)}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "absolute bottom-24 z-20 rounded-full border p-2 backdrop-blur-md transition",
+        "hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+        on
+          ? "border-amber-400/40 bg-amber-500/20 text-amber-100"
+          : "border-white/15 bg-black/55 text-white/80",
+        rtl ? "left-16" : "right-16"
+      )}
+    >
+      <Sparkles className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Room options                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -739,6 +937,7 @@ const roomOptions: RoomOptions = {
 export function CallStage({ open, onClose, url, token, video, onLeave }: Props) {
   const { lang } = useI18n();
   const rtl = lang === "ar";
+  const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
 
   useEffect(() => {
     if (!open) return;
@@ -780,10 +979,14 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
             }}
           >
             <NetworkQualityBadge rtl={rtl} />
+            <ParticipantCountBadge rtl={rtl} />
             <LocalMediaStatusBadge rtl={rtl} />
             <MediaStateAnnouncer rtl={rtl} />
             <KeyboardShortcuts rtl={rtl} />
-            <Stage />
+            <PinRestorer />
+            <Stage autoSpeaker={autoSpeaker} />
+            <RoomAudioRenderer />
+            <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
             <RoomAudioRenderer />
             <div
               className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
