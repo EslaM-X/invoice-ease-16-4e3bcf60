@@ -527,14 +527,14 @@ function TeamChatPage() {
   return (
     <AppShell>
       <div
-        className="flex rounded-2xl border bg-card overflow-hidden shadow-lg"
-        style={{ height: "min(calc(100dvh - 8rem), calc(100vh - 8rem))" }}
+        className="flex overflow-hidden bg-card shadow-lg rounded-2xl border md:rounded-none md:border-0 md:border-t md:shadow-none md:-mx-3 md:-my-8 lg:-mx-8 h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
+
         dir={rtl ? "rtl" : "ltr"}
       >
         {/* Sidebar */}
         <div
           className={cn(
-            "w-full md:w-80 md:shrink-0 md:border-e flex-col bg-background",
+            "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background",
             activeRoomId ? "hidden md:flex" : "flex"
           )}
         >
@@ -663,7 +663,7 @@ function TeamChatPage() {
                         <LuxuryAvatar
                           url={activeRoom.avatar_url}
                           name={activeRoom.display_name ?? (rtl ? "جروب" : "Group")}
-                          size={76}
+                          size={84}
                           ring="gold"
                           showSkeleton={false}
                         />
@@ -821,7 +821,7 @@ function TeamChatPage() {
               <div
                 ref={scrollRef}
                 className={cn(
-                  "flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5",
+                  "flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-2 md:space-y-2.5",
                   wallpaperClass
                 )}
                 style={wallpaperStyle}

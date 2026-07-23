@@ -1,77 +1,41 @@
-# Team Chat — Ultra Upgrade Plan
+# Full‑Width WhatsApp‑Style Team Chat
 
-## 1. "Message Info" popup (who saw / who received)
-- Extend the message context menu ("المزيد") in `src/components/chat/message-bubble.tsx` with a new **"معلومات الرسالة"** action (own messages only).
-- New dialog `src/components/chat/message-info-dialog.tsx`:
-  - **Seen by** — join `chat_message_reads` with `profiles` → avatar, name, seen time.
-  - **Delivered to** — room members who are online/were online after send time but haven't read yet (derive from `chat_presence.last_seen_at` ≥ message `created_at`).
-  - **Not yet delivered** — remaining members (offline since before send).
-  - Live counts at the top: `X شافها • Y وصلته • Z متصل الآن`.
-  - Uses existing `useRoomPresence` for live online dot.
+## Goal
+`/team-chat` currently lives inside `AppShell`'s centered `max-w-7xl` main with generous padding, and the chat card itself is capped at `min(100dvh − 8rem)`. On a laptop that leaves a small window showing only 1–2 messages. Make the chat page fill the viewport edge‑to‑edge like WhatsApp Web: wide sidebar, tall message area, more messages visible, larger avatars, comfortable spacing on desktop while keeping mobile behavior intact.
 
-## 2. Force-enable notifications for everyone
-- On app boot (in `src/routes/team-chat.tsx` + `src/hooks/use-chat-notifications.ts`):
-  - Auto-request `Notification.permission` on first mount if `default`.
-  - Ignore `user_notification_preferences.chat_muted` for internal team chat — always dispatch browser + push notifications when chat isn't in focus.
-  - Web Push: auto-subscribe via existing `use-push-notifications` hook on first visit, no opt-in toggle for team chat.
-  - Add a small "🔔 مفعّلة إجبارياً بواسطة الشركة" indicator in chat settings so users know it's mandatory.
+## What changes
 
-## 3. Group members + admin roles
-- Migration on `chat_room_members`: add `role text default 'member' check (role in ('admin','member'))`.
-- Backfill: room creator → `admin`; **`e.hesham@steinheim-eg.com` → `admin` on every existing and future group room** (trigger on `chat_rooms` insert + one-off backfill).
-- New "Members" sheet accessible from the chat header (click room name):
-  - Grid of avatars w/ name, job title, online dot, "admin" gold badge.
-  - Shows total, online count.
-  - Admin actions: promote/demote, remove member (RPC `chat_set_member_role`, `chat_remove_member`).
+1. **Break out of `AppShell`'s centered main for this route only.**
+   - In `src/routes/team-chat.tsx`, wrap the chat in a full‑bleed container that negates the parent `max-w-7xl` and padding on `md+` (e.g. a wrapper that uses `md:-mx-6 lg:-mx-8 md:-my-8` and removes horizontal padding), so the chat spans the full width between the sidebar/topbar and the screen edge.
+   - Keep mobile untouched (padded, single column).
 
-## 4. Admin-controlled wallpaper for group chats
-- New column `chat_rooms.wallpaper jsonb` (`{ type: 'preset'|'custom', preset?, path? }`).
-- Wallpaper picker in `src/components/chat/wallpaper-picker.tsx` gains a **"خلفية للجروب كله"** tab (visible only if `role='admin'` in the active room). Writes to `chat_rooms.wallpaper` via new RPC restricted to admins.
-- Precedence per user: user per-room override → room admin wallpaper → user default → preset.
-- New **"إعادة ضبط الخلفية"** button (already exists for user overrides) also shown to admins to clear room wallpaper.
+2. **Fill the available vertical space.**
+   - Replace `height: min(calc(100dvh − 8rem), …)` with a taller target: on `md+` use `h-[calc(100dvh-4rem)]` (only the top nav is subtracted); on mobile keep the current safe value so the bottom tabbar isn't hidden.
+   - Drop the outer `rounded-2xl border shadow-lg` on `md+` so the panel truly reaches the edges (keep rounded corners on mobile).
 
-## 5. Wallpaper editor: before/after + blur + auto tint
-- In `src/components/chat/image-cropper.tsx`:
-  - Split view toggle: **قبل / بعد** compares original vs cropped+compressed.
-  - **↺ تراجع** undoes last crop/rotate/zoom step (history stack).
-  - Slider: **تمويه الخلفية (blur 0–20px)** applied via CSS filter, baked into exported JPEG.
-  - Auto-tint: sample average color, add subtle bottom gradient so message bubbles stay readable on any image.
-  - Zoom slider min lowered to **50%** so users can "zoom out" to fit the whole image with letterbox blur fill.
+3. **Wider, WhatsApp‑style sidebar + roomier conversation pane.**
+   - Sidebar: `md:w-80` → `md:w-[340px] lg:w-[380px] xl:w-[420px]`, with `shrink-0`.
+   - Conversation pane: keep `flex-1 min-w-0` so it takes all remaining width.
+   - Message list max content width: cap bubble column at `max-w-[820px] mx-auto` inside the scroll area on `lg+` so lines stay readable on ultrawide screens without shrinking the pane itself.
 
-## 6. Search highlight — customizable
-- New user pref `chat_highlight` (`{ enabled: bool, intensity: 'soft'|'normal'|'strong' }`) in `user_ui_preferences`.
-- Toggle + intensity chips inside the search bar popover in `src/routes/team-chat.tsx`.
-- `.chat-hl` in `src/styles.css` becomes three variants driven by a data attribute on the chat container.
-- Also highlight matches inside formatted dates and simple Arabic/English synonyms (e.g. "فاتورة" ↔ "invoice") using a small local synonym map.
+4. **Bigger, clearer avatars and header.**
+   - Sidebar room avatars: keep 74px, add a bit more row padding (`p-3.5`) so they sit like WhatsApp rows.
+   - Active chat header avatar: bump to 84px on `md+`, add a subtle 1px gold ring; header height a touch taller (`py-3.5`).
+   - Message bubble sender avatar: 54 → 60px on `md+`; group bubble max width raised to `max-w-[68%] md:max-w-[62%] lg:max-w-[56%]` so bubbles feel airy.
 
-## 7. Avatars + message body polish
-- Avatars in message list and sidebar: bump to **44px** (mobile) / **52px** (desktop), gold ring, subtle inner shadow, initials fallback with gradient per user hash.
-- Message bubbles:
-  - Bigger max-width on desktop (min 380 → 560px), better line-height (1.55), automatic paragraph breaks after 3 line-breaks.
-  - Long messages (>600 chars) collapse with **"عرض المزيد"** expand.
-  - Improved code/quote/link styling; smart RTL/LTR direction detection per line.
-  - Softer gradient for own bubbles, glass-noir for others, both with gold hairline.
+5. **Composer + input polish to match WhatsApp density.**
+   - Give the composer a slightly taller min‑height and 12px vertical padding; keep the send/mic buttons the same size.
+   - Message list vertical rhythm: `space-y-1.5` → `space-y-2 md:space-y-2.5`, section padding `p-3 sm:p-4` → `p-4 md:p-6`.
 
-## 8. Emoji safety
-- `.chat-emoji` font stack already prioritises Apple Color Emoji. Add fallback detection: if `Apple Color Emoji` unavailable, load Twemoji via `@emoji-mart` `set='twitter'` at runtime.
-- When rendering message text, split into segments (text / emoji / url / code) so the emoji font only applies to emoji graphemes — URLs and inline code keep their monospace/latin styling untouched.
+6. **Preserve everything else.**
+   - No changes to data flow, realtime, wallpapers, members sheet, notifications, search, or emoji.
+   - RTL, mobile drawer behavior (`hidden md:flex` / `flex md:hidden`) untouched.
 
-## 9. Responsive & cross-device polish
-- Audit `team-chat.tsx` breakpoints: `<640`, `640–1024`, `1024–1440`, `>1440`.
-- Mobile: full-screen chat pane, swipe-right returns to room list, safe-area padding for iOS notch, sticky composer above keyboard.
-- Tablet: 40/60 split, header collapses room name to popup.
-- Desktop ultrawide: cap chat column at 960px, center it, sidebar sticky.
-- Test/verify with the Playwright viewport helper at 360, 768, 1280, 1920.
-
-## Technical Notes
-- **DB migrations** (single migration, with GRANTs + RLS):
-  - `alter table chat_room_members add column role text ...`
-  - `alter table chat_rooms add column wallpaper jsonb`
-  - RPCs: `chat_set_member_role`, `chat_remove_member`, `chat_set_room_wallpaper` (admin-only, security definer).
-  - Trigger: on `chat_rooms` insert of type `group`, auto-insert `e.hesham@steinheim-eg.com` as admin member.
-- **New files**: `src/components/chat/message-info-dialog.tsx`, `src/components/chat/members-sheet.tsx`.
-- **Edited files**: `message-bubble.tsx`, `wallpaper-picker.tsx`, `image-cropper.tsx`, `team-chat.tsx`, `use-chat-notifications.ts`, `styles.css`, `use-ui-prefs.ts`.
-- No changes to invoice/business logic — chat-only.
+## Technical notes
+- Only `src/routes/team-chat.tsx` needs edits — no `AppShell` change (this keeps every other page centered). The negative‑margin trick is a scoped opt‑out for this single route.
+- Message bubble sizing lives in `src/components/chat/message-bubble.tsx`; adjust the two width/avatar tokens there.
+- Verify with the preview at desktop (WhatsApp‑like edge‑to‑edge with 10+ visible messages), tablet, and mobile (unchanged single‑pane feel).
 
 ## Out of scope
-- Voice/video calls, message editing history, threaded replies (can follow later).
+- No new features (calls, threads, pinned messages, etc.).
+- No design‑token or color changes; still Noir & Gold.
