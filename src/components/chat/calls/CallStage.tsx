@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import "@livekit/components-styles";
 import {
   LiveKitRoom,
@@ -262,9 +262,15 @@ function StudioTile() {
         {isPinned ? <PinOff className="h-3.5 w-3.5" aria-hidden="true" />
                   : <Pin className="h-3.5 w-3.5" aria-hidden="true" />}
       </button>
+
+      {/* Per-subscriber quality tier (remote tracks only) */}
+      {!isLocal && (
+        <SubQualityBadge identity={participant.identity} source={source} rtl={rtl} />
+      )}
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  Adaptive stage                                                    */
@@ -1643,72 +1649,185 @@ function AutoBitrateCap({ rtl }: { rtl: boolean }) {
   return null;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Per-subscriber quality store (camera vs screen-share, per peer)   */
+/* ------------------------------------------------------------------ */
+
+export type SubQualityTier = "LOW" | "BALANCED" | "HIGH";
+
+const tierOf = (q: VideoQuality): SubQualityTier =>
+  q === VideoQuality.LOW ? "LOW" : q === VideoQuality.MEDIUM ? "BALANCED" : "HIGH";
+
+const subQualityStore = (() => {
+  const map = new Map<string, SubQualityTier>(); // key = `${identity}::${source}`
+  const listeners = new Set<() => void>();
+  let snap: Record<string, SubQualityTier> = {};
+  const rebuild = () => {
+    const o: Record<string, SubQualityTier> = {};
+    map.forEach((v, k) => { o[k] = v; });
+    snap = o;
+  };
+  return {
+    key(identity: string, source: Track.Source) { return `${identity}::${source}`; },
+    set(identity: string, source: Track.Source, tier: SubQualityTier) {
+      const k = `${identity}::${source}`;
+      if (map.get(k) === tier) return;
+      map.set(k, tier);
+      rebuild();
+      listeners.forEach((l) => l());
+    },
+    clear(identity: string) {
+      let changed = false;
+      for (const k of Array.from(map.keys())) {
+        if (k.startsWith(identity + "::")) { map.delete(k); changed = true; }
+      }
+      if (changed) { rebuild(); listeners.forEach((l) => l()); }
+    },
+    subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; },
+    getSnapshot() { return snap; },
+  };
+})();
+
+function useSubQuality(identity: string, source: Track.Source): SubQualityTier | undefined {
+  const snap = useSyncExternalStore(subQualityStore.subscribe, subQualityStore.getSnapshot, subQualityStore.getSnapshot);
+  return snap[subQualityStore.key(identity, source)];
+}
+
 /**
- * SubscriberQualityAdaptor — per-subscriber degradation.
- * When THIS client's connection quality drops to Poor/Lost, we ask the SFU
- * to send us only the LOW simulcast layer of every remote video/screen-share
- * track. This is a pure receive-side signal (RemoteTrackPublication
- * .setVideoQuality) so it does NOT affect what other participants receive —
- * strong peers keep getting HIGH from the same publishers.
- * On recovery we restore HIGH and let adaptiveStream fine-tune per tile size.
+ * SubscriberQualityAdaptor — per-subscriber, per-source degradation.
+ *
+ * When THIS client's connection quality drops we ask the SFU to send us a
+ * lighter simulcast layer, with an independent policy for camera vs
+ * screen-share so shared slides/code stay readable while faces shrink:
+ *
+ *   Excellent/Good → camera HIGH,     screen HIGH
+ *   Poor           → camera LOW,      screen BALANCED  (readability wins)
+ *   Lost           → camera LOW,      screen LOW
+ *
+ * This is a pure receive-side signal (RemoteTrackPublication.setVideoQuality)
+ * so strong peers keep getting HIGH from the same publishers. Per-track state
+ * is published to `subQualityStore` for the tile badges.
  */
 function SubscriberQualityAdaptor({ rtl }: { rtl: boolean }) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const quality = localParticipant?.connectionQuality ?? ConnectionQuality.Unknown;
-  const modeRef = useRef<VideoQuality>(VideoQuality.HIGH);
 
-  const applyToAllRemotes = useCallback((q: VideoQuality) => {
+  const policyRef = useRef<{ cam: VideoQuality; screen: VideoQuality }>({
+    cam: VideoQuality.HIGH, screen: VideoQuality.HIGH,
+  });
+
+  const policyFor = useCallback((q: ConnectionQuality) => {
+    if (q === ConnectionQuality.Lost)  return { cam: VideoQuality.LOW,  screen: VideoQuality.LOW };
+    if (q === ConnectionQuality.Poor)  return { cam: VideoQuality.LOW,  screen: VideoQuality.MEDIUM };
+    return { cam: VideoQuality.HIGH, screen: VideoQuality.HIGH };
+  }, []);
+
+  const applyToPub = useCallback((rpIdentity: string, pub: any) => {
+    if (!pub || pub.kind !== Track.Kind.Video) return;
+    const isScreen = pub.source === Track.Source.ScreenShare;
+    const target = isScreen ? policyRef.current.screen : policyRef.current.cam;
+    try { pub.setVideoQuality?.(target); } catch { /* ignore */ }
+    subQualityStore.set(rpIdentity, pub.source, tierOf(target));
+  }, []);
+
+  const applyToAll = useCallback(() => {
     if (!room) return;
-    const remotes = Array.from(room.remoteParticipants.values());
-    for (const rp of remotes) {
-      const pubs = Array.from(rp.trackPublications.values());
-      for (const pub of pubs) {
-        if (pub.kind !== Track.Kind.Video) continue;
-        const anyPub: any = pub;
-        try { anyPub.setVideoQuality?.(q); } catch { /* ignore */ }
+    for (const rp of Array.from(room.remoteParticipants.values())) {
+      for (const pub of Array.from(rp.trackPublications.values())) {
+        applyToPub(rp.identity, pub);
       }
     }
-  }, [room]);
+  }, [room, applyToPub]);
 
-  // React to local quality changes.
+  // React to local quality changes and apply per-source policy.
   useEffect(() => {
     if (!room) return;
-    const weak = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
-    const strong = quality === ConnectionQuality.Good || quality === ConnectionQuality.Excellent;
+    const next = policyFor(quality);
+    const prev = policyRef.current;
+    const changed = next.cam !== prev.cam || next.screen !== prev.screen;
+    policyRef.current = next;
+    if (!changed) return;
+    applyToAll();
 
-    if (weak && modeRef.current !== VideoQuality.LOW) {
-      modeRef.current = VideoQuality.LOW;
-      applyToAllRemotes(VideoQuality.LOW);
+    if (next.cam === VideoQuality.LOW || next.screen !== VideoQuality.HIGH) {
       toast.info(
         rtl
-          ? "تم تخفيض جودة الاستقبال محلياً — لا يؤثر على بقية المشاركين"
-          : "Receiving lower quality locally — other participants unaffected",
+          ? `تكييف الاستقبال محلياً — كاميرا ${tierOf(next.cam)} / شاشة ${tierOf(next.screen)}`
+          : `Local receive adapted — camera ${tierOf(next.cam)} / screen ${tierOf(next.screen)}`,
         { id: "sub-quality-adapt" }
       );
-    } else if (strong && modeRef.current !== VideoQuality.HIGH) {
-      modeRef.current = VideoQuality.HIGH;
-      applyToAllRemotes(VideoQuality.HIGH);
+    } else {
       toast.success(
         rtl ? "استعادة جودة الاستقبال العالية" : "Restored high receive quality",
         { id: "sub-quality-adapt" }
       );
     }
-  }, [quality, room, rtl, applyToAllRemotes]);
+  }, [quality, room, rtl, applyToAll, policyFor]);
 
-  // Apply the current mode to newly-subscribed tracks too.
+  // Apply the current policy to newly-subscribed tracks and clean up on leave.
   useEffect(() => {
     if (!room) return;
-    const onSub = (_track: any, pub: any) => {
-      if (pub?.kind !== Track.Kind.Video) return;
-      try { pub.setVideoQuality?.(modeRef.current); } catch { /* ignore */ }
+    const onSub = (_track: any, pub: any, rp: any) => {
+      if (!rp?.identity) return;
+      applyToPub(rp.identity, pub);
     };
+    const onUnsub = (_track: any, pub: any, rp: any) => {
+      if (!rp?.identity || !pub) return;
+      // Remove just this track's badge state.
+      const k = subQualityStore.key(rp.identity, pub.source);
+      // Reuse clear() for full-participant tidy on disconnect; single-key drop:
+      if ((subQualityStore.getSnapshot() as any)[k]) subQualityStore.set(rp.identity, pub.source, "HIGH");
+    };
+    const onPartLeft = (p: any) => { if (p?.identity) subQualityStore.clear(p.identity); };
     room.on(RoomEvent.TrackSubscribed, onSub);
-    return () => { room.off(RoomEvent.TrackSubscribed, onSub); };
-  }, [room]);
+    room.on(RoomEvent.TrackUnsubscribed, onUnsub);
+    room.on(RoomEvent.ParticipantDisconnected, onPartLeft);
+    return () => {
+      room.off(RoomEvent.TrackSubscribed, onSub);
+      room.off(RoomEvent.TrackUnsubscribed, onUnsub);
+      room.off(RoomEvent.ParticipantDisconnected, onPartLeft);
+    };
+  }, [room, applyToPub]);
 
   return null;
 }
+
+/**
+ * SubQualityBadge — small pill showing the currently-subscribed simulcast
+ * tier for one participant/source pair (LOW / BALANCED / HIGH). Only visible
+ * when a tier has been recorded for this tile.
+ */
+function SubQualityBadge({
+  identity, source, rtl,
+}: { identity: string; source: Track.Source; rtl: boolean }) {
+  const tier = useSubQuality(identity, source);
+  if (!tier) return null;
+  const isScreen = source === Track.Source.ScreenShare;
+  const label = rtl
+    ? `${isScreen ? "شاشة" : "كاميرا"}: ${tier === "LOW" ? "منخفضة" : tier === "BALANCED" ? "متوازنة" : "عالية"}`
+    : `${isScreen ? "Screen" : "Camera"}: ${tier}`;
+  const cls =
+    tier === "HIGH"     ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" :
+    tier === "BALANCED" ? "bg-amber-500/20 text-amber-100 border-amber-400/40" :
+                          "bg-rose-500/25 text-rose-100 border-rose-400/40";
+  return (
+    <span
+      role="status"
+      aria-label={label}
+      title={label}
+      className={cn(
+        "absolute bottom-2 z-20 select-none rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide backdrop-blur-md",
+        rtl ? "right-2" : "left-2",
+        cls
+      )}
+    >
+      {isScreen ? (rtl ? "شاشة" : "SCR") : (rtl ? "كام" : "CAM")} · {tier}
+    </span>
+  );
+}
+
+
 
 
 
