@@ -68,6 +68,14 @@ const DEFAULT_WP: WallpaperState = {
   rooms: {},
 };
 
+function TeamChatPageBoundary() {
+  return (
+    <RouteErrorBoundary label="شات الفريق">
+      <TeamChatPage />
+    </RouteErrorBoundary>
+  );
+}
+
 function TeamChatPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
