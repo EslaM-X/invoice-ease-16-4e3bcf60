@@ -139,7 +139,26 @@ type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
 type PermMsg = { t: "perm"; mode: "presenter" | "all"; by: string };
 type DeleteMsg = { t: "delete"; id: string; by: string };
 type OrderMsg = { t: "order"; order: string[]; by: string };
-type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg | DeleteMsg | OrderMsg;
+type SnapshotMsg = {
+  t: "snapshot";
+  by: string;
+  items: AnyItem[];
+  order: string[];
+};
+type PtrKind = "mouse" | "touch" | "pen";
+type PtrMsg = {
+  t: "ptr";
+  owner: string;
+  color: string;
+  x: number;
+  y: number;
+  kind: PtrKind;
+  down: boolean;
+};
+type PtrGoneMsg = { t: "ptrgone"; owner: string };
+type Msg =
+  | StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg
+  | DeleteMsg | OrderMsg | SnapshotMsg | PtrMsg | PtrGoneMsg;
 
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
