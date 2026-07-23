@@ -421,12 +421,47 @@ function TeamChatPage() {
     }
   }, [activeRoomId, markRead, qc]);
 
-  // Auto-scroll on new messages
+  // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
+  const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    if (scrollRef.current) {
+    const count = messagesQ.data?.messages?.length ?? 0;
+    const delta = Math.max(0, count - prevMsgCountRef.current);
+    prevMsgCountRef.current = count;
+    if (!scrollRef.current) return;
+    if (isAtBottom) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setUnseenCount(0);
+    } else if (delta > 0) {
+      setUnseenCount((c) => c + delta);
     }
-  }, [messagesQ.data?.messages?.length, typingUserIds.length]);
+  }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom]);
+
+  // Preserve scroll position after prepending older messages
+  useLayoutEffect(() => {
+    if (!scrollRef.current || !preserveScrollRef.current) return;
+    const el = scrollRef.current;
+    const diff = el.scrollHeight - preserveScrollRef.current.prevHeight;
+    if (diff > 0) el.scrollTop += diff;
+    preserveScrollRef.current = null;
+  }, [olderPages]);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    setUnseenCount(0);
+  }, []);
+
+  const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 60;
+    setIsAtBottom(atBottom);
+    if (atBottom) setUnseenCount(0);
+    if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
+      loadOlderMessages();
+    }
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
