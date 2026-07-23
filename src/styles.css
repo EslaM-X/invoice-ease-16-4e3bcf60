@@ -973,6 +973,13 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .page-transition, .tap-scale, .lift { animation: none !important; transition: none !important; }
+  /* Broad safety net: shorten animations/transitions to a no-op and disable smooth scrolling. */
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 

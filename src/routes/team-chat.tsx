@@ -107,6 +107,20 @@ function TeamChatPage() {
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
 
+  // Per-room scroll position (persisted in localStorage) + restore indicator
+  const pendingRestoreRef = useRef<number | null>(null);
+  const didRestoreRef = useRef<Record<string, boolean>>({});
+  const saveScrollTimerRef = useRef<number | null>(null);
+  const [restoredPill, setRestoredPill] = useState(false);
+  const scrollStorageKey = useCallback(
+    (roomId: string) => `chat:scroll:v1:${user?.id ?? "anon"}:${roomId}`,
+    [user?.id]
+  );
+  const prefersReducedMotion = useCallback(
+    () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+    []
+  );
+
   // Density (comfortable | cozy | compact)
   type Density = "comfortable" | "cozy" | "compact";
   const [density, setDensityState] = useState<Density>("cozy");
@@ -601,6 +615,17 @@ function TeamChatPage() {
     }
   }, [activeRoomId, markRead, qc]);
 
+  // Plan a scroll restore whenever we switch rooms (once per room per session)
+  useEffect(() => {
+    if (!activeRoomId || !user?.id) { pendingRestoreRef.current = null; return; }
+    if (didRestoreRef.current[activeRoomId]) { pendingRestoreRef.current = null; return; }
+    try {
+      const raw = localStorage.getItem(scrollStorageKey(activeRoomId));
+      const n = raw != null ? Number(raw) : NaN;
+      pendingRestoreRef.current = Number.isFinite(n) && n > 0 ? n : null;
+    } catch { pendingRestoreRef.current = null; }
+  }, [activeRoomId, user?.id, scrollStorageKey]);
+
   // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
@@ -609,12 +634,17 @@ function TeamChatPage() {
     const delta = Math.max(0, count - prevMsgCountRef.current);
     prevMsgCountRef.current = count;
     if (!scrollRef.current) return;
+    // Do NOT auto-scroll to bottom while a saved position is waiting to be restored.
+    if (pendingRestoreRef.current != null) return;
     if (isAtBottom) {
+      const reduce = prefersReducedMotion();
       // Use two frames so the virtualizer measures the new row before we scroll.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const el = scrollRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
+          if (!el) return;
+          if (reduce) el.scrollTop = el.scrollHeight;
+          else el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
         });
       });
       setUnseenCount(0);
@@ -628,7 +658,25 @@ function TeamChatPage() {
         return firstNew?.id ?? null;
       });
     }
-  }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom]);
+  }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom, prefersReducedMotion]);
+
+  // Restore saved scroll position after messages first render for this room
+  useLayoutEffect(() => {
+    if (!activeRoomId) return;
+    const target = pendingRestoreRef.current;
+    if (target == null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // Wait until the list is tall enough for the saved offset to make sense.
+    if (el.scrollHeight < target + el.clientHeight - 8) return;
+    el.scrollTop = target;
+    const distanceFromBottom = el.scrollHeight - target - el.clientHeight;
+    setIsAtBottom(distanceFromBottom < 60);
+    didRestoreRef.current[activeRoomId] = true;
+    pendingRestoreRef.current = null;
+    setRestoredPill(true);
+    window.setTimeout(() => setRestoredPill(false), 2500);
+  }, [activeRoomId, messagesQ.data?.messages?.length, olderPages]);
 
   // Preserve scroll position after prepending older messages
   useLayoutEffect(() => {
@@ -642,10 +690,11 @@ function TeamChatPage() {
   const scrollToBottom = useCallback((smooth = true) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    const behavior: ScrollBehavior = smooth && !prefersReducedMotion() ? "smooth" : "auto";
+    el.scrollTo({ top: el.scrollHeight, behavior });
     setUnseenCount(0);
     setFirstUnreadId(null);
-  }, []);
+  }, [prefersReducedMotion]);
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     try {
@@ -657,11 +706,20 @@ function TeamChatPage() {
       if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
         loadOlderMessages();
       }
+      // Persist scroll position per-room (throttled).
+      if (activeRoomId && user?.id) {
+        if (saveScrollTimerRef.current) window.clearTimeout(saveScrollTimerRef.current);
+        const roomId = activeRoomId;
+        const top = Math.max(0, Math.round(el.scrollTop));
+        saveScrollTimerRef.current = window.setTimeout(() => {
+          try { localStorage.setItem(scrollStorageKey(roomId), String(top)); } catch {}
+        }, 200);
+      }
     } catch (err) {
       console.error("[team-chat] scroll handler failed", err);
       toast.error(rtl ? "تعذّر متابعة موضع التمرير" : "Chat scroll tracking failed");
     }
-  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl]);
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
@@ -1460,6 +1518,17 @@ function TeamChatPage() {
                   </div>
                 )}
               </div>
+
+              {restoredPill && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 text-white border border-[color:var(--brand-gold,#d4af37)]/50 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.7)] px-3 py-1.5 backdrop-blur-md text-[11px] font-semibold motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-2"
+                >
+                  <ArrowUp className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" />
+                  {rtl ? "تم استرجاع مكان التمرير" : "Restored your scroll position"}
+                </div>
+              )}
 
               {!isAtBottom && (
                 <button
