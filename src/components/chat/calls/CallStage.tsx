@@ -638,15 +638,23 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   const [surface, setSurface] = useState<DisplaySurface>(
     () => (readLS(LS_SURFACE, "monitor") as DisplaySurface)
   );
+  const [sysAudio, setSysAudio] = useState<boolean>(() => readLS(LS_SYSAUDIO, "1") !== "0");
+  const [sourceInfo, setSourceInfo] = useState<{ name: string; surface: string; hasAudio: boolean } | null>(null);
 
   const chooseSurface = useCallback((s: DisplaySurface) => {
     setSurface(s);
     writeLS(LS_SURFACE, s);
   }, []);
 
+  const setSysAudioPref = useCallback((v: boolean) => {
+    setSysAudio(v);
+    writeLS(LS_SYSAUDIO, v ? "1" : "0");
+  }, []);
+
   const cleanup = useCallback(() => {
     tracks?.forEach((t) => { try { t.stop(); } catch { /* ignore */ } });
     setTracks(null);
+    setSourceInfo(null);
   }, [tracks]);
 
   const openPicker = useCallback(async () => {
@@ -656,16 +664,25 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     }
     setBusy(true);
     try {
-      // Surface preference is a hint to Chrome/Edge (displaySurface constraint).
-      const videoConstraint = {
-        displaySurface: surface,
-      } as unknown as MediaTrackConstraints;
+      const videoConstraint = { displaySurface: surface } as unknown as MediaTrackConstraints;
       const created = await createLocalScreenTracks({
-        audio: true,
+        audio: sysAudio,
         resolution: ScreenSharePresets.h1080fps30.resolution,
-        // LiveKit forwards extra constraints to getDisplayMedia
         video: videoConstraint as any,
       } as any);
+      // Extract source label + actual surface from the video track settings
+      const vTrack = created.find((t) => t.kind === Track.Kind.Video);
+      const aTrack = created.find((t) => t.kind === Track.Kind.Audio);
+      const mst = vTrack?.mediaStreamTrack;
+      const settings: any = mst?.getSettings?.() ?? {};
+      const actualSurface: string = settings.displaySurface ?? surface;
+      const surfaceLabel = actualSurface === "monitor"
+        ? (rtl ? "شاشة كاملة" : "Entire screen")
+        : actualSurface === "window"
+        ? (rtl ? "نافذة تطبيق" : "Application window")
+        : (rtl ? "تبويب متصفح" : "Browser tab");
+      const name = mst?.label || surfaceLabel;
+      setSourceInfo({ name, surface: surfaceLabel, hasAudio: !!aTrack });
       setTracks(created);
     } catch (e: any) {
       if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
@@ -674,7 +691,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl, surface]);
+  }, [isSharing, localParticipant, rtl, surface, sysAudio]);
 
   useEffect(() => {
     if (!tracks || !videoRef.current) return;
@@ -692,6 +709,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
         await localParticipant.publishTrack(track);
       }
       setTracks(null);
+      setSourceInfo(null);
       toast.success(rtl ? "بدأت مشاركة الشاشة بجودة عالية" : "Screen share started in high quality");
     } catch (e: any) {
       cleanup();
@@ -700,6 +718,21 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   }, [tracks, localParticipant, rtl, cleanup]);
 
   const cancel = useCallback(() => cleanup(), [cleanup]);
+
+  // Keyboard: Enter to confirm, Esc handled natively by Dialog
+  useEffect(() => {
+    if (!tracks) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        e.preventDefault();
+        confirm();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tracks, confirm]);
 
   const surfaces: Array<{ id: DisplaySurface; icon: any; label: string }> = [
     { id: "monitor", icon: Monitor,   label: rtl ? "شاشة كاملة" : "Full screen" },
@@ -731,6 +764,21 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
       <button
         type="button"
+        onClick={() => setSysAudioPref(!sysAudio)}
+        aria-pressed={sysAudio}
+        title={sysAudio ? (rtl ? "صوت النظام: مفعّل" : "System audio: on") : (rtl ? "صوت النظام: متوقف" : "System audio: off")}
+        aria-label={sysAudio ? (rtl ? "صوت النظام مفعّل" : "System audio on") : (rtl ? "صوت النظام متوقف" : "System audio off")}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+          sysAudio ? "border-amber-400/40 bg-amber-500/20 text-amber-100" : "border-white/15 bg-white/5 text-white/70 hover:text-white hover:bg-white/10"
+        )}
+      >
+        {sysAudio ? <Volume2 className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />}
+        <span className="hidden md:inline">{rtl ? "صوت النظام" : "System audio"}</span>
+      </button>
+
+      <button
+        type="button"
         onClick={openPicker}
         disabled={busy}
         title={isSharing
@@ -759,14 +807,34 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
           dir={rtl ? "rtl" : "ltr"}
         >
           <DialogHeader className="px-6 pt-5 pb-2">
-            <DialogTitle className="text-lg">
-              {rtl ? "معاينة مشاركة الشاشة (ملء الشاشة)" : "Screen share preview (full screen)"}
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <MonitorPlay className="h-5 w-5 text-amber-300" aria-hidden="true" />
+              {rtl ? "معاينة مشاركة الشاشة" : "Screen share preview"}
             </DialogTitle>
             <DialogDescription className="text-white/60">
               {rtl
-                ? "دي المعاينة اللي هيشوفها باقي المشاركين — تأكد إنك مبسوط منها قبل ما تبعتها."
-                : "This is exactly what other participants will see. Confirm before publishing."}
+                ? "راجع المصدر بالأسفل واضغط «بدء المشاركة» للتأكيد قبل ما يشوفه باقي المشاركين."
+                : "Review the selected source below and confirm before publishing to other participants."}
             </DialogDescription>
+            {sourceInfo && (
+              <div
+                className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="text-white/60">{rtl ? "المصدر:" : "Source:"}</span>
+                <span className="font-semibold text-amber-100 truncate max-w-[60vw]" title={sourceInfo.name}>
+                  {sourceInfo.name}
+                </span>
+                <span className="opacity-40">·</span>
+                <span className="text-white/75">{sourceInfo.surface}</span>
+                <span className="opacity-40">·</span>
+                <span className={cn("inline-flex items-center gap-1", sourceInfo.hasAudio ? "text-emerald-200" : "text-white/60")}>
+                  {sourceInfo.hasAudio ? <Volume2 className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {sourceInfo.hasAudio ? (rtl ? "مع صوت النظام" : "with system audio") : (rtl ? "بدون صوت" : "no audio")}
+                </span>
+              </div>
+            )}
           </DialogHeader>
           <div className="flex-1 min-h-0 bg-black flex items-center justify-center px-6">
             <video
@@ -787,7 +855,8 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
               className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
             >
               <MonitorUp className="h-4 w-4 mr-1" aria-hidden="true" />
-              {rtl ? "بدء المشاركة" : "Start sharing"}
+              {rtl ? "تأكيد وبدء المشاركة" : "Confirm & start sharing"}
+              <kbd className="ml-2 rounded border border-black/30 bg-black/10 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
