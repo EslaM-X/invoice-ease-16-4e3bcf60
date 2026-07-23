@@ -35,7 +35,13 @@ async function assertNoHorizontalScroll(page: Page) {
   expect(docW, `document.scrollWidth (${docW}) should not exceed window.innerWidth (${winW}); overflow-x=${htmlOverflowX}`).toBeLessThanOrEqual(winW + 1);
 }
 
-for (const dir of ["ltr", "rtl"] as const) {
+// When PW_CHAT_DIR is set (CI matrix sharding), only run that direction.
+// Locally with no env, run both LTR and RTL back-to-back.
+const DIRS = (["ltr", "rtl"] as const).filter(
+  (d) => !process.env.PW_CHAT_DIR || process.env.PW_CHAT_DIR === d,
+);
+
+for (const dir of DIRS) {
   test.describe(`team-chat mobile (${dir})`, () => {
     test.beforeEach(async ({ page, context }) => {
       await restoreSupabaseSession(page, (cookies) => context.addCookies(cookies));

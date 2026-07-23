@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -8,6 +8,13 @@ type Props = {
   label?: string;
   /** Optional custom fallback renderer. */
   fallback?: (error: Error, reset: () => void) => React.ReactNode;
+  /**
+   * Optional async retry hook. When provided, the fallback shows a retry
+   * button that runs `onRetry` with exponential backoff (1s → 2s → 4s → 8s,
+   * capped at 16s) before remounting the tree. Used for transient failures
+   * like presence / realtime channel joins.
+   */
+  onRetry?: () => Promise<void> | void;
 };
 
 type State = { error: Error | null };
@@ -26,7 +33,6 @@ export class RouteErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Log for observability. Never rethrow — that would re-freeze the tree.
     // eslint-disable-next-line no-console
     console.error("[RouteErrorBoundary]", error, info.componentStack);
   }
@@ -62,9 +68,7 @@ export class RouteErrorBoundary extends React.Component<Props, State> {
             </div>
             <div className="flex items-center justify-center gap-2">
               <Button variant="outline" onClick={() => window.history.back()}>رجوع</Button>
-              <Button onClick={this.reset} className="gap-2">
-                <RefreshCw className="w-4 h-4" /> إعادة المحاولة
-              </Button>
+              <BackoffRetryButton onRetry={this.props.onRetry} reset={this.reset} />
             </div>
           </div>
         </div>
@@ -72,6 +76,96 @@ export class RouteErrorBoundary extends React.Component<Props, State> {
     }
     return <React.Fragment key={this.resetKey}>{this.props.children}</React.Fragment>;
   }
+}
+
+/**
+ * Retry button with exponential backoff.
+ *
+ * Behavior when `onRetry` is provided:
+ *   - Click → try onRetry() immediately.
+ *   - If it succeeds, remount the tree via `reset()`.
+ *   - If it throws, schedule the next attempt after 1s, then 2s, 4s, 8s,
+ *     capped at 16s. A visible countdown shows the next attempt.
+ *   - Clicking again during the wait cancels the timer and retries now.
+ *   - After 5 failed attempts, the button stops auto-retrying and waits
+ *     for a manual click.
+ *
+ * When `onRetry` is absent it falls back to a plain reset button so the
+ * boundary keeps working for routes that don't need presence recovery.
+ */
+function BackoffRetryButton({
+  onRetry,
+  reset,
+}: {
+  onRetry?: () => Promise<void> | void;
+  reset: () => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const [attempt, setAttempt] = React.useState(0);
+  const [nextInMs, setNextInMs] = React.useState<number | null>(null);
+  const timerRef = React.useRef<number | null>(null);
+  const tickRef = React.useRef<number | null>(null);
+
+  const clearTimers = React.useCallback(() => {
+    if (timerRef.current != null) { window.clearTimeout(timerRef.current); timerRef.current = null; }
+    if (tickRef.current != null) { window.clearInterval(tickRef.current); tickRef.current = null; }
+    setNextInMs(null);
+  }, []);
+
+  React.useEffect(() => () => clearTimers(), [clearTimers]);
+
+  const runRetry = React.useCallback(async () => {
+    if (!onRetry) { reset(); return; }
+    clearTimers();
+    setBusy(true);
+    try {
+      await onRetry();
+      setBusy(false);
+      setAttempt(0);
+      reset();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[RouteErrorBoundary] retry failed", err);
+      setBusy(false);
+      setAttempt((n) => {
+        const next = n + 1;
+        if (next >= 5) return next; // stop auto-retrying after 5 attempts
+        const delay = Math.min(1000 * 2 ** (next - 1), 16_000);
+        setNextInMs(delay);
+        const startedAt = Date.now();
+        tickRef.current = window.setInterval(() => {
+          const remaining = Math.max(0, delay - (Date.now() - startedAt));
+          setNextInMs(remaining);
+        }, 250);
+        timerRef.current = window.setTimeout(() => { void runRetry(); }, delay);
+        return next;
+      });
+    }
+  }, [onRetry, reset, clearTimers]);
+
+  const scheduled = nextInMs != null && nextInMs > 0;
+  const gaveUp = attempt >= 5 && !busy && !scheduled;
+
+  return (
+    <Button onClick={runRetry} disabled={busy} className="gap-2 min-w-[9rem]">
+      {busy ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          جارٍ إعادة المحاولة…
+        </>
+      ) : scheduled ? (
+        <>
+          <RefreshCw className="w-4 h-4" />
+          إعادة خلال {(Math.ceil((nextInMs ?? 0) / 1000))}s
+        </>
+      ) : (
+        <>
+          <RefreshCw className="w-4 h-4" />
+          {gaveUp ? "إعادة المحاولة يدويًا" : attempt > 0 ? `إعادة المحاولة (${attempt + 1})` : "إعادة المحاولة"}
+        </>
+      )}
+    </Button>
+  );
 }
 
 export default RouteErrorBoundary;

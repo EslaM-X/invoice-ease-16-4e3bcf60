@@ -44,6 +44,7 @@ import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator"
 import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
 import { record as perfRecord } from "@/lib/chat-perf";
 import { RouteErrorBoundary } from "@/components/error-boundary";
+import { ChatPerfOverlay } from "@/components/chat/chat-perf-overlay";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
@@ -70,9 +71,18 @@ const DEFAULT_WP: WallpaperState = {
 };
 
 function TeamChatPageBoundary() {
+  // Presence health probe used by the boundary's exponential-backoff retry.
+  // Throwing rejects the attempt so the boundary schedules the next backoff.
+  const pingPresence = useServerFn(updatePresence);
+  const probePresence = useCallback(async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw error ?? new Error("no auth");
+    await pingPresence({ data: { status: "online" } });
+  }, [pingPresence]);
   return (
-    <RouteErrorBoundary label="شات الفريق">
+    <RouteErrorBoundary label="شات الفريق" onRetry={probePresence}>
       <TeamChatPage />
+      <ChatPerfOverlay />
     </RouteErrorBoundary>
   );
 }
