@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Crown, Shield, UserMinus, Users, Star, UserPlus, Search, Check,
-  Camera, Loader2, Pencil, Save,
+  Camera, Loader2, Pencil, Save, RefreshCcw, AlertTriangle,
 } from "lucide-react";
 import {
   listRoomMembers, setMemberRole, removeMember, listAddableUsers, addRoomMembers,
@@ -20,7 +20,7 @@ import {
 } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
-import { getAvatarSrc } from "@/lib/avatar-url";
+import { describeAvatarChoice } from "@/lib/avatar-url";
 import { toast } from "sonner";
 
 type MemberRow = {
@@ -58,7 +58,13 @@ export function MembersSheet({
   const [editName, setEditName] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [bustKey, setBustKey] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const refreshAvatars = () => {
+    setBustKey(Date.now());
+    toast.success(rtl ? "تم إعادة تحميل الصور بجودة عالية" : "Reloaded avatars in HD");
+  };
 
   const q = useQuery({
     queryKey: ["chat-room-members", roomId],
@@ -168,6 +174,7 @@ export function MembersSheet({
             name={m.display_name}
             size={72}
             ring={m.is_creator ? "gold" : "soft"}
+            bust={bustKey || null}
           />
           {online && <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
         </div>
@@ -244,6 +251,7 @@ export function MembersSheet({
                       name={roomName}
                       size={104}
                       ring="gold"
+                      bust={bustKey || null}
                     />
                     <button
                       type="button"
@@ -300,15 +308,26 @@ export function MembersSheet({
                 </div>
               </div>
             )}
-            {canAdd && roomId && (
+            <div className="mt-2 flex items-center gap-2">
+              {canAdd && roomId && (
+                <Button
+                  onClick={() => setAddOpen(true)}
+                  className="flex-1 h-9 bg-[color:var(--brand-gold,#d4af37)] hover:bg-[color:var(--brand-gold,#d4af37)]/90 text-black font-semibold gap-1.5"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  {rtl ? "إضافة عضو للجروب" : "Add member to group"}
+                </Button>
+              )}
               <Button
-                onClick={() => setAddOpen(true)}
-                className="mt-2 h-9 bg-[color:var(--brand-gold,#d4af37)] hover:bg-[color:var(--brand-gold,#d4af37)]/90 text-black font-semibold gap-1.5"
+                onClick={refreshAvatars}
+                variant="outline"
+                className="h-9 gap-1.5 bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white"
+                title={rtl ? "إعادة تحميل كل الصور" : "Reload all avatars"}
               >
-                <UserPlus className="h-4 w-4" />
-                {rtl ? "إضافة عضو للجروب" : "Add member to group"}
+                <RefreshCcw className="h-4 w-4" />
+                {rtl ? "تحديث الصور" : "Refresh"}
               </Button>
-            )}
+            </div>
           </SheetHeader>
           <ScrollArea className="h-[calc(100dvh-9rem)]">
             {creatorRow && (
@@ -359,7 +378,7 @@ export function MembersSheet({
               </div>
             )}
 
-            <DiagnosticsPanel rtl={rtl} avatarUrl={roomAvatarUrl ?? null} />
+            <DiagnosticsPanel rtl={rtl} avatarUrl={roomAvatarUrl ?? null} cssSize={104} bustKey={bustKey} onRefresh={refreshAvatars} />
           </ScrollArea>
         </SheetContent>
       </Sheet>
@@ -380,16 +399,26 @@ export function MembersSheet({
   );
 }
 
-function DiagnosticsPanel({ rtl, avatarUrl }: { rtl: boolean; avatarUrl: string | null }) {
+function DiagnosticsPanel({
+  rtl, avatarUrl, cssSize, bustKey, onRefresh,
+}: {
+  rtl: boolean;
+  avatarUrl: string | null;
+  cssSize: number;
+  bustKey: number;
+  onRefresh: () => void;
+}) {
   const [open, setOpen] = useState(false);
-  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-  const transformedUrl = avatarUrl ? (getAvatarSrc(avatarUrl, 104) ?? avatarUrl) : null;
-  const rendered = transformedUrl ? (() => {
-    try {
-      const u = new URL(transformedUrl);
-      return u.searchParams.get("width") ?? "—";
-    } catch { return "—"; }
-  })() : "—";
+  const info = describeAvatarChoice(avatarUrl, cssSize);
+  const busted = info.transformed
+    ? (() => {
+        try {
+          const u = new URL(info.transformed);
+          if (bustKey) u.searchParams.set("v", String(bustKey));
+          return u.toString();
+        } catch { return info.transformed; }
+      })()
+    : null;
   return (
     <div className="mx-4 mt-2 mb-8 rounded-2xl border border-white/10 bg-black/40">
       <button
@@ -401,19 +430,56 @@ function DiagnosticsPanel({ rtl, avatarUrl }: { rtl: boolean; avatarUrl: string 
         <span>{open ? "−" : "+"}</span>
       </button>
       {open && (
-        <div className="px-3 pb-3 text-[11px] text-white/70 space-y-1.5">
-          <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{dpr}x</span></div>
-          <div><span className="text-white/50">{rtl ? "عرض الصورة الحالي:" : "Current render width:"} </span><span className="tabular-nums text-white">{rendered}px</span></div>
-          {avatarUrl && transformedUrl && (
-            <>
-              <div className="break-all"><span className="text-white/50">Original:</span> <span className="text-white/80">{avatarUrl.slice(0, 90)}…</span></div>
-              <div className="break-all"><span className="text-white/50">HD:</span> <span className="text-white/80">{transformedUrl.slice(0, 110)}…</span></div>
-            </>
+        <div className="px-3 pb-3 text-[11px] text-white/70 space-y-2">
+          {info.undersampled && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-amber-200">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                {rtl
+                  ? `النسخة المختارة أصغر من المطلوب (${info.chosenPx}px بدل ${info.idealPx}px). ارفع صورة أعلى دقة.`
+                  : `Chosen variant is smaller than ideal (${info.chosenPx}px vs ${info.idealPx}px). Upload a higher-res source.`}
+              </span>
+            </div>
           )}
-          <div className="text-white/50 pt-1 border-t border-white/10 mt-2">
-            {rtl
-              ? "لتحسين الجودة: ارفع صورة أعلى من 512×512 من محرر الشات، والنظام هيولّد نسخ 1x/2x/3x تلقائياً."
-              : "For higher quality re-upload a source ≥ 512×512 from the chat editor; the app auto-generates 1x/2x/3x variants."}
+          <div className="grid grid-cols-2 gap-1.5">
+            <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{info.dpr}x</span></div>
+            <div><span className="text-white/50">CSS: </span><span className="tabular-nums text-white">{info.cssSize}px</span></div>
+            <div><span className="text-white/50">{rtl ? "المطلوب:" : "Ideal:"} </span><span className="tabular-nums text-white">{info.idealPx}px</span></div>
+            <div><span className="text-white/50">{rtl ? "المختار:" : "Chosen:"} </span><span className="tabular-nums text-white">{info.chosenPx}px</span></div>
+            <div><span className="text-white/50">{rtl ? "الجودة:" : "Quality:"} </span><span className="tabular-nums text-white">{info.quality ?? "—"}</span></div>
+            <div><span className="text-white/50">Bust: </span><span className="tabular-nums text-white">{bustKey || "—"}</span></div>
+          </div>
+          <div className="rounded-md border border-white/10 bg-black/40 p-2 space-y-1">
+            <div className="text-white/50 text-[10px] uppercase tracking-wider">
+              {rtl ? "مقارنة الأصلي ↔ HD" : "Original ↔ HD"}
+            </div>
+            <div className="break-all">
+              <span className="text-white/50">Original:</span>{" "}
+              <span className="text-white/80">{info.original ? `${info.original.slice(0, 110)}…` : "—"}</span>
+            </div>
+            <div className="break-all">
+              <span className="text-white/50">HD ({info.transformedWidth ?? "—"}×{info.transformedHeight ?? "—"}, q={info.quality ?? "—"}):</span>{" "}
+              <span className="text-white/80">{busted ? `${busted.slice(0, 130)}…` : "—"}</span>
+            </div>
+            <div className="text-white/40 text-[10px]">
+              {rtl
+                ? "المتصفح يستقبل AVIF/WebP تلقائيًا من Supabase عبر رأس Accept."
+                : "Browser receives AVIF/WebP automatically from Supabase via the Accept header."}
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-1 border-t border-white/10">
+            <span className="text-white/50">
+              {rtl ? "كاش قديم؟ اضغط تحديث." : "Stale cache? Force reload."}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRefresh}
+              className="h-7 text-[11px] gap-1 bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white"
+            >
+              <RefreshCcw className="h-3 w-3" />
+              {rtl ? "إعادة تحميل HD" : "Reload HD"}
+            </Button>
           </div>
         </div>
       )}

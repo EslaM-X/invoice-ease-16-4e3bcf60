@@ -13,6 +13,11 @@ type Props = {
   className?: string;
   /** Show a subtle skeleton pulse while the image loads. */
   showSkeleton?: boolean;
+  /**
+   * Optional cache-bust token appended as `?v=`. Change this to force a fresh
+   * fetch, bypassing both the browser and Supabase CDN caches.
+   */
+  bust?: string | number | null;
 };
 
 /**
@@ -26,6 +31,7 @@ export function LuxuryAvatar({
   ring = "soft",
   className,
   showSkeleton = true,
+  bust,
 }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -33,10 +39,10 @@ export function LuxuryAvatar({
   useEffect(() => {
     setLoaded(false);
     setErrored(false);
-  }, [url, size]);
+  }, [url, size, bust]);
 
-  const src = !errored ? getAvatarSrc(url, size) : undefined;
-  const srcSet = !errored ? getAvatarSrcSet(url, size) : undefined;
+  const src = !errored ? getAvatarSrc(url, size, bust) : undefined;
+  const srcSet = !errored ? getAvatarSrcSet(url, size, bust) : undefined;
   const initial = (name ?? "?").trim().charAt(0).toUpperCase() || "?";
 
   const ringClass =
@@ -62,6 +68,7 @@ export function LuxuryAvatar({
           <AvatarImage
             src={src}
             srcSet={srcSet}
+            sizes={`${size}px`}
             alt={name ?? "avatar"}
             width={size}
             height={size}
@@ -69,10 +76,10 @@ export function LuxuryAvatar({
             decoding="async"
             fetchPriority="low"
             className={cn(
-              "object-cover transition-opacity duration-300 [image-rendering:auto]",
+              "h-full w-full object-cover object-center transition-opacity duration-300 [image-rendering:auto]",
               loaded ? "opacity-100" : "opacity-0",
             )}
-            style={{ transform: "translateZ(0) scale(1.06)", backfaceVisibility: "hidden" }}
+            style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}
             onLoad={() => setLoaded(true)}
             onError={() => setErrored(true)}
           />
