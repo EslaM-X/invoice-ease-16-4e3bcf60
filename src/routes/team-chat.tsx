@@ -557,15 +557,20 @@ function TeamChatPage() {
   }, []);
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const atBottom = distanceFromBottom < 60;
-    setIsAtBottom(atBottom);
-    if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
-    if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
-      loadOlderMessages();
+    try {
+      const el = e.currentTarget;
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const atBottom = distanceFromBottom < 60;
+      setIsAtBottom(atBottom);
+      if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
+      if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
+        loadOlderMessages();
+      }
+    } catch (err) {
+      console.error("[team-chat] scroll handler failed", err);
+      toast.error(rtl ? "تعذّر متابعة موضع التمرير" : "Chat scroll tracking failed");
     }
-  }, [hasMoreOlder, loadingOlder, loadOlderMessages]);
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
