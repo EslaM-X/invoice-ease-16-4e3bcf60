@@ -1779,7 +1779,7 @@ function QualityInsights({
         aria-label={`${reason.title} — ${rtl ? "اقتراحات" : "suggestions"}`}
         title={reason.detail}
       >
-        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        {reason.icon ? <reason.icon className="h-3.5 w-3.5" aria-hidden="true" /> : null}
         <span>{reason.title}</span>
         <span className="opacity-70">·</span>
         <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
