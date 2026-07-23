@@ -1304,7 +1304,9 @@ function TeamChatPage() {
                   <Users className="h-3.5 w-3.5 me-1.5" />
                   {rtl ? "الأشخاص" : "People"}
                   {(() => {
-                    const online = (membersQ.data?.members ?? []).filter((m: any) => statusOf(m.user_id) === "online").length;
+                    const online = (membersQ.data?.members ?? [])
+                      .filter((m: any) => m.user_id !== user?.id)
+                      .filter((m: any) => statusOf(m.user_id) === "online").length;
                     return online > 0 ? (
                       <Badge className="ms-1.5 h-4 min-w-4 px-1 text-[10px] rounded-full bg-emerald-500 text-white">
                         {online}
