@@ -914,6 +914,56 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* System-audio confirmation — one-time (or per-toggle if not trusted) */}
+      <AlertDialog open={confirmAudioOpen} onOpenChange={setConfirmAudioOpen}>
+        <AlertDialogContent dir={rtl ? "rtl" : "ltr"} className="border-amber-400/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
+              {rtl ? "تفعيل صوت النظام أثناء المشاركة؟" : "Enable system audio while sharing?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                {rtl
+                  ? "لو فعّلت هذا الخيار، أي شيء بيتشغّل على جهازك — موسيقى، فيديو، إشعارات، مكالمة تانية — هيسمعه كل المشاركين معاك."
+                  : "If you turn this on, everything playing on this device — music, videos, notifications, other calls — will be published to every participant."}
+              </span>
+              <span className="block text-amber-700 dark:text-amber-300 font-medium">
+                {rtl
+                  ? "متأكد إنك عايز تنشر صوت النظام؟"
+                  : "Are you sure you want to publish system audio?"}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground select-none cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-border accent-amber-500"
+              checked={trustAudioCk}
+              onChange={(e) => setTrustAudioCk(e.target.checked)}
+            />
+            {rtl ? "افهم المخاطر — لا تسألني مرة أخرى على هذا الجهاز" : "I understand — don’t ask again on this device"}
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{rtl ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-500 hover:bg-amber-400 text-black"
+              onClick={() => {
+                if (trustAudioCk) writeLS(LS_SYSAUDIO_TRUSTED, "1");
+                commitSysAudio(true);
+                toast.warning(
+                  rtl ? "تم تفعيل صوت النظام — كل ما يعمل على جهازك سيُنشر."
+                      : "System audio enabled — anything playing on this device will be published.",
+                  { duration: 4500 }
+                );
+              }}
+            >
+              {rtl ? "تفعيل ونشر الصوت" : "Enable & publish audio"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
