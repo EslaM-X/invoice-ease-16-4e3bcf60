@@ -1736,16 +1736,37 @@ function QualityInsights({
   const cpuBad = frameDrop > 12 || (shareState.latest?.fps != null && shareState.latest.fps > 0 && shareState.latest.fps < 10);
   const lossBad = lossPct > 5;
 
-  let reason: { icon: any; title: string; detail: string; tone: string } | null = null;
-  if (netBad) reason = { icon: WifiOff, tone: "amber", title: rtl ? "الشبكة ضعيفة" : "Network is weak", detail: rtl ? `RTT ${rttMs}ms · فقد ${lossPct}%` : `RTT ${rttMs}ms · loss ${lossPct}%` };
-  else if (lossBad) reason = { icon: Activity, tone: "amber", title: rtl ? "فقد حزم مرتفع" : "High packet loss", detail: `${lossPct}%` };
-  else if (cpuBad) reason = { icon: Cpu, tone: "amber", title: rtl ? "ضغط على المعالج" : "CPU / frame pressure", detail: rtl ? `إسقاط إطارات ${frameDrop}%` : `Dropped frames ${frameDrop}%` };
+  let reason: { icon: any; title: string; detail: string; tone: string; key: string } | null = null;
+  if (netBad) reason = { key: "net", icon: WifiOff, tone: "amber", title: rtl ? "الشبكة ضعيفة" : "Network is weak", detail: rtl ? `RTT ${rttMs}ms · فقد ${lossPct}%` : `RTT ${rttMs}ms · loss ${lossPct}%` };
+  else if (lossBad) reason = { key: "loss", icon: Activity, tone: "amber", title: rtl ? "فقد حزم مرتفع" : "High packet loss", detail: `${lossPct}%` };
+  else if (cpuBad) reason = { key: "cpu", icon: Cpu, tone: "amber", title: rtl ? "ضغط على المعالج" : "CPU / frame pressure", detail: rtl ? `إسقاط إطارات ${frameDrop}%` : `Dropped frames ${frameDrop}%` };
 
-  if (!reason) return null;
+  // aria-live announcement: fire once when a reason appears/changes, and once
+  // when quality recovers. Debounced via key comparison so we don't spam SRs.
+  const lastKeyRef = useRef<string | null>(null);
+  const [announce, setAnnounce] = useState<string>("");
+  useEffect(() => {
+    const nextKey = reason?.key ?? null;
+    if (nextKey === lastKeyRef.current) return;
+    if (nextKey && reason) {
+      setAnnounce(rtl
+        ? `تنبيه جودة المكالمة: ${reason.title}. ${reason.detail}. توجد اقتراحات لتحسين الاتصال.`
+        : `Call quality alert: ${reason.title}. ${reason.detail}. Suggestions available.`);
+    } else if (lastKeyRef.current && !nextKey) {
+      setAnnounce(rtl ? "تحسّنت جودة المكالمة." : "Call quality has recovered.");
+    }
+    lastKeyRef.current = nextKey;
+  }, [reason?.key, reason?.title, reason?.detail, rtl]);
 
-  const Icon = reason.icon;
   return (
     <>
+      {/* Screen-reader live region — always mounted so recovery is announced */}
+      <div aria-live="polite" aria-atomic="true" role="status" className="sr-only">
+        {announce}
+      </div>
+      {reason ? (
+      <>
+
       <button
         type="button"
         onClick={() => setOpen(true)}
