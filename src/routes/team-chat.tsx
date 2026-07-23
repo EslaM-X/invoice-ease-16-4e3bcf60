@@ -985,7 +985,11 @@ function TeamChatPage() {
   return (
     <AppShell fullBleed>
       <div
-        className="flex overflow-hidden bg-card border-t h-[calc(100dvh-3.5rem)] w-full"
+        ref={rootRef}
+        className={cn(
+          "team-chat-root flex overflow-hidden bg-card border-t h-[calc(100dvh-3.5rem)] w-full",
+          overflowBreached && "team-chat-simple"
+        )}
         dir={rtl ? "rtl" : "ltr"}
       >
         {/* Sidebar */}
