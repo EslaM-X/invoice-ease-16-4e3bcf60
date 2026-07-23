@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, act } from "@testing-library/react";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
