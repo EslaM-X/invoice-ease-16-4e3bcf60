@@ -1017,7 +1017,9 @@ function TeamChatPage() {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    let raf = 0;
     const recompute = () => {
+      const t0 = performance.now();
       try {
         const items = rowVirtualizer.getVirtualItems();
         if (!items.length) { setStickyDayLabel(""); return; }
@@ -1030,10 +1032,18 @@ function TeamChatPage() {
           : formatChatDayLabel(messages[r.msgIndex].created_at, rtl ? "ar" : "en");
         setStickyDayLabel((prev) => (prev === label ? prev : label));
       } catch {/* ignore */}
+      finally { perfRecord("stickyDay:recompute", performance.now() - t0); }
+    };
+    const onScrollRaf = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; recompute(); });
     };
     recompute();
-    el.addEventListener("scroll", recompute, { passive: true });
-    return () => el.removeEventListener("scroll", recompute);
+    el.addEventListener("scroll", onScrollRaf, { passive: true });
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", onScrollRaf);
+    };
   }, [rows, messages, rtl, rowVirtualizer, activeRoomId]);
 
   // In-chat search: rich results (id, index, snippet, ts)
