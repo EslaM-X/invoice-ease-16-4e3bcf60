@@ -2,7 +2,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -108,10 +109,20 @@ function TeamChatPage() {
       if (d === "comfortable" || d === "cozy" || d === "compact") setDensityState(d);
     }).catch(() => {});
   }, [getDensityFn]);
+  const pendingRealignRef = useRef<{ bottom: number; atBottom: boolean } | null>(null);
+  const captureRealign = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    pendingRealignRef.current = {
+      bottom: el.scrollHeight - el.scrollTop - el.clientHeight,
+      atBottom: (el.scrollHeight - el.scrollTop - el.clientHeight) < 60,
+    };
+  }, []);
   const applyDensity = useCallback((d: Density) => {
+    captureRealign();
     setDensityState(d);
     setDensityFn({ data: { density: d } }).catch(() => {});
-  }, [setDensityFn]);
+  }, [setDensityFn, captureRealign]);
   const densityVars = useMemo<Record<string, string>>(() => {
     if (density === "compact")
       return {
@@ -131,12 +142,50 @@ function TeamChatPage() {
       "--chat-bubble-font": "14px",
     };
   }, [density]);
-  const densitySpacingClass =
+
+  // Auto-realign after density change: preserve distance-from-bottom (or stick to bottom).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const snap = pendingRealignRef.current;
+    if (!el || !snap) return;
+    pendingRealignRef.current = null;
+    requestAnimationFrame(() => {
+      const el2 = scrollRef.current;
+      if (!el2) return;
+      if (snap.atBottom) {
+        el2.scrollTop = el2.scrollHeight;
+      } else {
+        el2.scrollTop = el2.scrollHeight - el2.clientHeight - snap.bottom;
+      }
+    });
+  }, [density]);
+
+  // Re-align when DPR changes (zoom / display switch) so bubbles don't jump.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    let mq: MediaQueryList | null = null;
+    const attach = () => {
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      const handler = () => {
+        captureRealign();
+        // Trigger the same layout-effect path by nudging density state to itself
+        setDensityState((d) => d);
+        // Detach and re-attach on new DPR
+        if (mq) mq.removeEventListener?.("change", handler);
+        attach();
+      };
+      mq.addEventListener?.("change", handler);
+    };
+    attach();
+    return () => { if (mq) mq.onchange = null; };
+  }, [captureRealign]);
+  const densityPaddingClass =
     density === "compact"
-      ? "space-y-0.5 p-2 sm:p-3"
+      ? "p-2 sm:p-3"
       : density === "comfortable"
-      ? "space-y-3 p-3 sm:p-5 md:p-7"
-      : "space-y-2 md:space-y-2.5 p-3 sm:p-4 md:p-6";
+      ? "p-3 sm:p-5 md:p-7"
+      : "p-3 sm:p-4 md:p-6";
+  const densityGapPx = density === "compact" ? 2 : density === "comfortable" ? 12 : 8;
 
   // Older-history pagination + scroll anchor state
   const [olderPages, setOlderPages] = useState<ChatMsg[][]>([]);
@@ -429,7 +478,13 @@ function TeamChatPage() {
     prevMsgCountRef.current = count;
     if (!scrollRef.current) return;
     if (isAtBottom) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Use two frames so the virtualizer measures the new row before we scroll.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = scrollRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      });
       setUnseenCount(0);
     } else if (delta > 0) {
       setUnseenCount((c) => c + delta);
@@ -597,25 +652,61 @@ function TeamChatPage() {
     return [...serverMessages, ...stillPending];
   }, [serverMessages, pendingMessages, user?.id]);
 
-  // In-chat search: indices of matching messages
-  const searchMatches = useMemo(() => {
+
+  // Message index lookup (for virtualizer scrollToIndex)
+  const messageIndexById = useMemo(() => {
+    const m = new Map<string, number>();
+    messages.forEach((msg, i) => m.set(msg.id, i));
+    return m;
+  }, [messages]);
+
+  // Virtualized message list
+  const rowVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 76,
+    overscan: 10,
+    getItemKey: (i) => messages[i]?.id ?? i,
+    scrollMargin: 48, // space for top "Load older" sentinel
+    measureElement:
+      typeof ResizeObserver !== "undefined"
+        ? (el) => el?.getBoundingClientRect().height ?? 76
+        : undefined,
+  });
+
+  // In-chat search: rich results (id, index, snippet, ts)
+  const searchResults = useMemo(() => {
     const q = inChatQuery.trim().toLowerCase();
-    if (!q) return [] as string[];
-    return messages
-      .filter((m) => (m.body ?? "").toLowerCase().includes(q))
-      .map((m) => m.id);
+    if (!q) return [] as { id: string; index: number; snippet: string; ts: string }[];
+    const out: { id: string; index: number; snippet: string; ts: string }[] = [];
+    messages.forEach((m, i) => {
+      const body = m.body ?? "";
+      const idx = body.toLowerCase().indexOf(q);
+      if (idx === -1) return;
+      const start = Math.max(0, idx - 24);
+      const end = Math.min(body.length, idx + q.length + 40);
+      const snippet = (start > 0 ? "…" : "") + body.slice(start, end) + (end < body.length ? "…" : "");
+      out.push({ id: m.id, index: i, snippet, ts: m.created_at });
+    });
+    return out;
   }, [messages, inChatQuery]);
+  const searchMatches = useMemo(() => searchResults.map((r) => r.id), [searchResults]);
 
   useEffect(() => { setSearchIndex(0); }, [inChatQuery, activeRoomId]);
 
+  const jumpToMessageIndex = useCallback((idx: number) => {
+    if (idx < 0 || idx >= messages.length) return;
+    rowVirtualizer.scrollToIndex(idx, { align: "center" });
+  }, [messages.length, rowVirtualizer]);
+
   useEffect(() => {
-    if (!inChatSearchOpen || searchMatches.length === 0) return;
-    const id = searchMatches[searchIndex % searchMatches.length];
-    const el = document.getElementById(`msg-${id}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [searchIndex, searchMatches, inChatSearchOpen]);
+    if (!inChatSearchOpen || searchResults.length === 0) return;
+    const target = searchResults[searchIndex % searchResults.length];
+    if (target) jumpToMessageIndex(target.index);
+  }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageIndex]);
 
   const currentMatchId = searchMatches.length > 0 ? searchMatches[searchIndex % searchMatches.length] : null;
+
 
   // Mark visible messages as read (excluding own)
   useEffect(() => {
@@ -936,43 +1027,68 @@ function TeamChatPage() {
 
               {/* In-chat search bar */}
               {inChatSearchOpen && (
-                <div className="border-b bg-gradient-to-r from-card to-muted/40 px-3 py-2 flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Input
-                    autoFocus
-                    value={inChatQuery}
-                    onChange={(e) => setInChatQuery(e.target.value)}
-                    placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
-                    className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
-                  />
-                  <span className="text-xs tabular-nums text-muted-foreground shrink-0">
-                    {searchMatches.length > 0
-                      ? `${(searchIndex % searchMatches.length) + 1}/${searchMatches.length}`
-                      : (inChatQuery ? (rtl ? "لا نتائج" : "no results") : "")}
-                  </span>
-                  <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
-                    disabled={searchMatches.length === 0}
-                    onClick={() => setSearchIndex((i) => (i - 1 + searchMatches.length) % searchMatches.length)}
-                    aria-label="Previous match"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
-                    disabled={searchMatches.length === 0}
-                    onClick={() => setSearchIndex((i) => (i + 1) % searchMatches.length)}
-                    aria-label="Next match"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
-                    onClick={() => { setInChatSearchOpen(false); setInChatQuery(""); }}
-                    aria-label="Close search"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="border-b bg-gradient-to-r from-card to-muted/40">
+                  <div className="px-3 py-2 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      autoFocus
+                      value={inChatQuery}
+                      onChange={(e) => setInChatQuery(e.target.value)}
+                      placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
+                      className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
+                    />
+                    <span className="text-xs tabular-nums text-muted-foreground shrink-0">
+                      {searchResults.length > 0
+                        ? `${(searchIndex % searchResults.length) + 1}/${searchResults.length}`
+                        : (inChatQuery ? (rtl ? "لا نتائج" : "no results") : "")}
+                    </span>
+                    <Button
+                      size="icon" variant="ghost" className="h-7 w-7"
+                      disabled={searchResults.length === 0}
+                      onClick={() => setSearchIndex((i) => (i - 1 + searchResults.length) % searchResults.length)}
+                      aria-label="Previous match"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon" variant="ghost" className="h-7 w-7"
+                      disabled={searchResults.length === 0}
+                      onClick={() => setSearchIndex((i) => (i + 1) % searchResults.length)}
+                      aria-label="Next match"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon" variant="ghost" className="h-7 w-7"
+                      onClick={() => { setInChatSearchOpen(false); setInChatQuery(""); }}
+                      aria-label="Close search"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {searchResults.length > 0 && (
+                    <div className="max-h-56 overflow-y-auto border-t bg-background/60 backdrop-blur-sm">
+                      {searchResults.map((r, i) => {
+                        const active = i === (searchIndex % searchResults.length);
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => { setSearchIndex(i); jumpToMessageIndex(r.index); }}
+                            className={cn(
+                              "w-full text-start px-3 py-2 flex items-start gap-2 border-b border-border/40 hover:bg-accent/60 transition",
+                              active && "bg-[color:var(--brand-gold,#d4af37)]/10 border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
+                            )}
+                          >
+                            <span className="text-[10px] tabular-nums text-muted-foreground mt-0.5 shrink-0">
+                              {new Date(r.ts).toLocaleTimeString(rtl ? "ar-EG" : undefined, { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            <span className="text-xs text-foreground line-clamp-2 flex-1">{r.snippet}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -982,15 +1098,15 @@ function TeamChatPage() {
                 onScroll={onScroll}
                 className={cn(
                   "absolute inset-0 overflow-y-auto",
-                  densitySpacingClass,
+                  densityPaddingClass,
                   wallpaperClass
                 )}
                 style={{ ...wallpaperStyle, ...densityVars } as React.CSSProperties}
               >
                 {/* Top sentinel: load older */}
-                <div ref={topSentinelRef} className="flex justify-center py-2">
+                <div ref={topSentinelRef} className="flex justify-center pb-2" style={{ height: 48 }}>
                   {loadingOlder ? (
-                    <span className="inline-flex items-center gap-2 text-[11px] text-white/80 bg-black/40 backdrop-blur rounded-full px-3 py-1 border border-white/10">
+                    <span className="inline-flex items-center gap-2 text-[11px] text-white/80 bg-black/40 backdrop-blur rounded-full px-3 py-1 border border-white/10 h-fit">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       {rtl ? "تحميل الرسائل الأقدم..." : "Loading older messages..."}
                     </span>
@@ -998,18 +1114,23 @@ function TeamChatPage() {
                     <button
                       type="button"
                       onClick={loadOlderMessages}
-                      className="text-[11px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur rounded-full px-3 py-1 border border-white/10 transition"
+                      className="text-[11px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur rounded-full px-3 py-1 border border-white/10 transition h-fit"
                     >
                       {rtl ? "تحميل الأقدم" : "Load older"}
                     </button>
                   ) : messages.length > 0 ? (
-                    <span className="text-[10px] text-white/40">
+                    <span className="text-[10px] text-white/40 h-fit">
                       {rtl ? "— بداية المحادثة —" : "— start of conversation —"}
                     </span>
                   ) : null}
                 </div>
-                <AnimatePresence initial={false}>
-                  {messages.map((m, i) => {
+
+                {/* Virtualized messages */}
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+                  {rowVirtualizer.getVirtualItems().map((vi) => {
+                    const i = vi.index;
+                    const m = messages[i];
+                    if (!m) return null;
                     const prev = messages[i - 1];
                     const next = messages[i + 1];
                     const mine = m.sender_id === user?.id;
@@ -1020,8 +1141,18 @@ function TeamChatPage() {
                     const isMatch = currentMatchId === m.id;
                     return (
                       <div
+                        key={vi.key}
+                        data-index={i}
+                        ref={rowVirtualizer.measureElement}
                         id={`msg-${m.id}`}
-                        key={m.id}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          transform: `translateY(${vi.start}px)`,
+                          paddingBottom: densityGapPx,
+                        }}
                         className={cn(isMatch && "rounded-2xl ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 shadow-[0_0_0_4px_rgba(212,175,55,0.15)] transition")}
                       >
                         <MessageBubble
@@ -1039,11 +1170,11 @@ function TeamChatPage() {
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
                         />
-
                       </div>
                     );
                   })}
-                </AnimatePresence>
+                </div>
+
 
                 {typingNames.length > 0 && (
                   <motion.div
