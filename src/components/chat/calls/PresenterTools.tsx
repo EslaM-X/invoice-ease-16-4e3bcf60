@@ -450,6 +450,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       });
     } else if (m.t === "ptrgone") {
       cursorsRef.current.delete(m.owner);
+    } else if (m.t === "assignGroup") {
+      for (const id of m.ids) {
+        const it = itemsRef.current.get(id);
+        if (!it) continue;
+        const next = m.groupId ? { ...it, groupId: m.groupId } : { ...it };
+        if (!m.groupId && "groupId" in next) delete (next as { groupId?: string }).groupId;
+        itemsRef.current.set(id, next as AnyItem);
+      }
     }
   }, []);
 
