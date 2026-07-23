@@ -483,11 +483,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     };
     applyMessage(msg);
     void publish(msg, true);
+    scheduleSave();
     dirtyRef.current = true;
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (tool === "off") return;
+    if (!canDraw) return;
+
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toNorm(e);
 
