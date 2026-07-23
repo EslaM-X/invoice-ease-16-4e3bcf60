@@ -233,6 +233,72 @@ export function MembersSheet({
             <SheetDescription className="text-white/60 text-xs">
               {members.length} {rtl ? "عضو" : "members"} · {onlineCount} {rtl ? "متصل" : "online"}
             </SheetDescription>
+
+            {canManageProfile && (
+              <div className="mt-3 rounded-xl border border-[color:var(--brand-gold,#d4af37)]/25 bg-black/30 p-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <LuxuryAvatar
+                      url={roomAvatarUrl ?? null}
+                      name={roomName}
+                      size={56}
+                      ring="gold"
+                    />
+                    <button
+                      type="button"
+                      onClick={pickAvatar}
+                      disabled={uploadingAvatar}
+                      className="absolute -bottom-1 -end-1 h-7 w-7 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black grid place-items-center shadow-lg ring-2 ring-[#141416] disabled:opacity-60"
+                      title={rtl ? "تغيير الصورة" : "Change photo"}
+                      aria-label={rtl ? "تغيير الصورة" : "Change photo"}
+                    >
+                      {uploadingAvatar
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Camera className="h-3.5 w-3.5" />}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={onPickAvatarFile}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[color:var(--brand-gold,#d4af37)] font-bold">
+                      <Pencil className="h-3 w-3" /> {rtl ? "معلومات الشات" : "Chat profile"}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder={rtl ? "اسم الشات (يدعم الإيموجي 😎)" : "Chat name (emoji ok 😎)"}
+                        maxLength={80}
+                        className="h-8 bg-white/5 border-white/15 text-white placeholder:text-white/40 focus-visible:ring-[color:var(--brand-gold,#d4af37)]"
+                      />
+                      <Button
+                        size="icon"
+                        className="h-8 w-8 shrink-0 bg-[color:var(--brand-gold,#d4af37)] hover:bg-[color:var(--brand-gold,#d4af37)]/90 text-black"
+                        onClick={saveName}
+                        disabled={savingName || !editName.trim() || editName.trim() === roomName}
+                        title={rtl ? "حفظ" : "Save"}
+                      >
+                        {savingName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {roomAvatarUrl && (
+                      <button
+                        type="button"
+                        onClick={clearAvatar}
+                        className="mt-1.5 text-[11px] text-white/50 hover:text-red-300 underline underline-offset-2"
+                      >
+                        {rtl ? "إزالة صورة الشات" : "Remove chat photo"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {canAdd && roomId && (
               <Button
                 onClick={() => setAddOpen(true)}
