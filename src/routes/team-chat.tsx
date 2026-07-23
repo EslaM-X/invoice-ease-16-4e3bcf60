@@ -1500,6 +1500,7 @@ function TeamChatPage() {
               </ScrollArea>
             </TabsContent>
           </Tabs>
+          </TooltipProvider>
         </div>
 
 
