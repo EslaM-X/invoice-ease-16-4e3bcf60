@@ -198,32 +198,20 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
     } else if (m.t === "shape") {
       itemsRef.current.set(m.id, {
-        kind: "shape", id: m.id, owner: m.owner, kind_: undefined as any,
-        // fill required Shape fields:
-        ...({ kind: m.kind, color: m.color, w: m.w, x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2 } as any),
-      } as any);
-      // clean rebuild (TS-friendly):
-      itemsRef.current.set(m.id, {
         kind: "shape",
         id: m.id, owner: m.owner, color: m.color, w: m.w,
         x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2,
-        // @ts-expect-error narrowing helper
         kindShape: m.kind,
-      } as any);
-      // Use a well-typed structure instead:
-      itemsRef.current.set(m.id, ({
-        kind: "shape", id: m.id, owner: m.owner, color: m.color, w: m.w,
-        x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2,
-        kindShape: m.kind,
-      } as unknown) as AnyItem);
+      });
       if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
     } else if (m.t === "text") {
       itemsRef.current.set(m.id, {
         kind: "text", id: m.id, owner: m.owner, kindText: m.kind,
         color: m.color, font: m.font, size: m.size,
         x: m.x, y: m.y, maxW: m.maxW, content: m.content,
-      } as unknown as AnyItem);
+      });
       if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
+
     } else if (m.t === "laser") {
       lasersRef.current.set(m.owner, { x: m.x, y: m.y, color: m.color, t: performance.now() });
     } else if (m.t === "undo") {
