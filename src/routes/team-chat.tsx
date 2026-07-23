@@ -104,6 +104,25 @@ function TeamChatPage() {
   const [searchIndex, setSearchIndex] = useState(0);
   const [notifyEnabled, setNotifyEnabled] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const overflowToastShownRef = useRef(false);
+  const { breached: overflowBreached, reset: resetOverflowGuard } = useOverflowGuard(rootRef, {
+    label: "team-chat",
+    onBreach: (info) => {
+      if (overflowToastShownRef.current) return;
+      overflowToastShownRef.current = true;
+      try {
+        toast.error(
+          (document?.documentElement?.dir === "rtl"
+            ? "تم اكتشاف تمرير أفقي غير مقصود — تم تفعيل وضع العرض المبسّط."
+            : "Detected unintended horizontal scroll — switched to simple layout."),
+          { duration: 5000 }
+        );
+      } catch {}
+      // eslint-disable-next-line no-console
+      console.warn("[team-chat] entering simple fallback layout", info);
+    },
+  });
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
