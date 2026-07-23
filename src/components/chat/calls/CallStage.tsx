@@ -1037,6 +1037,7 @@ function KeyboardShortcuts({
     ["P", "إلغاء تثبيت المشارك"],
     ["L", "تفعيل/إيقاف ترتيب المتحدث"],
     ["F", "قفل التركيز على المتحدث الحالي"],
+    ["U", "فتح/إغلاق قائمة المشاركين"],
     ["?", "عرض/إخفاء هذه القائمة"],
     ["Esc", "إغلاق النوافذ"],
   ] : [
@@ -1046,6 +1047,7 @@ function KeyboardShortcuts({
     ["P", "Clear pinned participant"],
     ["L", "Toggle speaker-based auto reorder"],
     ["F", "Lock focus on current speaker"],
+    ["U", "Open / close participants panel"],
     ["?", "Show / hide shortcuts"],
     ["Esc", "Close dialogs"],
   ], [rtl]);
