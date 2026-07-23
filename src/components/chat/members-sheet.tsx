@@ -72,6 +72,12 @@ export function MembersSheet({
   const memberIds = useMemo(() => members.map((m) => m.user_id), [members]);
   const { isOnline } = useRoomPresence(memberIds, roomId, myUserId);
 
+  useEffect(() => {
+    if (open) setEditName(roomName ?? "");
+  }, [open, roomName]);
+  const isGroup = (roomType ?? (q.data?.room_type as any)) === "group";
+  const canManageProfile = isGroup && iAmAdmin && !!roomId;
+
   const onlineCount = members.filter((m) => isOnline(m.user_id)).length;
   const creatorRow = members.find((m) => m.is_creator);
   const admins = members.filter((m) => m.role === "admin" && !m.is_creator);
