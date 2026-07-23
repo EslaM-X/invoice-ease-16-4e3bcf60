@@ -805,6 +805,28 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
               <Trash2 className="size-4" />
             </ToolButton>
 
+            {isLocalSharing ? (
+              <>
+                <Sep />
+                <ToolButton
+                  label={
+                    rtl
+                      ? permMode === "presenter"
+                        ? "الرسم للمقدّم فقط — اضغط للسماح للجميع"
+                        : "الجميع يستطيع الرسم — اضغط لتقييده على المقدّم"
+                      : permMode === "presenter"
+                        ? "Presenter-only drawing — click to allow everyone"
+                        : "Anyone can draw — click to restrict to presenter"
+                  }
+                  active={permMode === "presenter"}
+                  onClick={togglePerm}
+                >
+                  {permMode === "presenter" ? <Lock className="size-4" /> : <Users className="size-4" />}
+                </ToolButton>
+              </>
+            ) : null}
+
+
             <Sep />
             {/* Color palette */}
             <div className="flex items-center gap-1 px-1" role="radiogroup" aria-label={rtl ? "اللون" : "Color"}>
