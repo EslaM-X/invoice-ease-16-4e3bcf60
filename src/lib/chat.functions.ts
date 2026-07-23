@@ -424,6 +424,57 @@ export const setChatDensity = createServerFn({ method: "POST" })
     return { ok: true, density: data.density };
   });
 
+// Chat layout preference (width + focus mode + sidebar collapsed) — synced per user across devices.
+const ChatWidthEnum = z.enum(["default", "wide", "full"]);
+const ChatLayoutSchema = z.object({
+  width: ChatWidthEnum.optional(),
+  focus: z.boolean().optional(),
+  sidebar_collapsed: z.boolean().optional(),
+});
+
+export const getChatLayout = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_layout")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const raw = (data as any)?.chat_layout ?? {};
+    const parsed = ChatLayoutSchema.safeParse(raw);
+    const layout = parsed.success ? parsed.data : {};
+    return {
+      layout: {
+        width: layout.width ?? "wide",
+        focus: layout.focus ?? false,
+        sidebar_collapsed: layout.sidebar_collapsed ?? false,
+      },
+    };
+  });
+
+export const setChatLayout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => ChatLayoutSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_layout")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const current = ((row as any)?.chat_layout ?? {}) as Record<string, unknown>;
+    const merged = { ...current, ...data };
+    const { error } = await supabase
+      .from("user_ui_preferences")
+      .upsert(
+        { user_id: userId, chat_layout: merged } as any,
+        { onConflict: "user_id" }
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true, layout: merged };
+  });
+
 
 // Update current user's chat display profile (job title + color).
 export const updateChatProfile = createServerFn({ method: "POST" })
