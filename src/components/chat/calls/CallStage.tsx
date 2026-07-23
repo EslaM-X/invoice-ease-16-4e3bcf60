@@ -59,6 +59,10 @@ const LS_PIN = "call.pin.identity";
 const LS_AUTOSPK = "call.autoSpeakerReorder";
 const LS_FOCUSLOCK = "call.focusLock";
 const LS_SYSAUDIO = "call.screenShare.systemAudio";
+const LS_SYSAUDIO_TRUSTED = "call.screenShare.systemAudio.trusted";
+
+/** Event key used to toggle the participants panel from anywhere in the tree. */
+const EVT_TOGGLE_PARTICIPANTS = "call:toggleParticipants";
 
 function readLS(key: string, fallback: string): string {
   try {
