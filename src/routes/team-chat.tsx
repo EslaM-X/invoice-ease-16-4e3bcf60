@@ -645,15 +645,50 @@ function TeamChatPage() {
     }
   }, [activeRoomId, markRead, qc]);
 
+  // Load the remote scroll map once per session and merge remote > local when
+  // the remote timestamp is newer (cross-device sync).
+  useEffect(() => {
+    if (!user?.id || remoteScrollLoadedRef.current) return;
+    remoteScrollLoadedRef.current = true;
+    (async () => {
+      try {
+        const r: any = await getRoomScrollFn();
+        const remote = (r?.scroll ?? {}) as Record<string, { top: number; ts?: string }>;
+        remoteScrollRef.current = remote;
+        // Merge into localStorage where remote is newer.
+        for (const [roomId, val] of Object.entries(remote)) {
+          try {
+            const localTs = localStorage.getItem(scrollTsKey(roomId));
+            const localTsMs = localTs ? Date.parse(localTs) : 0;
+            const remoteTsMs = val?.ts ? Date.parse(val.ts) : 0;
+            if (remoteTsMs > localTsMs && Number.isFinite(val?.top) && val.top > 0) {
+              localStorage.setItem(scrollStorageKey(roomId), String(Math.round(val.top)));
+              if (val.ts) localStorage.setItem(scrollTsKey(roomId), val.ts);
+            }
+          } catch {}
+        }
+      } catch (err) {
+        console.warn("[team-chat] failed to load remote scroll map", err);
+      }
+    })();
+  }, [user?.id, getRoomScrollFn, scrollStorageKey, scrollTsKey]);
+
   // Plan a scroll restore whenever we switch rooms (once per room per session)
   useEffect(() => {
     if (!activeRoomId || !user?.id) { pendingRestoreRef.current = null; return; }
     if (didRestoreRef.current[activeRoomId]) { pendingRestoreRef.current = null; return; }
+    let target: number | null = null;
     try {
       const raw = localStorage.getItem(scrollStorageKey(activeRoomId));
       const n = raw != null ? Number(raw) : NaN;
-      pendingRestoreRef.current = Number.isFinite(n) && n > 0 ? n : null;
-    } catch { pendingRestoreRef.current = null; }
+      if (Number.isFinite(n) && n > 0) target = n;
+    } catch {}
+    // Fall back to remote map if we have no local value yet
+    if (target == null) {
+      const remote = remoteScrollRef.current?.[activeRoomId];
+      if (remote && Number.isFinite(remote.top) && remote.top > 0) target = Math.round(remote.top);
+    }
+    pendingRestoreRef.current = target;
   }, [activeRoomId, user?.id, scrollStorageKey]);
 
   // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
