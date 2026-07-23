@@ -1,18 +1,20 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 
-if (typeof window !== "undefined" && !window.matchMedia) {
-  // @ts-expect-error test shim
-  window.matchMedia = () => ({
-    matches: false,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  });
-}
+vi.hoisted(() => {
+  if (typeof window !== "undefined" && !window.matchMedia) {
+    // @ts-expect-error test shim
+    window.matchMedia = () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    });
+  }
+});
 
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 
