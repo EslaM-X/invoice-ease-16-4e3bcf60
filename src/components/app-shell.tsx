@@ -278,7 +278,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
               <>
                 {!ui.isNavHidden("profit_calculator") && <Link
                   to="/profit-calculator"
-                  search={{}}
+                  search={{ po: undefined }}
                   onClick={() => setOpen(false)}
                   className={`group relative flex items-center gap-3 rounded-md px-3 py-2 ps-9 text-sm font-medium transition ${
                     location.pathname.startsWith("/profit-calculator")
