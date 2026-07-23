@@ -542,14 +542,24 @@ function TeamChatPage() {
   // Heartbeat presence
   useEffect(() => {
     if (!user?.id) return;
-    presenceFn({ data: { status: "online" } });
-    const beat = window.setInterval(() => { presenceFn({ data: { status: "online" } }); }, 25000);
-    const onVis = () => { presenceFn({ data: { status: document.hidden ? "away" : "online" } }); };
+    const beat = (status: "online" | "away" | "offline") => {
+      try {
+        const p = presenceFn({ data: { status } }) as unknown as Promise<unknown> | undefined;
+        if (p && typeof (p as Promise<unknown>).catch === "function") {
+          (p as Promise<unknown>).catch(() => {/* ignore auth/network blips */});
+        }
+      } catch {/* ignore */}
+    };
+    beat("online");
+    const interval = window.setInterval(() => beat("online"), 25000);
+    const onVis = () => beat(document.hidden ? "away" : "online");
+    const onUnload = () => beat("offline");
     document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("beforeunload", () => { presenceFn({ data: { status: "offline" } }); });
+    window.addEventListener("beforeunload", onUnload);
     return () => {
-      window.clearInterval(beat);
+      window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("beforeunload", onUnload);
     };
   }, [user?.id, presenceFn]);
 
