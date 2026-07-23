@@ -1371,8 +1371,35 @@ function TeamChatPage() {
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="people" className="flex-1 min-h-0 m-0">
-              <ScrollArea className="h-full bg-background">
+            <TabsContent value="people" className="flex-1 min-h-0 m-0 flex flex-col">
+              <div className="px-3 py-2 border-b border-border/60 bg-card/60 flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                  {rtl ? "ترتيب" : "Sort"}
+                </span>
+                {(["recent", "oldest", "status", "name"] as const).map((k) => {
+                  const label =
+                    k === "recent" ? (rtl ? "الأحدث نشاطاً" : "Recent activity")
+                    : k === "oldest" ? (rtl ? "الأقدم نشاطاً" : "Oldest activity")
+                    : k === "status" ? (rtl ? "الحالة" : "Status")
+                    : (rtl ? "الاسم" : "Name");
+                  const active = peopleSort === k;
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => setPeopleSort(k)}
+                      className={cn(
+                        "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                        active
+                          ? "bg-[color:var(--brand-gold,#d4af37)]/20 border-[color:var(--brand-gold,#d4af37)]/60 text-foreground"
+                          : "bg-transparent border-border/60 text-muted-foreground hover:bg-accent/60"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollArea className="flex-1 min-h-0 bg-background">
                 {(() => {
                   const s = searchTerm.trim().toLowerCase();
                   const all = (membersQ.data?.members ?? [])
@@ -1381,6 +1408,19 @@ function TeamChatPage() {
 
                   const buckets: Record<"online" | "away" | "offline", any[]> = { online: [], away: [], offline: [] };
                   for (const m of all) buckets[statusOf(m.user_id)].push(m);
+                  const tsOf = (uid: string) => {
+                    const ls = lastSeen(uid);
+                    return ls ? new Date(ls).getTime() : 0;
+                  };
+                  const sortBucket = (arr: any[]) => {
+                    const copy = [...arr];
+                    if (peopleSort === "recent") copy.sort((a, b) => tsOf(b.user_id) - tsOf(a.user_id));
+                    else if (peopleSort === "oldest") copy.sort((a, b) => (tsOf(a.user_id) || Infinity) - (tsOf(b.user_id) || Infinity));
+                    else if (peopleSort === "name") copy.sort((a, b) => (a.display_name ?? a.email ?? "").localeCompare(b.display_name ?? b.email ?? ""));
+                    else copy.sort((a, b) => tsOf(b.user_id) - tsOf(a.user_id)); // status keeps buckets, order by recent inside
+                    return copy;
+                  };
+                  for (const k of ["online", "away", "offline"] as const) buckets[k] = sortBucket(buckets[k]);
                   const order: Array<"online" | "away" | "offline"> = ["online", "away", "offline"];
                   const dotColor = { online: "bg-emerald-500", away: "bg-amber-400", offline: "bg-muted-foreground/50" } as const;
                   const labelMap = {
