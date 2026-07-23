@@ -397,7 +397,7 @@ function AuthPage() {
           </div>
 
 
-          <h1 className="mt-4 max-w-md bg-gradient-to-b from-white to-[oklch(0.86_0.01_250)] bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:mt-5 sm:text-4xl lg:text-5xl">
+          <h1 className="mt-4 max-w-md bg-gradient-to-b from-white via-white to-[oklch(0.92_0.08_82)] bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:mt-5 sm:text-4xl lg:text-5xl">
             {lang === "ar" ? "إدارة احترافية. شبكة موزعين أوسع." : "Professional management. A wider distributor network."}
           </h1>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60 sm:mt-4 sm:text-base">
