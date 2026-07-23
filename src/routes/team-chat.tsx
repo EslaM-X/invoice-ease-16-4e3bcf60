@@ -95,6 +95,21 @@ function TeamChatPage() {
     if (rid) setActiveRoomId(rid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mobile browser back-button: while a room is open on a phone, register a
+  // history entry so the hardware/gesture Back returns to the room list
+  // instead of leaving the chat page.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!activeRoomId) return;
+    const isMobile = window.matchMedia?.("(max-width: 767px)")?.matches;
+    if (!isMobile) return;
+    const state = { teamChatRoom: activeRoomId };
+    try { window.history.pushState(state, "", window.location.href); } catch {/* ignore */}
+    const onPop = () => setActiveRoomId(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [activeRoomId]);
   const [newOpen, setNewOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
