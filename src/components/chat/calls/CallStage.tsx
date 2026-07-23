@@ -53,6 +53,8 @@ type DisplaySurface = "monitor" | "window" | "browser";
 const LS_SURFACE = "call.screenShare.displaySurface";
 const LS_PIN = "call.pin.identity";
 const LS_AUTOSPK = "call.autoSpeakerReorder";
+const LS_FOCUSLOCK = "call.focusLock";
+const LS_SYSAUDIO = "call.screenShare.systemAudio";
 
 function readLS(key: string, fallback: string): string {
   try {
