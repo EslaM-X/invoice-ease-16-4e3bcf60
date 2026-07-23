@@ -43,8 +43,9 @@ export function Composer({
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
+    const maxH = typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches ? 220 : 140;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, maxH) + "px";
   }, [text]);
 
   useEffect(() => {
