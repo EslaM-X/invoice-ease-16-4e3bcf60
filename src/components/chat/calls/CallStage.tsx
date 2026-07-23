@@ -869,7 +869,17 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 /*  Keyboard shortcuts + help legend                                  */
 /* ------------------------------------------------------------------ */
 
-function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
+function KeyboardShortcuts({
+  rtl,
+  autoSpeaker, setAutoSpeaker,
+  focusLock, setFocusLock,
+}: {
+  rtl: boolean;
+  autoSpeaker: boolean;
+  setAutoSpeaker: (v: boolean) => void;
+  focusLock: boolean;
+  setFocusLock: (v: boolean) => void;
+}) {
   const room = useRoomContext();
   const layoutCtx = useMaybeLayoutContext();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -898,6 +908,13 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
         if (layoutCtx?.pin.state && layoutCtx.pin.state.length > 0) {
           layoutCtx.pin.dispatch?.({ msg: "clear_pin" });
         }
+      } else if (key === "l") {
+        e.preventDefault();
+        setAutoSpeaker(!autoSpeaker);
+      } else if (key === "f") {
+        e.preventDefault();
+        if (autoSpeaker) setFocusLock(!focusLock);
+        else toast(rtl ? "فعّل ترتيب المتحدث أولًا (L)" : "Enable speaker sort first (L)");
       } else if (key === "?" || (e.shiftKey && key === "/")) {
         e.preventDefault();
         setHelpOpen((o) => !o);
@@ -905,13 +922,15 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [room, layoutCtx]);
+  }, [room, layoutCtx, autoSpeaker, focusLock, setAutoSpeaker, setFocusLock, rtl]);
 
   const rows: Array<[string, string]> = useMemo(() => rtl ? [
     ["M", "كتم/فتح الميكروفون"],
     ["V", "تشغيل/إيقاف الكاميرا"],
     ["S", "بدء/إيقاف مشاركة الشاشة"],
     ["P", "إلغاء تثبيت المشارك"],
+    ["L", "تفعيل/إيقاف ترتيب المتحدث"],
+    ["F", "قفل التركيز على المتحدث الحالي"],
     ["?", "عرض/إخفاء هذه القائمة"],
     ["Esc", "إغلاق النوافذ"],
   ] : [
@@ -919,9 +938,12 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
     ["V", "Camera on / off"],
     ["S", "Start / stop screen share"],
     ["P", "Clear pinned participant"],
+    ["L", "Toggle speaker-based auto reorder"],
+    ["F", "Lock focus on current speaker"],
     ["?", "Show / hide shortcuts"],
     ["Esc", "Close dialogs"],
   ], [rtl]);
+
 
   return (
     <>
