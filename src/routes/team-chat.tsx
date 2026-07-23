@@ -821,7 +821,7 @@ function TeamChatPage() {
               <div
                 ref={scrollRef}
                 className={cn(
-                  "flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5",
+                  "flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-2 md:space-y-2.5",
                   wallpaperClass
                 )}
                 style={wallpaperStyle}
