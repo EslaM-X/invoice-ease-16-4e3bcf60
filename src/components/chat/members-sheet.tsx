@@ -165,10 +165,10 @@ export function MembersSheet({
           <LuxuryAvatar
             url={m.avatar_url}
             name={m.display_name}
-            size={48}
+            size={64}
             ring={m.is_creator ? "gold" : "soft"}
           />
-          {online && <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
+          {online && <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
