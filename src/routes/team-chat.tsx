@@ -42,6 +42,7 @@ import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
 import { DaySeparator } from "@/components/chat/day-separator";
 import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator";
 import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
+import { record as perfRecord } from "@/lib/chat-perf";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
