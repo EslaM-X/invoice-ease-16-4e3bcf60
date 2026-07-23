@@ -62,11 +62,11 @@ export function MembersSheet({
   const [editName, setEditName] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [bustKey, setBustKey] = useState<number>(0);
+  const bustKey = useAvatarBust();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const refreshAvatars = () => {
-    setBustKey(Date.now());
+    bumpAvatarBust();
     toast.success(rtl ? "تم إعادة تحميل الصور بجودة عالية" : "Reloaded avatars in HD");
   };
 
