@@ -21,6 +21,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import { describeAvatarChoice } from "@/lib/avatar-url";
+import {
+  bumpAvatarBust, useAvatarBust, useDevicePixelRatio,
+  detectImageSupport, probeDeliveredFormat, type ImageSupport,
+} from "@/lib/avatar-bust";
 import { toast } from "sonner";
 
 type MemberRow = {
