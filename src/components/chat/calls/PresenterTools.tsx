@@ -1300,6 +1300,8 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   };
 
   const onPointerUp = (_e: React.PointerEvent) => {
+    cancelLongPress();
+    if (longPressFiredRef.current) { longPressFiredRef.current = false; return; }
     if (tool === "off" || tool === "select") return;
 
     const sh = activeShapeRef.current as (Shape & { kindShape: ShapeMsg["kind"] }) | null;
