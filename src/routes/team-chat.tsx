@@ -613,7 +613,7 @@ function TeamChatPage() {
                   )}
                 >
                   <div className="relative shrink-0">
-                    <LuxuryAvatar url={r.avatar_url} name={label} size={66} ring="gold" showSkeleton={false} />
+                    <LuxuryAvatar url={r.avatar_url} name={label} size={74} ring="gold" showSkeleton={false} />
                     {online && (
                       <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                     )}
@@ -663,7 +663,7 @@ function TeamChatPage() {
                         <LuxuryAvatar
                           url={activeRoom.avatar_url}
                           name={activeRoom.display_name ?? (rtl ? "جروب" : "Group")}
-                          size={64}
+                          size={76}
                           ring="gold"
                           showSkeleton={false}
                         />
@@ -719,7 +719,7 @@ function TeamChatPage() {
                               r.id === activeRoomId && "bg-accent/70"
                             )}
                           >
-                            <LuxuryAvatar url={r.avatar_url} name={label} size={48} ring="gold" showSkeleton={false} />
+                            <LuxuryAvatar url={r.avatar_url} name={label} size={54} ring="gold" showSkeleton={false} />
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm truncate">{label}</div>
                               <div className="text-xs text-muted-foreground truncate">
@@ -1001,7 +1001,7 @@ function NewChatDialog({
                   selected.includes(m.user_id) && "bg-accent"
                 )}
               >
-                <LuxuryAvatar url={m.avatar_url} name={m.display_name ?? m.email ?? "?"} size={44} ring="soft" showSkeleton={false} />
+                <LuxuryAvatar url={m.avatar_url} name={m.display_name ?? m.email ?? "?"} size={50} ring="soft" showSkeleton={false} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate flex items-center gap-2">
                     {m.display_name ?? m.email}

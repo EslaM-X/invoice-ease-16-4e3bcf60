@@ -20,6 +20,7 @@ import {
 } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
+import { getAvatarSrc } from "@/lib/avatar-url";
 import { toast } from "sonner";
 
 type MemberRow = {
@@ -165,7 +166,7 @@ export function MembersSheet({
           <LuxuryAvatar
             url={m.avatar_url}
             name={m.display_name}
-            size={64}
+            size={72}
             ring={m.is_creator ? "gold" : "soft"}
           />
           {online && <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
@@ -241,7 +242,7 @@ export function MembersSheet({
                     <LuxuryAvatar
                       url={roomAvatarUrl ?? null}
                       name={roomName}
-                      size={80}
+                      size={104}
                       ring="gold"
                     />
                     <button
@@ -382,9 +383,10 @@ export function MembersSheet({
 function DiagnosticsPanel({ rtl, avatarUrl }: { rtl: boolean; avatarUrl: string | null }) {
   const [open, setOpen] = useState(false);
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-  const rendered = avatarUrl ? (() => {
+  const transformedUrl = avatarUrl ? (getAvatarSrc(avatarUrl, 104) ?? avatarUrl) : null;
+  const rendered = transformedUrl ? (() => {
     try {
-      const u = new URL(avatarUrl);
+      const u = new URL(transformedUrl);
       return u.searchParams.get("width") ?? "—";
     } catch { return "—"; }
   })() : "—";
@@ -402,8 +404,11 @@ function DiagnosticsPanel({ rtl, avatarUrl }: { rtl: boolean; avatarUrl: string 
         <div className="px-3 pb-3 text-[11px] text-white/70 space-y-1.5">
           <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{dpr}x</span></div>
           <div><span className="text-white/50">{rtl ? "عرض الصورة الحالي:" : "Current render width:"} </span><span className="tabular-nums text-white">{rendered}px</span></div>
-          {avatarUrl && (
-            <div className="break-all"><span className="text-white/50">URL:</span> <span className="text-white/80">{avatarUrl.slice(0, 90)}…</span></div>
+          {avatarUrl && transformedUrl && (
+            <>
+              <div className="break-all"><span className="text-white/50">Original:</span> <span className="text-white/80">{avatarUrl.slice(0, 90)}…</span></div>
+              <div className="break-all"><span className="text-white/50">HD:</span> <span className="text-white/80">{transformedUrl.slice(0, 110)}…</span></div>
+            </>
           )}
           <div className="text-white/50 pt-1 border-t border-white/10 mt-2">
             {rtl
@@ -516,7 +521,7 @@ function AddMembersDialog({
                     onClick={() => toggle(u.user_id)}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-start transition ${on ? "bg-[color:var(--brand-gold,#d4af37)]/10" : "hover:bg-white/5"}`}
                   >
-                    <LuxuryAvatar url={u.avatar_url} name={u.display_name} size={40} ring="soft" />
+                    <LuxuryAvatar url={u.avatar_url} name={u.display_name} size={50} ring="soft" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium truncate">{u.display_name}</span>
