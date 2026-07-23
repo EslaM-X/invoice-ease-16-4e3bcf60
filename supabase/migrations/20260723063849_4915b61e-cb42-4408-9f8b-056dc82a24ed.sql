@@ -1,0 +1,1 @@
+ALTER FUNCTION public.tg_chat_calls_touch() SET search_path = public;
