@@ -10,11 +10,13 @@ export const listChatRooms = createServerFn({ method: "GET" })
     // Rooms the current user is a member of
     const { data: memberships, error: memErr } = await supabase
       .from("chat_room_members")
-      .select("room_id, last_read_at")
+      .select("room_id, last_read_at, role")
       .eq("user_id", userId);
     if (memErr) throw new Error(memErr.message);
     const roomIds = (memberships ?? []).map((m: any) => m.room_id);
     if (roomIds.length === 0) return { rooms: [] };
+    const myRoleByRoom: Record<string, string> = {};
+    for (const m of memberships ?? []) myRoleByRoom[m.room_id] = m.role ?? "member";
 
     const { data: rooms, error } = await supabase
       .from("chat_rooms")
