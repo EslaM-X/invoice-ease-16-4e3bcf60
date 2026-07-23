@@ -286,7 +286,8 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   const dirtyRef = useRef(true);
 
   // Selection state (for the "select" tool)
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
   const [, setRevision] = useState(0);
   const bumpUI = useCallback(() => setRevision((r) => (r + 1) | 0), []);
   const selDragRef = useRef<
@@ -295,12 +296,39 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         mode: "move" | "resize";
         handle?: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
         startClient: { x: number; y: number };
-        origBounds: { x1: number; y1: number; x2: number; y2: number };
-        origItem: AnyItem;
+        // For "move" — original items keyed by id; for "resize" — one item
+        origItems: AnyItem[];
         overlayW: number;
         overlayH: number;
       }
   >(null);
+
+  // Snap-to-grid + smart guides
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem("lk-presenter:snap") !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("lk-presenter:snap", snapEnabled ? "1" : "0"); } catch { /* ignore */ }
+  }, [snapEnabled]);
+  const guidesRef = useRef<{ v: number[]; h: number[] }>({ v: [], h: [] });
+
+  // Clipboard for copy/paste/duplicate
+  const clipboardRef = useRef<AnyItem[]>([]);
+
+  // Coarse-pointer (mobile/tablet) detection for larger handles & long-press
+  const [isCoarse, setIsCoarse] = useState<boolean>(() => {
+    try { return typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    if (typeof matchMedia === "undefined") return;
+    const mm = matchMedia("(pointer: coarse)");
+    const on = () => setIsCoarse(mm.matches);
+    mm.addEventListener?.("change", on);
+    return () => mm.removeEventListener?.("change", on);
+  }, []);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
 
   // Remote presenter cursors (mouse pointer / finger) from anyone sharing
   const cursorsRef = useRef<
