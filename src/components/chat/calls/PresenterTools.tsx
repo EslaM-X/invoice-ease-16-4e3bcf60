@@ -198,6 +198,13 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   const room = useRoomContext();
   const shares = useTracks([{ source: Track.Source.ScreenShare, withPlaceholder: false }]);
   const isAnyoneSharing = shares.length > 0;
+  const primarySharer = shares[0]?.participant?.identity;
+  const isLocalSharing = shares.some((s) => s.participant?.identity === room.localParticipant.identity);
+
+  // Drawing permission: "all" (default) or "presenter" (only sharers can draw).
+  const [permMode, setPermMode] = useState<"all" | "presenter">("all");
+  const canDraw = permMode === "all" || isLocalSharing;
+
 
   const [tool, setTool] = useState<Tool>("off");
   const [collapsed, setCollapsed] = useState(false);
