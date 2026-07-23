@@ -503,9 +503,11 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     if (tool === "eraser") {
       void publish({ t: "clear", owner: localIdentity }, true);
       applyMessage({ t: "clear", owner: localIdentity });
+      scheduleSave();
       dirtyRef.current = true;
       return;
     }
+
     if (isPlacement(tool)) {
       placeText(tool as "text" | "sticky", p);
       return;
