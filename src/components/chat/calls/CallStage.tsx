@@ -31,14 +31,16 @@ import {
   type TrackPublication,
   type Participant,
 } from "livekit-client";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
 import {
   Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2,
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
   MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
+  Lock, Unlock, Volume2, VolumeX, MonitorPlay,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
