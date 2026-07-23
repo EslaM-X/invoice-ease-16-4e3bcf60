@@ -793,7 +793,7 @@ function TeamChatPage() {
       console.error("[team-chat] scroll handler failed", err);
       toast.error(rtl ? "تعذّر متابعة موضع التمرير" : "Chat scroll tracking failed");
     }
-  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey]);
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey, scrollTsKey, setRoomScrollFn]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
