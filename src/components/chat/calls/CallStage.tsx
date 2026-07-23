@@ -1206,6 +1206,12 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const { lang } = useI18n();
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
+  const [focusLock, setFocusLock] = useFocusLock();
+
+  // Focus lock only makes sense while speaker sort is on.
+  useEffect(() => {
+    if (!autoSpeaker && focusLock) setFocusLock(false);
+  }, [autoSpeaker, focusLock, setFocusLock]);
 
   useEffect(() => {
     if (!open) return;
@@ -1250,12 +1256,19 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
             <ParticipantCountBadge rtl={rtl} />
             <LocalMediaStatusBadge rtl={rtl} />
             <MediaStateAnnouncer rtl={rtl} />
-            <KeyboardShortcuts rtl={rtl} />
+            <KeyboardShortcuts
+              rtl={rtl}
+              autoSpeaker={autoSpeaker}
+              setAutoSpeaker={setAutoSpeaker}
+              focusLock={focusLock}
+              setFocusLock={setFocusLock}
+            />
             <PinRestorer />
-            <Stage autoSpeaker={autoSpeaker} />
+            <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
             <RoomAudioRenderer />
             <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
-            <RoomAudioRenderer />
+            <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
+
             <div
               className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
               role="toolbar"
