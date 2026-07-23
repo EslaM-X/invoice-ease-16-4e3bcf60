@@ -199,6 +199,7 @@ function TeamChatPage() {
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
   const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +210,7 @@ function TeamChatPage() {
     setLoadingOlder(false);
     setIsAtBottom(true);
     setUnseenCount(0);
+    setFirstUnreadId(null);
   }, [activeRoomId]);
 
   // Load wallpaper preference once
@@ -479,7 +481,8 @@ function TeamChatPage() {
   // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    const count = messagesQ.data?.messages?.length ?? 0;
+    const list = messagesQ.data?.messages ?? [];
+    const count = list.length;
     const delta = Math.max(0, count - prevMsgCountRef.current);
     prevMsgCountRef.current = count;
     if (!scrollRef.current) return;
@@ -492,8 +495,15 @@ function TeamChatPage() {
         });
       });
       setUnseenCount(0);
+      setFirstUnreadId(null);
     } else if (delta > 0) {
       setUnseenCount((c) => c + delta);
+      // Mark the first new message so we can render a "New messages" divider
+      setFirstUnreadId((prev) => {
+        if (prev) return prev;
+        const firstNew = list[count - delta];
+        return firstNew?.id ?? null;
+      });
     }
   }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom]);
 
@@ -511,6 +521,7 @@ function TeamChatPage() {
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
     setUnseenCount(0);
+    setFirstUnreadId(null);
   }, []);
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -518,7 +529,7 @@ function TeamChatPage() {
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     const atBottom = distanceFromBottom < 60;
     setIsAtBottom(atBottom);
-    if (atBottom) setUnseenCount(0);
+    if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
     if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
       loadOlderMessages();
     }
@@ -1040,7 +1051,26 @@ function TeamChatPage() {
                       autoFocus
                       value={inChatQuery}
                       onChange={(e) => setInChatQuery(e.target.value)}
-                      placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
+                      onKeyDown={(e) => {
+                        const n = searchResults.length;
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setInChatSearchOpen(false);
+                          setInChatQuery("");
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (n === 0) return;
+                          if (e.shiftKey) setSearchIndex((i) => (i - 1 + n) % n);
+                          else setSearchIndex((i) => (i + 1) % n);
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          if (n > 0) setSearchIndex((i) => (i + 1) % n);
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          if (n > 0) setSearchIndex((i) => (i - 1 + n) % n);
+                        }
+                      }}
+                      placeholder={rtl ? "ابحث داخل هذه المحادثة... (Enter للتنقل، Esc للإغلاق)" : "Search in this conversation... (Enter to navigate, Esc to close)"}
                       className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
                     />
                     <span className="text-xs tabular-nums text-muted-foreground shrink-0">
@@ -1080,6 +1110,9 @@ function TeamChatPage() {
                           <button
                             key={r.id}
                             type="button"
+                            ref={(el) => {
+                              if (active && el) el.scrollIntoView({ block: "nearest" });
+                            }}
                             onClick={() => { setSearchIndex(i); jumpToMessageIndex(r.index); }}
                             className={cn(
                               "w-full text-start px-3 py-2 flex items-start gap-2 border-b border-border/40 hover:bg-accent/60 transition",
@@ -1145,6 +1178,7 @@ function TeamChatPage() {
                     const showName = !sameSenderAsPrev;
                     const showAvatar = !sameSenderAsNext;
                     const isMatch = currentMatchId === m.id;
+                    const isFirstUnread = firstUnreadId === m.id;
                     return (
                       <div
                         key={vi.key}
@@ -1154,13 +1188,26 @@ function TeamChatPage() {
                         style={{
                           position: "absolute",
                           top: 0,
-                          left: 0,
-                          right: 0,
+                          insetInlineStart: 0,
+                          insetInlineEnd: 0,
                           transform: `translateY(${vi.start}px)`,
                           paddingBottom: densityGapPx,
                         }}
-                        className={cn(isMatch && "rounded-2xl ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 shadow-[0_0_0_4px_rgba(212,175,55,0.15)] transition")}
                       >
+                        {isFirstUnread && (
+                          <div className="flex items-center gap-2 my-2 px-2 select-none" aria-label={rtl ? "رسائل جديدة" : "New messages"}>
+                            <div className="flex-1 h-px bg-[color:var(--brand-gold,#d4af37)]/50" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-black bg-[color:var(--brand-gold,#d4af37)] rounded-full px-2 py-0.5 shadow">
+                              {rtl ? "رسائل جديدة" : "New messages"}
+                            </span>
+                            <div className="flex-1 h-px bg-[color:var(--brand-gold,#d4af37)]/50" />
+                          </div>
+                        )}
+                        <motion.div
+                          animate={isMatch ? { boxShadow: ["0 0 0 0 rgba(212,175,55,0.0)", "0 0 0 6px rgba(212,175,55,0.35)", "0 0 0 4px rgba(212,175,55,0.15)"] } : { boxShadow: "0 0 0 0 rgba(0,0,0,0)" }}
+                          transition={{ duration: 0.9, ease: "easeOut" }}
+                          className={cn("rounded-2xl", isMatch && "ring-2 ring-[color:var(--brand-gold,#d4af37)]/70")}
+                        >
                         <MessageBubble
                           msg={m}
                           mine={mine}
@@ -1176,6 +1223,7 @@ function TeamChatPage() {
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
                         />
+                        </motion.div>
                       </div>
                     );
                   })}
@@ -1222,9 +1270,14 @@ function TeamChatPage() {
                 >
                   <ArrowDownToLine className="h-4 w-4" />
                   {unseenCount > 0 && (
-                    <span className="text-[11px] font-bold tabular-nums bg-[color:var(--brand-gold,#d4af37)] text-black rounded-full min-w-[18px] px-1 text-center">
-                      {unseenCount > 99 ? "99+" : unseenCount}
-                    </span>
+                    <>
+                      <span className="text-[11px] font-semibold">
+                        {rtl ? "رسائل جديدة" : "New messages"}
+                      </span>
+                      <span className="text-[11px] font-bold tabular-nums bg-[color:var(--brand-gold,#d4af37)] text-black rounded-full min-w-[18px] px-1 text-center">
+                        {unseenCount > 99 ? "99+" : unseenCount}
+                      </span>
+                    </>
                   )}
                 </button>
               )}
