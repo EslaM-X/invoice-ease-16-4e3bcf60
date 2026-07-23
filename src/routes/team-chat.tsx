@@ -771,14 +771,23 @@ function TeamChatPage() {
       if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
         loadOlderMessages();
       }
-      // Persist scroll position per-room (throttled).
+      // Persist scroll position per-room: instant to localStorage, debounced to Supabase.
       if (activeRoomId && user?.id) {
         if (saveScrollTimerRef.current) window.clearTimeout(saveScrollTimerRef.current);
         const roomId = activeRoomId;
         const top = Math.max(0, Math.round(el.scrollTop));
+        const h = Math.max(0, Math.round(el.scrollHeight));
+        const ts = new Date().toISOString();
+        try {
+          localStorage.setItem(scrollStorageKey(roomId), String(top));
+          localStorage.setItem(scrollTsKey(roomId), ts);
+        } catch {}
+        remoteScrollRef.current[roomId] = { top, ts };
         saveScrollTimerRef.current = window.setTimeout(() => {
-          try { localStorage.setItem(scrollStorageKey(roomId), String(top)); } catch {}
-        }, 200);
+          setRoomScrollFn({ data: { room_id: roomId, top, h } }).catch((err: any) => {
+            console.warn("[team-chat] failed to sync scroll to remote", err?.message ?? err);
+          });
+        }, 1200);
       }
     } catch (err) {
       console.error("[team-chat] scroll handler failed", err);
