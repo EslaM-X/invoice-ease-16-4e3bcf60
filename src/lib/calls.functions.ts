@@ -4,14 +4,14 @@ import { AccessToken } from "livekit-server-sdk";
 
 function livekitUrl() {
   const url = process.env.LIVEKIT_URL;
-  if (!url) throw new Error("LIVEKIT_URL is not configured");
+  if (!url) throw new Error("LIVEKIT_URL غير مضبوط في الخادم");
   return url;
 }
 
 async function mintToken(identity: string, name: string, room: string) {
   const key = process.env.LIVEKIT_API_KEY;
   const secret = process.env.LIVEKIT_API_SECRET;
-  if (!key || !secret) throw new Error("LiveKit API credentials missing");
+  if (!key || !secret) throw new Error("مفاتيح LiveKit غير موجودة على الخادم");
   const at = new AccessToken(key, secret, {
     identity,
     name,
@@ -36,25 +36,43 @@ async function displayName(supabase: any, uid: string): Promise<string> {
   return data?.display_name || data?.email || "User";
 }
 
+/**
+ * Verify that `uid` is a member of `roomId`. Throws a clear Arabic error otherwise.
+ * Uses the authenticated Supabase client — RLS on chat_room_members applies.
+ */
+async function assertRoomMember(supabase: any, uid: string, roomId: string) {
+  const { data, error } = await supabase
+    .from("chat_room_members")
+    .select("user_id")
+    .eq("room_id", roomId)
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (error) throw new Error("تعذّر التحقق من صلاحيات الغرفة");
+  if (!data) throw new Error("غير مسموح: أنت لست عضوًا في هذه الغرفة");
+}
+
 /** Start a new call in a room. Creates chat_calls + participant rows + a system chat message. */
 export const startCall = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { room_id: string; mode: "audio" | "video" }) => {
     if (!d?.room_id || !["audio", "video"].includes(d?.mode)) {
-      throw new Error("room_id and mode are required");
+      throw new Error("room_id ونمط المكالمة مطلوبان");
     }
     return d;
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Verify caller is a member
+    // Verify room exists
     const { data: room, error: roomErr } = await supabase
       .from("chat_rooms")
       .select("id, type")
       .eq("id", data.room_id)
       .maybeSingle();
-    if (roomErr || !room) throw new Error("Room not found");
+    if (roomErr || !room) throw new Error("الغرفة غير موجودة");
+
+    // Explicit membership check with clear message
+    await assertRoomMember(supabase, userId, data.room_id);
 
     const scope = room.type === "direct" ? "dm" : "group";
 
@@ -71,7 +89,6 @@ export const startCall = createServerFn({ method: "POST" })
     if (existing) {
       const name = await displayName(supabase, userId);
       const token = await mintToken(userId, name, existing.livekit_room);
-      // Upsert self-participant as joined-intent
       await supabase.from("chat_call_participants").upsert(
         { call_id: existing.id, user_id: userId, join_status: "joined", joined_at: new Date().toISOString() },
         { onConflict: "call_id,user_id" }
@@ -100,9 +117,8 @@ export const startCall = createServerFn({ method: "POST" })
       })
       .select("id, livekit_room, mode")
       .single();
-    if (insertErr || !created) throw new Error(insertErr?.message || "Failed to start call");
+    if (insertErr || !created) throw new Error(insertErr?.message || "فشل بدء المكالمة");
 
-    // Fetch member list and insert invited participants
     const { data: members } = await supabase
       .from("chat_room_members")
       .select("user_id")
@@ -115,7 +131,6 @@ export const startCall = createServerFn({ method: "POST" })
     }));
     if (rows.length) await supabase.from("chat_call_participants").insert(rows);
 
-    // System chat message
     const label = data.mode === "video" ? "📹 مكالمة فيديو" : "📞 مكالمة صوت";
     await supabase.from("chat_messages").insert({
       room_id: data.room_id,
@@ -142,7 +157,7 @@ export const startCall = createServerFn({ method: "POST" })
 export const joinCall = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { call_id: string }) => {
-    if (!d?.call_id) throw new Error("call_id is required");
+    if (!d?.call_id) throw new Error("call_id مطلوب");
     return d;
   })
   .handler(async ({ data, context }) => {
@@ -152,12 +167,14 @@ export const joinCall = createServerFn({ method: "POST" })
       .select("id, livekit_room, mode, status, room_id")
       .eq("id", data.call_id)
       .maybeSingle();
-    if (error || !call) throw new Error("Call not found");
+    if (error || !call) throw new Error("المكالمة غير موجودة");
     if (!["ringing", "active"].includes(call.status)) {
-      throw new Error("Call is no longer available");
+      throw new Error("المكالمة انتهت بالفعل");
     }
 
-    // Promote status to active on first join
+    // Must be a member of the room to join
+    await assertRoomMember(supabase, userId, call.room_id);
+
     if (call.status === "ringing") {
       await supabase
         .from("chat_calls")
@@ -181,6 +198,14 @@ export const declineCall = createServerFn({ method: "POST" })
   .inputValidator((d: { call_id: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: call } = await supabase
+      .from("chat_calls")
+      .select("id, room_id")
+      .eq("id", data.call_id)
+      .maybeSingle();
+    if (!call) throw new Error("المكالمة غير موجودة");
+    await assertRoomMember(supabase, userId, call.room_id);
+
     await supabase.from("chat_call_participants").upsert(
       { call_id: data.call_id, user_id: userId, join_status: "declined", left_at: new Date().toISOString(), leave_reason: "declined" },
       { onConflict: "call_id,user_id" }
@@ -200,7 +225,7 @@ export const cancelCall = createServerFn({ method: "POST" })
       .eq("id", data.call_id)
       .maybeSingle();
     if (!call) return { ok: true };
-    if (call.initiator_id !== userId) throw new Error("Only the initiator can cancel");
+    if (call.initiator_id !== userId) throw new Error("فقط صاحب المكالمة يمكنه إلغاؤها");
     if (call.status !== "ringing") return { ok: true };
 
     await supabase
@@ -224,6 +249,15 @@ export const leaveCall = createServerFn({ method: "POST" })
   .inputValidator((d: { call_id: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    const { data: precheck } = await supabase
+      .from("chat_calls")
+      .select("id, room_id")
+      .eq("id", data.call_id)
+      .maybeSingle();
+    if (!precheck) throw new Error("المكالمة غير موجودة");
+    await assertRoomMember(supabase, userId, precheck.room_id);
+
     const now = new Date().toISOString();
     await supabase
       .from("chat_call_participants")
@@ -271,7 +305,8 @@ export const listRoomCalls = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { room_id: string; limit?: number }) => d)
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await assertRoomMember(supabase, userId, data.room_id);
     const { data: rows } = await supabase
       .from("chat_calls")
       .select("id, mode, status, initiator_id, started_at, ended_at, duration_seconds")
@@ -279,6 +314,77 @@ export const listRoomCalls = createServerFn({ method: "GET" })
       .order("started_at", { ascending: false })
       .limit(Math.min(data.limit ?? 30, 100));
     return { calls: rows ?? [] };
+  });
+
+/**
+ * List every call across every room the current user is a member of,
+ * with per-participant details. For the Call History page.
+ */
+export const listMyCallHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { limit?: number } | undefined) => d ?? {})
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const limit = Math.min(data.limit ?? 100, 300);
+
+    // Rooms I belong to
+    const { data: myRooms } = await supabase
+      .from("chat_room_members")
+      .select("room_id")
+      .eq("user_id", userId);
+    const roomIds = (myRooms ?? []).map((r: any) => r.room_id);
+    if (!roomIds.length) return { calls: [] };
+
+    const { data: calls } = await supabase
+      .from("chat_calls")
+      .select("id, room_id, mode, status, initiator_id, started_at, ended_at, connected_at, duration_seconds")
+      .in("room_id", roomIds)
+      .order("started_at", { ascending: false })
+      .limit(limit);
+    if (!calls?.length) return { calls: [] };
+
+    const callIds = calls.map((c: any) => c.id);
+    const [{ data: participants }, { data: rooms }] = await Promise.all([
+      supabase
+        .from("chat_call_participants")
+        .select("call_id, user_id, join_status, joined_at, left_at, leave_reason")
+        .in("call_id", callIds),
+      supabase
+        .from("chat_rooms")
+        .select("id, name, type")
+        .in("id", roomIds),
+    ]);
+
+    const uids = Array.from(
+      new Set<string>([
+        ...calls.map((c: any) => c.initiator_id),
+        ...((participants ?? []).map((p: any) => p.user_id)),
+      ])
+    );
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, email, avatar_url")
+      .in("user_id", uids);
+    const profileByUid = new Map<string, any>((profs ?? []).map((p: any) => [p.user_id, p]));
+    const roomById = new Map<string, any>((rooms ?? []).map((r: any) => [r.id, r]));
+    const partsByCall = new Map<string, any[]>();
+    for (const p of participants ?? []) {
+      const arr = partsByCall.get(p.call_id) ?? [];
+      arr.push({ ...p, profile: profileByUid.get(p.user_id) ?? null });
+      partsByCall.set(p.call_id, arr);
+    }
+
+    return {
+      calls: calls.map((c: any) => ({
+        ...c,
+        initiator: profileByUid.get(c.initiator_id) ?? null,
+        room: roomById.get(c.room_id) ?? null,
+        participants: partsByCall.get(c.id) ?? [],
+        me_participated: (partsByCall.get(c.id) ?? []).some(
+          (p: any) => p.user_id === userId && p.join_status === "joined"
+        ),
+      })),
+    };
   });
 
 function formatDur(sec: number) {
