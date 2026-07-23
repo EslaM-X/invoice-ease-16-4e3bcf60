@@ -1780,73 +1780,122 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
 function SelectionOverlay({
   tool,
-  selectedId,
+  selectedIds,
   itemsRef,
   overlayW,
   overlayH,
   beginResize,
+  isCoarse,
+  guides,
 }: {
   tool: Tool;
-  selectedId: string | null;
+  selectedIds: string[];
   itemsRef: React.MutableRefObject<Map<string, AnyItem>>;
   overlayW: number;
   overlayH: number;
   beginResize: (h: HandleKey, e: React.PointerEvent) => void;
+  isCoarse: boolean;
+  guides: { v: number[]; h: number[] };
 }) {
-  if (tool !== "select" || !selectedId || overlayW === 0 || overlayH === 0) return null;
-  const it = itemsRef.current.get(selectedId);
-  if (!it) return null;
-  const b = itemPixelBounds(it, overlayW, overlayH);
-  const left = b.x1;
-  const top = b.y1;
-  const w = Math.max(1, b.x2 - b.x1);
-  const h = Math.max(1, b.y2 - b.y1);
+  if (tool !== "select" || selectedIds.length === 0 || overlayW === 0 || overlayH === 0) return null;
 
-  // Text items: only expose W/E and corner handles that resize width.
-  const isText = it.kind === "text";
-  const handles: HandleKey[] = isText
-    ? ["w", "e"]
-    : ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+  // Individual item outlines (always shown for selected items)
+  const outlines: React.ReactNode[] = [];
+  let unionX1 = Infinity, unionY1 = Infinity, unionX2 = -Infinity, unionY2 = -Infinity;
+  for (const id of selectedIds) {
+    const it = itemsRef.current.get(id);
+    if (!it) continue;
+    const b = itemPixelBounds(it, overlayW, overlayH);
+    if (b.x1 < unionX1) unionX1 = b.x1;
+    if (b.y1 < unionY1) unionY1 = b.y1;
+    if (b.x2 > unionX2) unionX2 = b.x2;
+    if (b.y2 > unionY2) unionY2 = b.y2;
+    outlines.push(
+      <div
+        key={`o-${id}`}
+        className="pointer-events-none absolute rounded-[4px]"
+        style={{
+          left: b.x1, top: b.y1, width: Math.max(1, b.x2 - b.x1), height: Math.max(1, b.y2 - b.y1),
+          border: "1px solid rgba(251, 191, 36, 0.75)",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.35) inset",
+        }}
+      />
+    );
+  }
+  if (!isFinite(unionX1)) return <>{outlines}</>;
 
+  // Snap guide lines
+  const guideNodes: React.ReactNode[] = [];
+  for (const x of guides.v) {
+    guideNodes.push(
+      <div key={`gv-${x}`} className="pointer-events-none absolute top-0 bottom-0" style={{ left: x - 0.5, width: 1, background: "rgba(52, 211, 153, 0.9)", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+    );
+  }
+  for (const y of guides.h) {
+    guideNodes.push(
+      <div key={`gh-${y}`} className="pointer-events-none absolute left-0 right-0" style={{ top: y - 0.5, height: 1, background: "rgba(52, 211, 153, 0.9)", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+    );
+  }
+
+  const single = selectedIds.length === 1;
+  const it = single ? itemsRef.current.get(selectedIds[0]) : null;
+
+  const left = unionX1;
+  const top = unionY1;
+  const w = Math.max(1, unionX2 - unionX1);
+  const h = Math.max(1, unionY2 - unionY1);
+
+  // Resize handles only when exactly one item is selected
+  let handles: HandleKey[] = [];
+  if (single && it) {
+    const isText = it.kind === "text";
+    handles = isText ? ["w", "e"] : ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+  }
+
+  const HSZ = isCoarse ? 22 : 16;
   const handleStyle = (hk: HandleKey): React.CSSProperties => {
-    const cx = (b.x1 + b.x2) / 2 - b.x1;
-    const cy = (b.y1 + b.y2) / 2 - b.y1;
+    const cx = w / 2;
+    const cy = h / 2;
     const map: Record<HandleKey, [number, number]> = {
       nw: [0, 0], n: [cx, 0], ne: [w, 0],
       e: [w, cy], se: [w, h],
       s: [cx, h], sw: [0, h], w: [0, cy],
     };
     const [hx, hy] = map[hk];
-    return { left: hx - 8, top: hy - 8 };
+    return { left: hx - HSZ / 2, top: hy - HSZ / 2, width: HSZ, height: HSZ };
   };
   const cursorFor: Record<HandleKey, string> = {
     nw: "nwse-resize", ne: "nesw-resize", se: "nwse-resize", sw: "nesw-resize",
     n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
   };
   return (
-    <div
-      className="pointer-events-none absolute"
-      style={{ left, top, width: w, height: h }}
-      aria-hidden
-    >
+    <>
+      {outlines}
+      {guideNodes}
       <div
-        className="absolute inset-0 rounded-[6px]"
-        style={{
-          border: "1.5px dashed rgba(251, 191, 36, 0.95)",
-          boxShadow: "0 0 0 1px rgba(0,0,0,0.5) inset, 0 0 12px rgba(251,191,36,0.35)",
-        }}
-      />
-      {handles.map((hk) => (
+        className="pointer-events-none absolute"
+        style={{ left, top, width: w, height: h }}
+        aria-hidden
+      >
         <div
-          key={hk}
-          role="button"
-          aria-label={`resize-${hk}`}
-          className="pointer-events-auto absolute size-4 rounded-[3px] border border-amber-300/90 bg-black shadow-md touch-none"
-          style={{ ...handleStyle(hk), cursor: cursorFor[hk] }}
-          onPointerDown={(e) => beginResize(hk, e)}
+          className="absolute inset-0 rounded-[6px]"
+          style={{
+            border: "1.5px dashed rgba(251, 191, 36, 0.95)",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.5) inset, 0 0 12px rgba(251,191,36,0.35)",
+          }}
         />
-      ))}
-    </div>
+        {handles.map((hk) => (
+          <div
+            key={hk}
+            role="button"
+            aria-label={`resize-${hk}`}
+            className="pointer-events-auto absolute rounded-[3px] border border-amber-300/90 bg-black shadow-md touch-none"
+            style={{ ...handleStyle(hk), cursor: cursorFor[hk] }}
+            onPointerDown={(e) => beginResize(hk, e)}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
