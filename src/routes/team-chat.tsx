@@ -913,7 +913,7 @@ function TeamChatPage() {
         {/* Sidebar */}
         <div
           className={cn(
-            "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background",
+            "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background transition-[width,opacity,transform] duration-300 ease-out motion-reduce:transition-none",
             activeRoomId ? "hidden md:flex" : "flex",
             focusMode && "md:!hidden"
           )}
