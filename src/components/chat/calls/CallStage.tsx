@@ -220,7 +220,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
                 variation="verbose"
                 controls={{
                   microphone: true,
-                  camera: video,
+                  camera: true,
                   screenShare: true,
                   chat: false,
                   leave: true,
