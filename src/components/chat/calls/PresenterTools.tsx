@@ -1283,6 +1283,78 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
 /* -------------------------------------------------------------- */
 
+function SelectionOverlay({
+  tool,
+  selectedId,
+  itemsRef,
+  overlayW,
+  overlayH,
+  beginResize,
+}: {
+  tool: Tool;
+  selectedId: string | null;
+  itemsRef: React.MutableRefObject<Map<string, AnyItem>>;
+  overlayW: number;
+  overlayH: number;
+  beginResize: (h: HandleKey, e: React.PointerEvent) => void;
+}) {
+  if (tool !== "select" || !selectedId || overlayW === 0 || overlayH === 0) return null;
+  const it = itemsRef.current.get(selectedId);
+  if (!it) return null;
+  const b = itemPixelBounds(it, overlayW, overlayH);
+  const left = b.x1;
+  const top = b.y1;
+  const w = Math.max(1, b.x2 - b.x1);
+  const h = Math.max(1, b.y2 - b.y1);
+
+  // Text items: only expose W/E and corner handles that resize width.
+  const isText = it.kind === "text";
+  const handles: HandleKey[] = isText
+    ? ["w", "e"]
+    : ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
+  const handleStyle = (hk: HandleKey): React.CSSProperties => {
+    const cx = (b.x1 + b.x2) / 2 - b.x1;
+    const cy = (b.y1 + b.y2) / 2 - b.y1;
+    const map: Record<HandleKey, [number, number]> = {
+      nw: [0, 0], n: [cx, 0], ne: [w, 0],
+      e: [w, cy], se: [w, h],
+      s: [cx, h], sw: [0, h], w: [0, cy],
+    };
+    const [hx, hy] = map[hk];
+    return { left: hx - 8, top: hy - 8 };
+  };
+  const cursorFor: Record<HandleKey, string> = {
+    nw: "nwse-resize", ne: "nesw-resize", se: "nwse-resize", sw: "nesw-resize",
+    n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
+  };
+  return (
+    <div
+      className="pointer-events-none absolute"
+      style={{ left, top, width: w, height: h }}
+      aria-hidden
+    >
+      <div
+        className="absolute inset-0 rounded-[6px]"
+        style={{
+          border: "1.5px dashed rgba(251, 191, 36, 0.95)",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.5) inset, 0 0 12px rgba(251,191,36,0.35)",
+        }}
+      />
+      {handles.map((hk) => (
+        <div
+          key={hk}
+          role="button"
+          aria-label={`resize-${hk}`}
+          className="pointer-events-auto absolute size-4 rounded-[3px] border border-amber-300/90 bg-black shadow-md touch-none"
+          style={{ ...handleStyle(hk), cursor: cursorFor[hk] }}
+          onPointerDown={(e) => beginResize(hk, e)}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Sep() {
   return <div className="mx-1 h-6 w-px bg-white/10" aria-hidden />;
 }
