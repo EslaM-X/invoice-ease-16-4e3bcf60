@@ -156,15 +156,16 @@ type PtrMsg = {
   down: boolean;
 };
 type PtrGoneMsg = { t: "ptrgone"; owner: string };
+type AssignGroupMsg = { t: "assignGroup"; ids: string[]; groupId: string | null; by: string };
 type Msg =
   | StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg
-  | DeleteMsg | OrderMsg | SnapshotMsg | PtrMsg | PtrGoneMsg;
+  | DeleteMsg | OrderMsg | SnapshotMsg | PtrMsg | PtrGoneMsg | AssignGroupMsg;
 
 
-type Stroke = Omit<StrokeMsg, "t" | "done">;
+type Stroke = Omit<StrokeMsg, "t" | "done"> & { groupId?: string };
 // Rename inner "kind" to avoid clashing with the AnyItem discriminator.
-type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"] };
-type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"] };
+type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"]; groupId?: string };
+type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"]; groupId?: string };
 
 type AnyItem =
   | ({ kind: "stroke" } & Stroke)
