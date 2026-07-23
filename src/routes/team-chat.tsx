@@ -1178,6 +1178,7 @@ function TeamChatPage() {
                     const showName = !sameSenderAsPrev;
                     const showAvatar = !sameSenderAsNext;
                     const isMatch = currentMatchId === m.id;
+                    const isFirstUnread = firstUnreadId === m.id;
                     return (
                       <div
                         key={vi.key}
@@ -1187,13 +1188,26 @@ function TeamChatPage() {
                         style={{
                           position: "absolute",
                           top: 0,
-                          left: 0,
-                          right: 0,
+                          insetInlineStart: 0,
+                          insetInlineEnd: 0,
                           transform: `translateY(${vi.start}px)`,
                           paddingBottom: densityGapPx,
                         }}
-                        className={cn(isMatch && "rounded-2xl ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 shadow-[0_0_0_4px_rgba(212,175,55,0.15)] transition")}
                       >
+                        {isFirstUnread && (
+                          <div className="flex items-center gap-2 my-2 px-2 select-none" aria-label={rtl ? "رسائل جديدة" : "New messages"}>
+                            <div className="flex-1 h-px bg-[color:var(--brand-gold,#d4af37)]/50" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-black bg-[color:var(--brand-gold,#d4af37)] rounded-full px-2 py-0.5 shadow">
+                              {rtl ? "رسائل جديدة" : "New messages"}
+                            </span>
+                            <div className="flex-1 h-px bg-[color:var(--brand-gold,#d4af37)]/50" />
+                          </div>
+                        )}
+                        <motion.div
+                          animate={isMatch ? { boxShadow: ["0 0 0 0 rgba(212,175,55,0.0)", "0 0 0 6px rgba(212,175,55,0.35)", "0 0 0 4px rgba(212,175,55,0.15)"] } : { boxShadow: "0 0 0 0 rgba(0,0,0,0)" }}
+                          transition={{ duration: 0.9, ease: "easeOut" }}
+                          className={cn("rounded-2xl", isMatch && "ring-2 ring-[color:var(--brand-gold,#d4af37)]/70")}
+                        >
                         <MessageBubble
                           msg={m}
                           mine={mine}
