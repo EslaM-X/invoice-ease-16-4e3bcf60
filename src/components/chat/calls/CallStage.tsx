@@ -276,6 +276,102 @@ function useAutoSpeaker(): [boolean, (v: boolean) => void] {
   return [on, set];
 }
 
+/**
+ * NetworkResilience — reacts to sustained poor local connection quality by
+ * (1) dropping the camera capture to 180p and capping the top simulcast layer,
+ * (2) muting video entirely if quality stays poor, and
+ * (3) auto-restoring higher quality when the link recovers.
+ * Runs a single monitor per call; toasts once per state transition.
+ */
+function NetworkResilience({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const stateRef = useRef<{ level: "ok" | "low" | "audio-only"; since: number }>({
+    level: "ok",
+    since: Date.now(),
+  });
+
+  useEffect(() => {
+    if (!room) return;
+    let cancelled = false;
+    const local = room.localParticipant;
+
+    const apply = async (target: "ok" | "low" | "audio-only") => {
+      if (cancelled) return;
+      const cur = stateRef.current.level;
+      if (cur === target) return;
+      stateRef.current = { level: target, since: Date.now() };
+      try {
+        const camPub = local.getTrackPublication(Track.Source.Camera);
+        const camTrack = camPub?.track as LocalTrack | undefined;
+        if (target === "audio-only") {
+          if (camPub && !camPub.isMuted) await local.setCameraEnabled(false);
+          toast.warning(
+            rtl
+              ? "الشبكة ضعيفة جداً — تم إيقاف الكاميرا تلقائياً للحفاظ على جودة الصوت"
+              : "Very weak network — camera auto-disabled to preserve audio",
+            { id: "net-resilience" }
+          );
+        } else if (target === "low") {
+          if (camTrack && "restartTrack" in camTrack) {
+            try {
+              await (camTrack as any).restartTrack({
+                resolution: VideoPresets.h180.resolution,
+              });
+            } catch {}
+          }
+          if (camPub && camPub.isMuted) await local.setCameraEnabled(true);
+          toast.info(
+            rtl ? "تم خفض جودة الفيديو تلقائياً لتحسين الاستقرار" : "Video quality lowered automatically for stability",
+            { id: "net-resilience" }
+          );
+        } else {
+          // recover
+          if (camTrack && "restartTrack" in camTrack) {
+            try {
+              await (camTrack as any).restartTrack({
+                resolution: VideoPresets.h720.resolution,
+              });
+            } catch {}
+          }
+          toast.success(
+            rtl ? "تحسنت جودة الشبكة — تمت استعادة الجودة العالية" : "Network recovered — high quality restored",
+            { id: "net-resilience" }
+          );
+        }
+      } catch {
+        /* swallow — best-effort adaptation */
+      }
+    };
+
+    const onQual = (q: ConnectionQuality, p: Participant) => {
+      if (p.identity !== local.identity) return;
+      const now = Date.now();
+      const st = stateRef.current;
+      if (q === ConnectionQuality.Poor || q === ConnectionQuality.Lost) {
+        // 4s in Poor → low; 10s continuously poor → audio-only
+        if (st.level === "ok") {
+          stateRef.current = { level: "ok", since: st.since };
+          setTimeout(() => {
+            if (!cancelled && stateRef.current.level === "ok") apply("low");
+          }, 4000);
+        } else if (st.level === "low" && now - st.since > 10_000) {
+          apply("audio-only");
+        }
+      } else if (q === ConnectionQuality.Excellent || q === ConnectionQuality.Good) {
+        if (st.level !== "ok" && now - st.since > 8000) apply("ok");
+      }
+    };
+
+    room.on(RoomEvent.ConnectionQualityChanged, onQual);
+    return () => {
+      cancelled = true;
+      room.off(RoomEvent.ConnectionQualityChanged, onQual);
+    };
+  }, [room, rtl]);
+
+  return null;
+}
+
 /** Restore a previously-pinned participant when their track becomes available. */
 function PinRestorer() {
   const layoutCtx = useMaybeLayoutContext();
