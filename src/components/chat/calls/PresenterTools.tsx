@@ -155,6 +155,44 @@ const isFreeStroke = (t: Tool) => t === "pen" || t === "highlighter" || t === "a
 const isPlacement = (t: Tool) => t === "text" || t === "sticky";
 
 /* -------------------------------------------------------------- */
+/* Session persistence                                            */
+/* -------------------------------------------------------------- */
+
+const STORAGE_PREFIX = "lk-presenter:v1:";
+const storageKey = (sharer: string) => STORAGE_PREFIX + sharer;
+
+function saveSession(sharer: string, items: AnyItem[], order: string[]) {
+  try {
+    localStorage.setItem(
+      storageKey(sharer),
+      JSON.stringify({ items, order, savedAt: Date.now() }),
+    );
+  } catch { /* quota / private mode */ }
+}
+function loadSession(sharer: string): { items: AnyItem[]; order: string[] } | null {
+  try {
+    const raw = localStorage.getItem(storageKey(sharer));
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { items?: AnyItem[]; order?: string[] };
+    if (!Array.isArray(p.items) || !Array.isArray(p.order)) return null;
+    return { items: p.items, order: p.order };
+  } catch { return null; }
+}
+function itemToMsg(it: AnyItem): Msg | null {
+  if (it.kind === "stroke") {
+    return { t: "stroke", id: it.id, owner: it.owner, tool: it.tool, color: it.color, w: it.w, pts: it.pts, done: true };
+  }
+  if (it.kind === "shape") {
+    return { t: "shape", id: it.id, owner: it.owner, kind: it.kindShape, color: it.color, w: it.w, x1: it.x1, y1: it.y1, x2: it.x2, y2: it.y2, done: true };
+  }
+  if (it.kind === "text") {
+    return { t: "text", id: it.id, owner: it.owner, kind: it.kindText, color: it.color, font: it.font, size: it.size, x: it.x, y: it.y, maxW: it.maxW, content: it.content };
+  }
+  return null;
+}
+
+/* -------------------------------------------------------------- */
+
 
 export function PresenterTools({ rtl }: { rtl: boolean }) {
   const room = useRoomContext();
