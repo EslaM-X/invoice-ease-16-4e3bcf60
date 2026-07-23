@@ -1051,7 +1051,26 @@ function TeamChatPage() {
                       autoFocus
                       value={inChatQuery}
                       onChange={(e) => setInChatQuery(e.target.value)}
-                      placeholder={rtl ? "ابحث داخل هذه المحادثة..." : "Search in this conversation..."}
+                      onKeyDown={(e) => {
+                        const n = searchResults.length;
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setInChatSearchOpen(false);
+                          setInChatQuery("");
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (n === 0) return;
+                          if (e.shiftKey) setSearchIndex((i) => (i - 1 + n) % n);
+                          else setSearchIndex((i) => (i + 1) % n);
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          if (n > 0) setSearchIndex((i) => (i + 1) % n);
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          if (n > 0) setSearchIndex((i) => (i - 1 + n) % n);
+                        }
+                      }}
+                      placeholder={rtl ? "ابحث داخل هذه المحادثة... (Enter للتنقل، Esc للإغلاق)" : "Search in this conversation... (Enter to navigate, Esc to close)"}
                       className="h-8 bg-transparent border-0 focus-visible:ring-0 shadow-none flex-1"
                     />
                     <span className="text-xs tabular-nums text-muted-foreground shrink-0">
@@ -1091,6 +1110,9 @@ function TeamChatPage() {
                           <button
                             key={r.id}
                             type="button"
+                            ref={(el) => {
+                              if (active && el) el.scrollIntoView({ block: "nearest" });
+                            }}
                             onClick={() => { setSearchIndex(i); jumpToMessageIndex(r.index); }}
                             className={cn(
                               "w-full text-start px-3 py-2 flex items-start gap-2 border-b border-border/40 hover:bg-accent/60 transition",
