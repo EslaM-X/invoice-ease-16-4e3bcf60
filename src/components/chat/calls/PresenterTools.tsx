@@ -1162,6 +1162,39 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     }
     if (!canDraw) return;
 
+    // Long-press on coarse pointers to jump into select mode & pick the item under finger.
+    if (isCoarse && e.pointerType === "touch" && tool !== "laser" && tool !== "eraser") {
+      longPressFiredRef.current = false;
+      if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
+      const box = overlayRef.current;
+      const startX = e.clientX, startY = e.clientY;
+      const w0 = box?.clientWidth ?? 0, h0 = box?.clientHeight ?? 0;
+      const pn = toNorm(e);
+      longPressTimerRef.current = window.setTimeout(() => {
+        longPressFiredRef.current = true;
+        const id = hitTest(pn[0], pn[1], w0, h0);
+        setTool("select");
+        if (id) {
+          const hit = itemsRef.current.get(id);
+          const gid = hit && (hit as { groupId?: string }).groupId;
+          const expanded = gid
+            ? Array.from(itemsRef.current.entries())
+                .filter(([, v]) => (v as { groupId?: string }).groupId === gid)
+                .map(([k]) => k)
+            : [id];
+          setSelectedIds(expanded);
+        } else {
+          setSelectedIds([]);
+        }
+        // Cancel any active draw
+        activeStrokeRef.current = null;
+        activeShapeRef.current = null;
+        // Give quick haptic feedback if available
+        try { (navigator as { vibrate?: (p: number) => void }).vibrate?.(15); } catch { /* ignore */ }
+        void startX; void startY;
+      }, 500);
+    }
+
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toNorm(e);
 
