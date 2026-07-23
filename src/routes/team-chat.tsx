@@ -1451,25 +1451,29 @@ function TeamChatPage() {
                   </PopoverContent>
                 </Popover>
 
+                {/* Luxury Noir & Gold call buttons */}
                 <Button
                   size="icon" variant="ghost"
-                  className="h-10 w-10 rounded-full shrink-0 text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50"
+                  className="relative h-10 w-10 rounded-full shrink-0 text-emerald-50 bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_4px_14px_rgba(16,185,129,0.35)] ring-1 ring-emerald-400/40 hover:from-emerald-400 hover:to-emerald-600 hover:shadow-[0_6px_20px_rgba(16,185,129,0.5)] hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:pointer-events-none"
                   onClick={() => handleStartCall("audio")}
                   disabled={!activeRoomId || !!activeCall || callStarting !== null}
                   title={rtl ? "مكالمة صوت" : "Voice call"}
                   aria-label="Voice call"
                 >
-                  {callStarting === "audio" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-5 w-5" />}
+                  {callStarting === "audio" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-[18px] w-[18px]" />}
+                  {!activeCall && !callStarting && (
+                    <span className="absolute inset-0 rounded-full ring-2 ring-emerald-400/40 animate-ping opacity-40 pointer-events-none" />
+                  )}
                 </Button>
                 <Button
                   size="icon" variant="ghost"
-                  className="h-10 w-10 rounded-full shrink-0 text-sky-600 hover:bg-sky-500/10 disabled:opacity-50"
+                  className="h-10 w-10 rounded-full shrink-0 text-sky-50 bg-gradient-to-br from-sky-500 to-indigo-600 shadow-[0_4px_14px_rgba(56,189,248,0.35)] ring-1 ring-sky-400/40 hover:from-sky-400 hover:to-indigo-500 hover:shadow-[0_6px_20px_rgba(56,189,248,0.5)] hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:pointer-events-none"
                   onClick={() => handleStartCall("video")}
                   disabled={!activeRoomId || !!activeCall || callStarting !== null}
                   title={rtl ? "مكالمة فيديو" : "Video call"}
                   aria-label="Video call"
                 >
-                  {callStarting === "video" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Video className="h-5 w-5" />}
+                  {callStarting === "video" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Video className="h-[18px] w-[18px]" />}
                 </Button>
 
 
