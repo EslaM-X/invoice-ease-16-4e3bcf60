@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { getAvatarSrc, getAvatarSrcSet } from "@/lib/avatar-url";
@@ -48,6 +48,20 @@ export function LuxuryAvatar({
   const srcSet = !errored ? getAvatarSrcSet(url, size, effectiveBust) : undefined;
   const initial = (name ?? "?").trim().charAt(0).toUpperCase() || "?";
 
+  // Cached images may finish loading before React attaches onLoad on remount.
+  // A ref callback that checks `img.complete` guarantees `loaded` flips to true
+  // even if the browser served the image from cache (fixes avatars vanishing
+  // after filter/sort re-renders).
+  const imgRefCb = useCallback(
+    (node: HTMLImageElement | null) => {
+      if (!node) return;
+      if (node.complete && node.naturalWidth > 0) {
+        setLoaded(true);
+      }
+    },
+    [src, srcSet],
+  );
+
   const ringClass =
     ring === "gold"
       ? "ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 ring-offset-2 ring-offset-transparent"
@@ -69,6 +83,7 @@ export function LuxuryAvatar({
       >
         {src && (
           <AvatarImage
+            ref={imgRefCb}
             src={src}
             srcSet={srcSet}
             sizes={`${size}px`}
@@ -88,6 +103,7 @@ export function LuxuryAvatar({
           />
         )}
         <AvatarFallback
+          delayMs={0}
           className="rounded-full text-sm font-bold bg-gradient-to-br from-[#2a2a2e] via-[#1a1a1c] to-black text-[color:var(--brand-gold,#d4af37)]"
           style={{ fontSize: Math.max(11, Math.round(size * 0.36)) }}
         >
