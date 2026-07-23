@@ -881,7 +881,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       void publish({ t: "delete", id, by: localIdentity }, true);
       scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
-      setSelectedId((cur) => (cur === id ? null : cur));
+      setSelectedIds((cur: string[]) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur));
       bumpUI();
     },
     [publish, scheduleSave, localIdentity, bumpUI],
