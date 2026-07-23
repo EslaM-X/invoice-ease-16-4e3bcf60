@@ -54,6 +54,10 @@ import {
   ArrowDown,
   Edit3,
   X as XIcon,
+  History as HistoryIcon,
+  RotateCcw,
+  Image as ImageIcon,
+  Hand,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
