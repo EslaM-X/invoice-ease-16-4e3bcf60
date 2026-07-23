@@ -125,7 +125,9 @@ type TextMsg = {
 type LaserMsg = { t: "laser"; owner: string; x: number; y: number; color: string };
 type UndoMsg = { t: "undo"; owner: string };
 type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
-type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg;
+type PermMsg = { t: "perm"; mode: "presenter" | "all"; by: string };
+type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg;
+
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
 // Rename inner "kind" to avoid clashing with the AnyItem discriminator.
