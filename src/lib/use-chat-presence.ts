@@ -10,7 +10,7 @@ export type PresenceRow = {
   typing_at: string | null;
 };
 
-const ONLINE_WINDOW_MS = 90_000;
+const ONLINE_WINDOW_MS = 45_000;
 const TYPING_WINDOW_MS = 5_000;
 
 export function useRoomPresence(userIds: string[], activeRoomId: string | null, myUserId: string | undefined) {
@@ -22,7 +22,7 @@ export function useRoomPresence(userIds: string[], activeRoomId: string | null, 
 
   // Ticker so "typing" and "online" states expire live
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1500);
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, []);
 

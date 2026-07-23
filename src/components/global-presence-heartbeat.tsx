@@ -39,7 +39,7 @@ export function GlobalPresenceHeartbeat() {
     safePing("online");
 
     // Periodic heartbeat.
-    const HEARTBEAT_MS = 45_000;
+    const HEARTBEAT_MS = 20_000;
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") safePing("online");
       else safePing("away");
