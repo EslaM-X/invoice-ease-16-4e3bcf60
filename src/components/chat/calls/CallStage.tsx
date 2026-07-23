@@ -23,11 +23,13 @@ import {
   ConnectionState,
   ConnectionQuality,
   VideoPresets,
+  VideoQuality,
   ScreenSharePresets,
   RoomEvent,
   createLocalScreenTracks,
   type RoomOptions,
   type LocalTrack,
+  type LocalTrackPublication,
   type TrackPublication,
   type Participant,
 } from "livekit-client";
@@ -44,6 +46,7 @@ import {
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
   MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
   Lock, Unlock, Volume2, VolumeX, MonitorPlay, AlertTriangle,
+  Gauge, Cpu, Activity, Lightbulb, Zap, Feather, Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -1529,6 +1532,316 @@ function FocusLockToggle({ rtl, on, setOn, disabled }: { rtl: boolean; on: boole
 }
 
 /* ------------------------------------------------------------------ */
+/*  Call-wide performance preference (Auto / Lite / Balanced)         */
+/* ------------------------------------------------------------------ */
+
+const LS_CALL_PERF = "call.perfPref"; // "auto" | "lite" | "balanced"
+type CallPerfPref = "auto" | "lite" | "balanced";
+
+function readCallPerf(): CallPerfPref {
+  const v = readLS(LS_CALL_PERF, "auto");
+  return v === "lite" || v === "balanced" ? v : "auto";
+}
+function useCallPerf(): [CallPerfPref, (v: CallPerfPref) => void] {
+  const [v, setV] = useState<CallPerfPref>(() => readCallPerf());
+  const set = useCallback((n: CallPerfPref) => {
+    setV(n);
+    writeLS(LS_CALL_PERF, n);
+  }, []);
+  return [v, set];
+}
+
+function CallPerfSelector({ rtl, value, onChange }: {
+  rtl: boolean; value: CallPerfPref; onChange: (v: CallPerfPref) => void;
+}) {
+  const opts: Array<{ id: CallPerfPref; icon: any; label: string; hint: string }> = [
+    { id: "auto",     icon: Wand2,   label: rtl ? "تلقائي" : "Auto",     hint: rtl ? "يقرر حسب شبكتك وجهازك" : "Adapts to network & device" },
+    { id: "lite",     icon: Feather, label: rtl ? "خفيف" : "Lite",       hint: rtl ? "أقل استهلاك وأسلس" : "Lowest CPU/bandwidth" },
+    { id: "balanced", icon: Zap,     label: rtl ? "متوازن" : "Balanced", hint: rtl ? "جودة وأداء معًا" : "Quality + performance" },
+  ];
+  return (
+    <div
+      className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/5 p-0.5"
+      role="radiogroup"
+      aria-label={rtl ? "وضع أداء المكالمة" : "Call performance mode"}
+    >
+      {opts.map(({ id, icon: Icon, label, hint }) => {
+        const active = value === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(id)}
+            title={hint}
+            aria-label={`${label} — ${hint}`}
+            className={cn(
+              "flex items-center gap-1 rounded px-2 py-1 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+              active ? "bg-amber-500/25 text-amber-100" : "text-white/70 hover:text-white hover:bg-white/10"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden md:inline">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * AutoBitrateCap — when local connection quality drops to Poor/Lost we
+ * publish only the LOW simulcast layer on every video/screen-share track
+ * (huge bandwidth save, no reconnect), then restore on recovery.
+ */
+function AutoBitrateCap({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const cappedRef = useRef(false);
+
+  useEffect(() => {
+    if (!room) return;
+    const local = room.localParticipant;
+
+    const applyMaxQuality = (max: VideoQuality) => {
+      const pubs = Array.from(local.trackPublications.values());
+      for (const pub of pubs) {
+        if (pub.kind !== Track.Kind.Video) continue;
+        const t: any = (pub as LocalTrackPublication).track;
+        try { t?.setPublishingQuality?.(max); } catch { /* ignore */ }
+      }
+    };
+
+    const cap = () => {
+      if (cappedRef.current) return;
+      cappedRef.current = true;
+      applyMaxQuality(VideoQuality.LOW);
+      toast.info(
+        rtl ? "تم تقليل بترييت الفيديو تلقائياً بسبب ضعف الشبكة" : "Video bitrate auto-capped for weak network",
+        { id: "auto-bitrate-cap" }
+      );
+    };
+    const uncap = () => {
+      if (!cappedRef.current) return;
+      cappedRef.current = false;
+      applyMaxQuality(VideoQuality.HIGH);
+      toast.success(
+        rtl ? "استعادة البترييت الكامل — الشبكة تحسنت" : "Full bitrate restored — network recovered",
+        { id: "auto-bitrate-cap" }
+      );
+    };
+
+    const onQual = (q: ConnectionQuality, p: Participant) => {
+      if (p.identity !== local.identity) return;
+      if (q === ConnectionQuality.Poor || q === ConnectionQuality.Lost) cap();
+      else if (q === ConnectionQuality.Good || q === ConnectionQuality.Excellent) uncap();
+    };
+    room.on(RoomEvent.ConnectionQualityChanged, onQual);
+    return () => { room.off(RoomEvent.ConnectionQualityChanged, onQual); };
+  }, [room, rtl]);
+
+  return null;
+}
+
+/**
+ * PerfEffectsGuard — toggles a `data-perf-lite` attribute on the room root
+ * whenever the effective profile is "lite" or the local quality is poor.
+ * A tiny scoped stylesheet then disables backdrop-blur, heavy shadows and
+ * animations to preserve frame budget on weak devices.
+ */
+function PerfEffectsGuard({ pref }: { pref: CallPerfPref }) {
+  const { localParticipant } = useLocalParticipant();
+  const q = localParticipant?.connectionQuality ?? ConnectionQuality.Unknown;
+  const lite = pref === "lite" || q === ConnectionQuality.Poor || q === ConnectionQuality.Lost;
+
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>("[data-lk-theme]");
+    if (!root) return;
+    if (lite) root.setAttribute("data-perf-lite", "1");
+    else root.removeAttribute("data-perf-lite");
+    return () => root.removeAttribute("data-perf-lite");
+  }, [lite]);
+
+  return (
+    <style>{`
+      [data-lk-theme][data-perf-lite="1"] .backdrop-blur-xl,
+      [data-lk-theme][data-perf-lite="1"] .backdrop-blur-md,
+      [data-lk-theme][data-perf-lite="1"] .backdrop-blur { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+      [data-lk-theme][data-perf-lite="1"] * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+      [data-lk-theme][data-perf-lite="1"] .shadow-lg,
+      [data-lk-theme][data-perf-lite="1"] .shadow-xl,
+      [data-lk-theme][data-perf-lite="1"] .shadow-2xl { box-shadow: none !important; }
+    `}</style>
+  );
+}
+
+/**
+ * QualityInsights — a compact button that opens a dialog explaining WHY the
+ * call quality dropped (network / CPU-frame drops / packet loss) and offers
+ * one-click suggestions.
+ */
+function QualityInsights({
+  rtl, shareState, onSwitchLite,
+}: {
+  rtl: boolean;
+  shareState: ReturnType<typeof useScreenShareMonitor>;
+  onSwitchLite: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { localParticipant } = useLocalParticipant();
+  const room = useRoomContext();
+  const q = localParticipant?.connectionQuality ?? ConnectionQuality.Unknown;
+
+  // Detect frame-drop / CPU pressure from any local video sender.
+  const [frameDrop, setFrameDrop] = useState<number>(0); // % lost
+  const [rttMs, setRttMs] = useState<number>(0);
+  const [lossPct, setLossPct] = useState<number>(0);
+  useEffect(() => {
+    if (!room) return;
+    let stop = false;
+    const last: Record<string, { sent: number; lost: number; ts: number }> = {};
+    const tick = async () => {
+      const local = room.localParticipant;
+      const pubs = Array.from(local.trackPublications.values());
+      let totalFramesSent = 0, totalFramesDropped = 0, totalPktSent = 0, totalPktLost = 0, rtt = 0;
+      for (const pub of pubs) {
+        const sender = (pub as any).track?.sender as RTCRtpSender | undefined;
+        if (!sender?.getStats) continue;
+        try {
+          const s = await sender.getStats();
+          s.forEach((r: any) => {
+            if (r.type === "outbound-rtp" && r.kind === "video") {
+              totalFramesSent += r.framesSent || 0;
+              totalFramesDropped += (r.framesEncoded && r.framesSent) ? Math.max(0, r.framesEncoded - r.framesSent) : 0;
+            }
+            if (r.type === "remote-inbound-rtp") {
+              totalPktLost += r.packetsLost || 0;
+              rtt = Math.max(rtt, Math.round((r.roundTripTime || 0) * 1000));
+            }
+            if (r.type === "outbound-rtp") totalPktSent += r.packetsSent || 0;
+          });
+        } catch { /* ignore */ }
+      }
+      if (!stop) {
+        setFrameDrop(totalFramesSent > 0 ? Math.round((totalFramesDropped / totalFramesSent) * 100) : 0);
+        setLossPct(totalPktSent > 0 ? Math.min(100, Math.round((totalPktLost / totalPktSent) * 100)) : 0);
+        setRttMs(rtt);
+      }
+    };
+    const iv = window.setInterval(tick, 2500);
+    return () => { stop = true; clearInterval(iv); };
+  }, [room]);
+
+  const netBad = q === ConnectionQuality.Poor || q === ConnectionQuality.Lost;
+  const cpuBad = frameDrop > 12 || (shareState.latest?.fps != null && shareState.latest.fps > 0 && shareState.latest.fps < 10);
+  const lossBad = lossPct > 5;
+
+  let reason: { icon: any; title: string; detail: string; tone: string } | null = null;
+  if (netBad) reason = { icon: WifiOff, tone: "amber", title: rtl ? "الشبكة ضعيفة" : "Network is weak", detail: rtl ? `RTT ${rttMs}ms · فقد ${lossPct}%` : `RTT ${rttMs}ms · loss ${lossPct}%` };
+  else if (lossBad) reason = { icon: Activity, tone: "amber", title: rtl ? "فقد حزم مرتفع" : "High packet loss", detail: `${lossPct}%` };
+  else if (cpuBad) reason = { icon: Cpu, tone: "amber", title: rtl ? "ضغط على المعالج" : "CPU / frame pressure", detail: rtl ? `إسقاط إطارات ${frameDrop}%` : `Dropped frames ${frameDrop}%` };
+
+  if (!reason) return null;
+
+  const Icon = reason.icon;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "absolute top-16 left-4 z-20 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-md shadow",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+          "border-amber-400/40 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30"
+        )}
+        dir={rtl ? "rtl" : "ltr"}
+        aria-label={`${reason.title} — ${rtl ? "اقتراحات" : "suggestions"}`}
+        title={reason.detail}
+      >
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>{reason.title}</span>
+        <span className="opacity-70">·</span>
+        <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>{rtl ? "اقتراحات" : "Tips"}</span>
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md bg-neutral-950 text-white border-white/10" dir={rtl ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gauge className="h-5 w-5 text-amber-300" />
+              {rtl ? "تحسين جودة المكالمة" : "Improve call quality"}
+            </DialogTitle>
+            <DialogDescription className="text-white/70">
+              {rtl ? `السبب المرجّح: ${reason.title} (${reason.detail})` : `Likely cause: ${reason.title} (${reason.detail})`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <ul className="space-y-2 text-sm">
+            {netBad && <li className="flex gap-2"><WifiOff className="h-4 w-4 mt-0.5 text-amber-300" /> {rtl ? "اقترب من الراوتر أو انتقل إلى شبكة أقوى." : "Move closer to your router or switch to a stronger network."}</li>}
+            {lossBad && <li className="flex gap-2"><Activity className="h-4 w-4 mt-0.5 text-amber-300" /> {rtl ? "أغلق التحميلات/البث في الخلفية." : "Pause background downloads or streaming."}</li>}
+            {cpuBad && <li className="flex gap-2"><Cpu className="h-4 w-4 mt-0.5 text-amber-300" /> {rtl ? "أغلق التبويبات والتطبيقات الثقيلة." : "Close heavy tabs and apps."}</li>}
+            <li className="flex gap-2"><Feather className="h-4 w-4 mt-0.5 text-amber-300" /> {rtl ? "بدّل وضع الأداء إلى «خفيف» لأقصى سلاسة." : "Switch performance mode to “Lite” for max smoothness."}</li>
+            <li className="flex gap-2"><VideoOff className="h-4 w-4 mt-0.5 text-amber-300" /> {rtl ? "أوقف الكاميرا مؤقتاً — الصوت وحده أكثر استقراراً." : "Turn camera off temporarily — audio-only is more stable."}</li>
+          </ul>
+
+          <DialogFooter className="gap-2">
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              {rtl ? "إغلاق" : "Close"}
+            </Button>
+            <Button
+              onClick={() => { onSwitchLite(); setOpen(false); }}
+              className="bg-amber-500 text-black hover:bg-amber-400"
+            >
+              <Feather className="h-4 w-4 me-2" />
+              {rtl ? "تفعيل الوضع الخفيف" : "Enable Lite mode"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * CameraFailureRetry — listens for camera track failures and transparently
+ * re-requests the camera at a lower resolution so a device that can't do
+ * 720p still stays on video at 180p instead of dropping to audio-only.
+ */
+function CameraFailureRetry({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const retryRef = useRef(0);
+  useEffect(() => {
+    if (!room) return;
+    const onFailed = async (_pub: TrackPublication, _p: Participant) => {
+      // no-op placeholder to make LiveKit types happy
+    };
+    const onLocalPublishError = async (err: any) => {
+      if (retryRef.current >= 2) return;
+      retryRef.current += 1;
+      try {
+        await room.localParticipant.setCameraEnabled(false);
+        await new Promise((r) => setTimeout(r, 300));
+        await room.localParticipant.setCameraEnabled(true, {
+          resolution: retryRef.current === 1 ? VideoPresets.h360.resolution : VideoPresets.h180.resolution,
+        });
+        toast.info(
+          rtl ? "إعادة تشغيل الكاميرا بدقة أقل لتفادي الفشل" : "Camera restarted at lower resolution to avoid failure",
+          { id: "cam-retry" }
+        );
+      } catch { /* swallow */ }
+    };
+    room.on(RoomEvent.TrackSubscriptionFailed as any, onFailed);
+    room.on(RoomEvent.MediaDevicesError as any, onLocalPublishError);
+    return () => {
+      room.off(RoomEvent.TrackSubscriptionFailed as any, onFailed);
+      room.off(RoomEvent.MediaDevicesError as any, onLocalPublishError);
+    };
+  }, [room, rtl]);
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Room options                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -1552,6 +1865,16 @@ function detectCapProfile(): CapProfile {
   return "hi";
 }
 
+/**
+ * Merge the user's saved call-perf pref with detected capability. The user
+ * can force "lite" or "balanced"; "auto" defers to the detector.
+ */
+function effectiveProfile(pref: CallPerfPref): CapProfile {
+  if (pref === "lite") return "lite";
+  if (pref === "balanced") return "balanced";
+  return detectCapProfile();
+}
+
 function buildRoomOptions(profile: CapProfile): RoomOptions {
   const isLite = profile === "lite";
   const isBal = profile === "balanced";
@@ -1565,9 +1888,9 @@ function buildRoomOptions(profile: CapProfile): RoomOptions {
         : isBal
         ? [VideoPresets.h180, VideoPresets.h360]
         : [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
-      videoCodec: isLite ? "vp8" : "vp9", // vp8 has universal HW decode on old devices
+      videoCodec: isLite ? "vp8" : "vp9",
       dtx: true,
-      red: true, // audio FEC — huge win on lossy links
+      red: true,
       audioPreset: {
         maxBitrate: isLite ? 20_000 : 32_000,
         priority: "high",
@@ -1578,8 +1901,12 @@ function buildRoomOptions(profile: CapProfile): RoomOptions {
         ? { maxBitrate: 900_000, maxFramerate: 24, priority: "medium" }
         : { maxBitrate: 1_700_000, maxFramerate: 30, priority: "medium" },
       degradationPreference: "maintain-framerate",
-      screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
-      screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
+      screenShareEncoding: isLite
+        ? { maxBitrate: 800_000, maxFramerate: 15, priority: "high" }
+        : ScreenSharePresets.h1080fps30.encoding,
+      screenShareSimulcastLayers: isLite
+        ? [ScreenSharePresets.h720fps15]
+        : [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
     },
     audioCaptureDefaults: {
       autoGainControl: true,
@@ -1611,13 +1938,13 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
   const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
-  const roomOptions = useMemo(() => buildRoomOptions(detectCapProfile()), []);
+  const [callPerf, setCallPerf] = useCallPerf();
+  const roomOptions = useMemo(() => buildRoomOptions(effectiveProfile(callPerf)), [callPerf]);
 
   // Focus lock only makes sense while speaker sort is on — disable at
   // runtime WITHOUT wiping the persisted preference so it restores next call.
   useEffect(() => {
     if (!autoSpeaker && focusLock) setFocusLockTransient(false);
-    // Re-apply the saved preference when speaker sort turns back on.
     if (autoSpeaker && !focusLock && readLS(LS_FOCUSLOCK, "0") === "1") {
       setFocusLockTransient(true);
     }
@@ -1655,7 +1982,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
             }}
             onMediaDeviceFailure={(e) => {
               toast.error(
-                rtl ? `تعذّر الوصول للميكروفون/الكاميرا (${e ?? "غير معروف"})` : `Media device error (${e ?? "unknown"})`
+                rtl ? `تعذّر الوصول للميكروفون/الكاميرا (${e ?? "غير معروف"}) — جاري المحاولة بدقة أقل` : `Media device error (${e ?? "unknown"}) — retrying at lower resolution`
               );
             }}
             onError={(e) => {
@@ -1668,6 +1995,8 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
               setAutoSpeaker={setAutoSpeaker}
               focusLock={focusLock}
               setFocusLock={setFocusLock}
+              callPerf={callPerf}
+              setCallPerf={setCallPerf}
             />
           </LiveKitRoom>
         ) : null}
@@ -1681,13 +2010,15 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
  * diagnostics dialog and auto-fallback controller inside the LiveKitRoom.
  */
 function ShareDiagnosticsMount({
-  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock,
+  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf,
 }: {
   rtl: boolean;
   autoSpeaker: boolean;
   setAutoSpeaker: (v: boolean) => void;
   focusLock: boolean;
   setFocusLock: (v: boolean) => void;
+  callPerf: CallPerfPref;
+  setCallPerf: (v: CallPerfPref) => void;
 }) {
   const ctrlRef = useRef<ShareController | null>(null);
   const surfaceRef = useRef<Surface>(
@@ -1715,6 +2046,7 @@ function ShareDiagnosticsMount({
 
   return (
     <>
+      <PerfEffectsGuard pref={callPerf} />
       <ShareQualityBadge rtl={rtl} state={monitor} onOpenDiagnostics={() => setDiagOpen(true)} />
       <ShareDiagnosticsDialog rtl={rtl} open={diagOpen} onOpenChange={setDiagOpen} state={monitor} />
 
@@ -1724,6 +2056,9 @@ function ShareDiagnosticsMount({
       <MediaStateAnnouncer rtl={rtl} />
       <PinRestorer />
       <NetworkResilience rtl={rtl} />
+      <AutoBitrateCap rtl={rtl} />
+      <CameraFailureRetry rtl={rtl} />
+      <QualityInsights rtl={rtl} shareState={monitor} onSwitchLite={() => setCallPerf("lite")} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
       <PresenterTools rtl={rtl} />
       <RoomAudioRenderer />
@@ -1743,6 +2078,7 @@ function ShareDiagnosticsMount({
         aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
       >
         <div className="mx-auto mb-2 flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4">
+          <CallPerfSelector rtl={rtl} value={callPerf} onChange={setCallPerf} />
           <ScreenShareWithPreview
             rtl={rtl}
             bindController={(c) => { ctrlRef.current = c; }}
@@ -1769,4 +2105,5 @@ function ShareDiagnosticsMount({
     </>
   );
 }
+
 
