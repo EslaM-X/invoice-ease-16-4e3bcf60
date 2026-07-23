@@ -28,8 +28,7 @@ export function prefetchAvatars(
     try {
       const img = new Image();
       img.decoding = "async";
-      // @ts-expect-error not in older lib.dom
-      img.fetchPriority = "low";
+      (img as unknown as { fetchPriority?: string }).fetchPriority = "low";
       img.loading = "eager";
       if (srcSet) img.srcset = srcSet;
       img.sizes = `${sizePx}px`;
