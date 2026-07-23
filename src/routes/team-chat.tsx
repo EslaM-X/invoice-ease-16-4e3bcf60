@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
   Bell, BellOff, X, ArrowUp, ArrowDown, Users2, Rows3, ArrowDownToLine, Loader2,
+  Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal,
 } from "lucide-react";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
