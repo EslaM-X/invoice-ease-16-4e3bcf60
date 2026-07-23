@@ -301,6 +301,23 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       }
   >(null);
 
+  // Remote presenter cursors (mouse pointer / finger) from anyone sharing
+  const cursorsRef = useRef<
+    Map<string, { x: number; y: number; color: string; kind: PtrKind; down: boolean; t: number }>
+  >(new Map());
+
+  // Pending restore prompt when opening a share that has saved drawings
+  const [pendingRestore, setPendingRestore] = useState<
+    | null
+    | { sharer: string; snap: SessionSnap }
+  >(null);
+
+  // Session history (only sharer maintains it)
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const lastRecordAtRef = useRef(0);
+
   const [overlaySize, setOverlaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   useEffect(() => {
     const box = overlayRef.current;
