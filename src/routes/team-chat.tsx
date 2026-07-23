@@ -43,6 +43,7 @@ import { DaySeparator } from "@/components/chat/day-separator";
 import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator";
 import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
 import { record as perfRecord } from "@/lib/chat-perf";
+import { RouteErrorBoundary } from "@/components/error-boundary";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/team-chat")({
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
   },
-  component: TeamChatPage,
+  component: TeamChatPageBoundary,
 });
 
 type WallpaperState = {
@@ -67,6 +68,14 @@ const DEFAULT_WP: WallpaperState = {
   default: { type: "preset", preset: "noir" },
   rooms: {},
 };
+
+function TeamChatPageBoundary() {
+  return (
+    <RouteErrorBoundary label="شات الفريق">
+      <TeamChatPage />
+    </RouteErrorBoundary>
+  );
+}
 
 function TeamChatPage() {
   const { user } = useAuth();
