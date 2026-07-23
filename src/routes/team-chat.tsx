@@ -1575,14 +1575,41 @@ function TeamChatPage() {
                       return null;
                     }
                     return virtualItems.map((vi) => {
-                    const i = vi.index;
+                    const row = rows[vi.index];
+                    if (!row) return null;
+
+                    // Day separator row
+                    if (row.kind === "day") {
+                      return (
+                        <div
+                          key={vi.key}
+                          data-index={vi.index}
+                          ref={rowVirtualizer.measureElement}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            insetInlineStart: 0,
+                            insetInlineEnd: 0,
+                            transform: `translateY(${vi.start}px)`,
+                            paddingBottom: densityGapPx,
+                          }}
+                        >
+                          <DaySeparator label={row.label} rtl={rtl} />
+                        </div>
+                      );
+                    }
+
+                    // Message row
+                    const i = row.msgIndex;
                     const m = messages[i];
                     if (!m) return null;
                     const prev = messages[i - 1];
                     const next = messages[i + 1];
                     const mine = m.sender_id === user?.id;
-                    const sameSenderAsPrev = prev && prev.sender_id === m.sender_id;
-                    const sameSenderAsNext = next && next.sender_id === m.sender_id;
+                    const prevSameDay = prev ? chatDayKey(prev.created_at) === row.dayKey : false;
+                    const nextSameDay = next ? chatDayKey(next.created_at) === row.dayKey : false;
+                    const sameSenderAsPrev = !!prev && prev.sender_id === m.sender_id && prevSameDay;
+                    const sameSenderAsNext = !!next && next.sender_id === m.sender_id && nextSameDay;
                     const showName = !sameSenderAsPrev;
                     const showAvatar = !sameSenderAsNext;
                     const isMatch = currentMatchId === m.id;
@@ -1590,7 +1617,7 @@ function TeamChatPage() {
                     return (
                       <div
                         key={vi.key}
-                        data-index={i}
+                        data-index={vi.index}
                         ref={rowVirtualizer.measureElement}
                         id={`msg-${m.id}`}
                         style={{
@@ -1637,6 +1664,7 @@ function TeamChatPage() {
                   });
                   })()}
                 </div>
+
 
 
                 {typers.length > 0 && (
