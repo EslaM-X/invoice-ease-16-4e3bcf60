@@ -852,11 +852,24 @@ export const getMessageInfo = createServerFn({ method: "GET" })
       .eq("room_id", msg.room_id);
     const memberIds = (mems ?? []).map((m: any) => m.user_id).filter((u: string) => u !== msg.sender_id);
 
-    const { data: reads } = await supabase
-      .from("chat_message_reads")
-      .select("user_id, read_at")
-      .eq("message_id", data.message_id);
-    const seenMap = new Map((reads ?? []).map((r: any) => [r.user_id, r.read_at]));
+    // Prefer `read_at`; fall back to `created_at` on older schemas where the column is missing.
+    let readsRows: Array<{ user_id: string; read_at: string | null }> = [];
+    {
+      const r1 = await supabase
+        .from("chat_message_reads")
+        .select("user_id, read_at")
+        .eq("message_id", data.message_id);
+      if (!r1.error) {
+        readsRows = (r1.data ?? []).map((r: any) => ({ user_id: r.user_id, read_at: r.read_at ?? null }));
+      } else {
+        const r2 = await supabase
+          .from("chat_message_reads")
+          .select("user_id, created_at")
+          .eq("message_id", data.message_id);
+        readsRows = (r2.data ?? []).map((r: any) => ({ user_id: r.user_id, read_at: r.created_at ?? null }));
+      }
+    }
+    const seenMap = new Map(readsRows.map((r) => [r.user_id, r.read_at]));
 
     const { data: presence } = memberIds.length
       ? await supabase
