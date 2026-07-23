@@ -799,7 +799,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
       <button
         type="button"
-        onClick={() => setSysAudioPref(!sysAudio)}
+        onClick={() => requestSysAudioToggle(!sysAudio)}
         aria-pressed={sysAudio}
         title={sysAudio ? (rtl ? "صوت النظام: مفعّل" : "System audio: on") : (rtl ? "صوت النظام: متوقف" : "System audio: off")}
         aria-label={sysAudio ? (rtl ? "صوت النظام مفعّل" : "System audio on") : (rtl ? "صوت النظام متوقف" : "System audio off")}
