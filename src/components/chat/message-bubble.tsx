@@ -185,13 +185,13 @@ export function MessageBubble({
               mine ? "bg-white/15 border-white/50" : "bg-muted/60 border-primary/50"
             )}>
               <div className="font-semibold opacity-80 truncate">{msg.reply_to.sender_display_name}</div>
-              <div className="opacity-70 truncate chat-emoji">
+              <TwemojiBody as="span" className="opacity-70 truncate chat-emoji block">
                 {msg.reply_to.message_type === "voice"
                   ? (rtl ? "🎤 رسالة صوتية" : "🎤 Voice message")
                   : msg.reply_to.message_type === "image"
                     ? (rtl ? "📷 صورة" : "📷 Image")
                     : msg.reply_to.body ?? ""}
-              </div>
+              </TwemojiBody>
             </div>
           )}
 
