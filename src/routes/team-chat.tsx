@@ -477,7 +477,13 @@ function TeamChatPage() {
     prevMsgCountRef.current = count;
     if (!scrollRef.current) return;
     if (isAtBottom) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Use two frames so the virtualizer measures the new row before we scroll.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = scrollRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      });
       setUnseenCount(0);
     } else if (delta > 0) {
       setUnseenCount((c) => c + delta);
