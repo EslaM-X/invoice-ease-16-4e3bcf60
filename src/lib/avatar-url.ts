@@ -44,7 +44,7 @@ function sizeFor(url: string, px: number): string {
   if (sm) {
     const base = sm[1];
     const path = sm[2].replace(/\?.*$/, "");
-    return `${base}/storage/v1/render/image/public/${path}?width=${px}&height=${px}&resize=cover&quality=90`;
+    return `${base}/storage/v1/render/image/public/${path}?width=${px}&height=${px}&resize=cover&quality=100`;
   }
 
   // Supabase signed URLs already contain the render endpoint or a token; leave them

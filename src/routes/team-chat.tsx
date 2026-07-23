@@ -17,8 +17,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
-  Bell, BellOff, X, ArrowUp, ArrowDown,
+  Bell, BellOff, X, ArrowUp, ArrowDown, Users2,
 } from "lucide-react";
+import { MembersSheet } from "@/components/chat/members-sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
@@ -76,6 +77,7 @@ function TeamChatPage() {
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [wallpaperState, setWallpaperState] = useState<WallpaperState>(DEFAULT_WP);
@@ -748,6 +750,16 @@ function TeamChatPage() {
                 <Button
                   size="icon" variant="ghost"
                   className="h-10 w-10 rounded-full shrink-0"
+                  onClick={() => setMembersOpen(true)}
+                  title={rtl ? "معلومات الشات والأعضاء" : "Chat info & members"}
+                  aria-label="Chat info"
+                >
+                  <Users2 className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0"
                   onClick={() => setInChatSearchOpen((v) => !v)}
                   title={rtl ? "بحث في المحادثة" : "Search in chat"}
                   aria-label="Search in chat"
@@ -916,6 +928,18 @@ function TeamChatPage() {
           )}
         </div>
       </div>
+
+      <MembersSheet
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+        roomId={activeRoomId}
+        roomName={activeRoom?.display_name ?? (rtl ? "الشات" : "Chat")}
+        roomType={activeRoom?.type ?? null}
+        roomAvatarUrl={activeRoom?.avatar_url ?? null}
+        myUserId={user?.id ?? ""}
+        iAmAdmin={(activeRoom?.my_role === "admin" || activeRoom?.my_role === "owner")}
+        rtl={rtl}
+      />
     </AppShell>
   );
 }

@@ -10,11 +10,13 @@ export const listChatRooms = createServerFn({ method: "GET" })
     // Rooms the current user is a member of
     const { data: memberships, error: memErr } = await supabase
       .from("chat_room_members")
-      .select("room_id, last_read_at")
+      .select("room_id, last_read_at, role")
       .eq("user_id", userId);
     if (memErr) throw new Error(memErr.message);
     const roomIds = (memberships ?? []).map((m: any) => m.room_id);
     if (roomIds.length === 0) return { rooms: [] };
+    const myRoleByRoom: Record<string, string> = {};
+    for (const m of memberships ?? []) myRoleByRoom[m.room_id] = m.role ?? "member";
 
     const { data: rooms, error } = await supabase
       .from("chat_rooms")
@@ -72,7 +74,7 @@ export const listChatRooms = createServerFn({ method: "GET" })
           });
 
         let display_name: string | null = r.name ?? null;
-        let avatar_url: string | null = null;
+        let avatar_url: string | null = r.avatar_url ?? null;
         if (r.type === "direct" && !display_name) {
           const other = roomMembers.find((m: any) => !m.is_me);
           if (other) {
@@ -87,6 +89,7 @@ export const listChatRooms = createServerFn({ method: "GET" })
           members: roomMembers,
           display_name,
           avatar_url,
+          my_role: myRoleByRoom[r.id] ?? "member",
         };
       })
     );
@@ -823,6 +826,29 @@ export const removeMember = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("chat_remove_member", {
       _room_id: data.room_id,
       _target_user: data.target_user,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Update the group chat's name and/or avatar. Admin or creator only (enforced by RPC). */
+export const updateRoomProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      room_id: z.string().uuid(),
+      name: z.string().max(80).nullable().optional(),
+      avatar_url: z.string().url().nullable().optional(),
+      clear_avatar: z.boolean().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await (supabase as any).rpc("chat_update_room_profile", {
+      _room_id: data.room_id,
+      _name: data.name ?? null,
+      _avatar_url: data.avatar_url ?? null,
+      _clear_avatar: data.clear_avatar ?? false,
     });
     if (error) throw new Error(error.message);
     return { ok: true };

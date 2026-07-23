@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,10 +10,15 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { Crown, Shield, UserMinus, Users, Star, UserPlus, Search, Check } from "lucide-react";
+import {
+  Crown, Shield, UserMinus, Users, Star, UserPlus, Search, Check,
+  Camera, Loader2, Pencil, Save,
+} from "lucide-react";
 import {
   listRoomMembers, setMemberRole, removeMember, listAddableUsers, addRoomMembers,
+  updateRoomProfile,
 } from "@/lib/chat.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import { toast } from "sonner";
 
@@ -31,12 +36,14 @@ type MemberRow = {
 };
 
 export function MembersSheet({
-  open, onOpenChange, roomId, roomName, myUserId, iAmAdmin, rtl,
+  open, onOpenChange, roomId, roomName, roomType, roomAvatarUrl, myUserId, iAmAdmin, rtl,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   roomId: string | null;
   roomName: string;
+  roomType?: "direct" | "group" | null;
+  roomAvatarUrl?: string | null;
   myUserId: string;
   iAmAdmin: boolean;
   rtl: boolean;
@@ -45,7 +52,12 @@ export function MembersSheet({
   const fetchMembers = useServerFn(listRoomMembers);
   const setRoleFn = useServerFn(setMemberRole);
   const removeFn = useServerFn(removeMember);
+  const updateProfileFn = useServerFn(updateRoomProfile);
   const [addOpen, setAddOpen] = useState(false);
+  const [editName, setEditName] = useState<string>("");
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const q = useQuery({
     queryKey: ["chat-room-members", roomId],
@@ -59,6 +71,12 @@ export function MembersSheet({
   const createdBy = q.data?.created_by ?? null;
   const memberIds = useMemo(() => members.map((m) => m.user_id), [members]);
   const { isOnline } = useRoomPresence(memberIds, roomId, myUserId);
+
+  useEffect(() => {
+    if (open) setEditName(roomName ?? "");
+  }, [open, roomName]);
+  const isGroup = (roomType ?? (q.data?.room_type as any)) === "group";
+  const canManageProfile = isGroup && iAmAdmin && !!roomId;
 
   const onlineCount = members.filter((m) => isOnline(m.user_id)).length;
   const creatorRow = members.find((m) => m.is_creator);
@@ -81,6 +99,60 @@ export function MembersSheet({
       qc.invalidateQueries({ queryKey: ["chat-room-members", roomId] });
       qc.invalidateQueries({ queryKey: ["chat-rooms"] });
       toast.success(rtl ? "تمت الإزالة" : "Removed");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+  };
+
+  const saveName = async () => {
+    if (!roomId) return;
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === roomName) return;
+    setSavingName(true);
+    try {
+      await updateProfileFn({ data: { room_id: roomId, name: trimmed } });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      qc.invalidateQueries({ queryKey: ["chat-room-members", roomId] });
+      toast.success(rtl ? "تم تحديث اسم الشات" : "Chat renamed");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    finally { setSavingName(false); }
+  };
+
+  const pickAvatar = () => fileInputRef.current?.click();
+  const onPickAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !roomId) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(rtl ? "برجاء اختيار صورة" : "Please pick an image");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${roomId}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("chat-room-avatars")
+        .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("chat-room-avatars")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error("sign_failed");
+      await updateProfileFn({ data: { room_id: roomId, avatar_url: signed.signedUrl } });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      toast.success(rtl ? "تم تحديث صورة الشات" : "Chat photo updated");
+    } catch (err: any) {
+      toast.error(err?.message ?? (rtl ? "فشل الرفع" : "Upload failed"));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+  const clearAvatar = async () => {
+    if (!roomId) return;
+    if (!confirm(rtl ? "إزالة صورة الشات؟" : "Remove chat photo?")) return;
+    try {
+      await updateProfileFn({ data: { room_id: roomId, clear_avatar: true } });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      toast.success(rtl ? "تم" : "Done");
     } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
 
@@ -161,6 +233,72 @@ export function MembersSheet({
             <SheetDescription className="text-white/60 text-xs">
               {members.length} {rtl ? "عضو" : "members"} · {onlineCount} {rtl ? "متصل" : "online"}
             </SheetDescription>
+
+            {canManageProfile && (
+              <div className="mt-3 rounded-xl border border-[color:var(--brand-gold,#d4af37)]/25 bg-black/30 p-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <LuxuryAvatar
+                      url={roomAvatarUrl ?? null}
+                      name={roomName}
+                      size={56}
+                      ring="gold"
+                    />
+                    <button
+                      type="button"
+                      onClick={pickAvatar}
+                      disabled={uploadingAvatar}
+                      className="absolute -bottom-1 -end-1 h-7 w-7 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black grid place-items-center shadow-lg ring-2 ring-[#141416] disabled:opacity-60"
+                      title={rtl ? "تغيير الصورة" : "Change photo"}
+                      aria-label={rtl ? "تغيير الصورة" : "Change photo"}
+                    >
+                      {uploadingAvatar
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Camera className="h-3.5 w-3.5" />}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={onPickAvatarFile}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[color:var(--brand-gold,#d4af37)] font-bold">
+                      <Pencil className="h-3 w-3" /> {rtl ? "معلومات الشات" : "Chat profile"}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder={rtl ? "اسم الشات (يدعم الإيموجي 😎)" : "Chat name (emoji ok 😎)"}
+                        maxLength={80}
+                        className="h-8 bg-white/5 border-white/15 text-white placeholder:text-white/40 focus-visible:ring-[color:var(--brand-gold,#d4af37)]"
+                      />
+                      <Button
+                        size="icon"
+                        className="h-8 w-8 shrink-0 bg-[color:var(--brand-gold,#d4af37)] hover:bg-[color:var(--brand-gold,#d4af37)]/90 text-black"
+                        onClick={saveName}
+                        disabled={savingName || !editName.trim() || editName.trim() === roomName}
+                        title={rtl ? "حفظ" : "Save"}
+                      >
+                        {savingName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {roomAvatarUrl && (
+                      <button
+                        type="button"
+                        onClick={clearAvatar}
+                        className="mt-1.5 text-[11px] text-white/50 hover:text-red-300 underline underline-offset-2"
+                      >
+                        {rtl ? "إزالة صورة الشات" : "Remove chat photo"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {canAdd && roomId && (
               <Button
                 onClick={() => setAddOpen(true)}
