@@ -12,7 +12,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +19,7 @@ import {
   Bell, BellOff, X, ArrowUp, ArrowDown, Users2,
 } from "lucide-react";
 import { MembersSheet } from "@/components/chat/members-sheet";
+import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
@@ -613,12 +613,7 @@ function TeamChatPage() {
                   )}
                 >
                   <div className="relative shrink-0">
-                    <Avatar className="h-14 w-14 ring-2 ring-[color:var(--brand-gold,#d4af37)]/50 shadow-md">
-                      {r.avatar_url && <AvatarImage src={r.avatar_url} />}
-                      <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-bold text-lg">
-                        {label.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <LuxuryAvatar url={r.avatar_url} name={label} size={66} ring="gold" showSkeleton={false} />
                     {online && (
                       <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                     )}
@@ -665,12 +660,13 @@ function TeamChatPage() {
                   <PopoverTrigger asChild>
                     <button className="flex items-center gap-3 min-w-0 flex-1 text-start hover:bg-accent/40 rounded-xl px-2 py-1.5 transition group">
                       <div className="relative shrink-0">
-                        <Avatar className="h-12 w-12 ring-2 ring-[color:var(--brand-gold,#d4af37)]/50 shadow-lg">
-                          {activeRoom.avatar_url && <AvatarImage src={activeRoom.avatar_url} />}
-                          <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-bold text-base">
-                            {(activeRoom.display_name ?? "G").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <LuxuryAvatar
+                          url={activeRoom.avatar_url}
+                          name={activeRoom.display_name ?? (rtl ? "جروب" : "Group")}
+                          size={64}
+                          ring="gold"
+                          showSkeleton={false}
+                        />
                         {activeRoom.type === "direct" && (() => {
                           const other = (activeRoom.members ?? []).find((m: any) => !m.is_me);
                           return other && isOnline(other.user_id) ? (
@@ -723,12 +719,7 @@ function TeamChatPage() {
                               r.id === activeRoomId && "bg-accent/70"
                             )}
                           >
-                            <Avatar className="h-10 w-10 ring-1 ring-[color:var(--brand-gold,#d4af37)]/30">
-                              {r.avatar_url && <AvatarImage src={r.avatar_url} />}
-                              <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground text-sm">
-                                {label.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <LuxuryAvatar url={r.avatar_url} name={label} size={48} ring="gold" showSkeleton={false} />
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm truncate">{label}</div>
                               <div className="text-xs text-muted-foreground truncate">
@@ -1010,10 +1001,7 @@ function NewChatDialog({
                   selected.includes(m.user_id) && "bg-accent"
                 )}
               >
-                <Avatar className="h-8 w-8">
-                  {m.avatar_url && <AvatarImage src={m.avatar_url} />}
-                  <AvatarFallback>{(m.display_name ?? m.email ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <LuxuryAvatar url={m.avatar_url} name={m.display_name ?? m.email ?? "?"} size={44} ring="soft" showSkeleton={false} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate flex items-center gap-2">
                     {m.display_name ?? m.email}
