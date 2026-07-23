@@ -710,6 +710,8 @@ function TeamChatPage() {
   }, [messages]);
 
   // Virtualized message list
+  // NOTE: rely on the virtualizer's built-in ResizeObserver-based measurement
+  // to avoid subpixel jumps when bubbles grow (images/wallpaper loading).
   const rowVirtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
@@ -717,10 +719,6 @@ function TeamChatPage() {
     overscan: 10,
     getItemKey: (i) => messages[i]?.id ?? i,
     scrollMargin: 48, // space for top "Load older" sentinel
-    measureElement:
-      typeof ResizeObserver !== "undefined"
-        ? (el) => el?.getBoundingClientRect().height ?? 76
-        : undefined,
   });
 
   // In-chat search: rich results (id, index, snippet, ts)
