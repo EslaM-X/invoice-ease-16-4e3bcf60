@@ -909,10 +909,22 @@ function TeamChatPage() {
 
 
         {/* Conversation */}
-        <div className={cn("flex-1 flex-col min-w-0", activeRoomId ? "flex" : "hidden md:flex")}>
+        <div className={cn("flex-1 flex-col min-w-0 mx-auto w-full", widthMaxClass, activeRoomId ? "flex" : "hidden md:flex")}>
           {activeRoom ? (
             <>
               <div className="p-3 border-b flex items-center gap-3 bg-gradient-to-b from-card to-card/70 backdrop-blur-xl">
+                {focusMode && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hidden md:inline-flex shrink-0 h-9 w-9 rounded-full border border-[color:var(--brand-gold,#d4af37)]/30 hover:bg-[color:var(--brand-gold,#d4af37)]/10"
+                    onClick={toggleFocusMode}
+                    title={rtl ? "إظهار قائمة المحادثات" : "Show conversations"}
+                    aria-label="Show sidebar"
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
@@ -922,6 +934,7 @@ function TeamChatPage() {
                 >
                   {rtl ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
                 </Button>
+
 
                 {/* Header quick-jump popover */}
                 <Popover>
