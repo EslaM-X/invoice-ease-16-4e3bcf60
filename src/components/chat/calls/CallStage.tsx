@@ -367,9 +367,14 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
           >
             <NetworkQualityBadge rtl={rtl} />
             <LocalMediaStatusBadge rtl={rtl} />
+            <MediaStateAnnouncer rtl={rtl} />
             <Stage />
             <RoomAudioRenderer />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3">
+            <div
+              className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
+              role="toolbar"
+              aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
+            >
               <ControlBar
                 variation="verbose"
                 controls={{
