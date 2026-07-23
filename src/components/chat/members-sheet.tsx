@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Crown, Shield, UserMinus, Users, Star, UserPlus, Search, Check,
-  Camera, Loader2, Pencil, Save,
+  Camera, Loader2, Pencil, Save, RefreshCcw, AlertTriangle,
 } from "lucide-react";
 import {
   listRoomMembers, setMemberRole, removeMember, listAddableUsers, addRoomMembers,
@@ -20,7 +20,7 @@ import {
 } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
-import { getAvatarSrc } from "@/lib/avatar-url";
+import { describeAvatarChoice } from "@/lib/avatar-url";
 import { toast } from "sonner";
 
 type MemberRow = {
@@ -58,7 +58,13 @@ export function MembersSheet({
   const [editName, setEditName] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [bustKey, setBustKey] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const refreshAvatars = () => {
+    setBustKey(Date.now());
+    toast.success(rtl ? "تم إعادة تحميل الصور بجودة عالية" : "Reloaded avatars in HD");
+  };
 
   const q = useQuery({
     queryKey: ["chat-room-members", roomId],
