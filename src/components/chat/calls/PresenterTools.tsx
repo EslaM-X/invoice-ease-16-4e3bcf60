@@ -1240,7 +1240,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     }
   };
 
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
+    if (longPressTimerRef.current) cancelLongPress();
+    if (longPressFiredRef.current) return;
     if (tool === "off" || tool === "select") return;
     const p = toNorm(e);
 
