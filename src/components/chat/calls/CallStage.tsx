@@ -1436,31 +1436,77 @@ function FocusLockToggle({ rtl, on, setOn, disabled }: { rtl: boolean; on: boole
 /*  Room options                                                      */
 /* ------------------------------------------------------------------ */
 
-const roomOptions: RoomOptions = {
-  adaptiveStream: true,
-  dynacast: true,
-  publishDefaults: {
-    simulcast: true,
-    videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
-    videoCodec: "vp9",
-    dtx: true,
-    red: true,
-    audioPreset: { maxBitrate: 32_000, priority: "high" },
-    screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
-    screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
-  },
-  audioCaptureDefaults: {
-    autoGainControl: true,
-    echoCancellation: true,
-    noiseSuppression: true,
-    channelCount: 1,
-    sampleRate: 48_000,
-  },
-  videoCaptureDefaults: {
-    resolution: VideoPresets.h720.resolution,
-  },
-  stopLocalTrackOnUnpublish: true,
-};
+/**
+ * Detect device / network capability once per call to build a resilient
+ * RoomOptions profile. Weak CPUs, low memory, cellular links, and Data-Saver
+ * mode start on the lowest simulcast rung and a conservative capture size.
+ */
+type CapProfile = "lite" | "balanced" | "hi";
+function detectCapProfile(): CapProfile {
+  if (typeof navigator === "undefined") return "balanced";
+  const nav: any = navigator;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+  const cores = nav.hardwareConcurrency ?? 4;
+  const mem = nav.deviceMemory ?? 4;
+  const saveData = !!conn?.saveData;
+  const eff = String(conn?.effectiveType || "");
+  const downlink = Number(conn?.downlink ?? 10);
+  if (saveData || /^(slow-)?2g$/.test(eff) || cores <= 2 || mem <= 2 || downlink < 1) return "lite";
+  if (eff === "3g" || cores <= 4 || mem <= 4 || downlink < 3) return "balanced";
+  return "hi";
+}
+
+function buildRoomOptions(profile: CapProfile): RoomOptions {
+  const isLite = profile === "lite";
+  const isBal = profile === "balanced";
+  return {
+    adaptiveStream: true,
+    dynacast: true,
+    publishDefaults: {
+      simulcast: true,
+      videoSimulcastLayers: isLite
+        ? [VideoPresets.h180]
+        : isBal
+        ? [VideoPresets.h180, VideoPresets.h360]
+        : [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
+      videoCodec: isLite ? "vp8" : "vp9", // vp8 has universal HW decode on old devices
+      dtx: true,
+      red: true, // audio FEC — huge win on lossy links
+      audioPreset: {
+        maxBitrate: isLite ? 20_000 : 32_000,
+        priority: "high",
+      },
+      videoEncoding: isLite
+        ? { maxBitrate: 300_000, maxFramerate: 20, priority: "low" }
+        : isBal
+        ? { maxBitrate: 900_000, maxFramerate: 24, priority: "medium" }
+        : { maxBitrate: 1_700_000, maxFramerate: 30, priority: "medium" },
+      degradationPreference: "maintain-framerate",
+      screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+      screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
+    },
+    audioCaptureDefaults: {
+      autoGainControl: true,
+      echoCancellation: true,
+      noiseSuppression: true,
+      channelCount: 1,
+      sampleRate: 48_000,
+    },
+    videoCaptureDefaults: {
+      resolution: isLite
+        ? VideoPresets.h180.resolution
+        : isBal
+        ? VideoPresets.h360.resolution
+        : VideoPresets.h720.resolution,
+    },
+    stopLocalTrackOnUnpublish: true,
+    reconnectPolicy: {
+      nextRetryDelayInMs: (ctx: { retryCount: number }) =>
+        Math.min(1000 * Math.pow(1.5, ctx.retryCount), 10_000),
+    },
+  };
+}
+
 
 /* ------------------------------------------------------------------ */
 
