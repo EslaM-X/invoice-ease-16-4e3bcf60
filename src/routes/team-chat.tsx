@@ -905,9 +905,9 @@ function TeamChatPage() {
     : undefined;
 
   return (
-    <AppShell>
+    <AppShell fullBleed>
       <div
-        className="flex overflow-hidden bg-card shadow-lg rounded-2xl border md:rounded-none md:border-0 md:border-t md:shadow-none md:-my-8 md:w-screen md:max-w-[100vw] md:mx-[calc(50%-50vw)] h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
+        className="flex overflow-hidden bg-card border-t h-[calc(100dvh-3.5rem)] w-full"
         dir={rtl ? "rtl" : "ltr"}
       >
         {/* Sidebar */}
