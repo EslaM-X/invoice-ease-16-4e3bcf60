@@ -131,12 +131,18 @@ export function MessageBubble({
       className={cn("group/msg flex gap-2 items-end", mine ? "justify-end" : "justify-start")}
     >
       {!mine && (
-        <div className="w-14 shrink-0 self-end">
+        <div
+          className="shrink-0 self-end"
+          style={{ width: "var(--chat-avatar-slot, 56px)" }}
+        >
           {showAvatar && (
             <LuxuryAvatar
               url={msg.sender_avatar_url}
               name={displayName}
-              size={60}
+              size={Number(
+                (typeof window !== "undefined" &&
+                  getComputedStyle(document.documentElement).getPropertyValue("--chat-avatar-size").trim().replace("px", "")) || 0
+              ) || 60}
               ring="gold"
             />
           )}
@@ -154,8 +160,12 @@ export function MessageBubble({
             e.preventDefault();
             setSheetOpen(true);
           }}
+          style={{
+            padding: "var(--chat-bubble-pad, 8px 12px)",
+            fontSize: "var(--chat-bubble-font, 14px)",
+          }}
           className={cn(
-            "relative px-3 py-2 rounded-2xl text-sm shadow-sm break-words select-text",
+            "relative rounded-2xl shadow-sm break-words select-text",
             mine
               ? "bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-ee-md"
               : "bg-card border border-border/60 rounded-es-md backdrop-blur-sm",
