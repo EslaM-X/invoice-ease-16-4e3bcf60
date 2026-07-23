@@ -247,9 +247,33 @@ function TeamChatPage() {
   const messagesQ = useQuery({
     queryKey: ["chat-messages", activeRoomId],
     queryFn: () =>
-      activeRoomId ? fetchMessages({ data: { room_id: activeRoomId, limit: 100 } }) : Promise.resolve({ messages: [] }),
+      activeRoomId ? fetchMessages({ data: { room_id: activeRoomId, limit: 50 } }) : Promise.resolve({ messages: [] }),
     enabled: !!activeRoomId,
   });
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeRoomId || loadingOlder || !hasMoreOlder) return;
+    const firstPageMsgs: ChatMsg[] = messagesQ.data?.messages ?? [];
+    const oldestKnown = (olderPages[0]?.[0] ?? firstPageMsgs[0]);
+    if (!oldestKnown?.created_at) return;
+    setLoadingOlder(true);
+    if (scrollRef.current) preserveScrollRef.current = { prevHeight: scrollRef.current.scrollHeight };
+    try {
+      const r: any = await fetchMessages({
+        data: { room_id: activeRoomId, limit: 50, before_created_at: oldestKnown.created_at },
+      });
+      const page: ChatMsg[] = r?.messages ?? [];
+      if (page.length === 0) { setHasMoreOlder(false); }
+      else {
+        setOlderPages((prev) => [page, ...prev]);
+        if (page.length < 50) setHasMoreOlder(false);
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to load older");
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeRoomId, loadingOlder, hasMoreOlder, olderPages, messagesQ.data?.messages, fetchMessages]);
 
   const membersQ = useQuery({
     queryKey: ["company-members"],
