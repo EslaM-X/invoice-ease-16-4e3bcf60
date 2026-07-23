@@ -1639,18 +1639,13 @@ function TeamChatPage() {
                 </div>
 
 
-                {typingNames.length > 0 && (
+                {typers.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 text-xs text-muted-foreground ps-10"
+                    className="ps-3 pe-3 pb-1"
                   >
-                    <div className="flex gap-0.5">
-                      {[0, 150, 300].map((d) => (
-                        <span key={d} className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                      ))}
-                    </div>
-                    <span className="italic">{typingNames.join(", ")} {rtl ? "يكتب..." : "typing..."}</span>
+                    <TypingIndicator typers={typers} rtl={rtl} variant="line" />
                   </motion.div>
                 )}
 
