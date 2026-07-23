@@ -351,49 +351,60 @@ function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
 function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
   const room = useRoomContext();
   const seenRef = useRef(false);
-  // key -> latest pending state; single delayed dispatch collapses rapid toggles
-  const pendingRef = useRef<Map<string, { timer: any; final: () => void }>>(new Map());
+  // Per-participant coalescing: one toast per person, showing the LATEST state,
+  // debounced by ~2.5s so rapid mic/cam/share flips don't spam the room.
+  const pendingRef = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
     if (!room) return;
 
-    const nameOf = (p: any) =>
-      p?.name || p?.identity || (rtl ? "مشارك" : "Participant");
+    const nameOf = (p: any) => p?.name || p?.identity || (rtl ? "مشارك" : "Participant");
+    const whoLabel = (p: any) =>
+      p?.identity === room.localParticipant?.identity ? (rtl ? "أنت" : "You") : nameOf(p);
 
-    const scheduleToast = (key: string, dispatch: () => void, delay = 900) => {
+    const schedule = (identity: string, buildLine: () => string, isPositive: boolean) => {
+      if (!seenRef.current) return;
+      const key = `p-${identity}`;
       const existing = pendingRef.current.get(key);
-      if (existing) clearTimeout(existing.timer);
+      if (existing) clearTimeout(existing);
       const timer = setTimeout(() => {
         pendingRef.current.delete(key);
-        dispatch();
-      }, delay);
-      pendingRef.current.set(key, { timer, final: dispatch });
+        const line = buildLine();
+        (isPositive ? toast.success : toast)(line, { id: key, duration: 3500 });
+      }, 2500);
+      pendingRef.current.set(key, timer);
     };
 
-    const whoLabel = (participant: any) =>
-      participant?.identity === room.localParticipant?.identity
-        ? (rtl ? "أنت" : "You")
-        : nameOf(participant);
+    const buildSummary = (participant: any, change: string) => {
+      const who = whoLabel(participant);
+      const mic = participant?.isMicrophoneEnabled;
+      const cam = participant?.isCameraEnabled;
+      const share = participant?.isScreenShareEnabled;
+      if (rtl) {
+        const bits: string[] = [];
+        bits.push(`🎙️ ${mic ? "مفتوح" : "مكتوم"}`);
+        bits.push(`📷 ${cam ? "مفتوحة" : "مقفولة"}`);
+        if (share) bits.push("🖥️ يشارك");
+        return `${who} — ${change} · ${bits.join(" · ")}`;
+      }
+      const bits: string[] = [];
+      bits.push(`🎙️ ${mic ? "on" : "muted"}`);
+      bits.push(`📷 ${cam ? "on" : "off"}`);
+      if (share) bits.push("🖥️ sharing");
+      return `${who} — ${change} · ${bits.join(" · ")}`;
+    };
 
     const onMuteChange = (pub: TrackPublication, participant: any, muted: boolean) => {
-      if (!seenRef.current) return;
-      const who = whoLabel(participant);
-      const toastId = `mute-${participant.identity}-${pub.source}`;
-      if (pub.source === Track.Source.Microphone) {
-        scheduleToast(toastId, () => {
-          const line = rtl
-            ? `${who}: ${muted ? "كتم الميكروفون" : "فتح الميكروفون"}`
-            : `${who} ${muted ? "muted the mic" : "unmuted the mic"}`;
-          (muted ? toast : toast.success)(line, { id: toastId, icon: "🎙️" });
-        });
-      } else if (pub.source === Track.Source.Camera) {
-        scheduleToast(toastId, () => {
-          const line = rtl
-            ? `${who}: ${muted ? "أغلق الكاميرا" : "فتح الكاميرا"}`
-            : `${who} ${muted ? "turned camera off" : "turned camera on"}`;
-          (muted ? toast : toast.success)(line, { id: toastId, icon: "📷" });
-        });
-      }
+      const src = pub.source;
+      if (src !== Track.Source.Microphone && src !== Track.Source.Camera) return;
+      const change = rtl
+        ? (src === Track.Source.Microphone
+            ? (muted ? "كتم الميكروفون" : "فتح الميكروفون")
+            : (muted ? "أغلق الكاميرا" : "فتح الكاميرا"))
+        : (src === Track.Source.Microphone
+            ? (muted ? "muted mic" : "unmuted mic")
+            : (muted ? "camera off" : "camera on"));
+      schedule(participant.identity, () => buildSummary(participant, change), !muted);
     };
 
     const onMuted = (pub: TrackPublication, participant: any) => onMuteChange(pub, participant, true);
@@ -401,14 +412,10 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
 
     const onShareChange = (pub: TrackPublication, participant: any, started: boolean) => {
       if (pub.source !== Track.Source.ScreenShare) return;
-      const who = whoLabel(participant);
-      const id = `share-${participant.identity}`;
-      scheduleToast(id, () => {
-        const line = rtl
-          ? `${who}: ${started ? "بدأ مشاركة الشاشة" : "أوقف مشاركة الشاشة"}`
-          : `${who} ${started ? "started screen share" : "stopped screen share"}`;
-        (started ? toast.success : toast)(line, { id, icon: "🖥️" });
-      }, 250);
+      const change = rtl
+        ? (started ? "بدأ مشاركة الشاشة" : "أوقف مشاركة الشاشة")
+        : (started ? "started screen share" : "stopped screen share");
+      schedule(participant.identity, () => buildSummary(participant, change), started);
     };
     const onPub = (pub: TrackPublication, participant: any) => onShareChange(pub, participant, true);
     const onUnpub = (pub: TrackPublication, participant: any) => onShareChange(pub, participant, false);
@@ -423,7 +430,7 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
     const t = setTimeout(() => { seenRef.current = true; }, 1200);
     return () => {
       clearTimeout(t);
-      pendingRef.current.forEach((v) => clearTimeout(v.timer));
+      pendingRef.current.forEach((v) => clearTimeout(v));
       pendingRef.current.clear();
       room.off(RoomEvent.TrackMuted, onMuted);
       room.off(RoomEvent.TrackUnmuted, onUnmuted);
