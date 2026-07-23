@@ -2505,3 +2505,145 @@ function computeNewBoundsPx(
   }
   return { x1, y1, x2, y2 };
 }
+
+/* -------------------------------------------------------------- */
+/* Snap-to-grid + smart guides (pixel space)                      */
+/* -------------------------------------------------------------- */
+
+function unionPixelBounds(items: AnyItem[], w: number, h: number): Bounds {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const it of items) {
+    const b = itemPixelBounds(it, w, h);
+    if (b.x1 < x1) x1 = b.x1;
+    if (b.y1 < y1) y1 = b.y1;
+    if (b.x2 > x2) x2 = b.x2;
+    if (b.y2 > y2) y2 = b.y2;
+  }
+  if (!isFinite(x1)) return { x1: 0, y1: 0, x2: 0, y2: 0 };
+  return { x1, y1, x2, y2 };
+}
+
+function collectOtherBoundsPx(
+  items: Map<string, AnyItem>,
+  w: number,
+  h: number,
+  exclude: Set<string>,
+): Bounds[] {
+  const out: Bounds[] = [];
+  for (const [id, it] of items) {
+    if (exclude.has(id)) continue;
+    out.push(itemPixelBounds(it, w, h));
+  }
+  return out;
+}
+
+const SNAP_THRESHOLD = 8; // px
+const GRID_STEP_RATIO = 0.02; // 2% of overlay width/height
+
+function computeSnap(
+  proposed: Bounds,
+  others: Bounds[],
+  w: number,
+  h: number,
+): { dx: number; dy: number; guidesV: number[]; guidesH: number[] } {
+  const cx = (proposed.x1 + proposed.x2) / 2;
+  const cy = (proposed.y1 + proposed.y2) / 2;
+  const gridX = Math.max(4, w * GRID_STEP_RATIO);
+  const gridY = Math.max(4, h * GRID_STEP_RATIO);
+
+  const candidatesX: number[] = [];
+  const candidatesY: number[] = [];
+  for (const o of others) {
+    candidatesX.push(o.x1, o.x2, (o.x1 + o.x2) / 2);
+    candidatesY.push(o.y1, o.y2, (o.y1 + o.y2) / 2);
+  }
+  // Grid candidates for each side/center of the proposed box
+  const proposedX = [proposed.x1, cx, proposed.x2];
+  const proposedY = [proposed.y1, cy, proposed.y2];
+
+  const guidesV: number[] = [];
+  const guidesH: number[] = [];
+
+  let bestDx = 0, bestDxDist = SNAP_THRESHOLD + 1;
+  for (const px of proposedX) {
+    // Nearest grid
+    const g = Math.round(px / gridX) * gridX;
+    const gd = g - px;
+    if (Math.abs(gd) < bestDxDist) { bestDxDist = Math.abs(gd); bestDx = gd; }
+    for (const c of candidatesX) {
+      const d = c - px;
+      if (Math.abs(d) < bestDxDist) { bestDxDist = Math.abs(d); bestDx = d; }
+    }
+  }
+  if (bestDxDist > SNAP_THRESHOLD) bestDx = 0;
+
+  let bestDy = 0, bestDyDist = SNAP_THRESHOLD + 1;
+  for (const py of proposedY) {
+    const g = Math.round(py / gridY) * gridY;
+    const gd = g - py;
+    if (Math.abs(gd) < bestDyDist) { bestDyDist = Math.abs(gd); bestDy = gd; }
+    for (const c of candidatesY) {
+      const d = c - py;
+      if (Math.abs(d) < bestDyDist) { bestDyDist = Math.abs(d); bestDy = d; }
+    }
+  }
+  if (bestDyDist > SNAP_THRESHOLD) bestDy = 0;
+
+  // Build guide lines at snapped positions
+  if (bestDx !== 0) {
+    for (const px of proposedX) {
+      const snapped = px + bestDx;
+      for (const c of candidatesX) {
+        if (Math.abs(c - snapped) < 0.5) guidesV.push(c);
+      }
+    }
+  }
+  if (bestDy !== 0) {
+    for (const py of proposedY) {
+      const snapped = py + bestDy;
+      for (const c of candidatesY) {
+        if (Math.abs(c - snapped) < 0.5) guidesH.push(c);
+      }
+    }
+  }
+  return { dx: bestDx, dy: bestDy, guidesV, guidesH };
+}
+
+function snapPointToGuides(
+  pt: { x: number; y: number },
+  others: Bounds[],
+  w: number,
+  h: number,
+): { x: number; y: number; guidesV: number[]; guidesH: number[] } {
+  const gridX = Math.max(4, w * GRID_STEP_RATIO);
+  const gridY = Math.max(4, h * GRID_STEP_RATIO);
+  let bx = pt.x, by = pt.y;
+  const guidesV: number[] = [];
+  const guidesH: number[] = [];
+
+  // X candidates
+  let bestDx = SNAP_THRESHOLD + 1, chosenX = pt.x;
+  const gx = Math.round(pt.x / gridX) * gridX;
+  if (Math.abs(gx - pt.x) < bestDx) { bestDx = Math.abs(gx - pt.x); chosenX = gx; }
+  for (const o of others) {
+    for (const c of [o.x1, o.x2, (o.x1 + o.x2) / 2]) {
+      const d = Math.abs(c - pt.x);
+      if (d < bestDx) { bestDx = d; chosenX = c; }
+    }
+  }
+  if (bestDx <= SNAP_THRESHOLD) { bx = chosenX; guidesV.push(chosenX); }
+
+  let bestDy = SNAP_THRESHOLD + 1, chosenY = pt.y;
+  const gy = Math.round(pt.y / gridY) * gridY;
+  if (Math.abs(gy - pt.y) < bestDy) { bestDy = Math.abs(gy - pt.y); chosenY = gy; }
+  for (const o of others) {
+    for (const c of [o.y1, o.y2, (o.y1 + o.y2) / 2]) {
+      const d = Math.abs(c - pt.y);
+      if (d < bestDy) { bestDy = d; chosenY = c; }
+    }
+  }
+  if (bestDy <= SNAP_THRESHOLD) { by = chosenY; guidesH.push(chosenY); }
+
+  return { x: bx, y: by, guidesV, guidesH };
+}
+
