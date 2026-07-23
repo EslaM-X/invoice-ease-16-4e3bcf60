@@ -730,6 +730,48 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             ctx.fillStyle = withAlpha(l.color, 0.9 * Math.max(0.4, alpha));
             ctx.fill();
           }
+
+          // Remote presenter cursors (mouse pointer or finger)
+          for (const [owner, c] of cursorsRef.current) {
+            if (owner === localIdentity) continue;
+            if (now - c.t > 4000) { cursorsRef.current.delete(owner); continue; }
+            const x = c.x * w, y = c.y * h;
+            if (c.kind === "touch") {
+              // Finger touch ring
+              const rOuter = c.down ? 26 : 20;
+              ctx.beginPath();
+              ctx.arc(x, y, rOuter, 0, Math.PI * 2);
+              ctx.fillStyle = withAlpha(c.color, c.down ? 0.28 : 0.18);
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(x, y, 8, 0, Math.PI * 2);
+              ctx.fillStyle = withAlpha(c.color, 0.95);
+              ctx.fill();
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else {
+              // Mouse arrow — small SVG-shaped polygon
+              ctx.save();
+              ctx.translate(x, y);
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(0, 18);
+              ctx.lineTo(4.5, 13.5);
+              ctx.lineTo(8, 20);
+              ctx.lineTo(11, 18.7);
+              ctx.lineTo(7.7, 12.4);
+              ctx.lineTo(13, 12);
+              ctx.closePath();
+              ctx.fillStyle = c.color;
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 1.5;
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+
           dirtyRef.current = false;
         }
       }
