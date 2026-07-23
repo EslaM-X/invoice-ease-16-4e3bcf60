@@ -71,7 +71,7 @@ export function MessageInfoDialog({
   );
 }
 
-function StatCard({ label, value, tone, icon }: { label: string; value: number; tone: "gold" | "white" | "green"; icon: React.ReactNode }) {
+function StatCard({ label, value, tone, icon, hint }: { label: string; value: number; tone: "gold" | "white" | "green"; icon: React.ReactNode; hint?: string }) {
   const toneCls =
     tone === "gold" ? "text-[color:var(--brand-gold,#d4af37)] border-[color:var(--brand-gold,#d4af37)]/30 bg-[color:var(--brand-gold,#d4af37)]/10"
     : tone === "green" ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
@@ -80,6 +80,7 @@ function StatCard({ label, value, tone, icon }: { label: string; value: number; 
     <div className={cn("rounded-xl border p-2.5", toneCls)}>
       <div className="flex items-center justify-center gap-1 opacity-80">{icon}<span>{label}</span></div>
       <div className="text-2xl font-black tabular-nums mt-1">{value}</div>
+      {hint && <div className="text-[10px] opacity-70 mt-1 leading-tight">{hint}</div>}
     </div>
   );
 }
