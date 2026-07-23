@@ -595,6 +595,14 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [busy, setBusy] = useState(false);
   const isSharing = localParticipant?.isScreenShareEnabled ?? false;
+  const [surface, setSurface] = useState<DisplaySurface>(
+    () => (readLS(LS_SURFACE, "monitor") as DisplaySurface)
+  );
+
+  const chooseSurface = useCallback((s: DisplaySurface) => {
+    setSurface(s);
+    writeLS(LS_SURFACE, s);
+  }, []);
 
   const cleanup = useCallback(() => {
     tracks?.forEach((t) => { try { t.stop(); } catch { /* ignore */ } });
@@ -603,28 +611,33 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
   const openPicker = useCallback(async () => {
     if (isSharing) {
-      // stop existing share
       try { await localParticipant?.setScreenShareEnabled(false); } catch { /* ignore */ }
       return;
     }
     setBusy(true);
     try {
+      // Surface preference is a hint to Chrome/Edge (displaySurface constraint).
+      const videoConstraint: MediaTrackConstraints = {
+        // @ts-expect-error – displaySurface is a valid getDisplayMedia hint in modern browsers
+        displaySurface: surface,
+      };
       const created = await createLocalScreenTracks({
         audio: true,
         resolution: ScreenSharePresets.h1080fps30.resolution,
+        // Pass through to underlying getDisplayMedia via LiveKit
+        // @ts-expect-error – LiveKit forwards extra constraints to getDisplayMedia
+        video: videoConstraint,
       });
       setTracks(created);
     } catch (e: any) {
-      // AbortError = user cancelled the picker; stay silent
       if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
         toast.error(rtl ? `تعذّر بدء المشاركة: ${e?.message ?? ""}` : `Could not start share: ${e?.message ?? ""}`);
       }
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl]);
+  }, [isSharing, localParticipant, rtl, surface]);
 
-  // Attach preview stream when tracks exist
   useEffect(() => {
     if (!tracks || !videoRef.current) return;
     const videoTrack = tracks.find((t) => t.kind === Track.Kind.Video);
@@ -640,7 +653,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
       for (const track of tracks) {
         await localParticipant.publishTrack(track);
       }
-      setTracks(null); // dialog closes, tracks now owned by the room
+      setTracks(null);
       toast.success(rtl ? "بدأت مشاركة الشاشة بجودة عالية" : "Screen share started in high quality");
     } catch (e: any) {
       cleanup();
@@ -650,8 +663,34 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
   const cancel = useCallback(() => cleanup(), [cleanup]);
 
+  const surfaces: Array<{ id: DisplaySurface; icon: any; label: string }> = [
+    { id: "monitor", icon: Monitor,   label: rtl ? "شاشة كاملة" : "Full screen" },
+    { id: "window",  icon: AppWindow, label: rtl ? "نافذة" : "Window" },
+    { id: "browser", icon: Globe,     label: rtl ? "تبويب" : "Tab" },
+  ];
+
   return (
     <>
+      <div className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/5 p-0.5" role="group" aria-label={rtl ? "نوع مشاركة الشاشة" : "Screen share source"}>
+        {surfaces.map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => chooseSurface(id)}
+            aria-pressed={surface === id}
+            title={label}
+            aria-label={label}
+            className={cn(
+              "flex items-center gap-1 rounded px-2 py-1 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+              surface === id ? "bg-amber-500/25 text-amber-100" : "text-white/70 hover:text-white hover:bg-white/10"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden md:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+
       <button
         type="button"
         onClick={openPicker}
@@ -675,20 +714,32 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
         <span>{isSharing ? (rtl ? "إيقاف المشاركة" : "Stop share") : (rtl ? "مشاركة شاشة" : "Share screen")}</span>
       </button>
 
+      {/* Full-screen preview overlay before publishing */}
       <Dialog open={!!tracks} onOpenChange={(o) => { if (!o) cancel(); }}>
-        <DialogContent className="max-w-3xl bg-neutral-950 text-white border-white/10" dir={rtl ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>{rtl ? "معاينة مشاركة الشاشة" : "Screen share preview"}</DialogTitle>
+        <DialogContent
+          className="max-w-none w-screen h-[100dvh] rounded-none bg-black text-white border-0 p-0 flex flex-col"
+          dir={rtl ? "rtl" : "ltr"}
+        >
+          <DialogHeader className="px-6 pt-5 pb-2">
+            <DialogTitle className="text-lg">
+              {rtl ? "معاينة مشاركة الشاشة (ملء الشاشة)" : "Screen share preview (full screen)"}
+            </DialogTitle>
             <DialogDescription className="text-white/60">
               {rtl
-                ? "تأكد من المصدر الذي اخترته قبل إرساله لباقي المشاركين. تقدر ترجع وتختار مصدر مختلف."
-                : "Confirm the source you picked before sending it to the other participants."}
+                ? "دي المعاينة اللي هيشوفها باقي المشاركين — تأكد إنك مبسوط منها قبل ما تبعتها."
+                : "This is exactly what other participants will see. Confirm before publishing."}
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg overflow-hidden bg-black ring-1 ring-white/10 aspect-video">
-            <video ref={videoRef} className="h-full w-full object-contain" muted playsInline />
+          <div className="flex-1 min-h-0 bg-black flex items-center justify-center px-6">
+            <video
+              ref={videoRef}
+              className="h-full w-full object-contain rounded-lg ring-1 ring-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.6)]"
+              muted
+              playsInline
+              aria-label={rtl ? "معاينة الشاشة" : "Screen preview"}
+            />
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 px-6 py-5 border-t border-white/10">
             <Button variant="secondary" onClick={cancel}>
               <X className="h-4 w-4 mr-1" aria-hidden="true" />
               {rtl ? "إلغاء" : "Cancel"}
