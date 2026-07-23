@@ -48,6 +48,14 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PresenterTools } from "./PresenterTools";
+import {
+  useScreenShareMonitor, ShareQualityBadge, ShareDiagnosticsDialog,
+  DiagnosticsLaunchButton, PerfModeSelector, ResFpsSelector,
+  useAutoFallback, resolveScreenEncoding,
+  readShareRes, readShareFps, readPerfMode,
+  LS_SHARE_RES, LS_SHARE_FPS, LS_PERF_MODE,
+  type Surface, type ShareRes, type ShareFps, type PerfMode,
+} from "./ShareDiagnostics";
 
 /* ------------------------------------------------------------------ */
 /*  Persisted preferences (screen-share surface + pinned participant) */
@@ -648,7 +656,19 @@ function LocalMediaStatusBadge({ rtl }: { rtl: boolean }) {
 /*  we then show a preview and only publish on confirm.               */
 /* ------------------------------------------------------------------ */
 
-function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
+interface ShareController {
+  setSurface: (s: DisplaySurface) => void;
+  openPicker: () => void;
+  isSharing: boolean;
+}
+
+function ScreenShareWithPreview({
+  rtl,
+  bindController,
+}: {
+  rtl: boolean;
+  bindController?: (c: ShareController) => void;
+}) {
   const { localParticipant } = useLocalParticipant();
   const [tracks, setTracks] = useState<LocalTrack[] | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -662,10 +682,18 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   const [confirmAudioOpen, setConfirmAudioOpen] = useState(false);
   const [trustAudioCk, setTrustAudioCk] = useState(false);
 
+  // Persisted per-call encoding preferences.
+  const [res, setRes] = useState<ShareRes>(() => readShareRes());
+  const [fps, setFps] = useState<ShareFps>(() => readShareFps());
+  const [perfMode, setPerfMode] = useState<PerfMode>(() => readPerfMode());
+
   const chooseSurface = useCallback((s: DisplaySurface) => {
     setSurface(s);
     writeLS(LS_SURFACE, s);
   }, []);
+  const chooseRes = useCallback((r: ShareRes) => { setRes(r); writeLS(LS_SHARE_RES, r); }, []);
+  const chooseFps = useCallback((f: ShareFps) => { setFps(f); writeLS(LS_SHARE_FPS, f); }, []);
+  const choosePerf = useCallback((m: PerfMode) => { setPerfMode(m); writeLS(LS_PERF_MODE, m); }, []);
 
   /** Direct setter — no confirmation. Used after the user acknowledges. */
   const commitSysAudio = useCallback((v: boolean) => {
@@ -673,11 +701,6 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     writeLS(LS_SYSAUDIO, v ? "1" : "0");
   }, []);
 
-  /**
-   * Public toggle: turning ON asks for an explicit confirmation so the user
-   * doesn't accidentally publish music, notifications, or private meeting
-   * audio. Once acknowledged (trust checkbox), we skip future confirmations.
-   */
   const requestSysAudioToggle = useCallback((next: boolean) => {
     if (!next) {
       commitSysAudio(false);
@@ -710,13 +733,16 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     }
     setBusy(true);
     try {
-      const videoConstraint = { displaySurface: surface } as unknown as MediaTrackConstraints;
+      const enc = resolveScreenEncoding(res, fps, perfMode);
+      const videoConstraint = {
+        displaySurface: surface,
+        frameRate: { ideal: enc.frameRate, max: enc.frameRate },
+      } as unknown as MediaTrackConstraints;
       const created = await createLocalScreenTracks({
         audio: sysAudio,
-        resolution: ScreenSharePresets.h1080fps30.resolution,
+        resolution: { width: enc.width, height: enc.height, frameRate: enc.frameRate },
         video: videoConstraint as any,
       } as any);
-      // Extract source label + actual surface from the video track settings
       const vTrack = created.find((t) => t.kind === Track.Kind.Video);
       const aTrack = created.find((t) => t.kind === Track.Kind.Audio);
       const mst = vTrack?.mediaStreamTrack;
@@ -737,7 +763,12 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl, surface, sysAudio]);
+  }, [isSharing, localParticipant, rtl, surface, sysAudio, res, fps, perfMode]);
+
+  // Expose imperative controller for auto-fallback.
+  useEffect(() => {
+    bindController?.({ setSurface: chooseSurface, openPicker: () => { void openPicker(); }, isSharing });
+  }, [bindController, chooseSurface, openPicker, isSharing]);
 
   useEffect(() => {
     if (!tracks || !videoRef.current) return;
@@ -751,17 +782,38 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   const confirm = useCallback(async () => {
     if (!tracks || !localParticipant) return;
     try {
+      const enc = resolveScreenEncoding(res, fps, perfMode);
       for (const track of tracks) {
-        await localParticipant.publishTrack(track);
+        if (track.kind === Track.Kind.Video) {
+          await localParticipant.publishTrack(track, {
+            source: Track.Source.ScreenShare,
+            screenShareEncoding: {
+              maxBitrate: enc.maxBitrate,
+              maxFramerate: enc.maxFramerate,
+              priority: "high",
+            } as any,
+            simulcast: enc.simulcast,
+            degradationPreference: enc.degradationPreference as any,
+            videoCodec: "vp9",
+          } as any);
+        } else {
+          await localParticipant.publishTrack(track, {
+            source: Track.Source.ScreenShareAudio,
+          } as any);
+        }
       }
       setTracks(null);
       setSourceInfo(null);
-      toast.success(rtl ? "بدأت مشاركة الشاشة بجودة عالية" : "Screen share started in high quality");
+      toast.success(
+        rtl
+          ? `بدأت المشاركة (${res}p @ ${fps}fps · ${perfMode})`
+          : `Sharing started (${res}p @ ${fps}fps · ${perfMode})`
+      );
     } catch (e: any) {
       cleanup();
       toast.error(rtl ? `فشل نشر المشاركة: ${e?.message ?? ""}` : `Publish failed: ${e?.message ?? ""}`);
     }
-  }, [tracks, localParticipant, rtl, cleanup]);
+  }, [tracks, localParticipant, rtl, cleanup, res, fps, perfMode]);
 
   const cancel = useCallback(() => cleanup(), [cleanup]);
 
@@ -807,6 +859,9 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
           </button>
         ))}
       </div>
+
+      <ResFpsSelector rtl={rtl} res={res} fps={fps} onChangeRes={chooseRes} onChangeFps={chooseFps} />
+      <PerfModeSelector rtl={rtl} value={perfMode} onChange={choosePerf} />
 
       <button
         type="button"
@@ -859,8 +914,8 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
             </DialogTitle>
             <DialogDescription className="text-white/60">
               {rtl
-                ? "راجع المصدر بالأسفل واضغط «بدء المشاركة» للتأكيد قبل ما يشوفه باقي المشاركين."
-                : "Review the selected source below and confirm before publishing to other participants."}
+                ? `سيتم النشر بجودة ${res}p @ ${fps}fps — وضع «${perfMode}». راجع المصدر واضغط «بدء» للتأكيد.`
+                : `Will publish at ${res}p @ ${fps}fps — “${perfMode}” mode. Review the source and confirm to start.`}
             </DialogDescription>
             {sourceInfo && (
               <div
@@ -1464,47 +1519,110 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
               toast.error(rtl ? `خطأ في المكالمة: ${e.message}` : `Call error: ${e.message}`);
             }}
           >
-            <NetworkQualityBadge rtl={rtl} />
-            <ParticipantCountBadge rtl={rtl} />
-            <LocalMediaStatusBadge rtl={rtl} />
-            <MediaStateAnnouncer rtl={rtl} />
-            <KeyboardShortcuts
+            <ShareDiagnosticsMount
               rtl={rtl}
               autoSpeaker={autoSpeaker}
               setAutoSpeaker={setAutoSpeaker}
               focusLock={focusLock}
               setFocusLock={setFocusLock}
             />
-            <PinRestorer />
-            <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
-            <PresenterTools rtl={rtl} />
-            <RoomAudioRenderer />
-            <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
-            <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
-
-            <div
-              className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
-              role="toolbar"
-              aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
-            >
-              <div className="mx-auto mb-2 flex max-w-3xl items-center justify-center gap-2 px-4">
-                <ScreenShareWithPreview rtl={rtl} />
-              </div>
-              <ControlBar
-                variation="verbose"
-                controls={{
-                  microphone: true,
-                  camera: true,
-                  screenShare: false, // replaced by our preview-first button above
-                  chat: false,
-                  leave: true,
-                  settings: true,
-                }}
-              />
-            </div>
           </LiveKitRoom>
         ) : null}
       </SheetContent>
     </Sheet>
   );
 }
+
+/**
+ * Composes ScreenShareWithPreview, the stats monitor, live quality badge,
+ * diagnostics dialog and auto-fallback controller inside the LiveKitRoom.
+ */
+function ShareDiagnosticsMount({
+  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock,
+}: {
+  rtl: boolean;
+  autoSpeaker: boolean;
+  setAutoSpeaker: (v: boolean) => void;
+  focusLock: boolean;
+  setFocusLock: (v: boolean) => void;
+}) {
+  const ctrlRef = useRef<ShareController | null>(null);
+  const surfaceRef = useRef<Surface>(
+    (readLS(LS_SURFACE, "monitor") as Surface)
+  );
+  const [diagOpen, setDiagOpen] = useState(false);
+
+  const requestFallback = (reason: string) => {
+    if (!ctrlRef.current) return;
+    fallback(reason);
+  };
+  const monitor = useScreenShareMonitor({ onUnstable: requestFallback });
+
+  const fallback = useAutoFallback({
+    rtl,
+    isSharing: monitor.isSharing,
+    currentSurface: surfaceRef.current,
+    onSwitchTo: (s) => {
+      surfaceRef.current = s;
+      writeLS(LS_SURFACE, s);
+      ctrlRef.current?.setSurface(s as DisplaySurface);
+    },
+    onRestart: () => { ctrlRef.current?.openPicker(); },
+  });
+
+  return (
+    <>
+      <ShareQualityBadge rtl={rtl} state={monitor} onOpenDiagnostics={() => setDiagOpen(true)} />
+      <ShareDiagnosticsDialog rtl={rtl} open={diagOpen} onOpenChange={setDiagOpen} state={monitor} />
+
+      <NetworkQualityBadge rtl={rtl} />
+      <ParticipantCountBadge rtl={rtl} />
+      <LocalMediaStatusBadge rtl={rtl} />
+      <MediaStateAnnouncer rtl={rtl} />
+      <PinRestorer />
+      <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
+      <PresenterTools rtl={rtl} />
+      <RoomAudioRenderer />
+      <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
+      <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
+      <KeyboardShortcuts
+        rtl={rtl}
+        autoSpeaker={autoSpeaker}
+        setAutoSpeaker={setAutoSpeaker}
+        focusLock={focusLock}
+        setFocusLock={setFocusLock}
+      />
+
+      <div
+        className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
+        role="toolbar"
+        aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
+      >
+        <div className="mx-auto mb-2 flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4">
+          <ScreenShareWithPreview
+            rtl={rtl}
+            bindController={(c) => { ctrlRef.current = c; }}
+          />
+          <DiagnosticsLaunchButton
+            rtl={rtl}
+            onClick={() => setDiagOpen(true)}
+            quality={monitor.quality}
+            isSharing={monitor.isSharing}
+          />
+        </div>
+        <ControlBar
+          variation="verbose"
+          controls={{
+            microphone: true,
+            camera: true,
+            screenShare: false,
+            chat: false,
+            leave: true,
+            settings: true,
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
