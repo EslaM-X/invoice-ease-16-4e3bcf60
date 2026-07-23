@@ -1270,9 +1270,14 @@ function TeamChatPage() {
                 >
                   <ArrowDownToLine className="h-4 w-4" />
                   {unseenCount > 0 && (
-                    <span className="text-[11px] font-bold tabular-nums bg-[color:var(--brand-gold,#d4af37)] text-black rounded-full min-w-[18px] px-1 text-center">
-                      {unseenCount > 99 ? "99+" : unseenCount}
-                    </span>
+                    <>
+                      <span className="text-[11px] font-semibold">
+                        {rtl ? "رسائل جديدة" : "New messages"}
+                      </span>
+                      <span className="text-[11px] font-bold tabular-nums bg-[color:var(--brand-gold,#d4af37)] text-black rounded-full min-w-[18px] px-1 text-center">
+                        {unseenCount > 99 ? "99+" : unseenCount}
+                      </span>
+                    </>
                   )}
                 </button>
               )}
