@@ -1237,13 +1237,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       else if (e.key === "[" && selectedId) {
         if (e.shiftKey) sendToBack(selectedId); else backwardOne(selectedId);
       }
-      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); }
+      else if (k === "y" && isLocalSharing) {
+        setHistoryOpen((v) => !v); setPreviewOpen(false);
+      }
+      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); setHistoryOpen(false); setPreviewOpen(false); }
       else handled = false;
       if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isAnyoneSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
+  }, [isAnyoneSharing, isLocalSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
 
   if (!isAnyoneSharing) return null;
 
