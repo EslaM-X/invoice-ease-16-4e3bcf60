@@ -45,7 +45,10 @@ import {
   Minus,
   Type as TypeIcon,
   StickyNote,
+  Users,
+  Lock,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 /* -------------------------------------------------------------- */
@@ -122,7 +125,9 @@ type TextMsg = {
 type LaserMsg = { t: "laser"; owner: string; x: number; y: number; color: string };
 type UndoMsg = { t: "undo"; owner: string };
 type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
-type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg;
+type PermMsg = { t: "perm"; mode: "presenter" | "all"; by: string };
+type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg;
+
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
 // Rename inner "kind" to avoid clashing with the AnyItem discriminator.
@@ -150,11 +155,56 @@ const isFreeStroke = (t: Tool) => t === "pen" || t === "highlighter" || t === "a
 const isPlacement = (t: Tool) => t === "text" || t === "sticky";
 
 /* -------------------------------------------------------------- */
+/* Session persistence                                            */
+/* -------------------------------------------------------------- */
+
+const STORAGE_PREFIX = "lk-presenter:v1:";
+const storageKey = (sharer: string) => STORAGE_PREFIX + sharer;
+
+function saveSession(sharer: string, items: AnyItem[], order: string[]) {
+  try {
+    localStorage.setItem(
+      storageKey(sharer),
+      JSON.stringify({ items, order, savedAt: Date.now() }),
+    );
+  } catch { /* quota / private mode */ }
+}
+function loadSession(sharer: string): { items: AnyItem[]; order: string[] } | null {
+  try {
+    const raw = localStorage.getItem(storageKey(sharer));
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { items?: AnyItem[]; order?: string[] };
+    if (!Array.isArray(p.items) || !Array.isArray(p.order)) return null;
+    return { items: p.items, order: p.order };
+  } catch { return null; }
+}
+function itemToMsg(it: AnyItem): Msg | null {
+  if (it.kind === "stroke") {
+    return { t: "stroke", id: it.id, owner: it.owner, tool: it.tool, color: it.color, w: it.w, pts: it.pts, done: true };
+  }
+  if (it.kind === "shape") {
+    return { t: "shape", id: it.id, owner: it.owner, kind: it.kindShape, color: it.color, w: it.w, x1: it.x1, y1: it.y1, x2: it.x2, y2: it.y2, done: true };
+  }
+  if (it.kind === "text") {
+    return { t: "text", id: it.id, owner: it.owner, kind: it.kindText, color: it.color, font: it.font, size: it.size, x: it.x, y: it.y, maxW: it.maxW, content: it.content };
+  }
+  return null;
+}
+
+/* -------------------------------------------------------------- */
+
 
 export function PresenterTools({ rtl }: { rtl: boolean }) {
   const room = useRoomContext();
   const shares = useTracks([{ source: Track.Source.ScreenShare, withPlaceholder: false }]);
   const isAnyoneSharing = shares.length > 0;
+  const primarySharer = shares[0]?.participant?.identity;
+  const isLocalSharing = shares.some((s) => s.participant?.identity === room.localParticipant.identity);
+
+  // Drawing permission: "all" (default) or "presenter" (only sharers can draw).
+  const [permMode, setPermMode] = useState<"all" | "presenter">("all");
+  const canDraw = permMode === "all" || isLocalSharing;
+
 
   const [tool, setTool] = useState<Tool>("off");
   const [collapsed, setCollapsed] = useState(false);
@@ -238,8 +288,22 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         itemsRef.current.clear();
         orderRef.current = [];
       }
+    } else if (m.t === "perm") {
+      setPermMode(m.mode);
     }
   }, []);
+
+  /* --------------- persistence (sharer-owned) --------------- */
+  const saveTimerRef = useRef<number | null>(null);
+  const scheduleSave = useCallback(() => {
+    if (!primarySharer || primarySharer !== localIdentity) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      const items = Array.from(itemsRef.current.values());
+      saveSession(primarySharer, items, [...orderRef.current]);
+    }, 400);
+  }, [primarySharer, localIdentity]);
+
 
   /* --------------- receive --------------- */
   useEffect(() => {
@@ -254,13 +318,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         const m = JSON.parse(dec.decode(payload)) as Msg;
         applyMessage(m);
         dirtyRef.current = true;
+        if (m.t === "stroke" || m.t === "shape" || m.t === "text" || m.t === "undo" || m.t === "clear") {
+          scheduleSave();
+        }
       } catch { /* noop */ }
     };
     room.on(RoomEvent.DataReceived, onData);
     return () => { room.off(RoomEvent.DataReceived, onData); };
-  }, [room, applyMessage]);
+  }, [room, applyMessage, scheduleSave]);
 
-  /* --------------- clear on new share start --------------- */
+  /* --------- restore saved session on new share start --------- */
   const shareCount = shares.length;
   const prevShareCount = useRef(shareCount);
   useEffect(() => {
@@ -268,11 +335,63 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       itemsRef.current.clear();
       orderRef.current = [];
       lasersRef.current.clear();
+      const sharer = primarySharer;
+      if (sharer) {
+        const saved = loadSession(sharer);
+        if (saved && saved.items.length) {
+          const byId = new Map(saved.items.map((it) => [it.id, it]));
+          for (const id of saved.order) {
+            const it = byId.get(id);
+            if (it) {
+              itemsRef.current.set(id, it);
+              orderRef.current.push(id);
+            }
+          }
+          // If we are the sharer, re-broadcast so remote peers replay too.
+          if (sharer === localIdentity) {
+            for (const id of orderRef.current) {
+              const it = itemsRef.current.get(id);
+              const msg = it ? itemToMsg(it) : null;
+              if (msg) void publish(msg, true);
+            }
+          }
+        }
+      }
       dirtyRef.current = true;
     }
     prevShareCount.current = shareCount;
     if (shareCount === 0 && tool !== "off") setTool("off");
-  }, [shareCount, tool]);
+  }, [shareCount, tool, primarySharer, localIdentity, publish]);
+
+  /* -------- late-joiner sync: rebroadcast state + perm -------- */
+  useEffect(() => {
+    const onJoin = () => {
+      if (!isLocalSharing) return;
+      void publish({ t: "perm", mode: permMode, by: localIdentity }, true);
+      for (const id of orderRef.current) {
+        const it = itemsRef.current.get(id);
+        const msg = it ? itemToMsg(it) : null;
+        if (msg) void publish(msg, true);
+      }
+    };
+    room.on(RoomEvent.ParticipantConnected, onJoin);
+    return () => { room.off(RoomEvent.ParticipantConnected, onJoin); };
+  }, [room, isLocalSharing, permMode, localIdentity, publish]);
+
+  /* --------- broadcast perm on start of local share --------- */
+  const prevLocalShare = useRef(isLocalSharing);
+  useEffect(() => {
+    if (!prevLocalShare.current && isLocalSharing) {
+      void publish({ t: "perm", mode: permMode, by: localIdentity }, true);
+    }
+    prevLocalShare.current = isLocalSharing;
+  }, [isLocalSharing, permMode, localIdentity, publish]);
+
+  /* --------- force tool off when losing draw permission --------- */
+  useEffect(() => {
+    if (!canDraw && tool !== "off") setTool("off");
+  }, [canDraw, tool]);
+
 
   /* --------------- rAF render loop --------------- */
   useEffect(() => {
@@ -364,11 +483,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     };
     applyMessage(msg);
     void publish(msg, true);
+    scheduleSave();
     dirtyRef.current = true;
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (tool === "off") return;
+    if (!canDraw) return;
+
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toNorm(e);
 
@@ -381,9 +503,11 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     if (tool === "eraser") {
       void publish({ t: "clear", owner: localIdentity }, true);
       applyMessage({ t: "clear", owner: localIdentity });
+      scheduleSave();
       dirtyRef.current = true;
       return;
     }
+
     if (isPlacement(tool)) {
       placeText(tool as "text" | "sticky", p);
       return;
@@ -481,6 +605,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         t: "shape", id: sh.id, owner: sh.owner, kind: sh.kindShape,
         color: sh.color, w: sh.w, x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2, done: true,
       }, true);
+      scheduleSave();
       dirtyRef.current = true;
       return;
     }
@@ -494,22 +619,38 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         t: "stroke", id: s.id, owner: s.owner, tool: s.tool, color: s.color, w: s.w,
         pts: s.pts, done: true,
       }, true);
+      scheduleSave();
     }
     dirtyRef.current = true;
   };
 
   /* --------------- toolbar actions --------------- */
+
   const undo = useCallback(() => {
     void publish({ t: "undo", owner: localIdentity }, true);
     applyMessage({ t: "undo", owner: localIdentity });
+    scheduleSave();
     dirtyRef.current = true;
-  }, [publish, applyMessage, localIdentity]);
+  }, [publish, applyMessage, localIdentity, scheduleSave]);
 
   const clearAll = useCallback(() => {
     void publish({ t: "clear" }, true);
     applyMessage({ t: "clear" });
+    // Also drop the persisted snapshot for this share
+    if (primarySharer && primarySharer === localIdentity) {
+      try { localStorage.removeItem(storageKey(primarySharer)); } catch { /* ignore */ }
+    }
+    scheduleSave();
     dirtyRef.current = true;
-  }, [publish, applyMessage]);
+  }, [publish, applyMessage, primarySharer, localIdentity, scheduleSave]);
+
+  const togglePerm = useCallback(() => {
+    if (!isLocalSharing) return;
+    const next: "all" | "presenter" = permMode === "all" ? "presenter" : "all";
+    setPermMode(next);
+    void publish({ t: "perm", mode: next, by: localIdentity }, true);
+  }, [isLocalSharing, permMode, publish, localIdentity]);
+
 
   /* --------------- keyboard --------------- */
   useEffect(() => {
@@ -573,6 +714,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             {rtl ? "وضع الشرح مفعّل — Esc للخروج" : "Presenter mode — press Esc to exit"}
           </div>
         ) : null}
+        {!canDraw ? (
+          <div
+            className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white/85 backdrop-blur-md border border-white/15"
+            role="status"
+            aria-live="polite"
+          >
+            {rtl ? "الرسم متاح للمقدّم فقط" : "Drawing is restricted to the presenter"}
+          </div>
+        ) : null}
+
       </div>
 
       {/* Floating toolbar (wraps on small screens, stays inside stage) */}
@@ -653,6 +804,28 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             <ToolButton label={rtl ? "مسح الكل (X)" : "Clear all (X)"} onClick={clearAll} active={false} danger>
               <Trash2 className="size-4" />
             </ToolButton>
+
+            {isLocalSharing ? (
+              <>
+                <Sep />
+                <ToolButton
+                  label={
+                    rtl
+                      ? permMode === "presenter"
+                        ? "الرسم للمقدّم فقط — اضغط للسماح للجميع"
+                        : "الجميع يستطيع الرسم — اضغط لتقييده على المقدّم"
+                      : permMode === "presenter"
+                        ? "Presenter-only drawing — click to allow everyone"
+                        : "Anyone can draw — click to restrict to presenter"
+                  }
+                  active={permMode === "presenter"}
+                  onClick={togglePerm}
+                >
+                  {permMode === "presenter" ? <Lock className="size-4" /> : <Users className="size-4" />}
+                </ToolButton>
+              </>
+            ) : null}
+
 
             <Sep />
             {/* Color palette */}
