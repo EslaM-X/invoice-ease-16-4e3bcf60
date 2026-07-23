@@ -1820,6 +1820,8 @@ function QualityInsights({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      ) : null}
     </>
   );
 }
