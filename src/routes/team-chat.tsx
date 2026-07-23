@@ -1450,7 +1450,8 @@ function TeamChatPage() {
           </Tabs>
         </div>
 
-        </div>
+
+
 
 
         {/* Conversation */}
