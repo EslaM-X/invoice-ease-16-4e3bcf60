@@ -1069,6 +1069,49 @@ function TeamChatPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Chat width preference */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-10 w-10 rounded-full shrink-0 hidden md:inline-flex"
+                      title={rtl ? "عرض منطقة الشات" : "Chat width"}
+                      aria-label="Chat width"
+                    >
+                      <StretchHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>{rtl ? "عرض منطقة الشات" : "Chat area width"}</DropdownMenuLabel>
+                    {(["default", "wide", "full"] as const).map((w) => (
+                      <DropdownMenuItem
+                        key={w}
+                        onClick={() => applyChatWidth(w)}
+                        className={cn("flex items-center justify-between", chatWidth === w && "bg-accent")}
+                      >
+                        <span>
+                          {w === "default" ? (rtl ? "افتراضي" : "Default")
+                            : w === "wide" ? (rtl ? "موسّع" : "Wide")
+                            : (rtl ? "ملء الشاشة" : "Full")}
+                        </span>
+                        {chatWidth === w && <span className="text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Focus mode toggle (desktop) */}
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0 hidden md:inline-flex"
+                  onClick={toggleFocusMode}
+                  title={focusMode ? (rtl ? "الخروج من وضع التركيز" : "Exit focus mode") : (rtl ? "وضع التركيز" : "Focus mode")}
+                  aria-label="Toggle focus mode"
+                >
+                  {focusMode ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                </Button>
+
+
                 <WallpaperPicker
                   value={activeWallpaper}
                   customUrl={activeCustomUrl}
