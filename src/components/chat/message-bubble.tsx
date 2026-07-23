@@ -146,7 +146,7 @@ export function MessageBubble({
         </div>
       )}
 
-      <div className={cn("flex flex-col max-w-[85%] sm:max-w-[68%] md:max-w-[62%] lg:max-w-[56%]", mine ? "items-end" : "items-start")}>
+      <div className={cn("flex flex-col max-w-[88%] sm:max-w-[78%] md:max-w-[72%] lg:max-w-[68%] xl:max-w-[820px] 2xl:max-w-[960px]", mine ? "items-end" : "items-start")}>
         <div
           onTouchStart={startPress}
           onTouchEnd={cancelPress}
