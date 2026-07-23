@@ -22,7 +22,7 @@ export function useRoomPresence(userIds: string[], activeRoomId: string | null, 
 
   // Ticker so "typing" and "online" states expire live
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1500);
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, []);
 
