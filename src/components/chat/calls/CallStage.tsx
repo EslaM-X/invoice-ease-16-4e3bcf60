@@ -958,38 +958,145 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Live participant count badge                                      */
+/*  Live participant count badge + clickable participants panel       */
 /* ------------------------------------------------------------------ */
+
+function ParticipantRow({ p, rtl }: { p: Participant; rtl: boolean }) {
+  const name = p.name || p.identity || (rtl ? "مشارك" : "Participant");
+  const isLocal = p.isLocal;
+  const mic = p.isMicrophoneEnabled;
+  const cam = p.isCameraEnabled;
+  const share = p.isScreenShareEnabled;
+  const speaking = p.isSpeaking;
+  let avatarUrl: string | undefined;
+  try {
+    if (p.metadata) {
+      const meta = JSON.parse(p.metadata);
+      if (typeof meta?.avatar_url === "string") avatarUrl = meta.avatar_url;
+    }
+  } catch { /* ignore */ }
+
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-3 rounded-lg border px-3 py-2 transition",
+        speaking ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 bg-white/[0.03]"
+      )}
+      aria-label={`${name}${isLocal ? (rtl ? " (أنت)" : " (You)") : ""} — ${mic ? (rtl ? "الميكروفون مفتوح" : "mic on") : (rtl ? "الميكروفون مكتوم" : "mic off")}, ${cam ? (rtl ? "الكاميرا مفتوحة" : "camera on") : (rtl ? "الكاميرا مقفولة" : "camera off")}${share ? (rtl ? "، يشارك الشاشة" : ", sharing screen") : ""}`}
+    >
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-white/15" loading="lazy" />
+      ) : (
+        <div className="h-9 w-9 rounded-full bg-white/10 ring-1 ring-white/15 flex items-center justify-center text-xs font-semibold text-white/85">
+          {initialsOf(name)}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-white">
+          {name}
+          {isLocal && (
+            <span className="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-100 align-middle">
+              {rtl ? "أنت" : "You"}
+            </span>
+          )}
+        </div>
+        <div className="text-[11px] text-white/60 truncate">{p.identity}</div>
+      </div>
+      <div className="flex items-center gap-1.5" aria-hidden="true">
+        <span className={cn("rounded-full p-1", mic ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/25 text-red-200")}>
+          {mic ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+        </span>
+        <span className={cn("rounded-full p-1", cam ? "bg-sky-500/20 text-sky-200" : "bg-white/10 text-white/60")}>
+          {cam ? <VideoIcon className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+        </span>
+        {share && (
+          <span className="rounded-full p-1 bg-amber-500/25 text-amber-100" title={rtl ? "يشارك الشاشة" : "sharing screen"}>
+            <MonitorUp className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
+    </li>
+  );
+}
 
 function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
   const participants = useParticipants(); // reactive to join/leave for everyone
   const count = participants.length;
-  const label = rtl ? `${count} في المكالمة` : `${count} in call`;
+  const [open, setOpen] = useState(false);
+  const label = rtl ? `${count} في المكالمة — اضغط للتفاصيل` : `${count} in call — click for details`;
+
+  const sorted = useMemo(() => {
+    return [...participants].sort((a, b) => {
+      if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+      const ja = a.joinedAt?.getTime() ?? 0;
+      const jb = b.joinedAt?.getTime() ?? 0;
+      return ja - jb;
+    });
+  }, [participants]);
+
   return (
-    <div
-      className="absolute top-16 left-4 z-20 flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/55 px-3 py-1.5 text-xs font-semibold text-amber-100 backdrop-blur-xl shadow-lg"
-      dir={rtl ? "rtl" : "ltr"}
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      aria-label={label}
-      title={label}
-    >
-      <Users className="h-3.5 w-3.5" aria-hidden="true" />
-      <span className="tabular-nums">{count}</span>
-      <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "absolute top-16 z-20 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/55 px-3 py-1.5 text-xs font-semibold text-amber-100 backdrop-blur-xl shadow-lg",
+          "hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 transition",
+          rtl ? "right-4" : "left-4"
+        )}
+        dir={rtl ? "rtl" : "ltr"}
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        title={label}
+      >
+        <Users className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="tabular-nums">{count}</span>
+        <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side={rtl ? "left" : "right"}
+          className="bg-neutral-950 text-white border-white/10 w-[92vw] sm:w-[420px]"
+          dir={rtl ? "rtl" : "ltr"}
+        >
+          <SheetHeader>
+            <SheetTitle className="text-white flex items-center gap-2">
+              <Users className="h-4 w-4 text-amber-300" aria-hidden="true" />
+              {rtl ? `المشاركون (${count})` : `Participants (${count})`}
+            </SheetTitle>
+            <SheetDescription className="text-white/60">
+              {rtl ? "كل من في المكالمة الآن مع حالة الميكروفون والكاميرا والمشاركة." : "Everyone in the call now with mic, camera and share state."}
+            </SheetDescription>
+          </SheetHeader>
+          <ul className="mt-4 space-y-2 max-h-[calc(100dvh-140px)] overflow-y-auto pr-1" role="list">
+            {sorted.map((p) => (
+              <ParticipantRow key={p.identity} p={p} rtl={rtl} />
+            ))}
+          </ul>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Auto speaker-reorder toggle                                       */
+/*  Auto speaker-reorder toggle + focus lock                          */
 /* ------------------------------------------------------------------ */
+
+function useFocusLock(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => readLS(LS_FOCUSLOCK, "0") === "1");
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    writeLS(LS_FOCUSLOCK, v ? "1" : "0");
+  }, []);
+  return [on, set];
+}
 
 function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void }) {
   const label = rtl
-    ? (on ? "ترتيب حسب المتحدث: مفعّل" : "ترتيب حسب المتحدث: متوقف")
-    : (on ? "Speaker sort: on" : "Speaker sort: off");
+    ? (on ? "ترتيب حسب المتحدث: مفعّل (L)" : "ترتيب حسب المتحدث: متوقف (L)")
+    : (on ? "Speaker sort: on (L)" : "Speaker sort: off (L)");
   return (
     <button
       type="button"
@@ -1007,6 +1114,36 @@ function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setO
       )}
     >
       <Sparkles className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+function FocusLockToggle({ rtl, on, setOn, disabled }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void; disabled: boolean }) {
+  const label = disabled
+    ? (rtl ? "قفل التركيز يتطلب تفعيل ترتيب المتحدث" : "Focus lock requires speaker sort")
+    : rtl
+    ? (on ? "قفل التركيز على المتحدث الحالي: مفعّل (F)" : "قفل التركيز على المتحدث الحالي: متوقف (F)")
+    : (on ? "Lock focus on current speaker: on (F)" : "Lock focus on current speaker: off (F)");
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && setOn(!on)}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      className={cn(
+        "absolute bottom-24 z-20 rounded-full border p-2 backdrop-blur-md transition",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+        disabled && "opacity-40 cursor-not-allowed",
+        !disabled && "hover:bg-black/75",
+        on
+          ? "border-amber-400/40 bg-amber-500/20 text-amber-100"
+          : "border-white/15 bg-black/55 text-white/80",
+        rtl ? "left-28" : "right-28"
+      )}
+    >
+      {on ? <Lock className="h-4 w-4" aria-hidden="true" /> : <Unlock className="h-4 w-4" aria-hidden="true" />}
     </button>
   );
 }
