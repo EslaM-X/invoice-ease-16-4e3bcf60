@@ -3,8 +3,9 @@ import { useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { toast } from "sonner";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
+import { chatEvents } from "@/lib/chat-events";
+
 
 /**
  * Global team-chat realtime listener.
@@ -90,7 +91,7 @@ export function useChatNotifications() {
           }
           // Update badge
           refreshUnread();
-          // Skip toast/notification if user is actively on chat page (they'll see it)
+          // Skip popup/notification if user is actively on chat page (they'll see it)
           if (onChatPageRef.current) return;
 
           const senderLabel = m.sender_email ?? (ar ? "زميل" : "Teammate");
@@ -103,15 +104,19 @@ export function useChatNotifications() {
                   ? (ar ? "📷 صورة" : "📷 Image")
                   : (ar ? "📎 ملف" : "📎 File");
 
-          toast.message(ar ? `رسالة من ${senderLabel}` : `Message from ${senderLabel}`, {
-            description: previewText,
-            action: {
-              label: ar ? "فتح" : "Open",
-              onClick: () => { window.location.href = "/team-chat"; },
-            },
+          // Emit to the in-app draggable popup
+          chatEvents.emit({
+            id: m.id,
+            room_id: m.room_id,
+            sender_id: m.sender_id,
+            sender_email: m.sender_email ?? null,
+            message_type: m.message_type,
+            body: previewText,
+            created_at: m.created_at,
           });
 
-          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          // Native browser notification (useful when tab is unfocused)
+          if (typeof Notification !== "undefined" && Notification.permission === "granted" && typeof document !== "undefined" && document.visibilityState !== "visible") {
             try {
               const n = new Notification(
                 ar ? `رسالة من ${senderLabel}` : `Message from ${senderLabel}`,
@@ -119,11 +124,12 @@ export function useChatNotifications() {
               );
               n.onclick = () => {
                 window.focus();
-                window.location.href = "/team-chat";
+                window.location.href = `/team-chat?room=${m.room_id}`;
                 n.close();
               };
             } catch {}
           }
+
         },
       )
       .subscribe();
