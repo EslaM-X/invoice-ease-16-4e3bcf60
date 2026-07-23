@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,12 +91,12 @@ export function MembersSheet({
     return (
       <div key={m.user_id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/5">
         <div className="relative shrink-0">
-          <Avatar className={`h-12 w-12 ring-2 ${m.is_creator ? "ring-[color:var(--brand-gold,#d4af37)]" : "ring-white/15"}`}>
-            {m.avatar_url && <AvatarImage src={m.avatar_url} />}
-            <AvatarFallback className="bg-gradient-to-br from-white/15 to-white/5 text-white text-base font-bold">
-              {(m.display_name ?? "?").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <LuxuryAvatar
+            url={m.avatar_url}
+            name={m.display_name}
+            size={48}
+            ring={m.is_creator ? "gold" : "soft"}
+          />
           {online && <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
         </div>
         <div className="flex-1 min-w-0">
