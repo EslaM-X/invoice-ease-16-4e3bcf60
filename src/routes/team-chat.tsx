@@ -1019,12 +1019,21 @@ function TeamChatPage() {
     markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
   }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
-  const typingNames = useMemo(() => {
+  const typers = useMemo<Typer[]>(() => {
     if (!activeRoom) return [];
-    return (activeRoom.members ?? [])
-      .filter((m: any) => typingUserIds.includes(m.user_id))
-      .map((m: any) => (m.display_name ?? m.email ?? "?").split(" ")[0]);
-  }, [activeRoom, typingUserIds]);
+    const memberById = new Map<string, any>();
+    for (const m of activeRoom.members ?? []) memberById.set(m.user_id, m);
+    return typingUserIds
+      .filter((id: string) => id !== user?.id)
+      .map((id: string): Typer => {
+        const m = memberById.get(id);
+        return {
+          id,
+          name: (m?.display_name ?? m?.email ?? "?"),
+          avatarUrl: m?.avatar_url ?? null,
+        };
+      });
+  }, [activeRoom, typingUserIds, user?.id]);
 
   const wallpaperClass = activeWallpaper.type === "preset"
     ? WALLPAPER_STYLES[activeWallpaper.preset as WallpaperPreset] ?? WALLPAPER_STYLES.noir
