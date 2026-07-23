@@ -989,13 +989,26 @@ function TeamChatPage() {
   // Sticky day chip: reflect the day of the top-most visible message row.
   const [stickyDayLabel, setStickyDayLabel] = useState<string>("");
   useEffect(() => {
-    // Recompute whenever the row set changes so the initial label is right.
-    const items = (() => { try { return rowVirtualizer.getVirtualItems(); } catch { return []; } })();
-    const first = items.find((it) => rows[it.index]?.kind !== undefined);
-    if (!first) { setStickyDayLabel(""); return; }
-    const r = rows[first.index];
-    setStickyDayLabel(r?.kind === "day" ? r.label : (r?.kind === "msg" ? formatChatDayLabel(messages[r.msgIndex].created_at, rtl ? "ar" : "en") : ""));
-  }, [rows, messages, rtl, rowVirtualizer]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      try {
+        const items = rowVirtualizer.getVirtualItems();
+        if (!items.length) { setStickyDayLabel(""); return; }
+        const scrollTop = el.scrollTop;
+        const visible = items.find((it) => it.end >= scrollTop) ?? items[0];
+        const r = rows[visible.index];
+        if (!r) return;
+        const label = r.kind === "day"
+          ? r.label
+          : formatChatDayLabel(messages[r.msgIndex].created_at, rtl ? "ar" : "en");
+        setStickyDayLabel((prev) => (prev === label ? prev : label));
+      } catch {/* ignore */}
+    };
+    recompute();
+    el.addEventListener("scroll", recompute, { passive: true });
+    return () => el.removeEventListener("scroll", recompute);
+  }, [rows, messages, rtl, rowVirtualizer, activeRoomId]);
 
   // In-chat search: rich results (id, index, snippet, ts)
   const searchResults = useMemo(() => {
