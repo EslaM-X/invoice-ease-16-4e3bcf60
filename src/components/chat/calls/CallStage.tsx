@@ -33,13 +33,17 @@ import {
 } from "livekit-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import {
   Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2,
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
   MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
-  Lock, Unlock, Volume2, VolumeX, MonitorPlay,
+  Lock, Unlock, Volume2, VolumeX, MonitorPlay, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -55,6 +59,10 @@ const LS_PIN = "call.pin.identity";
 const LS_AUTOSPK = "call.autoSpeakerReorder";
 const LS_FOCUSLOCK = "call.focusLock";
 const LS_SYSAUDIO = "call.screenShare.systemAudio";
+const LS_SYSAUDIO_TRUSTED = "call.screenShare.systemAudio.trusted";
+
+/** Event key used to toggle the participants panel from anywhere in the tree. */
+const EVT_TOGGLE_PARTICIPANTS = "call:toggleParticipants";
 
 function readLS(key: string, fallback: string): string {
   try {
@@ -394,6 +402,9 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
   // Per-participant coalescing: one toast per person, showing the LATEST state,
   // debounced by ~2.5s so rapid mic/cam/share flips don't spam the room.
   const pendingRef = useRef<Map<string, any>>(new Map());
+  // SR-only live region text. Replaced (not appended) so screen readers
+  // always hear the LATEST change without a growing backlog of announcements.
+  const [srLine, setSrLine] = useState("");
 
   useEffect(() => {
     if (!room) return;
@@ -411,9 +422,13 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
         pendingRef.current.delete(key);
         const line = buildLine();
         (isPositive ? toast.success : toast)(line, { id: key, duration: 3500 });
+        // Broadcast to assistive tech (coalesced by the same 2.5s window).
+        setSrLine(line);
       }, 2500);
       pendingRef.current.set(key, timer);
     };
+
+
 
     const buildSummary = (participant: any, change: string) => {
       const who = whoLabel(participant);
@@ -481,7 +496,11 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
     };
   }, [room, rtl]);
 
-  return null;
+  return (
+    <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {srLine}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -640,16 +659,43 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   );
   const [sysAudio, setSysAudio] = useState<boolean>(() => readLS(LS_SYSAUDIO, "1") !== "0");
   const [sourceInfo, setSourceInfo] = useState<{ name: string; surface: string; hasAudio: boolean } | null>(null);
+  const [confirmAudioOpen, setConfirmAudioOpen] = useState(false);
+  const [trustAudioCk, setTrustAudioCk] = useState(false);
 
   const chooseSurface = useCallback((s: DisplaySurface) => {
     setSurface(s);
     writeLS(LS_SURFACE, s);
   }, []);
 
-  const setSysAudioPref = useCallback((v: boolean) => {
+  /** Direct setter — no confirmation. Used after the user acknowledges. */
+  const commitSysAudio = useCallback((v: boolean) => {
     setSysAudio(v);
     writeLS(LS_SYSAUDIO, v ? "1" : "0");
   }, []);
+
+  /**
+   * Public toggle: turning ON asks for an explicit confirmation so the user
+   * doesn't accidentally publish music, notifications, or private meeting
+   * audio. Once acknowledged (trust checkbox), we skip future confirmations.
+   */
+  const requestSysAudioToggle = useCallback((next: boolean) => {
+    if (!next) {
+      commitSysAudio(false);
+      return;
+    }
+    const trusted = readLS(LS_SYSAUDIO_TRUSTED, "0") === "1";
+    if (trusted) {
+      commitSysAudio(true);
+      toast.warning(
+        rtl ? "تم تفعيل صوت النظام — أي شيء يعمل على جهازك سيُنشر مع المشاركة."
+            : "System audio enabled — anything playing on this device will be published with the share.",
+        { duration: 4500 }
+      );
+      return;
+    }
+    setTrustAudioCk(false);
+    setConfirmAudioOpen(true);
+  }, [commitSysAudio, rtl]);
 
   const cleanup = useCallback(() => {
     tracks?.forEach((t) => { try { t.stop(); } catch { /* ignore */ } });
@@ -764,7 +810,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
       <button
         type="button"
-        onClick={() => setSysAudioPref(!sysAudio)}
+        onClick={() => requestSysAudioToggle(!sysAudio)}
         aria-pressed={sysAudio}
         title={sysAudio ? (rtl ? "صوت النظام: مفعّل" : "System audio: on") : (rtl ? "صوت النظام: متوقف" : "System audio: off")}
         aria-label={sysAudio ? (rtl ? "صوت النظام مفعّل" : "System audio on") : (rtl ? "صوت النظام متوقف" : "System audio off")}
@@ -835,6 +881,24 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
                 </span>
               </div>
             )}
+            {sourceInfo?.hasAudio && (
+              <div
+                className="mt-2 flex items-start gap-2 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+                role="alert"
+              >
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+                <div>
+                  <div className="font-semibold">
+                    {rtl ? "تنبيه: صوت النظام سيُنشر" : "Warning: system audio will be published"}
+                  </div>
+                  <div className="text-red-200/80">
+                    {rtl
+                      ? "أي صوت يعمل على جهازك (موسيقى، إشعارات، مكالمات) سيسمعه باقي المشاركين. لإيقاف الصوت، ألغِ الآن، عطّل «صوت النظام»، وأعد المحاولة."
+                      : "Anything playing on this device (music, notifications, other calls) will be audible to everyone. To silence it, cancel, disable “System audio”, then try again."}
+                  </div>
+                </div>
+              </div>
+            )}
           </DialogHeader>
           <div className="flex-1 min-h-0 bg-black flex items-center justify-center px-6">
             <video
@@ -861,6 +925,56 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* System-audio confirmation — one-time (or per-toggle if not trusted) */}
+      <AlertDialog open={confirmAudioOpen} onOpenChange={setConfirmAudioOpen}>
+        <AlertDialogContent dir={rtl ? "rtl" : "ltr"} className="border-amber-400/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
+              {rtl ? "تفعيل صوت النظام أثناء المشاركة؟" : "Enable system audio while sharing?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                {rtl
+                  ? "لو فعّلت هذا الخيار، أي شيء بيتشغّل على جهازك — موسيقى، فيديو، إشعارات، مكالمة تانية — هيسمعه كل المشاركين معاك."
+                  : "If you turn this on, everything playing on this device — music, videos, notifications, other calls — will be published to every participant."}
+              </span>
+              <span className="block text-amber-700 dark:text-amber-300 font-medium">
+                {rtl
+                  ? "متأكد إنك عايز تنشر صوت النظام؟"
+                  : "Are you sure you want to publish system audio?"}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground select-none cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-border accent-amber-500"
+              checked={trustAudioCk}
+              onChange={(e) => setTrustAudioCk(e.target.checked)}
+            />
+            {rtl ? "افهم المخاطر — لا تسألني مرة أخرى على هذا الجهاز" : "I understand — don’t ask again on this device"}
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{rtl ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-500 hover:bg-amber-400 text-black"
+              onClick={() => {
+                if (trustAudioCk) writeLS(LS_SYSAUDIO_TRUSTED, "1");
+                commitSysAudio(true);
+                toast.warning(
+                  rtl ? "تم تفعيل صوت النظام — كل ما يعمل على جهازك سيُنشر."
+                      : "System audio enabled — anything playing on this device will be published.",
+                  { duration: 4500 }
+                );
+              }}
+            >
+              {rtl ? "تفعيل ونشر الصوت" : "Enable & publish audio"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -915,6 +1029,9 @@ function KeyboardShortcuts({
         e.preventDefault();
         if (autoSpeaker) setFocusLock(!focusLock);
         else toast(rtl ? "فعّل ترتيب المتحدث أولًا (L)" : "Enable speaker sort first (L)");
+      } else if (key === "u") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent(EVT_TOGGLE_PARTICIPANTS));
       } else if (key === "?" || (e.shiftKey && key === "/")) {
         e.preventDefault();
         setHelpOpen((o) => !o);
@@ -931,6 +1048,7 @@ function KeyboardShortcuts({
     ["P", "إلغاء تثبيت المشارك"],
     ["L", "تفعيل/إيقاف ترتيب المتحدث"],
     ["F", "قفل التركيز على المتحدث الحالي"],
+    ["U", "فتح/إغلاق قائمة المشاركين"],
     ["?", "عرض/إخفاء هذه القائمة"],
     ["Esc", "إغلاق النوافذ"],
   ] : [
@@ -940,6 +1058,7 @@ function KeyboardShortcuts({
     ["P", "Clear pinned participant"],
     ["L", "Toggle speaker-based auto reorder"],
     ["F", "Lock focus on current speaker"],
+    ["U", "Open / close participants panel"],
     ["?", "Show / hide shortcuts"],
     ["Esc", "Close dialogs"],
   ], [rtl]);
@@ -1000,8 +1119,12 @@ function ParticipantRow({ p, rtl }: { p: Participant; rtl: boolean }) {
 
   return (
     <li
+      tabIndex={0}
+      role="option"
+      data-participant-row
       className={cn(
         "flex items-center gap-3 rounded-lg border px-3 py-2 transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
         speaking ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 bg-white/[0.03]"
       )}
       aria-label={`${name}${isLocal ? (rtl ? " (أنت)" : " (You)") : ""} — ${mic ? (rtl ? "الميكروفون مفتوح" : "mic on") : (rtl ? "الميكروفون مكتوم" : "mic off")}, ${cam ? (rtl ? "الكاميرا مفتوحة" : "camera on") : (rtl ? "الكاميرا مقفولة" : "camera off")}${share ? (rtl ? "، يشارك الشاشة" : ", sharing screen") : ""}`}
@@ -1045,7 +1168,30 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
   const participants = useParticipants(); // reactive to join/leave for everyone
   const count = participants.length;
   const [open, setOpen] = useState(false);
-  const label = rtl ? `${count} في المكالمة — اضغط للتفاصيل` : `${count} in call — click for details`;
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const label = rtl
+    ? `${count} في المكالمة — اضغط للتفاصيل (U)`
+    : `${count} in call — click for details (U)`;
+
+  // sr-only live region text: announces join/leave transitions politely.
+  const prevCountRef = useRef(count);
+  const [srCount, setSrCount] = useState("");
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    if (count !== prev) {
+      const delta = count - prev;
+      setSrCount(
+        rtl
+          ? (delta > 0
+              ? `انضم مشارك — الآن ${count} في المكالمة`
+              : `غادر مشارك — الآن ${count} في المكالمة`)
+          : (delta > 0
+              ? `A participant joined — ${count} now in the call`
+              : `A participant left — ${count} now in the call`)
+      );
+      prevCountRef.current = count;
+    }
+  }, [count, rtl]);
 
   const sorted = useMemo(() => {
     return [...participants].sort((a, b) => {
@@ -1056,8 +1202,48 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
     });
   }, [participants]);
 
+  // Global keyboard shortcut ("U") + programmatic toggle from KeyboardShortcuts.
+  useEffect(() => {
+    const onToggle = () => setOpen((o) => !o);
+    window.addEventListener(EVT_TOGGLE_PARTICIPANTS, onToggle);
+    return () => window.removeEventListener(EVT_TOGGLE_PARTICIPANTS, onToggle);
+  }, []);
+
+  // When the panel opens, move focus to the first row so the user can
+  // navigate the list immediately with the keyboard.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const first = listRef.current?.querySelector<HTMLElement>("[data-participant-row]");
+      first?.focus();
+    }, 60);
+    return () => clearTimeout(t);
+  }, [open, sorted.length]);
+
+  // Arrow-key navigation inside the list.
+  const onListKeyDown: React.KeyboardEventHandler<HTMLUListElement> = (e) => {
+    const rows = Array.from(
+      listRef.current?.querySelectorAll<HTMLElement>("[data-participant-row]") ?? []
+    );
+    if (rows.length === 0) return;
+    const idx = rows.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (e.key === "ArrowDown") next = Math.min(rows.length - 1, idx + 1);
+    else if (e.key === "ArrowUp") next = Math.max(0, idx - 1);
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = rows.length - 1;
+    else return;
+    e.preventDefault();
+    rows[next < 0 ? 0 : next]?.focus();
+  };
+
   return (
     <>
+      {/* SR-only live region: participant count transitions */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {srCount}
+      </div>
+
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -1070,11 +1256,13 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
         aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-keyshortcuts="u"
         title={label}
       >
         <Users className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="tabular-nums">{count}</span>
         <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
+        <kbd className="ml-1 rounded border border-white/20 bg-white/10 px-1 py-0 font-mono text-[9px] text-white/80">U</kbd>
       </button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
@@ -1088,10 +1276,20 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
               {rtl ? `المشاركون (${count})` : `Participants (${count})`}
             </SheetTitle>
             <SheetDescription className="text-white/60">
-              {rtl ? "كل من في المكالمة الآن مع حالة الميكروفون والكاميرا والمشاركة." : "Everyone in the call now with mic, camera and share state."}
+              {rtl
+                ? "استخدم الأسهم للتنقّل، U للإغلاق. حالة الميكروفون والكاميرا والمشاركة محدَّثة لحظيًا."
+                : "Use ↑/↓ to navigate, U to close. Mic, camera and share state update in real time."}
             </SheetDescription>
           </SheetHeader>
-          <ul className="mt-4 space-y-2 max-h-[calc(100dvh-140px)] overflow-y-auto pr-1" role="list">
+          <ul
+            ref={listRef}
+            onKeyDown={onListKeyDown}
+            className="mt-4 space-y-2 max-h-[calc(100dvh-140px)] overflow-y-auto pr-1 focus:outline-none"
+            role="listbox"
+            aria-label={rtl ? "قائمة المشاركين" : "Participants list"}
+            aria-activedescendant={undefined}
+            tabIndex={-1}
+          >
             {sorted.map((p) => (
               <ParticipantRow key={p.identity} p={p} rtl={rtl} />
             ))}
@@ -1106,13 +1304,22 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
 /*  Auto speaker-reorder toggle + focus lock                          */
 /* ------------------------------------------------------------------ */
 
-function useFocusLock(): [boolean, (v: boolean) => void] {
+/**
+ * Persisted user preference for the "lock focus on current speaker" toggle.
+ * Returns `[on, set, setTransient]`:
+ *  - `set` updates state AND writes to localStorage (user intent)
+ *  - `setTransient` updates only in-memory state (used for runtime guards
+ *    such as "auto-off while speaker sort is disabled") so the saved
+ *    preference is restored automatically on the next call.
+ */
+function useFocusLock(): [boolean, (v: boolean) => void, (v: boolean) => void] {
   const [on, setOn] = useState<boolean>(() => readLS(LS_FOCUSLOCK, "0") === "1");
   const set = useCallback((v: boolean) => {
     setOn(v);
     writeLS(LS_FOCUSLOCK, v ? "1" : "0");
   }, []);
-  return [on, set];
+  const setTransient = useCallback((v: boolean) => setOn(v), []);
+  return [on, set, setTransient];
 }
 
 function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void }) {
@@ -1206,12 +1413,17 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const { lang } = useI18n();
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
-  const [focusLock, setFocusLock] = useFocusLock();
+  const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
 
-  // Focus lock only makes sense while speaker sort is on.
+  // Focus lock only makes sense while speaker sort is on — disable at
+  // runtime WITHOUT wiping the persisted preference so it restores next call.
   useEffect(() => {
-    if (!autoSpeaker && focusLock) setFocusLock(false);
-  }, [autoSpeaker, focusLock, setFocusLock]);
+    if (!autoSpeaker && focusLock) setFocusLockTransient(false);
+    // Re-apply the saved preference when speaker sort turns back on.
+    if (autoSpeaker && !focusLock && readLS(LS_FOCUSLOCK, "0") === "1") {
+      setFocusLockTransient(true);
+    }
+  }, [autoSpeaker, focusLock, setFocusLockTransient]);
 
   useEffect(() => {
     if (!open) return;
