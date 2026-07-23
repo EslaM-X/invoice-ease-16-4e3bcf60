@@ -802,7 +802,8 @@ function TeamChatPage() {
         <div
           className={cn(
             "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background",
-            activeRoomId ? "hidden md:flex" : "flex"
+            activeRoomId ? "hidden md:flex" : "flex",
+            focusMode && "md:!hidden"
           )}
         >
           <div className="p-3 border-b flex items-center justify-between bg-gradient-to-b from-card via-card to-muted/40 shadow-[0_2px_0_0_color-mix(in_oklab,var(--brand-gold,#d4af37)_18%,transparent)]">
