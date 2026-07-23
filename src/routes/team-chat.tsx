@@ -1519,6 +1519,17 @@ function TeamChatPage() {
                 )}
               </div>
 
+              {restoredPill && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 text-white border border-[color:var(--brand-gold,#d4af37)]/50 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.7)] px-3 py-1.5 backdrop-blur-md text-[11px] font-semibold motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-2"
+                >
+                  <ArrowUp className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" />
+                  {rtl ? "تم استرجاع مكان التمرير" : "Restored your scroll position"}
+                </div>
+              )}
+
               {!isAtBottom && (
                 <button
                   type="button"
