@@ -1419,7 +1419,7 @@ function TeamChatPage() {
                 onScroll={onScroll}
                 dir={rtl ? "rtl" : "ltr"}
                 className={cn(
-                  "absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
+                  "team-chat-scroll absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
                   densityPaddingClass,
                   wallpaperClass
                 )}
