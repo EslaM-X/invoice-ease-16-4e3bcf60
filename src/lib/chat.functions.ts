@@ -475,6 +475,64 @@ export const setChatLayout = createServerFn({ method: "POST" })
     return { ok: true, layout: merged };
   });
 
+// ---------- Per-conversation scroll position (cross-device sync) ----------
+
+export const getChatRoomScroll = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_room_scroll")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const raw = (data as any)?.chat_room_scroll ?? {};
+    // Shape: { [roomId]: { top: number, h: number, ts: string } }
+    return { scroll: (raw ?? {}) as Record<string, { top: number; h?: number; ts?: string }> };
+  });
+
+const RoomScrollSchema = z.object({
+  room_id: z.string().uuid(),
+  top: z.number().finite().min(0),
+  h: z.number().finite().min(0).optional(),
+});
+
+export const setChatRoomScroll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => RoomScrollSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_room_scroll")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const current = ((row as any)?.chat_room_scroll ?? {}) as Record<string, unknown>;
+    // Keep last ~200 rooms to prevent unbounded growth
+    const entries = Object.entries(current);
+    let base: Record<string, unknown> = current;
+    if (entries.length > 200) {
+      base = Object.fromEntries(
+        entries
+          .sort((a, b) => String((b[1] as any)?.ts ?? "").localeCompare(String((a[1] as any)?.ts ?? "")))
+          .slice(0, 199)
+      );
+    }
+    const merged = {
+      ...base,
+      [data.room_id]: { top: Math.round(data.top), h: data.h ? Math.round(data.h) : undefined, ts: new Date().toISOString() },
+    };
+    const { error } = await supabase
+      .from("user_ui_preferences")
+      .upsert(
+        { user_id: userId, chat_room_scroll: merged } as any,
+        { onConflict: "user_id" }
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 
 // Update current user's chat display profile (job title + color).
 export const updateChatProfile = createServerFn({ method: "POST" })

@@ -30,6 +30,7 @@ import {
   toggleReaction, setTypingState, updatePresence,
   markMessagesRead, getChatWallpaper, setChatWallpaper,
   getChatDensity, setChatDensity, getChatLayout, setChatLayout,
+  getChatRoomScroll, setChatRoomScroll,
 } from "@/lib/chat.functions";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
@@ -127,13 +128,20 @@ function TeamChatPage() {
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
 
-  // Per-room scroll position (persisted in localStorage) + restore indicator
+  // Per-room scroll position — synced to Supabase (user_ui_preferences.chat_room_scroll)
+  // with localStorage as a warm cache for instant restore on the same device.
   const pendingRestoreRef = useRef<number | null>(null);
   const didRestoreRef = useRef<Record<string, boolean>>({});
   const saveScrollTimerRef = useRef<number | null>(null);
+  const remoteScrollRef = useRef<Record<string, { top: number; ts?: string }>>({});
+  const remoteScrollLoadedRef = useRef(false);
   const [restoredPill, setRestoredPill] = useState(false);
   const scrollStorageKey = useCallback(
     (roomId: string) => `chat:scroll:v1:${user?.id ?? "anon"}:${roomId}`,
+    [user?.id]
+  );
+  const scrollTsKey = useCallback(
+    (roomId: string) => `chat:scroll:v1:ts:${user?.id ?? "anon"}:${roomId}`,
     [user?.id]
   );
   const prefersReducedMotion = useCallback(
@@ -241,6 +249,8 @@ function TeamChatPage() {
   const [chatWidth, setChatWidth] = useState<ChatWidth>("wide");
   const getLayoutFn = useServerFn(getChatLayout);
   const setLayoutFn = useServerFn(setChatLayout);
+  const getRoomScrollFn = useServerFn(getChatRoomScroll);
+  const setRoomScrollFn = useServerFn(setChatRoomScroll);
   const layoutLoadedRef = useRef(false);
 
   // 1) Warm from localStorage instantly.
@@ -635,15 +645,50 @@ function TeamChatPage() {
     }
   }, [activeRoomId, markRead, qc]);
 
+  // Load the remote scroll map once per session and merge remote > local when
+  // the remote timestamp is newer (cross-device sync).
+  useEffect(() => {
+    if (!user?.id || remoteScrollLoadedRef.current) return;
+    remoteScrollLoadedRef.current = true;
+    (async () => {
+      try {
+        const r: any = await getRoomScrollFn();
+        const remote = (r?.scroll ?? {}) as Record<string, { top: number; ts?: string }>;
+        remoteScrollRef.current = remote;
+        // Merge into localStorage where remote is newer.
+        for (const [roomId, val] of Object.entries(remote)) {
+          try {
+            const localTs = localStorage.getItem(scrollTsKey(roomId));
+            const localTsMs = localTs ? Date.parse(localTs) : 0;
+            const remoteTsMs = val?.ts ? Date.parse(val.ts) : 0;
+            if (remoteTsMs > localTsMs && Number.isFinite(val?.top) && val.top > 0) {
+              localStorage.setItem(scrollStorageKey(roomId), String(Math.round(val.top)));
+              if (val.ts) localStorage.setItem(scrollTsKey(roomId), val.ts);
+            }
+          } catch {}
+        }
+      } catch (err) {
+        console.warn("[team-chat] failed to load remote scroll map", err);
+      }
+    })();
+  }, [user?.id, getRoomScrollFn, scrollStorageKey, scrollTsKey]);
+
   // Plan a scroll restore whenever we switch rooms (once per room per session)
   useEffect(() => {
     if (!activeRoomId || !user?.id) { pendingRestoreRef.current = null; return; }
     if (didRestoreRef.current[activeRoomId]) { pendingRestoreRef.current = null; return; }
+    let target: number | null = null;
     try {
       const raw = localStorage.getItem(scrollStorageKey(activeRoomId));
       const n = raw != null ? Number(raw) : NaN;
-      pendingRestoreRef.current = Number.isFinite(n) && n > 0 ? n : null;
-    } catch { pendingRestoreRef.current = null; }
+      if (Number.isFinite(n) && n > 0) target = n;
+    } catch {}
+    // Fall back to remote map if we have no local value yet
+    if (target == null) {
+      const remote = remoteScrollRef.current?.[activeRoomId];
+      if (remote && Number.isFinite(remote.top) && remote.top > 0) target = Math.round(remote.top);
+    }
+    pendingRestoreRef.current = target;
   }, [activeRoomId, user?.id, scrollStorageKey]);
 
   // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
@@ -726,20 +771,29 @@ function TeamChatPage() {
       if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
         loadOlderMessages();
       }
-      // Persist scroll position per-room (throttled).
+      // Persist scroll position per-room: instant to localStorage, debounced to Supabase.
       if (activeRoomId && user?.id) {
         if (saveScrollTimerRef.current) window.clearTimeout(saveScrollTimerRef.current);
         const roomId = activeRoomId;
         const top = Math.max(0, Math.round(el.scrollTop));
+        const h = Math.max(0, Math.round(el.scrollHeight));
+        const ts = new Date().toISOString();
+        try {
+          localStorage.setItem(scrollStorageKey(roomId), String(top));
+          localStorage.setItem(scrollTsKey(roomId), ts);
+        } catch {}
+        remoteScrollRef.current[roomId] = { top, ts };
         saveScrollTimerRef.current = window.setTimeout(() => {
-          try { localStorage.setItem(scrollStorageKey(roomId), String(top)); } catch {}
-        }, 200);
+          setRoomScrollFn({ data: { room_id: roomId, top, h } }).catch((err: any) => {
+            console.warn("[team-chat] failed to sync scroll to remote", err?.message ?? err);
+          });
+        }, 1200);
       }
     } catch (err) {
       console.error("[team-chat] scroll handler failed", err);
       toast.error(rtl ? "تعذّر متابعة موضع التمرير" : "Chat scroll tracking failed");
     }
-  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey]);
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey, scrollTsKey, setRoomScrollFn]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
