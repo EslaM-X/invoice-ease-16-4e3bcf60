@@ -1733,7 +1733,7 @@ function QualityInsights({
   }, [room]);
 
   const netBad = q === ConnectionQuality.Poor || q === ConnectionQuality.Lost;
-  const cpuBad = frameDrop > 12 || (shareState.stats && shareState.stats.fps > 0 && shareState.stats.fps < 10);
+  const cpuBad = frameDrop > 12 || (shareState.latest?.fps != null && shareState.latest.fps > 0 && shareState.latest.fps < 10);
   const lossBad = lossPct > 5;
 
   let reason: { icon: any; title: string; detail: string; tone: string } | null = null;
