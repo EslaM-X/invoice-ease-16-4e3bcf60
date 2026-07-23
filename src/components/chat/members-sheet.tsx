@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,10 +10,15 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { Crown, Shield, UserMinus, Users, Star, UserPlus, Search, Check } from "lucide-react";
+import {
+  Crown, Shield, UserMinus, Users, Star, UserPlus, Search, Check,
+  Camera, Loader2, Pencil, Save,
+} from "lucide-react";
 import {
   listRoomMembers, setMemberRole, removeMember, listAddableUsers, addRoomMembers,
+  updateRoomProfile,
 } from "@/lib/chat.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import { toast } from "sonner";
 
