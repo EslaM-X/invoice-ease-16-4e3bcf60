@@ -30,6 +30,7 @@ import {
   toggleReaction, setTypingState, updatePresence,
   markMessagesRead, getChatWallpaper, setChatWallpaper,
   getChatDensity, setChatDensity, getChatLayout, setChatLayout,
+  getChatRoomScroll, setChatRoomScroll,
 } from "@/lib/chat.functions";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
