@@ -1448,7 +1448,7 @@ function TeamChatPage() {
                 </div>
 
                 {/* Virtualized messages */}
-                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
+                <div data-virtual-track style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
                   {rowVirtualizer.getVirtualItems().map((vi) => {
                     const i = vi.index;
                     const m = messages[i];
