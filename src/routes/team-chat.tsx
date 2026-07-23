@@ -55,7 +55,7 @@ export const Route = createFileRoute("/team-chat")({
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
   },
-  component: TeamChatPage,
+  component: TeamChatPageBoundary,
 });
 
 type WallpaperState = {
