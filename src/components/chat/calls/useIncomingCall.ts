@@ -31,11 +31,11 @@ export function useIncomingCall(myUserId: string | undefined, activeInCallId: st
       if (!call || call.status !== "ringing") return;
       if (call.initiator_id === myUserId) return;
 
-      const [{ data: prof }, { data: room }] = await Promise.all([
+      const [profRes, roomRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("display_name, full_name, email, avatar_url")
-          .eq("id", call.initiator_id)
+          .select("display_name, email, avatar_url")
+          .eq("user_id", call.initiator_id)
           .maybeSingle(),
         supabase
           .from("chat_rooms")
@@ -43,13 +43,15 @@ export function useIncomingCall(myUserId: string | undefined, activeInCallId: st
           .eq("id", call.room_id)
           .maybeSingle(),
       ]);
+      const prof: any = profRes.data;
+      const room: any = roomRes.data;
 
       setIncoming({
         call_id: call.id,
         room_id: call.room_id,
-        mode: call.mode,
+        mode: (call.mode === "video" ? "video" : "audio"),
         initiator_id: call.initiator_id,
-        initiator_name: prof?.display_name || prof?.full_name || prof?.email || null,
+        initiator_name: prof?.display_name || prof?.email || null,
         initiator_avatar: prof?.avatar_url || null,
         room_name: room?.type === "group" ? room?.name : null,
       });
