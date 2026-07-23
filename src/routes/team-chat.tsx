@@ -1475,6 +1475,17 @@ function TeamChatPage() {
                 >
                   {callStarting === "video" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Video className="h-[18px] w-[18px]" />}
                 </Button>
+                <Link to="/call-history">
+                  <Button
+                    size="icon" variant="ghost"
+                    className="h-10 w-10 rounded-full shrink-0 text-amber-200 bg-gradient-to-br from-amber-500/20 to-yellow-600/20 ring-1 ring-amber-400/30 hover:from-amber-500/30 hover:to-yellow-600/30 hover:-translate-y-0.5 transition-all"
+                    title={rtl ? "سجل المكالمات" : "Call history"}
+                    aria-label="Call history"
+                  >
+                    <History className="h-[18px] w-[18px]" />
+                  </Button>
+                </Link>
+
 
 
                 <Button
