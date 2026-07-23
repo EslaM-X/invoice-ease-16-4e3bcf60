@@ -3,6 +3,9 @@ import "@livekit/components-styles";
 import {
   LiveKitRoom,
   GridLayout,
+  CarouselLayout,
+  FocusLayoutContainer,
+  FocusLayout,
   ParticipantTile,
   ControlBar,
   RoomAudioRenderer,
@@ -10,12 +13,15 @@ import {
   useConnectionState,
   useLocalParticipant,
   useParticipants,
+  useRoomContext,
+  usePinnedTracks,
 } from "@livekit/components-react";
 import {
   Track,
   ConnectionState,
   ConnectionQuality,
   VideoPresets,
+  ScreenSharePresets,
   RoomEvent,
   type RoomOptions,
 } from "livekit-client";
@@ -34,6 +40,13 @@ type Props = {
   onLeave: () => void;
 };
 
+/**
+ * Adaptive stage:
+ * - Screen share present → focus layout (big share + carousel of participants)
+ * - 1–5 participants → symmetric grid
+ * - 6+ participants → grid still, but tiles auto-shrink; CarouselLayout is used as overflow
+ *   inside FocusLayoutContainer when a share is pinned.
+ */
 function Stage() {
   const tracks = useTracks(
     [
@@ -42,11 +55,104 @@ function Stage() {
     ],
     { onlySubscribed: false }
   );
+
+  const screenShareTracks = tracks.filter(
+    (t) => t.source === Track.Source.ScreenShare
+  );
+  const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
+  const pinned = usePinnedTracks() ?? [];
+  const focusTrack = pinned[0] ?? screenShareTracks[0];
+
+  if (focusTrack) {
+    const carousel = cameraTracks.length > 0 ? cameraTracks : tracks;
+    return (
+      <FocusLayoutContainer style={{ height: "calc(100% - 128px)" }}>
+        <CarouselLayout tracks={carousel}>
+          <ParticipantTile />
+        </CarouselLayout>
+        <FocusLayout trackRef={focusTrack} />
+      </FocusLayoutContainer>
+    );
+  }
+
   return (
     <GridLayout tracks={tracks} style={{ height: "calc(100% - 128px)" }}>
       <ParticipantTile />
     </GridLayout>
   );
+}
+
+/** Toasts + status announcements when any participant mutes / unmutes / shares screen. */
+function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const seenRef = useRef(false);
+
+  useEffect(() => {
+    if (!room) return;
+
+    const nameOf = (identity: string) => {
+      const p = room.getParticipantByIdentity(identity);
+      return p?.name || p?.identity || (rtl ? "مشارك" : "Participant");
+    };
+
+    const onMuted = (pub: any, participant: any) => {
+      if (!seenRef.current) return;
+      const isLocal = participant?.identity === room.localParticipant?.identity;
+      const who = isLocal ? (rtl ? "أنت" : "You") : nameOf(participant.identity);
+      if (pub.source === Track.Source.Microphone) {
+        toast(rtl ? `${who}: كتم الميكروفون` : `${who} muted the mic`, { icon: "🎙️" });
+      } else if (pub.source === Track.Source.Camera) {
+        toast(rtl ? `${who}: أغلق الكاميرا` : `${who} turned camera off`, { icon: "📷" });
+      }
+    };
+    const onUnmuted = (pub: any, participant: any) => {
+      if (!seenRef.current) return;
+      const isLocal = participant?.identity === room.localParticipant?.identity;
+      const who = isLocal ? (rtl ? "أنت" : "You") : nameOf(participant.identity);
+      if (pub.source === Track.Source.Microphone) {
+        toast.success(rtl ? `${who}: فتح الميكروفون` : `${who} unmuted the mic`);
+      } else if (pub.source === Track.Source.Camera) {
+        toast.success(rtl ? `${who}: فتح الكاميرا` : `${who} turned camera on`);
+      }
+    };
+    const onPub = (pub: any, participant: any) => {
+      if (pub.source === Track.Source.ScreenShare) {
+        const who = participant?.identity === room.localParticipant?.identity
+          ? (rtl ? "أنت" : "You")
+          : nameOf(participant.identity);
+        toast.success(rtl ? `${who}: بدأ مشاركة الشاشة` : `${who} started screen share`, { icon: "🖥️" });
+      }
+    };
+    const onUnpub = (pub: any, participant: any) => {
+      if (pub.source === Track.Source.ScreenShare) {
+        const who = participant?.identity === room.localParticipant?.identity
+          ? (rtl ? "أنت" : "You")
+          : nameOf(participant.identity);
+        toast(rtl ? `${who}: أوقف مشاركة الشاشة` : `${who} stopped screen share`);
+      }
+    };
+
+    room.on(RoomEvent.TrackMuted, onMuted);
+    room.on(RoomEvent.TrackUnmuted, onUnmuted);
+    room.on(RoomEvent.TrackPublished, onPub);
+    room.on(RoomEvent.LocalTrackPublished, onPub as any);
+    room.on(RoomEvent.TrackUnpublished, onUnpub);
+    room.on(RoomEvent.LocalTrackUnpublished, onUnpub as any);
+
+    // Skip initial join-time mute events
+    const t = setTimeout(() => { seenRef.current = true; }, 1200);
+    return () => {
+      clearTimeout(t);
+      room.off(RoomEvent.TrackMuted, onMuted);
+      room.off(RoomEvent.TrackUnmuted, onUnmuted);
+      room.off(RoomEvent.TrackPublished, onPub);
+      room.off(RoomEvent.LocalTrackPublished, onPub as any);
+      room.off(RoomEvent.TrackUnpublished, onUnpub);
+      room.off(RoomEvent.LocalTrackUnpublished, onUnpub as any);
+    };
+  }, [room, rtl]);
+
+  return null;
 }
 
 /** Small pill showing connection quality + reconnection state + participants count. */
