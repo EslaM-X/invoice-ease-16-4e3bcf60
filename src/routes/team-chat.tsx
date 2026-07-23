@@ -876,8 +876,16 @@ function TeamChatPage() {
                 )}
 
                 {messages.length === 0 && (
-                  <div className="text-center text-sm text-muted-foreground py-12">
-                    {rtl ? "ابعت أول رسالة 👋" : "Send the first message 👋"}
+                  <div className="flex justify-center py-12">
+                    <div className="max-w-xs text-center px-5 py-4 rounded-2xl bg-black/55 backdrop-blur-md border border-[color:var(--brand-gold,#d4af37)]/35 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] text-white">
+                      <div className="text-2xl mb-1">💬</div>
+                      <div className="text-sm font-semibold">
+                        {rtl ? "ابعت أول رسالة 👋" : "Send the first message 👋"}
+                      </div>
+                      <div className="text-[11px] text-white/70 mt-1">
+                        {rtl ? "ابدأ المحادثة وخلي الفريق يشوفك." : "Start the conversation — your team will see it instantly."}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

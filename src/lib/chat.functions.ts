@@ -590,6 +590,11 @@ export const listRoomMembers = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ room_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: room } = await supabase
+      .from("chat_rooms")
+      .select("id, created_by, name, type")
+      .eq("id", data.room_id)
+      .maybeSingle();
     const { data: mems, error } = await supabase
       .from("chat_room_members")
       .select("user_id, user_email, role, joined_at")
@@ -603,7 +608,10 @@ export const listRoomMembers = createServerFn({ method: "GET" })
           .in("user_id", ids)
       : { data: [] as any[] };
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+    const creatorId = room?.created_by ?? null;
     return {
+      created_by: creatorId,
+      room_type: room?.type ?? null,
       members: (mems ?? []).map((m: any) => {
         const p = pMap.get(m.user_id);
         return {
@@ -616,9 +624,69 @@ export const listRoomMembers = createServerFn({ method: "GET" })
           role: m.role ?? "member",
           joined_at: m.joined_at ?? null,
           is_me: m.user_id === userId,
+          is_creator: creatorId != null && m.user_id === creatorId,
         };
       }),
     };
+  });
+
+/** List company members who are NOT yet in the given room, for the "Add member" picker. */
+export const listAddableUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ room_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: mems } = await supabase
+      .from("chat_room_members")
+      .select("user_id")
+      .eq("room_id", data.room_id);
+    const existing = new Set((mems ?? []).map((m: any) => m.user_id));
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, email, avatar_url, job_title, job_title_color")
+      .order("display_name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return {
+      users: (profiles ?? [])
+        .filter((p: any) => !existing.has(p.user_id))
+        .map((p: any) => ({
+          user_id: p.user_id,
+          display_name: p.display_name ?? p.email ?? "Member",
+          email: p.email ?? null,
+          avatar_url: p.avatar_url ?? null,
+          job_title: p.job_title ?? null,
+          job_title_color: p.job_title_color ?? null,
+        })),
+    };
+  });
+
+/** Add one or more users to a room (creator/admin only, enforced by RLS). */
+export const addRoomMembers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      room_id: z.string().uuid(),
+      user_ids: z.array(z.string().uuid()).min(1),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, email")
+      .in("user_id", data.user_ids);
+    const emailMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p.email ?? null]));
+    const rows = data.user_ids.map((uid) => ({
+      room_id: data.room_id,
+      user_id: uid,
+      user_email: emailMap.get(uid) ?? null,
+      role: "member",
+    }));
+    const { error } = await supabase
+      .from("chat_room_members")
+      .upsert(rows, { onConflict: "room_id,user_id", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+    return { ok: true, added: rows.length };
   });
 
 /** Info about who saw / can see a specific message. */

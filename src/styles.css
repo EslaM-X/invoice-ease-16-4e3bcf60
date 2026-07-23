@@ -1404,6 +1404,16 @@ html { scroll-behavior: smooth; }
 }
 em-emoji-picker { --font-family: inherit; }
 
+/* Twemoji SVG images — sized to match surrounding text, aligned to baseline. */
+img.twemoji {
+  height: 1.15em;
+  width: 1.15em;
+  margin: 0 0.05em 0 0.05em;
+  vertical-align: -0.2em;
+  display: inline-block;
+}
+.chat-emoji img.twemoji { height: 1.2em; width: 1.2em; }
+
 /* Search-match highlight — three intensities driven by [data-hl] on the chat root */
 .chat-hl {
   background: color-mix(in oklab, var(--brand-gold, #d4af37) 55%, transparent);
