@@ -750,6 +750,16 @@ function TeamChatPage() {
                 <Button
                   size="icon" variant="ghost"
                   className="h-10 w-10 rounded-full shrink-0"
+                  onClick={() => setMembersOpen(true)}
+                  title={rtl ? "معلومات الشات والأعضاء" : "Chat info & members"}
+                  aria-label="Chat info"
+                >
+                  <Users2 className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0"
                   onClick={() => setInChatSearchOpen((v) => !v)}
                   title={rtl ? "بحث في المحادثة" : "Search in chat"}
                   aria-label="Search in chat"
