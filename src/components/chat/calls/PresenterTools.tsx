@@ -699,7 +699,12 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
           if (now - l.t > 1200) lasersRef.current.delete(id);
           else laserAlive = true;
         }
-        if (dirtyRef.current || laserAlive || activeStrokeRef.current || activeShapeRef.current) {
+        let cursorAlive = false;
+        for (const [id, c] of cursorsRef.current) {
+          if (now - c.t > 4000) cursorsRef.current.delete(id);
+          else cursorAlive = true;
+        }
+        if (dirtyRef.current || laserAlive || cursorAlive || activeStrokeRef.current || activeShapeRef.current) {
           const ctx = cvs.getContext("2d")!;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           ctx.clearRect(0, 0, w, h);
