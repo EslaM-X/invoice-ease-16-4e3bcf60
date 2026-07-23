@@ -128,13 +128,20 @@ function TeamChatPage() {
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
 
-  // Per-room scroll position (persisted in localStorage) + restore indicator
+  // Per-room scroll position — synced to Supabase (user_ui_preferences.chat_room_scroll)
+  // with localStorage as a warm cache for instant restore on the same device.
   const pendingRestoreRef = useRef<number | null>(null);
   const didRestoreRef = useRef<Record<string, boolean>>({});
   const saveScrollTimerRef = useRef<number | null>(null);
+  const remoteScrollRef = useRef<Record<string, { top: number; ts?: string }>>({});
+  const remoteScrollLoadedRef = useRef(false);
   const [restoredPill, setRestoredPill] = useState(false);
   const scrollStorageKey = useCallback(
     (roomId: string) => `chat:scroll:v1:${user?.id ?? "anon"}:${roomId}`,
+    [user?.id]
+  );
+  const scrollTsKey = useCallback(
+    (roomId: string) => `chat:scroll:v1:ts:${user?.id ?? "anon"}:${roomId}`,
     [user?.id]
   );
   const prefersReducedMotion = useCallback(
