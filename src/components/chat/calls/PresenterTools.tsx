@@ -714,6 +714,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             {rtl ? "وضع الشرح مفعّل — Esc للخروج" : "Presenter mode — press Esc to exit"}
           </div>
         ) : null}
+        {!canDraw ? (
+          <div
+            className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white/85 backdrop-blur-md border border-white/15"
+            role="status"
+            aria-live="polite"
+          >
+            {rtl ? "الرسم متاح للمقدّم فقط" : "Drawing is restricted to the presenter"}
+          </div>
+        ) : null}
+
       </div>
 
       {/* Floating toolbar (wraps on small screens, stays inside stage) */}
