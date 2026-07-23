@@ -191,8 +191,39 @@ function TeamChatPage() {
       ? "p-2 sm:p-3"
       : density === "comfortable"
       ? "p-3 sm:p-5 md:p-7"
-      : "p-3 sm:p-4 md:p-6";
+      : "p-3 sm:p-4 md:p-6 lg:px-10 xl:px-14";
   const densityGapPx = density === "compact" ? 2 : density === "comfortable" ? 12 : 8;
+
+  // Focus mode (hide sidebar) + Chat width preference — persisted per user in localStorage.
+  type ChatWidth = "default" | "wide" | "full";
+  const widthKey = user?.id ? `chat:width:${user.id}` : "chat:width:anon";
+  const focusKey = user?.id ? `chat:focus:${user.id}` : "chat:focus:anon";
+  const [focusMode, setFocusMode] = useState<boolean>(false);
+  const [chatWidth, setChatWidth] = useState<ChatWidth>("wide");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const w = localStorage.getItem(widthKey);
+      if (w === "default" || w === "wide" || w === "full") setChatWidth(w);
+      const f = localStorage.getItem(focusKey);
+      if (f === "1") setFocusMode(true);
+    } catch { /* ignore */ }
+  }, [widthKey, focusKey]);
+  const applyChatWidth = useCallback((w: ChatWidth) => {
+    setChatWidth(w);
+    try { localStorage.setItem(widthKey, w); } catch { /* ignore */ }
+  }, [widthKey]);
+  const toggleFocusMode = useCallback(() => {
+    setFocusMode((v) => {
+      const nv = !v;
+      try { localStorage.setItem(focusKey, nv ? "1" : "0"); } catch { /* ignore */ }
+      return nv;
+    });
+  }, [focusKey]);
+  const widthMaxClass =
+    chatWidth === "full" ? "max-w-none"
+      : chatWidth === "wide" ? "max-w-[1600px]"
+      : "max-w-[1100px]";
 
   // Older-history pagination + scroll anchor state
   const [olderPages, setOlderPages] = useState<ChatMsg[][]>([]);
