@@ -174,6 +174,7 @@ export function MembersSheet({
             name={m.display_name}
             size={72}
             ring={m.is_creator ? "gold" : "soft"}
+            bust={bustKey || null}
           />
           {online && <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
         </div>
