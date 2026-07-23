@@ -976,14 +976,38 @@ function TeamChatPage() {
                 </div>
               )}
 
+              <div className="relative flex-1 min-h-0">
               <div
                 ref={scrollRef}
+                onScroll={onScroll}
                 className={cn(
-                  "flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-2 md:space-y-2.5",
+                  "absolute inset-0 overflow-y-auto",
+                  densitySpacingClass,
                   wallpaperClass
                 )}
-                style={wallpaperStyle}
+                style={{ ...wallpaperStyle, ...densityVars } as React.CSSProperties}
               >
+                {/* Top sentinel: load older */}
+                <div ref={topSentinelRef} className="flex justify-center py-2">
+                  {loadingOlder ? (
+                    <span className="inline-flex items-center gap-2 text-[11px] text-white/80 bg-black/40 backdrop-blur rounded-full px-3 py-1 border border-white/10">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {rtl ? "تحميل الرسائل الأقدم..." : "Loading older messages..."}
+                    </span>
+                  ) : hasMoreOlder && messages.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={loadOlderMessages}
+                      className="text-[11px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur rounded-full px-3 py-1 border border-white/10 transition"
+                    >
+                      {rtl ? "تحميل الأقدم" : "Load older"}
+                    </button>
+                  ) : messages.length > 0 ? (
+                    <span className="text-[10px] text-white/40">
+                      {rtl ? "— بداية المحادثة —" : "— start of conversation —"}
+                    </span>
+                  ) : null}
+                </div>
                 <AnimatePresence initial={false}>
                   {messages.map((m, i) => {
                     const prev = messages[i - 1];
