@@ -131,12 +131,12 @@ export function MessageBubble({
       className={cn("group/msg flex gap-2 items-end", mine ? "justify-end" : "justify-start")}
     >
       {!mine && (
-        <div className="w-11 shrink-0 self-end">
+        <div className="w-14 shrink-0 self-end">
           {showAvatar && (
             <LuxuryAvatar
               url={msg.sender_avatar_url}
               name={displayName}
-              size={44}
+              size={54}
               ring="gold"
             />
           )}
