@@ -242,6 +242,8 @@ function TeamChatPage() {
   const [chatWidth, setChatWidth] = useState<ChatWidth>("wide");
   const getLayoutFn = useServerFn(getChatLayout);
   const setLayoutFn = useServerFn(setChatLayout);
+  const getRoomScrollFn = useServerFn(getChatRoomScroll);
+  const setRoomScrollFn = useServerFn(setChatRoomScroll);
   const layoutLoadedRef = useRef(false);
 
   // 1) Warm from localStorage instantly.
