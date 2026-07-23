@@ -30,6 +30,7 @@ import {
   type LocalTrack,
   type TrackPublication,
   type Participant,
+  type TrackReference,
 } from "livekit-client";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -38,10 +39,32 @@ import { useI18n } from "@/lib/i18n";
 import {
   Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2,
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
-  MonitorUp, Keyboard, X,
+  MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+/* ------------------------------------------------------------------ */
+/*  Persisted preferences (screen-share surface + pinned participant) */
+/* ------------------------------------------------------------------ */
+
+type DisplaySurface = "monitor" | "window" | "browser";
+const LS_SURFACE = "call.screenShare.displaySurface";
+const LS_PIN = "call.pin.identity";
+const LS_AUTOSPK = "call.autoSpeakerReorder";
+
+function readLS<T extends string>(key: string, fallback: T): T {
+  try {
+    const v = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+    return (v as T) || fallback;
+  } catch { return fallback; }
+}
+function writeLS(key: string, value: string | null) {
+  try {
+    if (value == null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
+  } catch { /* ignore */ }
+}
 
 type Props = {
   open: boolean;
