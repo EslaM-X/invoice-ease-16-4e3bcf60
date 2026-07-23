@@ -496,7 +496,11 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
     };
   }, [room, rtl]);
 
-  return null;
+  return (
+    <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {srLine}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
