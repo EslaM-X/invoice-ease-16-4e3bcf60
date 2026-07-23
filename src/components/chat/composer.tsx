@@ -154,7 +154,7 @@ export function Composer({
       )}
 
       <div
-        className={cn("flex items-end gap-1.5 p-2 sm:p-3", "pb-[max(env(safe-area-inset-bottom),0.5rem)]")}
+        className={cn("flex items-end gap-1.5 p-2 sm:p-3 md:px-6 md:py-4 lg:px-10", "pb-[max(env(safe-area-inset-bottom),0.5rem)]")}
       >
         {!voiceActive && (
           <>
