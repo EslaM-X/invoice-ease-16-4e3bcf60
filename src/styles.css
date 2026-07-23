@@ -1495,3 +1495,29 @@ img.twemoji {
 /* Fallback simple mode: disables virtualization tricks and enforces static flow. */
 .team-chat-simple .team-chat-scroll { contain: none !important; }
 .team-chat-simple [data-virtual-track] { transform: none !important; position: static !important; }
+
+/* Chat typing indicator dots — GPU-only animation, honors prefers-reduced-motion. */
+@keyframes chat-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+  30%           { transform: translateY(-3px); opacity: 1; }
+}
+.typing-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--primary, 45 65% 52%));
+  animation: chat-typing-bounce 1s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot { animation: none; opacity: 0.75; }
+}
+
+/* Sticky day chip: reserve space for the app header on mobile so it never
+   overlaps the room header, and keep it inside the safe area. */
+.chat-sticky-day {
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
+}
+@media (min-width: 640px) { .chat-sticky-day { top: 10px; } }
+
