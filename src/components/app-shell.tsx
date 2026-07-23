@@ -23,6 +23,7 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { InvoiceEditsBell } from "@/components/invoice-edits-bell";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { XAssistant } from "@/components/x-assistant";
+import ChatPopupNotifier from "@/components/chat/chat-popup-notifier";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
 import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { useCollections } from "@/lib/use-collections";
@@ -627,6 +628,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
         <MobileTabBar onMore={() => setOpen(true)} />
         <XAssistant />
+        <ChatPopupNotifier />
       </div>
     </div>
   );

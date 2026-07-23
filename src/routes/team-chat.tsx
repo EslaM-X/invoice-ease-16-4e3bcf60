@@ -83,6 +83,12 @@ function TeamChatPage() {
   const setDensityFn = useServerFn(setChatDensity);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const rid = new URLSearchParams(window.location.search).get("room");
+    if (rid) setActiveRoomId(rid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [newOpen, setNewOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
