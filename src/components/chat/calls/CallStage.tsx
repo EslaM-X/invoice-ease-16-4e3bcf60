@@ -251,33 +251,38 @@ function LocalMediaStatusBadge({ rtl }: { rtl: boolean }) {
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false;
   const camEnabled = localParticipant?.isCameraEnabled ?? false;
 
+  const micLabel = rtl ? (micEnabled ? "الميكروفون مفتوح" : "الميكروفون مكتوم") : micEnabled ? "Microphone on" : "Microphone muted";
+  const camLabel = rtl ? (camEnabled ? "الكاميرا مفتوحة" : "الكاميرا مقفولة") : camEnabled ? "Camera on" : "Camera off";
+
   return (
     <div
       className="absolute top-4 right-4 z-20 flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-xl shadow-lg"
       dir={rtl ? "rtl" : "ltr"}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={`${micLabel} — ${camLabel}`}
     >
       <span
         className={cn(
           "flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors",
-          micEnabled
-            ? "bg-emerald-500/20 text-emerald-200"
-            : "bg-red-500/25 text-red-200"
+          micEnabled ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/25 text-red-200"
         )}
-        title={rtl ? (micEnabled ? "الميكروفون مفتوح" : "الميكروفون مقفول") : micEnabled ? "Mic on" : "Mic muted"}
+        title={micLabel}
+        aria-label={micLabel}
       >
-        {micEnabled ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+        {micEnabled ? <Mic className="h-3.5 w-3.5" aria-hidden="true" /> : <MicOff className="h-3.5 w-3.5" aria-hidden="true" />}
         <span className="hidden sm:inline">{rtl ? (micEnabled ? "مفتوح" : "مكتوم") : micEnabled ? "On" : "Muted"}</span>
       </span>
       <span
         className={cn(
           "flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors",
-          camEnabled
-            ? "bg-sky-500/20 text-sky-200"
-            : "bg-white/10 text-white/70"
+          camEnabled ? "bg-sky-500/20 text-sky-200" : "bg-white/10 text-white/70"
         )}
-        title={rtl ? (camEnabled ? "الكاميرا مفتوحة" : "الكاميرا مقفولة") : camEnabled ? "Camera on" : "Camera off"}
+        title={camLabel}
+        aria-label={camLabel}
       >
-        {camEnabled ? <VideoIcon className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+        {camEnabled ? <VideoIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <VideoOff className="h-3.5 w-3.5" aria-hidden="true" />}
         <span className="hidden sm:inline">{rtl ? (camEnabled ? "مفتوحة" : "مقفولة") : camEnabled ? "On" : "Off"}</span>
       </span>
     </div>
