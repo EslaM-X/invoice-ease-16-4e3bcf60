@@ -142,6 +142,7 @@ function RootComponent() {
             <LuxurySplash />
             <OfflineBanner />
             <ApprovalGate>
+              <GlobalPresenceHeartbeat />
               <Outlet />
             </ApprovalGate>
             <InstallPrompt />
