@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
-export const Route = createFileRoute("/call-history" as any)({
+export const Route = createFileRoute("/call-history")({
   head: () => ({
     meta: [
       { title: "Call History · Steinheim" },

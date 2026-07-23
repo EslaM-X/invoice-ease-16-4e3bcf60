@@ -56,6 +56,7 @@ import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as CallHistoryRouteImport } from './routes/call-history'
 import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
 import { Route as CallCenterRouteImport } from './routes/call-center'
 import { Route as BulkReceiveRouteImport } from './routes/bulk-receive'
@@ -329,6 +330,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CallHistoryRoute = CallHistoryRouteImport.update({
+  id: '/call-history',
+  path: '/call-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CallCenterReportsRoute = CallCenterReportsRouteImport.update({
   id: '/call-center-reports',
   path: '/call-center-reports',
@@ -534,6 +540,7 @@ export interface FileRoutesByFullPath {
   '/bulk-receive': typeof BulkReceiveRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
+  '/call-history': typeof CallHistoryRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
@@ -620,6 +627,7 @@ export interface FileRoutesByTo {
   '/bulk-receive': typeof BulkReceiveRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
+  '/call-history': typeof CallHistoryRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
@@ -707,6 +715,7 @@ export interface FileRoutesById {
   '/bulk-receive': typeof BulkReceiveRoute
   '/call-center': typeof CallCenterRoute
   '/call-center-reports': typeof CallCenterReportsRoute
+  '/call-history': typeof CallHistoryRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
@@ -795,6 +804,7 @@ export interface FileRouteTypes {
     | '/bulk-receive'
     | '/call-center'
     | '/call-center-reports'
+    | '/call-history'
     | '/customers'
     | '/dashboard'
     | '/defective-items'
@@ -881,6 +891,7 @@ export interface FileRouteTypes {
     | '/bulk-receive'
     | '/call-center'
     | '/call-center-reports'
+    | '/call-history'
     | '/customers'
     | '/dashboard'
     | '/defective-items'
@@ -967,6 +978,7 @@ export interface FileRouteTypes {
     | '/bulk-receive'
     | '/call-center'
     | '/call-center-reports'
+    | '/call-history'
     | '/customers'
     | '/dashboard'
     | '/defective-items'
@@ -1054,6 +1066,7 @@ export interface RootRouteChildren {
   BulkReceiveRoute: typeof BulkReceiveRoute
   CallCenterRoute: typeof CallCenterRoute
   CallCenterReportsRoute: typeof CallCenterReportsRoute
+  CallHistoryRoute: typeof CallHistoryRoute
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   DefectiveItemsRoute: typeof DefectiveItemsRoute
@@ -1463,6 +1476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/call-history': {
+      id: '/call-history'
+      path: '/call-history'
+      fullPath: '/call-history'
+      preLoaderRoute: typeof CallHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/call-center-reports': {
       id: '/call-center-reports'
       path: '/call-center-reports'
@@ -1734,6 +1754,7 @@ const rootRouteChildren: RootRouteChildren = {
   BulkReceiveRoute: BulkReceiveRoute,
   CallCenterRoute: CallCenterRoute,
   CallCenterReportsRoute: CallCenterReportsRoute,
+  CallHistoryRoute: CallHistoryRoute,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   DefectiveItemsRoute: DefectiveItemsRoute,
