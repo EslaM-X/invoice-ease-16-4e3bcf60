@@ -1524,7 +1524,8 @@ function TeamChatPage() {
                         </motion.div>
                       </div>
                     );
-                  })}
+                  });
+                  })()}
                 </div>
 
 
