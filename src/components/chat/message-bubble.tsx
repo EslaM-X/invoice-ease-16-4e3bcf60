@@ -131,14 +131,36 @@ export function MessageBubble({
       className={cn("group/msg flex gap-2 items-end", mine ? "justify-end" : "justify-start")}
     >
       {!mine && (
-        <div className="w-8 shrink-0">
+        <div className="w-11 shrink-0 self-end">
           {showAvatar && (
-            <Avatar className="h-8 w-8 ring-1 ring-border">
-              {msg.sender_avatar_url && <AvatarImage src={msg.sender_avatar_url} />}
-              <AvatarFallback className="text-[10px] bg-muted">
-                {displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-full bg-[conic-gradient(from_140deg,rgba(212,175,55,0.9),rgba(240,215,140,0.35),rgba(212,175,55,0.9))] blur-[1px] opacity-80"
+              />
+              <Avatar
+                className="relative h-11 w-11 ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 ring-offset-2 ring-offset-transparent shadow-[0_6px_18px_-6px_rgba(0,0,0,0.55)]"
+                style={{ imageRendering: "auto" as any }}
+              >
+                {msg.sender_avatar_url && (
+                  <AvatarImage
+                    src={msg.sender_avatar_url}
+                    alt={displayName}
+                    loading="lazy"
+                    decoding="async"
+                    className="object-cover"
+                    style={{
+                      imageRendering: "auto" as any,
+                      transform: "translateZ(0)",
+                      backfaceVisibility: "hidden",
+                    }}
+                  />
+                )}
+                <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-[#2a2a2e] via-[#1a1a1c] to-black text-[color:var(--brand-gold,#d4af37)]">
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
           )}
         </div>
       )}
