@@ -31,7 +31,7 @@ import {
   type TrackPublication,
   type Participant,
 } from "livekit-client";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
@@ -39,6 +39,7 @@ import {
   Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2,
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
   MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
+  Lock, Unlock, Volume2, VolumeX, MonitorPlay,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,8 @@ type DisplaySurface = "monitor" | "window" | "browser";
 const LS_SURFACE = "call.screenShare.displaySurface";
 const LS_PIN = "call.pin.identity";
 const LS_AUTOSPK = "call.autoSpeakerReorder";
+const LS_FOCUSLOCK = "call.focusLock";
+const LS_SYSAUDIO = "call.screenShare.systemAudio";
 
 function readLS(key: string, fallback: string): string {
   try {
@@ -281,7 +284,7 @@ function PinRestorer() {
   return null;
 }
 
-function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
+function Stage({ autoSpeaker, focusLock }: { autoSpeaker: boolean; focusLock: boolean }) {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -302,26 +305,62 @@ function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
   const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
 
   // Speaker-based ordering — active speakers first, then last-spoke recency, then join order.
+  // When focusLock is on, we FREEZE ordering after the first speaker-based sort so tiles stop
+  // shuffling around; the active-speaker outline (in StudioTile) still lights up in real time.
+  const lockedOrderRef = useRef<string[] | null>(null);
+  const lockedFocusRef = useRef<string | null>(null);
+
   const orderedCamera = useMemo(() => {
-    if (!autoSpeaker) return cameraTracks;
+    if (!autoSpeaker) {
+      lockedOrderRef.current = null;
+      return cameraTracks;
+    }
     const score = (p: Participant) => {
       const speaking = p.isSpeaking ? 1_000_000_000 : 0;
       const lastSpoke = p.lastSpokeAt ? p.lastSpokeAt.getTime() : 0;
       const joined = p.joinedAt ? -p.joinedAt.getTime() / 1000 : 0;
       return speaking + lastSpoke + joined;
     };
-    return [...cameraTracks].sort((a, b) => score(b.participant) - score(a.participant));
-  }, [cameraTracks, autoSpeaker]);
+    const sorted = [...cameraTracks].sort((a, b) => score(b.participant) - score(a.participant));
+
+    if (focusLock) {
+      // Preserve last order; append any new joiners at the end.
+      const prev = lockedOrderRef.current;
+      if (!prev) {
+        lockedOrderRef.current = sorted.map((t) => t.participant.identity);
+        return sorted;
+      }
+      const byId = new Map(sorted.map((t) => [t.participant.identity, t]));
+      const kept = prev.map((id) => byId.get(id)).filter(Boolean) as typeof sorted;
+      const added = sorted.filter((t) => !prev.includes(t.participant.identity));
+      const merged = [...kept, ...added];
+      lockedOrderRef.current = merged.map((t) => t.participant.identity);
+      return merged;
+    }
+    lockedOrderRef.current = null;
+    return sorted;
+  }, [cameraTracks, autoSpeaker, focusLock]);
 
   const pinned = usePinnedTracks() ?? [];
   const activeSpeakerTrack = autoSpeaker
     ? orderedCamera.find((t) => t.participant.isSpeaking)
     : undefined;
-  const focusTrack =
-    pinned[0] ?? screenShareTracks[0] ?? (autoSpeaker && cameraTracks.length > 3 ? activeSpeakerTrack : undefined);
+
+  // When focusLock is on we keep the SAME participant in the focus slot until unlocked.
+  let autoFocus = autoSpeaker && cameraTracks.length > 3 ? activeSpeakerTrack : undefined;
+  if (autoSpeaker && focusLock) {
+    const currentId = autoFocus?.participant.identity ?? lockedFocusRef.current ?? orderedCamera[0]?.participant.identity ?? null;
+    if (currentId) {
+      lockedFocusRef.current = currentId;
+      autoFocus = orderedCamera.find((t) => t.participant.identity === currentId) ?? autoFocus;
+    }
+  } else if (!focusLock) {
+    lockedFocusRef.current = null;
+  }
+
+  const focusTrack = pinned[0] ?? screenShareTracks[0] ?? autoFocus;
 
   const allOrdered = useMemo(() => {
-    // screen shares first (typically pinned), then ordered cameras
     return [...screenShareTracks, ...orderedCamera];
   }, [screenShareTracks, orderedCamera]);
 
@@ -598,15 +637,23 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   const [surface, setSurface] = useState<DisplaySurface>(
     () => (readLS(LS_SURFACE, "monitor") as DisplaySurface)
   );
+  const [sysAudio, setSysAudio] = useState<boolean>(() => readLS(LS_SYSAUDIO, "1") !== "0");
+  const [sourceInfo, setSourceInfo] = useState<{ name: string; surface: string; hasAudio: boolean } | null>(null);
 
   const chooseSurface = useCallback((s: DisplaySurface) => {
     setSurface(s);
     writeLS(LS_SURFACE, s);
   }, []);
 
+  const setSysAudioPref = useCallback((v: boolean) => {
+    setSysAudio(v);
+    writeLS(LS_SYSAUDIO, v ? "1" : "0");
+  }, []);
+
   const cleanup = useCallback(() => {
     tracks?.forEach((t) => { try { t.stop(); } catch { /* ignore */ } });
     setTracks(null);
+    setSourceInfo(null);
   }, [tracks]);
 
   const openPicker = useCallback(async () => {
@@ -616,16 +663,25 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     }
     setBusy(true);
     try {
-      // Surface preference is a hint to Chrome/Edge (displaySurface constraint).
-      const videoConstraint = {
-        displaySurface: surface,
-      } as unknown as MediaTrackConstraints;
+      const videoConstraint = { displaySurface: surface } as unknown as MediaTrackConstraints;
       const created = await createLocalScreenTracks({
-        audio: true,
+        audio: sysAudio,
         resolution: ScreenSharePresets.h1080fps30.resolution,
-        // LiveKit forwards extra constraints to getDisplayMedia
         video: videoConstraint as any,
       } as any);
+      // Extract source label + actual surface from the video track settings
+      const vTrack = created.find((t) => t.kind === Track.Kind.Video);
+      const aTrack = created.find((t) => t.kind === Track.Kind.Audio);
+      const mst = vTrack?.mediaStreamTrack;
+      const settings: any = mst?.getSettings?.() ?? {};
+      const actualSurface: string = settings.displaySurface ?? surface;
+      const surfaceLabel = actualSurface === "monitor"
+        ? (rtl ? "شاشة كاملة" : "Entire screen")
+        : actualSurface === "window"
+        ? (rtl ? "نافذة تطبيق" : "Application window")
+        : (rtl ? "تبويب متصفح" : "Browser tab");
+      const name = mst?.label || surfaceLabel;
+      setSourceInfo({ name, surface: surfaceLabel, hasAudio: !!aTrack });
       setTracks(created);
     } catch (e: any) {
       if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
@@ -634,7 +690,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl, surface]);
+  }, [isSharing, localParticipant, rtl, surface, sysAudio]);
 
   useEffect(() => {
     if (!tracks || !videoRef.current) return;
@@ -652,6 +708,7 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
         await localParticipant.publishTrack(track);
       }
       setTracks(null);
+      setSourceInfo(null);
       toast.success(rtl ? "بدأت مشاركة الشاشة بجودة عالية" : "Screen share started in high quality");
     } catch (e: any) {
       cleanup();
@@ -660,6 +717,21 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   }, [tracks, localParticipant, rtl, cleanup]);
 
   const cancel = useCallback(() => cleanup(), [cleanup]);
+
+  // Keyboard: Enter to confirm, Esc handled natively by Dialog
+  useEffect(() => {
+    if (!tracks) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        e.preventDefault();
+        confirm();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tracks, confirm]);
 
   const surfaces: Array<{ id: DisplaySurface; icon: any; label: string }> = [
     { id: "monitor", icon: Monitor,   label: rtl ? "شاشة كاملة" : "Full screen" },
@@ -691,6 +763,21 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 
       <button
         type="button"
+        onClick={() => setSysAudioPref(!sysAudio)}
+        aria-pressed={sysAudio}
+        title={sysAudio ? (rtl ? "صوت النظام: مفعّل" : "System audio: on") : (rtl ? "صوت النظام: متوقف" : "System audio: off")}
+        aria-label={sysAudio ? (rtl ? "صوت النظام مفعّل" : "System audio on") : (rtl ? "صوت النظام متوقف" : "System audio off")}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+          sysAudio ? "border-amber-400/40 bg-amber-500/20 text-amber-100" : "border-white/15 bg-white/5 text-white/70 hover:text-white hover:bg-white/10"
+        )}
+      >
+        {sysAudio ? <Volume2 className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />}
+        <span className="hidden md:inline">{rtl ? "صوت النظام" : "System audio"}</span>
+      </button>
+
+      <button
+        type="button"
         onClick={openPicker}
         disabled={busy}
         title={isSharing
@@ -719,14 +806,34 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
           dir={rtl ? "rtl" : "ltr"}
         >
           <DialogHeader className="px-6 pt-5 pb-2">
-            <DialogTitle className="text-lg">
-              {rtl ? "معاينة مشاركة الشاشة (ملء الشاشة)" : "Screen share preview (full screen)"}
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <MonitorPlay className="h-5 w-5 text-amber-300" aria-hidden="true" />
+              {rtl ? "معاينة مشاركة الشاشة" : "Screen share preview"}
             </DialogTitle>
             <DialogDescription className="text-white/60">
               {rtl
-                ? "دي المعاينة اللي هيشوفها باقي المشاركين — تأكد إنك مبسوط منها قبل ما تبعتها."
-                : "This is exactly what other participants will see. Confirm before publishing."}
+                ? "راجع المصدر بالأسفل واضغط «بدء المشاركة» للتأكيد قبل ما يشوفه باقي المشاركين."
+                : "Review the selected source below and confirm before publishing to other participants."}
             </DialogDescription>
+            {sourceInfo && (
+              <div
+                className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="text-white/60">{rtl ? "المصدر:" : "Source:"}</span>
+                <span className="font-semibold text-amber-100 truncate max-w-[60vw]" title={sourceInfo.name}>
+                  {sourceInfo.name}
+                </span>
+                <span className="opacity-40">·</span>
+                <span className="text-white/75">{sourceInfo.surface}</span>
+                <span className="opacity-40">·</span>
+                <span className={cn("inline-flex items-center gap-1", sourceInfo.hasAudio ? "text-emerald-200" : "text-white/60")}>
+                  {sourceInfo.hasAudio ? <Volume2 className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {sourceInfo.hasAudio ? (rtl ? "مع صوت النظام" : "with system audio") : (rtl ? "بدون صوت" : "no audio")}
+                </span>
+              </div>
+            )}
           </DialogHeader>
           <div className="flex-1 min-h-0 bg-black flex items-center justify-center px-6">
             <video
@@ -747,7 +854,8 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
               className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
             >
               <MonitorUp className="h-4 w-4 mr-1" aria-hidden="true" />
-              {rtl ? "بدء المشاركة" : "Start sharing"}
+              {rtl ? "تأكيد وبدء المشاركة" : "Confirm & start sharing"}
+              <kbd className="ml-2 rounded border border-black/30 bg-black/10 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -760,7 +868,17 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
 /*  Keyboard shortcuts + help legend                                  */
 /* ------------------------------------------------------------------ */
 
-function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
+function KeyboardShortcuts({
+  rtl,
+  autoSpeaker, setAutoSpeaker,
+  focusLock, setFocusLock,
+}: {
+  rtl: boolean;
+  autoSpeaker: boolean;
+  setAutoSpeaker: (v: boolean) => void;
+  focusLock: boolean;
+  setFocusLock: (v: boolean) => void;
+}) {
   const room = useRoomContext();
   const layoutCtx = useMaybeLayoutContext();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -789,6 +907,13 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
         if (layoutCtx?.pin.state && layoutCtx.pin.state.length > 0) {
           layoutCtx.pin.dispatch?.({ msg: "clear_pin" });
         }
+      } else if (key === "l") {
+        e.preventDefault();
+        setAutoSpeaker(!autoSpeaker);
+      } else if (key === "f") {
+        e.preventDefault();
+        if (autoSpeaker) setFocusLock(!focusLock);
+        else toast(rtl ? "فعّل ترتيب المتحدث أولًا (L)" : "Enable speaker sort first (L)");
       } else if (key === "?" || (e.shiftKey && key === "/")) {
         e.preventDefault();
         setHelpOpen((o) => !o);
@@ -796,13 +921,15 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [room, layoutCtx]);
+  }, [room, layoutCtx, autoSpeaker, focusLock, setAutoSpeaker, setFocusLock, rtl]);
 
   const rows: Array<[string, string]> = useMemo(() => rtl ? [
     ["M", "كتم/فتح الميكروفون"],
     ["V", "تشغيل/إيقاف الكاميرا"],
     ["S", "بدء/إيقاف مشاركة الشاشة"],
     ["P", "إلغاء تثبيت المشارك"],
+    ["L", "تفعيل/إيقاف ترتيب المتحدث"],
+    ["F", "قفل التركيز على المتحدث الحالي"],
     ["?", "عرض/إخفاء هذه القائمة"],
     ["Esc", "إغلاق النوافذ"],
   ] : [
@@ -810,9 +937,12 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
     ["V", "Camera on / off"],
     ["S", "Start / stop screen share"],
     ["P", "Clear pinned participant"],
+    ["L", "Toggle speaker-based auto reorder"],
+    ["F", "Lock focus on current speaker"],
     ["?", "Show / hide shortcuts"],
     ["Esc", "Close dialogs"],
   ], [rtl]);
+
 
   return (
     <>
@@ -849,38 +979,145 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Live participant count badge                                      */
+/*  Live participant count badge + clickable participants panel       */
 /* ------------------------------------------------------------------ */
+
+function ParticipantRow({ p, rtl }: { p: Participant; rtl: boolean }) {
+  const name = p.name || p.identity || (rtl ? "مشارك" : "Participant");
+  const isLocal = p.isLocal;
+  const mic = p.isMicrophoneEnabled;
+  const cam = p.isCameraEnabled;
+  const share = p.isScreenShareEnabled;
+  const speaking = p.isSpeaking;
+  let avatarUrl: string | undefined;
+  try {
+    if (p.metadata) {
+      const meta = JSON.parse(p.metadata);
+      if (typeof meta?.avatar_url === "string") avatarUrl = meta.avatar_url;
+    }
+  } catch { /* ignore */ }
+
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-3 rounded-lg border px-3 py-2 transition",
+        speaking ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 bg-white/[0.03]"
+      )}
+      aria-label={`${name}${isLocal ? (rtl ? " (أنت)" : " (You)") : ""} — ${mic ? (rtl ? "الميكروفون مفتوح" : "mic on") : (rtl ? "الميكروفون مكتوم" : "mic off")}, ${cam ? (rtl ? "الكاميرا مفتوحة" : "camera on") : (rtl ? "الكاميرا مقفولة" : "camera off")}${share ? (rtl ? "، يشارك الشاشة" : ", sharing screen") : ""}`}
+    >
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-white/15" loading="lazy" />
+      ) : (
+        <div className="h-9 w-9 rounded-full bg-white/10 ring-1 ring-white/15 flex items-center justify-center text-xs font-semibold text-white/85">
+          {initialsOf(name)}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-white">
+          {name}
+          {isLocal && (
+            <span className="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-100 align-middle">
+              {rtl ? "أنت" : "You"}
+            </span>
+          )}
+        </div>
+        <div className="text-[11px] text-white/60 truncate">{p.identity}</div>
+      </div>
+      <div className="flex items-center gap-1.5" aria-hidden="true">
+        <span className={cn("rounded-full p-1", mic ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/25 text-red-200")}>
+          {mic ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+        </span>
+        <span className={cn("rounded-full p-1", cam ? "bg-sky-500/20 text-sky-200" : "bg-white/10 text-white/60")}>
+          {cam ? <VideoIcon className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+        </span>
+        {share && (
+          <span className="rounded-full p-1 bg-amber-500/25 text-amber-100" title={rtl ? "يشارك الشاشة" : "sharing screen"}>
+            <MonitorUp className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
+    </li>
+  );
+}
 
 function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
   const participants = useParticipants(); // reactive to join/leave for everyone
   const count = participants.length;
-  const label = rtl ? `${count} في المكالمة` : `${count} in call`;
+  const [open, setOpen] = useState(false);
+  const label = rtl ? `${count} في المكالمة — اضغط للتفاصيل` : `${count} in call — click for details`;
+
+  const sorted = useMemo(() => {
+    return [...participants].sort((a, b) => {
+      if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+      const ja = a.joinedAt?.getTime() ?? 0;
+      const jb = b.joinedAt?.getTime() ?? 0;
+      return ja - jb;
+    });
+  }, [participants]);
+
   return (
-    <div
-      className="absolute top-16 left-4 z-20 flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/55 px-3 py-1.5 text-xs font-semibold text-amber-100 backdrop-blur-xl shadow-lg"
-      dir={rtl ? "rtl" : "ltr"}
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      aria-label={label}
-      title={label}
-    >
-      <Users className="h-3.5 w-3.5" aria-hidden="true" />
-      <span className="tabular-nums">{count}</span>
-      <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "absolute top-16 z-20 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/55 px-3 py-1.5 text-xs font-semibold text-amber-100 backdrop-blur-xl shadow-lg",
+          "hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 transition",
+          rtl ? "right-4" : "left-4"
+        )}
+        dir={rtl ? "rtl" : "ltr"}
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        title={label}
+      >
+        <Users className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="tabular-nums">{count}</span>
+        <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side={rtl ? "left" : "right"}
+          className="bg-neutral-950 text-white border-white/10 w-[92vw] sm:w-[420px]"
+          dir={rtl ? "rtl" : "ltr"}
+        >
+          <SheetHeader>
+            <SheetTitle className="text-white flex items-center gap-2">
+              <Users className="h-4 w-4 text-amber-300" aria-hidden="true" />
+              {rtl ? `المشاركون (${count})` : `Participants (${count})`}
+            </SheetTitle>
+            <SheetDescription className="text-white/60">
+              {rtl ? "كل من في المكالمة الآن مع حالة الميكروفون والكاميرا والمشاركة." : "Everyone in the call now with mic, camera and share state."}
+            </SheetDescription>
+          </SheetHeader>
+          <ul className="mt-4 space-y-2 max-h-[calc(100dvh-140px)] overflow-y-auto pr-1" role="list">
+            {sorted.map((p) => (
+              <ParticipantRow key={p.identity} p={p} rtl={rtl} />
+            ))}
+          </ul>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Auto speaker-reorder toggle                                       */
+/*  Auto speaker-reorder toggle + focus lock                          */
 /* ------------------------------------------------------------------ */
+
+function useFocusLock(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => readLS(LS_FOCUSLOCK, "0") === "1");
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    writeLS(LS_FOCUSLOCK, v ? "1" : "0");
+  }, []);
+  return [on, set];
+}
 
 function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void }) {
   const label = rtl
-    ? (on ? "ترتيب حسب المتحدث: مفعّل" : "ترتيب حسب المتحدث: متوقف")
-    : (on ? "Speaker sort: on" : "Speaker sort: off");
+    ? (on ? "ترتيب حسب المتحدث: مفعّل (L)" : "ترتيب حسب المتحدث: متوقف (L)")
+    : (on ? "Speaker sort: on (L)" : "Speaker sort: off (L)");
   return (
     <button
       type="button"
@@ -898,6 +1135,36 @@ function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setO
       )}
     >
       <Sparkles className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+function FocusLockToggle({ rtl, on, setOn, disabled }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void; disabled: boolean }) {
+  const label = disabled
+    ? (rtl ? "قفل التركيز يتطلب تفعيل ترتيب المتحدث" : "Focus lock requires speaker sort")
+    : rtl
+    ? (on ? "قفل التركيز على المتحدث الحالي: مفعّل (F)" : "قفل التركيز على المتحدث الحالي: متوقف (F)")
+    : (on ? "Lock focus on current speaker: on (F)" : "Lock focus on current speaker: off (F)");
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && setOn(!on)}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      className={cn(
+        "absolute bottom-24 z-20 rounded-full border p-2 backdrop-blur-md transition",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+        disabled && "opacity-40 cursor-not-allowed",
+        !disabled && "hover:bg-black/75",
+        on
+          ? "border-amber-400/40 bg-amber-500/20 text-amber-100"
+          : "border-white/15 bg-black/55 text-white/80",
+        rtl ? "left-28" : "right-28"
+      )}
+    >
+      {on ? <Lock className="h-4 w-4" aria-hidden="true" /> : <Unlock className="h-4 w-4" aria-hidden="true" />}
     </button>
   );
 }
@@ -938,6 +1205,12 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const { lang } = useI18n();
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
+  const [focusLock, setFocusLock] = useFocusLock();
+
+  // Focus lock only makes sense while speaker sort is on.
+  useEffect(() => {
+    if (!autoSpeaker && focusLock) setFocusLock(false);
+  }, [autoSpeaker, focusLock, setFocusLock]);
 
   useEffect(() => {
     if (!open) return;
@@ -982,12 +1255,19 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
             <ParticipantCountBadge rtl={rtl} />
             <LocalMediaStatusBadge rtl={rtl} />
             <MediaStateAnnouncer rtl={rtl} />
-            <KeyboardShortcuts rtl={rtl} />
+            <KeyboardShortcuts
+              rtl={rtl}
+              autoSpeaker={autoSpeaker}
+              setAutoSpeaker={setAutoSpeaker}
+              focusLock={focusLock}
+              setFocusLock={setFocusLock}
+            />
             <PinRestorer />
-            <Stage autoSpeaker={autoSpeaker} />
+            <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
             <RoomAudioRenderer />
             <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
-            <RoomAudioRenderer />
+            <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
+
             <div
               className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
               role="toolbar"
