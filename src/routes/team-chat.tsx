@@ -109,10 +109,20 @@ function TeamChatPage() {
       if (d === "comfortable" || d === "cozy" || d === "compact") setDensityState(d);
     }).catch(() => {});
   }, [getDensityFn]);
+  const pendingRealignRef = useRef<{ bottom: number; atBottom: boolean } | null>(null);
+  const captureRealign = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    pendingRealignRef.current = {
+      bottom: el.scrollHeight - el.scrollTop - el.clientHeight,
+      atBottom: (el.scrollHeight - el.scrollTop - el.clientHeight) < 60,
+    };
+  }, []);
   const applyDensity = useCallback((d: Density) => {
+    captureRealign();
     setDensityState(d);
     setDensityFn({ data: { density: d } }).catch(() => {});
-  }, [setDensityFn]);
+  }, [setDensityFn, captureRealign]);
   const densityVars = useMemo<Record<string, string>>(() => {
     if (density === "compact")
       return {
