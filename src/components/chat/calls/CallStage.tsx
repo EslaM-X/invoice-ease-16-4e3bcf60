@@ -305,6 +305,9 @@ const roomOptions: RoomOptions = {
       maxBitrate: 32_000,
       priority: "high",
     },
+    // High-fidelity screen share: full-HD @ up to 30fps, high bitrate for text clarity.
+    screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+    screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
   },
   audioCaptureDefaults: {
     autoGainControl: true,
