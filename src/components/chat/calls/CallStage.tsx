@@ -30,7 +30,6 @@ import {
   type LocalTrack,
   type TrackPublication,
   type Participant,
-  type TrackReference,
 } from "livekit-client";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
