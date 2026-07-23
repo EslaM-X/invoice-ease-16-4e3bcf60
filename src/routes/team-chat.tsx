@@ -886,6 +886,36 @@ function TeamChatPage() {
                   <Search className="h-5 w-5" />
                 </Button>
 
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-10 w-10 rounded-full shrink-0"
+                      title={rtl ? "كثافة العرض" : "Message density"}
+                      aria-label="Message density"
+                    >
+                      <Rows3 className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuLabel>{rtl ? "كثافة الرسائل" : "Message density"}</DropdownMenuLabel>
+                    {(["comfortable", "cozy", "compact"] as const).map((d) => (
+                      <DropdownMenuItem
+                        key={d}
+                        onClick={() => applyDensity(d)}
+                        className={cn("flex items-center justify-between", density === d && "bg-accent")}
+                      >
+                        <span className="capitalize">
+                          {d === "comfortable" ? (rtl ? "مريح" : "Comfortable")
+                            : d === "cozy" ? (rtl ? "عادي" : "Cozy")
+                            : (rtl ? "مضغوط" : "Compact")}
+                        </span>
+                        {density === d && <span className="text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <WallpaperPicker
                   value={activeWallpaper}
                   customUrl={activeCustomUrl}
