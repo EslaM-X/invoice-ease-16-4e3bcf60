@@ -1,31 +1,46 @@
-# Give the Team Chat much more breathing room
+# Global draggable chat message popup
 
-## Root cause
-Two hard caps are squeezing the chat:
-1. `AppShell` wraps every page in `<main class="mx-auto w-full max-w-7xl ...">` (max 1280px). The chat's negative margins (`md:-mx-8`) only cancel padding — they can't escape the 7xl cap. On a 1440p+ screen there's a big empty gutter on both sides.
-2. Message bubbles in `src/components/chat/message-bubble.tsx` are capped at `lg:max-w-[56%]` — so even when the container widens, each message stays narrow.
+Add a floating, draggable in-app popup that appears anywhere in the app when a new team-chat message arrives, with an unread count badge and a high-quality avatar for the room (group avatar) or sender (DM). It replaces the current Sonner toast for chat messages so it doesn't cover other UI and the user can move it wherever they want.
 
-## Changes (UI/layout only, no logic)
+## Files
 
-### 1. Let team-chat break out of the 7xl cap
-In `src/routes/team-chat.tsx`, change the outer wrapper so on `md+` the chat spans the full viewport width (matching WhatsApp Web):
-- Replace `md:-mx-8 lg:-mx-8` with a real breakout: `md:w-screen md:relative md:left-1/2 md:right-1/2 md:-ml-[50vw] md:-mr-[50vw]` (or an equivalent full-bleed pattern). Keep the mobile card look untouched.
-- Result: sidebar + messages fill the entire browser width on desktop, not just 1280px.
+### New: `src/components/chat/chat-popup-notifier.tsx`
+Global overlay component, mounted once in `AppShell`.
 
-### 2. Widen message bubbles
-In `src/components/chat/message-bubble.tsx` line 149, replace:
-`max-w-[85%] sm:max-w-[68%] md:max-w-[62%] lg:max-w-[56%]`
-with a wider, pixel-capped scale so bubbles grow with the pane but stay readable:
-`max-w-[88%] sm:max-w-[78%] md:max-w-[72%] lg:max-w-[68%] xl:max-w-[820px] 2xl:max-w-[960px]`.
+Behavior:
+- Subscribes to realtime chat inserts (reuses the same subscription pattern already in `use-chat-notifications.ts`); listens only for messages I didn't send in rooms I'm a member of.
+- Keeps a small in-memory queue of the last 5 unseen messages, grouped by room.
+- Renders a **floating card** (bottom-end by default) with:
+  - Room avatar (group) or sender avatar (DM) using the existing `src/lib/avatar-url.ts` HD pipeline (`size=96`, DPR-aware, cache-bust) so quality matches the chat.
+  - Room / sender name, last message preview (text / 🎙️ voice / 📷 image / 📎 file).
+  - **Unread count badge** on the avatar (total unseen since popup was last opened/dismissed).
+  - Small action row: "فتح المحادثة" (opens `/team-chat` and navigates to the specific room via query param `?room=<id>`), Minimize (→ collapses to a floating avatar bubble with just the badge), Close (dismisses until next message).
+- **Draggable** with mouse + touch (pointer events). Position is clamped to the viewport and persisted to `localStorage` under `chat-popup-pos`. A tiny grip handle in the header indicates draggability. Uses `position: fixed` and a high `z-index` above dialogs' backdrops but below modal focus traps we own (e.g. `z-[80]`).
+- Minimized state is also draggable and persisted (`chat-popup-minimized`).
+- Auto-hides while on `/team-chat` (user already sees messages there).
+- Respects RTL: default corner is bottom-start for RTL, bottom-end for LTR (but user drag overrides).
 
-### 3. Rebalance sidebar vs message pane
-Keep the sidebar caps the same (`md:w-[340px] lg:w-[380px] xl:w-[420px]`) — since the outer container is now full-viewport, all the extra width flows into the message pane.
+Rendering detail for the avatar (matches current chat quality):
+- For `room.type === "group"`: use `room.avatar_url` through `hdAvatarUrl(url, { size: 96, dpr: window.devicePixelRatio, bust })`.
+- For DMs: fetch the other member's `profiles.avatar_url` via a lightweight cached lookup, same HD pipeline.
+- Fallback: gold-ringed initials tile (same styling as members-sheet avatars).
 
-### 4. Density default nudge (optional, safe)
-Leave the density preference untouched, but ensure the "Compact" mode's row padding stays tight so users who want even more messages on screen get them via the existing density switcher.
+### Edit: `src/hooks/use-chat-notifications.ts`
+- Add an optional callback / event emitter (`onIncoming`) so `ChatPopupNotifier` can subscribe without opening a second realtime channel. Simplest: expose a tiny module-level event bus (`chatEvents.emit("message", payload)`) that the hook publishes to and the popup listens on. Keeps a single subscription.
+- Remove the Sonner `toast.message(...)` call for chat messages (the popup replaces it). Keep the browser `Notification` for when the tab is unfocused.
+
+### Edit: `src/components/app-shell.tsx`
+- Mount `<ChatPopupNotifier />` once inside the shell (after the main outlet) so it appears on every route. Hide when `pathname.startsWith("/team-chat")`.
+- Keep the existing sidebar chat-unread badge (`chatUnread`) unchanged.
+
+### Edit: `src/routes/team-chat.tsx`
+- On mount, if URL has `?room=<id>`, auto-select that room (small addition; no logic changes to chat).
 
 ## Verification
-- Load `/team-chat` on desktop: chat should touch both edges of the viewport (minus the app sidebar) like WhatsApp Web.
-- Send a long message: bubble should now stretch noticeably wider on lg/xl/2xl screens.
-- Mobile view unchanged (rounded card, single pane).
-- Typecheck passes.
+- Send a chat message from another account while browsing a different page: popup appears bottom-corner with room/sender avatar (HD), name, preview, and count badge.
+- Drag the popup — it moves smoothly and stays where dropped after reload.
+- Minimize it — collapses to a small avatar bubble with badge; still draggable.
+- Close it — disappears until the next incoming message.
+- On `/team-chat`, popup is not shown.
+- Group avatar and DM avatar render at the same crispness as the members sheet (no blur/pixelation).
+- No layout shift on other pages; popup uses `position: fixed` and never blocks the AppShell header controls.
