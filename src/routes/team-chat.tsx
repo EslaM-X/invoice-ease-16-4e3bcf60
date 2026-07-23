@@ -17,8 +17,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
-  Bell, BellOff, X, ArrowUp, ArrowDown,
+  Bell, BellOff, X, ArrowUp, ArrowDown, Users2,
 } from "lucide-react";
+import { MembersSheet } from "@/components/chat/members-sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
