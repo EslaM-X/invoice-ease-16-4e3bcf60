@@ -4284,6 +4284,15 @@ export type Database = {
         Args: { _room_id: string; _wallpaper: Json }
         Returns: undefined
       }
+      chat_update_room_profile: {
+        Args: {
+          _avatar_url?: string
+          _clear_avatar?: boolean
+          _name?: string
+          _room_id: string
+        }
+        Returns: undefined
+      }
       consume_needs_order_for_product: {
         Args: { _delta: number; _product_id: string }
         Returns: undefined
