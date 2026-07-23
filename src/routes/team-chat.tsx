@@ -1021,7 +1021,7 @@ function TeamChatPage() {
 
 
         {/* Conversation */}
-        <div className={cn("flex-1 flex-col min-w-0 mx-auto w-full", widthMaxClass, activeRoomId ? "flex" : "hidden md:flex")}>
+        <div className={cn("flex-1 flex-col min-w-0 mx-auto w-full transition-[max-width] duration-300 ease-out motion-reduce:transition-none", widthMaxClass, activeRoomId ? "flex" : "hidden md:flex")}>
           {activeRoom ? (
             <>
               <div className="p-3 border-b flex items-center gap-3 bg-gradient-to-b from-card to-card/70 backdrop-blur-xl">
