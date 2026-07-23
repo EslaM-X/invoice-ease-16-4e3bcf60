@@ -269,15 +269,15 @@ function AuthPage() {
       const isCancel = /NotAllowed|cancelled|canceled|aborted|timed? ?out/i.test(msg) || err?.name === "NotAllowedError";
       if (/expired|invalid|refresh/i.test(msg)) {
         setBiometricError(lang === "ar"
-          ? "انتهت جلسة هذا الحساب المحفوظة. استخدم كلمة المرور أو Google مرة واحدة لتجديد تسجيل الدخول السريع."
-          : "This saved account session expired. Use password or Google once to refresh fast sign-in.");
+          ? "انتهت جلسة هذا الحساب المحفوظة. استخدم كلمة المرور مرة واحدة لتجديد تسجيل الدخول السريع."
+          : "This saved account session expired. Use your password once to refresh fast sign-in.");
         toast.error(lang === "ar"
-          ? "انتهت صلاحية الجلسة. الرجاء تسجيل الدخول بكلمة السر أو Google لتجديدها."
-          : "Saved session expired. Please sign in with password or Google to refresh it.");
+          ? "انتهت صلاحية الجلسة. الرجاء تسجيل الدخول بكلمة السر لتجديدها."
+          : "Saved session expired. Please sign in with your password to refresh it.");
       } else if (isCancel) {
         setBiometricError(lang === "ar"
-          ? `تم إلغاء التحقق بـ ${deviceLabel}. يمكنك المتابعة بكلمة المرور أو Google.`
-          : `${deviceLabel} verification was cancelled. You can continue with password or Google.`);
+          ? `تم إلغاء التحقق بـ ${deviceLabel}. يمكنك المتابعة بكلمة المرور.`
+          : `${deviceLabel} verification was cancelled. You can continue with your password.`);
         toast.message(lang === "ar"
           ? "تم إلغاء التحقق — يمكنك تسجيل الدخول بكلمة السر بدلًا من ذلك."
           : "Verification cancelled — you can sign in with your password instead.");
