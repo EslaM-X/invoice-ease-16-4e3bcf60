@@ -1543,23 +1543,30 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         ) : null}
       </div>
 
-      {/* Selection actions bar — appears when an item is selected */}
-      {selectedId && tool === "select" ? (
+      {/* Selection actions bar — appears when at least one item is selected */}
+      {selectedIds.length > 0 && tool === "select" ? (
         <div
           className={cn(
-            "absolute z-40 flex items-center gap-1 rounded-2xl border border-amber-400/40 bg-black/80 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
+            "absolute z-40 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1 rounded-2xl border border-amber-400/40 bg-black/80 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
             rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
             "bottom-24 sm:bottom-28",
           )}
           role="toolbar"
-          aria-label={rtl ? "إجراءات العنصر المحدَّد" : "Selection actions"}
+          aria-label={rtl ? "إجراءات العناصر المحدَّدة" : "Selection actions"}
+          aria-live="polite"
         >
+          <div className="px-2 text-[11px] font-semibold text-amber-200/90 tabular-nums">
+            {selectedIds.length} {rtl ? "محدَّد" : "selected"}
+          </div>
+          <Sep />
           {(() => {
-            const it = itemsRef.current.get(selectedId);
+            const single = selectedIds.length === 1 ? selectedIds[0] : null;
+            const it = single ? itemsRef.current.get(single) : null;
             const isText = it?.kind === "text";
+            const anyGrouped = selectedIds.some((id) => (itemsRef.current.get(id) as { groupId?: string } | undefined)?.groupId);
             return (
               <>
-                {isText ? (
+                {isText && single ? (
                   <ToolButton
                     label={rtl ? "تعديل النص (Enter)" : "Edit text (Enter)"}
                     onClick={editSelectedText}
@@ -1569,37 +1576,75 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
                   </ToolButton>
                 ) : null}
                 <ToolButton
-                  label={rtl ? "إلى الأمام (])" : "Forward (])"}
-                  onClick={() => forwardOne(selectedId)}
+                  label={rtl ? "نسخ (Ctrl+C)" : "Copy (Ctrl+C)"}
+                  onClick={copySelection}
                   active={false}
                 >
-                  <ArrowUp className="size-4" />
+                  <Copy className="size-4" />
                 </ToolButton>
                 <ToolButton
-                  label={rtl ? "إلى الخلف ([)" : "Backward ([)"}
-                  onClick={() => backwardOne(selectedId)}
+                  label={rtl ? "تكرار (Ctrl+D)" : "Duplicate (Ctrl+D)"}
+                  onClick={duplicateSelection}
                   active={false}
                 >
-                  <ArrowDown className="size-4" />
-                </ToolButton>
-                <ToolButton
-                  label={rtl ? "إلى المقدمة (Shift+])" : "Bring to front (Shift+])"}
-                  onClick={() => bringToFront(selectedId)}
-                  active={false}
-                >
-                  <BringToFront className="size-4" />
-                </ToolButton>
-                <ToolButton
-                  label={rtl ? "إلى الخلفية (Shift+[)" : "Send to back (Shift+[)"}
-                  onClick={() => sendToBack(selectedId)}
-                  active={false}
-                >
-                  <SendToBack className="size-4" />
+                  <CopyPlus className="size-4" />
                 </ToolButton>
                 <Sep />
+                {selectedIds.length >= 2 ? (
+                  <ToolButton
+                    label={rtl ? "تجميع (Ctrl+G)" : "Group (Ctrl+G)"}
+                    onClick={groupSelection}
+                    active={false}
+                  >
+                    <Group className="size-4" />
+                  </ToolButton>
+                ) : null}
+                {anyGrouped ? (
+                  <ToolButton
+                    label={rtl ? "فك التجميع (Ctrl+Shift+G)" : "Ungroup (Ctrl+Shift+G)"}
+                    onClick={ungroupSelection}
+                    active={false}
+                  >
+                    <Ungroup className="size-4" />
+                  </ToolButton>
+                ) : null}
+                <Sep />
+                {single ? (
+                  <>
+                    <ToolButton
+                      label={rtl ? "إلى الأمام (])" : "Forward (])"}
+                      onClick={() => forwardOne(single)}
+                      active={false}
+                    >
+                      <ArrowUp className="size-4" />
+                    </ToolButton>
+                    <ToolButton
+                      label={rtl ? "إلى الخلف ([)" : "Backward ([)"}
+                      onClick={() => backwardOne(single)}
+                      active={false}
+                    >
+                      <ArrowDown className="size-4" />
+                    </ToolButton>
+                    <ToolButton
+                      label={rtl ? "إلى المقدمة (Shift+])" : "Bring to front (Shift+])"}
+                      onClick={() => bringToFront(single)}
+                      active={false}
+                    >
+                      <BringToFront className="size-4" />
+                    </ToolButton>
+                    <ToolButton
+                      label={rtl ? "إلى الخلفية (Shift+[)" : "Send to back (Shift+[)"}
+                      onClick={() => sendToBack(single)}
+                      active={false}
+                    >
+                      <SendToBack className="size-4" />
+                    </ToolButton>
+                    <Sep />
+                  </>
+                ) : null}
                 <ToolButton
                   label={rtl ? "حذف (Delete)" : "Delete"}
-                  onClick={() => deleteItem(selectedId)}
+                  onClick={() => { for (const id of [...selectedIds]) deleteItem(id); }}
                   active={false}
                   danger
                 >
@@ -1607,7 +1652,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
                 </ToolButton>
                 <ToolButton
                   label={rtl ? "إلغاء التحديد (Esc)" : "Deselect (Esc)"}
-                  onClick={() => setSelectedId(null)}
+                  onClick={() => setSelectedIds([])}
                   active={false}
                 >
                   <XIcon className="size-4" />
