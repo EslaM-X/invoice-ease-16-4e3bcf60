@@ -211,10 +211,10 @@ export function MessageBubble({
                   </a>
                 );
               })}
-              {msg.body && <div className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</div>}
+              {msg.body && <TwemojiBody className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</TwemojiBody>}
             </div>
           ) : (
-            <div className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</div>
+            <TwemojiBody className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</TwemojiBody>
           )}
 
           <div className={cn(
