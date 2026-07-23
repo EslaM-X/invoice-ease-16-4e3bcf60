@@ -870,6 +870,24 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
                 </span>
               </div>
             )}
+            {sourceInfo?.hasAudio && (
+              <div
+                className="mt-2 flex items-start gap-2 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+                role="alert"
+              >
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+                <div>
+                  <div className="font-semibold">
+                    {rtl ? "تنبيه: صوت النظام سيُنشر" : "Warning: system audio will be published"}
+                  </div>
+                  <div className="text-red-200/80">
+                    {rtl
+                      ? "أي صوت يعمل على جهازك (موسيقى، إشعارات، مكالمات) سيسمعه باقي المشاركين. لإيقاف الصوت، ألغِ الآن، عطّل «صوت النظام»، وأعد المحاولة."
+                      : "Anything playing on this device (music, notifications, other calls) will be audible to everyone. To silence it, cancel, disable “System audio”, then try again."}
+                  </div>
+                </div>
+              </div>
+            )}
           </DialogHeader>
           <div className="flex-1 min-h-0 bg-black flex items-center justify-center px-6">
             <video
