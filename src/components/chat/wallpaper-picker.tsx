@@ -139,8 +139,22 @@ export function WallpaperPicker({
   };
 
   const pickPreset = (p: WallpaperPreset) => {
+    setHistory((h) => [...h, value].slice(-10));
     if (scope === "room" && canAdminRoom && onSetRoomPreset) return onSetRoomPreset(p);
     return onSelectPreset(p);
+  };
+
+  const undoLast = async () => {
+    const prev = history[history.length - 1];
+    if (!prev) return;
+    setHistory((h) => h.slice(0, -1));
+    if (prev.type === "preset") {
+      if (scope === "room" && canAdminRoom && onSetRoomPreset) await onSetRoomPreset(prev.preset);
+      else await onSelectPreset(prev.preset);
+    } else {
+      if (scope === "room" && canAdminRoom && onUploadRoomCustom) await onUploadRoomCustom(prev.path);
+      else await onUploadCustom(prev.path);
+    }
   };
 
   const isCustom = value.type === "custom";
