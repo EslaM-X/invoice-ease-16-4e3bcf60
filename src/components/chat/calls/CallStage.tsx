@@ -247,22 +247,86 @@ function StudioTile() {
 /*  Adaptive stage                                                    */
 /* ------------------------------------------------------------------ */
 
-function Stage() {
+function useAutoSpeaker(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => readLS(LS_AUTOSPK, "1") !== "0");
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    writeLS(LS_AUTOSPK, v ? "1" : "0");
+  }, []);
+  return [on, set];
+}
+
+/** Restore a previously-pinned participant when their track becomes available. */
+function PinRestorer() {
+  const layoutCtx = useMaybeLayoutContext();
+  const tracks = useTracks(
+    [{ source: Track.Source.Camera, withPlaceholder: false },
+     { source: Track.Source.ScreenShare, withPlaceholder: false }],
+    { onlySubscribed: false }
+  );
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !layoutCtx) return;
+    const saved = readLS(LS_PIN, "");
+    if (!saved) return;
+    const [identity, srcStr] = saved.split("::");
+    const match = tracks.find(
+      (t) => t.participant.identity === identity && String(t.source) === srcStr
+    );
+    if (match) {
+      layoutCtx.pin.dispatch?.({ msg: "set_pin", trackReference: match });
+      restoredRef.current = true;
+    }
+  }, [tracks, layoutCtx]);
+  return null;
+}
+
+function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
       { source: Track.Source.ScreenShare, withPlaceholder: false },
     ],
-    { onlySubscribed: false }
+    { onlySubscribed: false, updateOnlyOn: [
+        RoomEvent.ActiveSpeakersChanged,
+        RoomEvent.ParticipantConnected,
+        RoomEvent.ParticipantDisconnected,
+        RoomEvent.TrackPublished,
+        RoomEvent.TrackUnpublished,
+        RoomEvent.TrackSubscribed,
+        RoomEvent.TrackUnsubscribed,
+      ] }
   );
 
   const screenShareTracks = tracks.filter((t) => t.source === Track.Source.ScreenShare);
   const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
+
+  // Speaker-based ordering — active speakers first, then last-spoke recency, then join order.
+  const orderedCamera = useMemo(() => {
+    if (!autoSpeaker) return cameraTracks;
+    const score = (p: Participant) => {
+      const speaking = p.isSpeaking ? 1_000_000_000 : 0;
+      const lastSpoke = p.lastSpokeAt ? p.lastSpokeAt.getTime() : 0;
+      const joined = p.joinedAt ? -p.joinedAt.getTime() / 1000 : 0;
+      return speaking + lastSpoke + joined;
+    };
+    return [...cameraTracks].sort((a, b) => score(b.participant) - score(a.participant));
+  }, [cameraTracks, autoSpeaker]);
+
   const pinned = usePinnedTracks() ?? [];
-  const focusTrack = pinned[0] ?? screenShareTracks[0];
+  const activeSpeakerTrack = autoSpeaker
+    ? orderedCamera.find((t) => t.participant.isSpeaking)
+    : undefined;
+  const focusTrack =
+    pinned[0] ?? screenShareTracks[0] ?? (autoSpeaker && cameraTracks.length > 3 ? activeSpeakerTrack : undefined);
+
+  const allOrdered = useMemo(() => {
+    // screen shares first (typically pinned), then ordered cameras
+    return [...screenShareTracks, ...orderedCamera];
+  }, [screenShareTracks, orderedCamera]);
 
   if (focusTrack) {
-    const carousel = cameraTracks.length > 0 ? cameraTracks : tracks;
+    const carousel = orderedCamera.length > 0 ? orderedCamera : allOrdered;
     return (
       <FocusLayoutContainer style={{ height: "calc(100% - 128px)" }}>
         <CarouselLayout tracks={carousel}>
@@ -274,7 +338,7 @@ function Stage() {
   }
 
   return (
-    <GridLayout tracks={tracks} style={{ height: "calc(100% - 128px)" }}>
+    <GridLayout tracks={allOrdered} style={{ height: "calc(100% - 128px)" }}>
       <StudioTile />
     </GridLayout>
   );
