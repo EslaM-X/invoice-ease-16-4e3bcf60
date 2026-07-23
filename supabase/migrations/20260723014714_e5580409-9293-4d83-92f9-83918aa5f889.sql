@@ -1,0 +1,1 @@
+ALTER TABLE public.user_ui_preferences ADD COLUMN IF NOT EXISTS chat_layout jsonb NOT NULL DEFAULT '{}'::jsonb;

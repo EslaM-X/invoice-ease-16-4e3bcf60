@@ -3507,6 +3507,7 @@ export type Database = {
           cards_hidden: Json
           cards_order: Json
           chat_density: string
+          chat_layout: Json
           chat_wallpaper: Json
           created_at: string
           mobile_tabs: Json
@@ -3520,6 +3521,7 @@ export type Database = {
           cards_hidden?: Json
           cards_order?: Json
           chat_density?: string
+          chat_layout?: Json
           chat_wallpaper?: Json
           created_at?: string
           mobile_tabs?: Json
@@ -3533,6 +3535,7 @@ export type Database = {
           cards_hidden?: Json
           cards_order?: Json
           chat_density?: string
+          chat_layout?: Json
           chat_wallpaper?: Json
           created_at?: string
           mobile_tabs?: Json

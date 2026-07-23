@@ -29,7 +29,7 @@ import {
   listCompanyMembers, createChatRoom, deleteChatMessage,
   toggleReaction, setTypingState, updatePresence,
   markMessagesRead, getChatWallpaper, setChatWallpaper,
-  getChatDensity, setChatDensity,
+  getChatDensity, setChatDensity, getChatLayout, setChatLayout,
 } from "@/lib/chat.functions";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
@@ -199,12 +199,17 @@ function TeamChatPage() {
       : "p-3 sm:p-4 md:p-6 lg:px-10 xl:px-14";
   const densityGapPx = density === "compact" ? 2 : density === "comfortable" ? 12 : 8;
 
-  // Focus mode (hide sidebar) + Chat width preference — persisted per user in localStorage.
+  // Chat layout preference (width + focus mode) — persisted per user via Supabase (localStorage as fast cache).
   type ChatWidth = "default" | "wide" | "full";
   const widthKey = user?.id ? `chat:width:${user.id}` : "chat:width:anon";
   const focusKey = user?.id ? `chat:focus:${user.id}` : "chat:focus:anon";
   const [focusMode, setFocusMode] = useState<boolean>(false);
   const [chatWidth, setChatWidth] = useState<ChatWidth>("wide");
+  const getLayoutFn = useServerFn(getChatLayout);
+  const setLayoutFn = useServerFn(setChatLayout);
+  const layoutLoadedRef = useRef(false);
+
+  // 1) Warm from localStorage instantly.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -214,17 +219,98 @@ function TeamChatPage() {
       if (f === "1") setFocusMode(true);
     } catch { /* ignore */ }
   }, [widthKey, focusKey]);
+
+  // 2) Sync from Supabase (authoritative across devices).
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    getLayoutFn().then((r: any) => {
+      if (cancelled) return;
+      const L = r?.layout ?? {};
+      if (L.width === "default" || L.width === "wide" || L.width === "full") {
+        setChatWidth(L.width);
+        try { localStorage.setItem(widthKey, L.width); } catch { /* ignore */ }
+      }
+      if (typeof L.focus === "boolean") {
+        setFocusMode(L.focus);
+        try { localStorage.setItem(focusKey, L.focus ? "1" : "0"); } catch { /* ignore */ }
+      }
+      layoutLoadedRef.current = true;
+    }).catch(() => { layoutLoadedRef.current = true; });
+    return () => { cancelled = true; };
+  }, [user?.id, getLayoutFn, widthKey, focusKey]);
+
+  // Preserve scroll bottom-offset across layout mutations that resize the message viewport.
+  const preserveScrollThroughLayoutChange = useCallback((run: () => void) => {
+    const el = scrollRef.current;
+    const bottom = el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0;
+    const atBottom = bottom < 60;
+    run();
+    if (!el) return;
+    // Restore after the CSS width transition + a paint tick.
+    let ticks = 0;
+    const restore = () => {
+      const cur = scrollRef.current;
+      if (!cur) return;
+      if (atBottom) {
+        cur.scrollTop = cur.scrollHeight;
+      } else {
+        cur.scrollTop = Math.max(0, cur.scrollHeight - cur.clientHeight - bottom);
+      }
+      ticks += 1;
+      if (ticks < 4) requestAnimationFrame(restore);
+    };
+    requestAnimationFrame(restore);
+  }, []);
+
   const applyChatWidth = useCallback((w: ChatWidth) => {
-    setChatWidth(w);
+    preserveScrollThroughLayoutChange(() => setChatWidth(w));
     try { localStorage.setItem(widthKey, w); } catch { /* ignore */ }
-  }, [widthKey]);
+    if (layoutLoadedRef.current) setLayoutFn({ data: { width: w } }).catch(() => {});
+  }, [widthKey, setLayoutFn, preserveScrollThroughLayoutChange]);
+
   const toggleFocusMode = useCallback(() => {
     setFocusMode((v) => {
       const nv = !v;
+      preserveScrollThroughLayoutChange(() => {});
       try { localStorage.setItem(focusKey, nv ? "1" : "0"); } catch { /* ignore */ }
+      if (layoutLoadedRef.current) setLayoutFn({ data: { focus: nv } }).catch(() => {});
       return nv;
     });
-  }, [focusKey]);
+  }, [focusKey, setLayoutFn, preserveScrollThroughLayoutChange]);
+
+  const resetChatView = useCallback(() => {
+    preserveScrollThroughLayoutChange(() => {
+      setChatWidth("wide");
+      setFocusMode(false);
+    });
+    try {
+      localStorage.setItem(widthKey, "wide");
+      localStorage.setItem(focusKey, "0");
+    } catch { /* ignore */ }
+    if (layoutLoadedRef.current) {
+      setLayoutFn({ data: { width: "wide", focus: false } }).catch(() => {});
+    }
+  }, [widthKey, focusKey, setLayoutFn, preserveScrollThroughLayoutChange]);
+
+  // Keyboard shortcuts: Alt+Shift+F focus mode, Alt+Shift+S toggle sidebar (same on desktop), Alt+Shift+0 reset.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || !e.shiftKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "f" || k === "s") {
+        e.preventDefault();
+        toggleFocusMode();
+      } else if (k === "0") {
+        e.preventDefault();
+        resetChatView();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleFocusMode, resetChatView]);
+
   const widthMaxClass =
     chatWidth === "full" ? "max-w-none"
       : chatWidth === "wide" ? "max-w-[1600px]"
@@ -827,7 +913,7 @@ function TeamChatPage() {
         {/* Sidebar */}
         <div
           className={cn(
-            "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background",
+            "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background transition-[width,opacity,transform] duration-300 ease-out motion-reduce:transition-none",
             activeRoomId ? "hidden md:flex" : "flex",
             focusMode && "md:!hidden"
           )}
@@ -935,7 +1021,7 @@ function TeamChatPage() {
 
 
         {/* Conversation */}
-        <div className={cn("flex-1 flex-col min-w-0 mx-auto w-full", widthMaxClass, activeRoomId ? "flex" : "hidden md:flex")}>
+        <div className={cn("flex-1 flex-col min-w-0 mx-auto w-full transition-[max-width] duration-300 ease-out motion-reduce:transition-none", widthMaxClass, activeRoomId ? "flex" : "hidden md:flex")}>
           {activeRoom ? (
             <>
               <div className="p-3 border-b flex items-center gap-3 bg-gradient-to-b from-card to-card/70 backdrop-blur-xl">
@@ -1131,7 +1217,7 @@ function TeamChatPage() {
                   size="icon" variant="ghost"
                   className="h-10 w-10 rounded-full shrink-0 hidden md:inline-flex"
                   onClick={toggleFocusMode}
-                  title={focusMode ? (rtl ? "الخروج من وضع التركيز" : "Exit focus mode") : (rtl ? "وضع التركيز" : "Focus mode")}
+                  title={(focusMode ? (rtl ? "الخروج من وضع التركيز" : "Exit focus mode") : (rtl ? "وضع التركيز" : "Focus mode")) + " (Alt+Shift+F)"}
                   aria-label="Toggle focus mode"
                 >
                   {focusMode ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
