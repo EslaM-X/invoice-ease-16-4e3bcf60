@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { getAvatarSrc, getAvatarSrcSet } from "@/lib/avatar-url";
@@ -30,6 +30,11 @@ export function LuxuryAvatar({
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
 
+  useEffect(() => {
+    setLoaded(false);
+    setErrored(false);
+  }, [url, size]);
+
   const src = !errored ? getAvatarSrc(url, size) : undefined;
   const srcSet = !errored ? getAvatarSrcSet(url, size) : undefined;
   const initial = (name ?? "?").trim().charAt(0).toUpperCase() || "?";
@@ -50,7 +55,7 @@ export function LuxuryAvatar({
         />
       )}
       <Avatar
-        className={cn("relative rounded-full shadow-[0_6px_18px_-6px_rgba(0,0,0,0.55)]", ringClass)}
+        className={cn("relative rounded-full shadow-[0_10px_28px_-8px_rgba(0,0,0,0.68)]", ringClass)}
         style={{ width: size, height: size }}
       >
         {src && (
@@ -64,10 +69,10 @@ export function LuxuryAvatar({
             decoding="async"
             fetchPriority="low"
             className={cn(
-              "object-cover transition-opacity duration-300",
+              "object-cover transition-opacity duration-300 [image-rendering:auto]",
               loaded ? "opacity-100" : "opacity-0",
             )}
-            style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}
+            style={{ transform: "translateZ(0) scale(1.06)", backfaceVisibility: "hidden" }}
             onLoad={() => setLoaded(true)}
             onError={() => setErrored(true)}
           />
