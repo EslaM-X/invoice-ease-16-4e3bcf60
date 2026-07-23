@@ -1515,6 +1515,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
   const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
+  const roomOptions = useMemo(() => buildRoomOptions(detectCapProfile()), []);
 
   // Focus lock only makes sense while speaker sort is on — disable at
   // runtime WITHOUT wiping the persisted preference so it restores next call.
