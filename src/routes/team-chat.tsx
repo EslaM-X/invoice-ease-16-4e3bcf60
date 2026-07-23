@@ -1554,6 +1554,25 @@ function TeamChatPage() {
                 </div>
               )}
 
+              {overflowBreached && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    overflowToastShownRef.current = false;
+                    resetOverflowGuard();
+                    try {
+                      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                    } catch (err) {
+                      console.error("[team-chat] reset scroll failed", err);
+                    }
+                  }}
+                  className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-amber-600 hover:bg-amber-500 text-white border border-amber-300/60 shadow-lg px-3 py-1.5 text-[11px] font-bold"
+                  aria-label={rtl ? "إعادة تهيئة التخطيط" : "Reset layout"}
+                >
+                  {rtl ? "إعادة تهيئة التخطيط" : "Reset layout"}
+                </button>
+              )}
+
               {!isAtBottom && (
                 <button
                   type="button"
