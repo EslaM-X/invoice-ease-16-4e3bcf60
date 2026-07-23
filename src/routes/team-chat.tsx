@@ -136,6 +136,62 @@ function TeamChatPage() {
   }, [activeRoomId]);
   const [newOpen, setNewOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+
+  // ============ Voice / Video Calls ============
+  const startCallFn = useServerFn(startCall);
+  const joinCallFn = useServerFn(joinCall);
+  const declineCallFn = useServerFn(declineCall);
+  const leaveCallFn = useServerFn(leaveCall);
+  const [activeCall, setActiveCall] = useState<
+    | { call_id: string; url: string; token: string; video: boolean }
+    | null
+  >(null);
+  const [callStarting, setCallStarting] = useState<null | "audio" | "video">(null);
+  const { incoming, dismiss: dismissIncoming } = useIncomingCall(user?.id, activeCall?.call_id ?? null);
+
+  const handleStartCall = useCallback(
+    async (mode: "audio" | "video") => {
+      if (!activeRoomId) return;
+      if (callStarting || activeCall) return;
+      setCallStarting(mode);
+      try {
+        const r = await startCallFn({ data: { room_id: activeRoomId, mode } });
+        setActiveCall({ call_id: r.call_id, url: r.url, token: r.token, video: mode === "video" });
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to start call");
+      } finally {
+        setCallStarting(null);
+      }
+    },
+    [activeRoomId, activeCall, callStarting, startCallFn]
+  );
+
+  const handleAcceptIncoming = useCallback(async () => {
+    if (!incoming) return;
+    const c = incoming;
+    dismissIncoming();
+    try {
+      const r = await joinCallFn({ data: { call_id: c.call_id } });
+      setActiveCall({ call_id: c.call_id, url: r.url, token: r.token, video: c.mode === "video" });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to join call");
+    }
+  }, [incoming, dismissIncoming, joinCallFn]);
+
+  const handleDeclineIncoming = useCallback(async () => {
+    if (!incoming) return;
+    const c = incoming;
+    dismissIncoming();
+    try { await declineCallFn({ data: { call_id: c.call_id } }); } catch {}
+  }, [incoming, dismissIncoming, declineCallFn]);
+
+  const handleLeaveCall = useCallback(async () => {
+    if (!activeCall) return;
+    const id = activeCall.call_id;
+    setActiveCall(null);
+    try { await leaveCallFn({ data: { call_id: id } }); } catch {}
+  }, [activeCall, leaveCallFn]);
+
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [wallpaperState, setWallpaperState] = useState<WallpaperState>(DEFAULT_WP);
