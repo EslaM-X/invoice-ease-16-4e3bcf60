@@ -629,14 +629,28 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   const undo = useCallback(() => {
     void publish({ t: "undo", owner: localIdentity }, true);
     applyMessage({ t: "undo", owner: localIdentity });
+    scheduleSave();
     dirtyRef.current = true;
-  }, [publish, applyMessage, localIdentity]);
+  }, [publish, applyMessage, localIdentity, scheduleSave]);
 
   const clearAll = useCallback(() => {
     void publish({ t: "clear" }, true);
     applyMessage({ t: "clear" });
+    // Also drop the persisted snapshot for this share
+    if (primarySharer && primarySharer === localIdentity) {
+      try { localStorage.removeItem(storageKey(primarySharer)); } catch { /* ignore */ }
+    }
+    scheduleSave();
     dirtyRef.current = true;
-  }, [publish, applyMessage]);
+  }, [publish, applyMessage, primarySharer, localIdentity, scheduleSave]);
+
+  const togglePerm = useCallback(() => {
+    if (!isLocalSharing) return;
+    const next: "all" | "presenter" = permMode === "all" ? "presenter" : "all";
+    setPermMode(next);
+    void publish({ t: "perm", mode: next, by: localIdentity }, true);
+  }, [isLocalSharing, permMode, publish, localIdentity]);
+
 
   /* --------------- keyboard --------------- */
   useEffect(() => {
