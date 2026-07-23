@@ -77,6 +77,7 @@ function TeamChatPage() {
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [wallpaperState, setWallpaperState] = useState<WallpaperState>(DEFAULT_WP);
