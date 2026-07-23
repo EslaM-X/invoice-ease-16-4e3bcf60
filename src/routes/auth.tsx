@@ -372,28 +372,30 @@ function AuthPage() {
 
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-12 sm:gap-10 sm:px-6 sm:py-14 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10 lg:py-10">
         {/* Brand showcase */}
-        <div className="order-1 flex flex-col items-center text-center lg:order-none lg:items-start lg:text-start">
-          <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-none">
-            <div className="absolute -inset-8 rounded-full bg-[radial-gradient(circle,oklch(0.86_0.01_250_/_0.22),transparent_65%)] blur-2xl sm:-inset-10" />
-            <div className="relative rounded-3xl border border-[oklch(0.86_0.01_250_/_0.22)] bg-gradient-to-b from-[#141416] to-[#0b0b0c] p-5 shadow-[0_30px_80px_-20px_oklch(0.86_0.01_250_/_0.28)] sm:p-7 lg:p-8">
-              <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/5" />
-              <div className="pointer-events-none absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
+        <div className="order-1 flex flex-col items-center text-center lg:order-none lg:items-start lg:text-start stein-fade-up">
+          <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-none stein-float">
+            <div className="stein-halo pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle,oklch(0.78_0.11_82_/_0.35),transparent_65%)] blur-3xl sm:-inset-14" />
+            <div className="relative rounded-[2rem] border border-[oklch(0.78_0.11_82_/_0.28)] bg-[linear-gradient(180deg,#141210_0%,#0a0908_100%)] p-6 shadow-[0_40px_120px_-30px_oklch(0.78_0.11_82_/_0.45)] sm:p-8 lg:p-10">
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/5" />
+              <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.92_0.08_82)] to-transparent" />
+              <div className="pointer-events-none absolute inset-x-8 bottom-4 h-px bg-gradient-to-r from-transparent via-[oklch(0.78_0.11_82_/_0.35)] to-transparent" />
               <img
                 src={brandLogo}
                 alt="Steinheim"
-                className="relative mx-auto h-32 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.86_0.01_250_/_0.45)] sm:h-44 md:h-52 lg:h-64"
+                className="relative mx-auto h-32 w-auto select-none object-contain drop-shadow-[0_18px_50px_oklch(0.78_0.11_82_/_0.55)] sm:h-44 md:h-52 lg:h-64"
                 draggable={false}
               />
             </div>
           </div>
 
           <div className="mt-6 flex items-center gap-3 sm:mt-8">
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
-            <p className="font-latin text-[10px] font-semibold uppercase tracking-[0.45em] text-[oklch(0.86_0.01_250)] sm:text-[11px] sm:tracking-[0.55em]">
-              {lang === "ar" ? "Steinheim Suite" : "Steinheim Suite"}
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[oklch(0.78_0.11_82)] sm:w-10" />
+            <p className="font-latin text-[10px] font-semibold uppercase tracking-[0.45em] text-[oklch(0.92_0.08_82)] sm:text-[11px] sm:tracking-[0.55em]">
+              Steinheim Suite
             </p>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[oklch(0.86_0.01_250)] sm:w-10" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[oklch(0.78_0.11_82)] sm:w-10" />
           </div>
+
 
           <h1 className="mt-4 max-w-md bg-gradient-to-b from-white to-[oklch(0.86_0.01_250)] bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:mt-5 sm:text-4xl lg:text-5xl">
             {lang === "ar" ? "إدارة احترافية. شبكة موزعين أوسع." : "Professional management. A wider distributor network."}
