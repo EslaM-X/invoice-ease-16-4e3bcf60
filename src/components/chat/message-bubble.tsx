@@ -139,10 +139,7 @@ export function MessageBubble({
             <LuxuryAvatar
               url={msg.sender_avatar_url}
               name={displayName}
-              size={Number(
-                (typeof window !== "undefined" &&
-                  getComputedStyle(document.documentElement).getPropertyValue("--chat-avatar-size").trim().replace("px", "")) || 0
-              ) || 60}
+              size={60}
               ring="gold"
             />
           )}
