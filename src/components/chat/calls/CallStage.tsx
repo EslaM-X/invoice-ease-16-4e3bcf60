@@ -3,6 +3,9 @@ import "@livekit/components-styles";
 import {
   LiveKitRoom,
   GridLayout,
+  CarouselLayout,
+  FocusLayoutContainer,
+  FocusLayout,
   ParticipantTile,
   ControlBar,
   RoomAudioRenderer,
@@ -10,12 +13,15 @@ import {
   useConnectionState,
   useLocalParticipant,
   useParticipants,
+  useRoomContext,
+  usePinnedTracks,
 } from "@livekit/components-react";
 import {
   Track,
   ConnectionState,
   ConnectionQuality,
   VideoPresets,
+  ScreenSharePresets,
   RoomEvent,
   type RoomOptions,
 } from "livekit-client";
@@ -34,6 +40,13 @@ type Props = {
   onLeave: () => void;
 };
 
+/**
+ * Adaptive stage:
+ * - Screen share present → focus layout (big share + carousel of participants)
+ * - 1–5 participants → symmetric grid
+ * - 6+ participants → grid still, but tiles auto-shrink; CarouselLayout is used as overflow
+ *   inside FocusLayoutContainer when a share is pinned.
+ */
 function Stage() {
   const tracks = useTracks(
     [
@@ -42,11 +55,104 @@ function Stage() {
     ],
     { onlySubscribed: false }
   );
+
+  const screenShareTracks = tracks.filter(
+    (t) => t.source === Track.Source.ScreenShare
+  );
+  const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
+  const pinned = usePinnedTracks() ?? [];
+  const focusTrack = pinned[0] ?? screenShareTracks[0];
+
+  if (focusTrack) {
+    const carousel = cameraTracks.length > 0 ? cameraTracks : tracks;
+    return (
+      <FocusLayoutContainer style={{ height: "calc(100% - 128px)" }}>
+        <CarouselLayout tracks={carousel}>
+          <ParticipantTile />
+        </CarouselLayout>
+        <FocusLayout trackRef={focusTrack} />
+      </FocusLayoutContainer>
+    );
+  }
+
   return (
     <GridLayout tracks={tracks} style={{ height: "calc(100% - 128px)" }}>
       <ParticipantTile />
     </GridLayout>
   );
+}
+
+/** Toasts + status announcements when any participant mutes / unmutes / shares screen. */
+function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const seenRef = useRef(false);
+
+  useEffect(() => {
+    if (!room) return;
+
+    const nameOf = (identity: string) => {
+      const p = room.getParticipantByIdentity(identity);
+      return p?.name || p?.identity || (rtl ? "مشارك" : "Participant");
+    };
+
+    const onMuted = (pub: any, participant: any) => {
+      if (!seenRef.current) return;
+      const isLocal = participant?.identity === room.localParticipant?.identity;
+      const who = isLocal ? (rtl ? "أنت" : "You") : nameOf(participant.identity);
+      if (pub.source === Track.Source.Microphone) {
+        toast(rtl ? `${who}: كتم الميكروفون` : `${who} muted the mic`, { icon: "🎙️" });
+      } else if (pub.source === Track.Source.Camera) {
+        toast(rtl ? `${who}: أغلق الكاميرا` : `${who} turned camera off`, { icon: "📷" });
+      }
+    };
+    const onUnmuted = (pub: any, participant: any) => {
+      if (!seenRef.current) return;
+      const isLocal = participant?.identity === room.localParticipant?.identity;
+      const who = isLocal ? (rtl ? "أنت" : "You") : nameOf(participant.identity);
+      if (pub.source === Track.Source.Microphone) {
+        toast.success(rtl ? `${who}: فتح الميكروفون` : `${who} unmuted the mic`);
+      } else if (pub.source === Track.Source.Camera) {
+        toast.success(rtl ? `${who}: فتح الكاميرا` : `${who} turned camera on`);
+      }
+    };
+    const onPub = (pub: any, participant: any) => {
+      if (pub.source === Track.Source.ScreenShare) {
+        const who = participant?.identity === room.localParticipant?.identity
+          ? (rtl ? "أنت" : "You")
+          : nameOf(participant.identity);
+        toast.success(rtl ? `${who}: بدأ مشاركة الشاشة` : `${who} started screen share`, { icon: "🖥️" });
+      }
+    };
+    const onUnpub = (pub: any, participant: any) => {
+      if (pub.source === Track.Source.ScreenShare) {
+        const who = participant?.identity === room.localParticipant?.identity
+          ? (rtl ? "أنت" : "You")
+          : nameOf(participant.identity);
+        toast(rtl ? `${who}: أوقف مشاركة الشاشة` : `${who} stopped screen share`);
+      }
+    };
+
+    room.on(RoomEvent.TrackMuted, onMuted);
+    room.on(RoomEvent.TrackUnmuted, onUnmuted);
+    room.on(RoomEvent.TrackPublished, onPub);
+    room.on(RoomEvent.LocalTrackPublished, onPub as any);
+    room.on(RoomEvent.TrackUnpublished, onUnpub);
+    room.on(RoomEvent.LocalTrackUnpublished, onUnpub as any);
+
+    // Skip initial join-time mute events
+    const t = setTimeout(() => { seenRef.current = true; }, 1200);
+    return () => {
+      clearTimeout(t);
+      room.off(RoomEvent.TrackMuted, onMuted);
+      room.off(RoomEvent.TrackUnmuted, onUnmuted);
+      room.off(RoomEvent.TrackPublished, onPub);
+      room.off(RoomEvent.LocalTrackPublished, onPub as any);
+      room.off(RoomEvent.TrackUnpublished, onUnpub);
+      room.off(RoomEvent.LocalTrackUnpublished, onUnpub as any);
+    };
+  }, [room, rtl]);
+
+  return null;
 }
 
 /** Small pill showing connection quality + reconnection state + participants count. */
@@ -145,33 +251,38 @@ function LocalMediaStatusBadge({ rtl }: { rtl: boolean }) {
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false;
   const camEnabled = localParticipant?.isCameraEnabled ?? false;
 
+  const micLabel = rtl ? (micEnabled ? "الميكروفون مفتوح" : "الميكروفون مكتوم") : micEnabled ? "Microphone on" : "Microphone muted";
+  const camLabel = rtl ? (camEnabled ? "الكاميرا مفتوحة" : "الكاميرا مقفولة") : camEnabled ? "Camera on" : "Camera off";
+
   return (
     <div
       className="absolute top-4 right-4 z-20 flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-xl shadow-lg"
       dir={rtl ? "rtl" : "ltr"}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={`${micLabel} — ${camLabel}`}
     >
       <span
         className={cn(
           "flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors",
-          micEnabled
-            ? "bg-emerald-500/20 text-emerald-200"
-            : "bg-red-500/25 text-red-200"
+          micEnabled ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/25 text-red-200"
         )}
-        title={rtl ? (micEnabled ? "الميكروفون مفتوح" : "الميكروفون مقفول") : micEnabled ? "Mic on" : "Mic muted"}
+        title={micLabel}
+        aria-label={micLabel}
       >
-        {micEnabled ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+        {micEnabled ? <Mic className="h-3.5 w-3.5" aria-hidden="true" /> : <MicOff className="h-3.5 w-3.5" aria-hidden="true" />}
         <span className="hidden sm:inline">{rtl ? (micEnabled ? "مفتوح" : "مكتوم") : micEnabled ? "On" : "Muted"}</span>
       </span>
       <span
         className={cn(
           "flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors",
-          camEnabled
-            ? "bg-sky-500/20 text-sky-200"
-            : "bg-white/10 text-white/70"
+          camEnabled ? "bg-sky-500/20 text-sky-200" : "bg-white/10 text-white/70"
         )}
-        title={rtl ? (camEnabled ? "الكاميرا مفتوحة" : "الكاميرا مقفولة") : camEnabled ? "Camera on" : "Camera off"}
+        title={camLabel}
+        aria-label={camLabel}
       >
-        {camEnabled ? <VideoIcon className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+        {camEnabled ? <VideoIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <VideoOff className="h-3.5 w-3.5" aria-hidden="true" />}
         <span className="hidden sm:inline">{rtl ? (camEnabled ? "مفتوحة" : "مقفولة") : camEnabled ? "On" : "Off"}</span>
       </span>
     </div>
@@ -194,6 +305,9 @@ const roomOptions: RoomOptions = {
       maxBitrate: 32_000,
       priority: "high",
     },
+    // High-fidelity screen share: full-HD @ up to 30fps, high bitrate for text clarity.
+    screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+    screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
   },
   audioCaptureDefaults: {
     autoGainControl: true,
@@ -253,9 +367,14 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
           >
             <NetworkQualityBadge rtl={rtl} />
             <LocalMediaStatusBadge rtl={rtl} />
+            <MediaStateAnnouncer rtl={rtl} />
             <Stage />
             <RoomAudioRenderer />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3">
+            <div
+              className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
+              role="toolbar"
+              aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
+            >
               <ControlBar
                 variation="verbose"
                 controls={{
