@@ -481,7 +481,8 @@ function TeamChatPage() {
   // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    const count = messagesQ.data?.messages?.length ?? 0;
+    const list = messagesQ.data?.messages ?? [];
+    const count = list.length;
     const delta = Math.max(0, count - prevMsgCountRef.current);
     prevMsgCountRef.current = count;
     if (!scrollRef.current) return;
@@ -494,8 +495,15 @@ function TeamChatPage() {
         });
       });
       setUnseenCount(0);
+      setFirstUnreadId(null);
     } else if (delta > 0) {
       setUnseenCount((c) => c + delta);
+      // Mark the first new message so we can render a "New messages" divider
+      setFirstUnreadId((prev) => {
+        if (prev) return prev;
+        const firstNew = list[count - delta];
+        return firstNew?.id ?? null;
+      });
     }
   }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom]);
 
@@ -513,6 +521,7 @@ function TeamChatPage() {
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
     setUnseenCount(0);
+    setFirstUnreadId(null);
   }, []);
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -520,7 +529,7 @@ function TeamChatPage() {
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     const atBottom = distanceFromBottom < 60;
     setIsAtBottom(atBottom);
-    if (atBottom) setUnseenCount(0);
+    if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
     if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
       loadOlderMessages();
     }
