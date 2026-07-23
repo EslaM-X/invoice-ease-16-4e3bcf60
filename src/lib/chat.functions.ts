@@ -854,9 +854,9 @@ export const getMessageInfo = createServerFn({ method: "GET" })
 
     const { data: reads } = await supabase
       .from("chat_message_reads")
-      .select("user_id, created_at")
+      .select("user_id, read_at")
       .eq("message_id", data.message_id);
-    const seenMap = new Map((reads ?? []).map((r: any) => [r.user_id, r.created_at]));
+    const seenMap = new Map((reads ?? []).map((r: any) => [r.user_id, r.read_at]));
 
     const { data: presence } = memberIds.length
       ? await supabase
