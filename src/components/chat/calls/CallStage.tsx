@@ -1736,16 +1736,37 @@ function QualityInsights({
   const cpuBad = frameDrop > 12 || (shareState.latest?.fps != null && shareState.latest.fps > 0 && shareState.latest.fps < 10);
   const lossBad = lossPct > 5;
 
-  let reason: { icon: any; title: string; detail: string; tone: string } | null = null;
-  if (netBad) reason = { icon: WifiOff, tone: "amber", title: rtl ? "الشبكة ضعيفة" : "Network is weak", detail: rtl ? `RTT ${rttMs}ms · فقد ${lossPct}%` : `RTT ${rttMs}ms · loss ${lossPct}%` };
-  else if (lossBad) reason = { icon: Activity, tone: "amber", title: rtl ? "فقد حزم مرتفع" : "High packet loss", detail: `${lossPct}%` };
-  else if (cpuBad) reason = { icon: Cpu, tone: "amber", title: rtl ? "ضغط على المعالج" : "CPU / frame pressure", detail: rtl ? `إسقاط إطارات ${frameDrop}%` : `Dropped frames ${frameDrop}%` };
+  let reason: { icon: any; title: string; detail: string; tone: string; key: string } | null = null;
+  if (netBad) reason = { key: "net", icon: WifiOff, tone: "amber", title: rtl ? "الشبكة ضعيفة" : "Network is weak", detail: rtl ? `RTT ${rttMs}ms · فقد ${lossPct}%` : `RTT ${rttMs}ms · loss ${lossPct}%` };
+  else if (lossBad) reason = { key: "loss", icon: Activity, tone: "amber", title: rtl ? "فقد حزم مرتفع" : "High packet loss", detail: `${lossPct}%` };
+  else if (cpuBad) reason = { key: "cpu", icon: Cpu, tone: "amber", title: rtl ? "ضغط على المعالج" : "CPU / frame pressure", detail: rtl ? `إسقاط إطارات ${frameDrop}%` : `Dropped frames ${frameDrop}%` };
 
-  if (!reason) return null;
+  // aria-live announcement: fire once when a reason appears/changes, and once
+  // when quality recovers. Debounced via key comparison so we don't spam SRs.
+  const lastKeyRef = useRef<string | null>(null);
+  const [announce, setAnnounce] = useState<string>("");
+  useEffect(() => {
+    const nextKey = reason?.key ?? null;
+    if (nextKey === lastKeyRef.current) return;
+    if (nextKey && reason) {
+      setAnnounce(rtl
+        ? `تنبيه جودة المكالمة: ${reason.title}. ${reason.detail}. توجد اقتراحات لتحسين الاتصال.`
+        : `Call quality alert: ${reason.title}. ${reason.detail}. Suggestions available.`);
+    } else if (lastKeyRef.current && !nextKey) {
+      setAnnounce(rtl ? "تحسّنت جودة المكالمة." : "Call quality has recovered.");
+    }
+    lastKeyRef.current = nextKey;
+  }, [reason?.key, reason?.title, reason?.detail, rtl]);
 
-  const Icon = reason.icon;
   return (
     <>
+      {/* Screen-reader live region — always mounted so recovery is announced */}
+      <div aria-live="polite" aria-atomic="true" role="status" className="sr-only">
+        {announce}
+      </div>
+      {reason ? (
+      <>
+
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -1758,7 +1779,7 @@ function QualityInsights({
         aria-label={`${reason.title} — ${rtl ? "اقتراحات" : "suggestions"}`}
         title={reason.detail}
       >
-        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        {reason.icon ? <reason.icon className="h-3.5 w-3.5" aria-hidden="true" /> : null}
         <span>{reason.title}</span>
         <span className="opacity-70">·</span>
         <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1799,6 +1820,8 @@ function QualityInsights({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      ) : null}
     </>
   );
 }
@@ -1866,13 +1889,68 @@ function detectCapProfile(): CapProfile {
 }
 
 /**
+ * Preflight probe — pings the LiveKit server a few times to estimate RTT and
+ * combines it with the static capability detector to recommend Auto / Lite /
+ * Balanced. Runs for ~1.2s max; returns immediately if offline or errored.
+ */
+async function runNetworkPreflight(url: string): Promise<{
+  profile: CapProfile;
+  rttMs: number;
+  jitterMs: number;
+  reason: string;
+}> {
+  const base = detectCapProfile();
+  // Convert wss:// → https:// for a same-origin HEAD probe
+  const probeUrl = (() => {
+    try {
+      const u = new URL(url);
+      u.protocol = u.protocol === "wss:" ? "https:" : "http:";
+      u.pathname = "/";
+      u.search = "";
+      return u.toString();
+    } catch { return null; }
+  })();
+  if (!probeUrl || typeof fetch === "undefined") {
+    return { profile: base, rttMs: 0, jitterMs: 0, reason: "no-probe" };
+  }
+  const samples: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    try {
+      await fetch(probeUrl + "?_pf=" + Date.now() + i, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-store",
+      });
+      samples.push(performance.now() - t0);
+    } catch { /* skip failed sample */ }
+    if (samples.length && samples[samples.length - 1] > 1500) break;
+  }
+  if (!samples.length) return { profile: base, rttMs: 0, jitterMs: 0, reason: "unreachable" };
+  const rtt = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+  const jitter = Math.round(Math.max(...samples) - Math.min(...samples));
+
+  // Merge probe with static detector — network wins if worse
+  let profile: CapProfile = base;
+  let reason = "static";
+  if (rtt > 450 || jitter > 250) { profile = "lite"; reason = "high-latency"; }
+  else if (rtt > 220 || jitter > 120) {
+    if (base === "hi") profile = "balanced";
+    reason = "moderate-latency";
+  } else {
+    reason = "healthy";
+  }
+  return { profile, rttMs: rtt, jitterMs: jitter, reason };
+}
+
+/**
  * Merge the user's saved call-perf pref with detected capability. The user
  * can force "lite" or "balanced"; "auto" defers to the detector.
  */
-function effectiveProfile(pref: CallPerfPref): CapProfile {
+function effectiveProfile(pref: CallPerfPref, override?: CapProfile | null): CapProfile {
   if (pref === "lite") return "lite";
   if (pref === "balanced") return "balanced";
-  return detectCapProfile();
+  return override ?? detectCapProfile();
 }
 
 function buildRoomOptions(profile: CapProfile): RoomOptions {
@@ -1939,7 +2017,59 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
   const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
   const [callPerf, setCallPerf] = useCallPerf();
-  const roomOptions = useMemo(() => buildRoomOptions(effectiveProfile(callPerf)), [callPerf]);
+
+  // Preflight — run once per call-open. If pref is "auto" the probe result
+  // drives room options; otherwise we still measure so we can announce it.
+  const [preflight, setPreflight] = useState<null | {
+    profile: CapProfile;
+    rttMs: number;
+    jitterMs: number;
+    reason: string;
+  }>(null);
+  const [probing, setProbing] = useState(false);
+
+  useEffect(() => {
+    if (!open || !url) { setPreflight(null); return; }
+    let cancelled = false;
+    setProbing(true);
+    const timeout = window.setTimeout(() => {
+      // Hard timeout — never block the call more than 1.6s
+      if (!cancelled) { setProbing(false); }
+    }, 1600);
+    runNetworkPreflight(url).then((res) => {
+      if (cancelled) return;
+      setPreflight(res);
+      setProbing(false);
+      clearTimeout(timeout);
+      const labels: Record<CapProfile, string> = {
+        lite: rtl ? "خفيف" : "Lite",
+        balanced: rtl ? "متوازن" : "Balanced",
+        hi: rtl ? "عالي (Auto)" : "High (Auto)",
+      };
+      const msg = res.reason === "healthy"
+        ? (rtl ? `الشبكة ممتازة (RTT ${res.rttMs}ms) — الوضع: ${labels[res.profile]}` : `Network healthy (RTT ${res.rttMs}ms) — mode: ${labels[res.profile]}`)
+        : res.reason === "moderate-latency"
+        ? (rtl ? `شبكة متوسطة (RTT ${res.rttMs}ms · Jitter ${res.jitterMs}ms) — اقتراح: ${labels[res.profile]}` : `Moderate network (RTT ${res.rttMs}ms · jitter ${res.jitterMs}ms) — suggesting ${labels[res.profile]}`)
+        : res.reason === "high-latency"
+        ? (rtl ? `شبكة ضعيفة (RTT ${res.rttMs}ms) — تفعيل الوضع الخفيف تلقائياً` : `Weak network (RTT ${res.rttMs}ms) — auto-enabling Lite`)
+        : (rtl ? `تعذّر فحص الشبكة — استخدام الافتراضي` : `Preflight skipped — using defaults`);
+      toast.info(msg, { id: "call-preflight", duration: 4500 });
+    }).catch(() => { if (!cancelled) { setProbing(false); clearTimeout(timeout); } });
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [open, url, rtl]);
+
+  const roomOptions = useMemo(
+    () => buildRoomOptions(effectiveProfile(callPerf, preflight?.profile ?? null)),
+    [callPerf, preflight]
+  );
+
+  const preflightAnnouncement = preflight
+    ? (rtl
+        ? `اكتمل فحص الشبكة. زمن الاستجابة ${preflight.rttMs} مللي ثانية. الوضع المقترح ${preflight.profile === "lite" ? "خفيف" : preflight.profile === "balanced" ? "متوازن" : "عالي"}.`
+        : `Network preflight complete. Round-trip ${preflight.rttMs} ms. Suggested mode ${preflight.profile}.`)
+    : probing
+    ? (rtl ? "جاري فحص جودة الشبكة قبل الاتصال" : "Measuring network quality before connecting")
+    : "";
 
   // Focus lock only makes sense while speaker sort is on — disable at
   // runtime WITHOUT wiping the persisted preference so it restores next call.
@@ -1959,6 +2089,8 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
     };
   }, [open]);
 
+  const ready = open && !!url && !!token && !probing;
+
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
@@ -1966,10 +2098,31 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
         className="h-[100dvh] w-full p-0 border-0 bg-black text-white"
         dir={rtl ? "rtl" : "ltr"}
       >
-        {open && url && token ? (
+        {/* aria-live for screen readers — preflight status */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {preflightAnnouncement}
+        </div>
+
+        {open && probing ? (
+          <div
+            className="flex h-[100dvh] w-full flex-col items-center justify-center gap-4 bg-black text-white"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-10 w-10 animate-spin text-amber-300" aria-hidden="true" />
+            <div className="text-center">
+              <div className="text-base font-semibold">
+                {rtl ? "فحص جودة الشبكة…" : "Checking network quality…"}
+              </div>
+              <div className="mt-1 text-xs text-white/60">
+                {rtl ? "نقيس زمن الاستجابة لاختيار أفضل وضع للمكالمة" : "Measuring latency to pick the best call profile"}
+              </div>
+            </div>
+          </div>
+        ) : ready ? (
           <LiveKitRoom
-            serverUrl={url}
-            token={token}
+            serverUrl={url!}
+            token={token!}
             connect
             video={video}
             audio
