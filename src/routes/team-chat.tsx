@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
   Bell, BellOff, X, ArrowUp, ArrowDown, Users2, Rows3, ArrowDownToLine, Loader2,
+  Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal,
 } from "lucide-react";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
@@ -190,8 +191,39 @@ function TeamChatPage() {
       ? "p-2 sm:p-3"
       : density === "comfortable"
       ? "p-3 sm:p-5 md:p-7"
-      : "p-3 sm:p-4 md:p-6";
+      : "p-3 sm:p-4 md:p-6 lg:px-10 xl:px-14";
   const densityGapPx = density === "compact" ? 2 : density === "comfortable" ? 12 : 8;
+
+  // Focus mode (hide sidebar) + Chat width preference — persisted per user in localStorage.
+  type ChatWidth = "default" | "wide" | "full";
+  const widthKey = user?.id ? `chat:width:${user.id}` : "chat:width:anon";
+  const focusKey = user?.id ? `chat:focus:${user.id}` : "chat:focus:anon";
+  const [focusMode, setFocusMode] = useState<boolean>(false);
+  const [chatWidth, setChatWidth] = useState<ChatWidth>("wide");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const w = localStorage.getItem(widthKey);
+      if (w === "default" || w === "wide" || w === "full") setChatWidth(w);
+      const f = localStorage.getItem(focusKey);
+      if (f === "1") setFocusMode(true);
+    } catch { /* ignore */ }
+  }, [widthKey, focusKey]);
+  const applyChatWidth = useCallback((w: ChatWidth) => {
+    setChatWidth(w);
+    try { localStorage.setItem(widthKey, w); } catch { /* ignore */ }
+  }, [widthKey]);
+  const toggleFocusMode = useCallback(() => {
+    setFocusMode((v) => {
+      const nv = !v;
+      try { localStorage.setItem(focusKey, nv ? "1" : "0"); } catch { /* ignore */ }
+      return nv;
+    });
+  }, [focusKey]);
+  const widthMaxClass =
+    chatWidth === "full" ? "max-w-none"
+      : chatWidth === "wide" ? "max-w-[1600px]"
+      : "max-w-[1100px]";
 
   // Older-history pagination + scroll anchor state
   const [olderPages, setOlderPages] = useState<ChatMsg[][]>([]);
@@ -770,7 +802,8 @@ function TeamChatPage() {
         <div
           className={cn(
             "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background",
-            activeRoomId ? "hidden md:flex" : "flex"
+            activeRoomId ? "hidden md:flex" : "flex",
+            focusMode && "md:!hidden"
           )}
         >
           <div className="p-3 border-b flex items-center justify-between bg-gradient-to-b from-card via-card to-muted/40 shadow-[0_2px_0_0_color-mix(in_oklab,var(--brand-gold,#d4af37)_18%,transparent)]">
@@ -876,10 +909,22 @@ function TeamChatPage() {
 
 
         {/* Conversation */}
-        <div className={cn("flex-1 flex-col min-w-0", activeRoomId ? "flex" : "hidden md:flex")}>
+        <div className={cn("flex-1 flex-col min-w-0 mx-auto w-full", widthMaxClass, activeRoomId ? "flex" : "hidden md:flex")}>
           {activeRoom ? (
             <>
               <div className="p-3 border-b flex items-center gap-3 bg-gradient-to-b from-card to-card/70 backdrop-blur-xl">
+                {focusMode && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hidden md:inline-flex shrink-0 h-9 w-9 rounded-full border border-[color:var(--brand-gold,#d4af37)]/30 hover:bg-[color:var(--brand-gold,#d4af37)]/10"
+                    onClick={toggleFocusMode}
+                    title={rtl ? "إظهار قائمة المحادثات" : "Show conversations"}
+                    aria-label="Show sidebar"
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
@@ -889,6 +934,7 @@ function TeamChatPage() {
                 >
                   {rtl ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
                 </Button>
+
 
                 {/* Header quick-jump popover */}
                 <Popover>
@@ -1022,6 +1068,49 @@ function TeamChatPage() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Chat width preference */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-10 w-10 rounded-full shrink-0 hidden md:inline-flex"
+                      title={rtl ? "عرض منطقة الشات" : "Chat width"}
+                      aria-label="Chat width"
+                    >
+                      <StretchHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>{rtl ? "عرض منطقة الشات" : "Chat area width"}</DropdownMenuLabel>
+                    {(["default", "wide", "full"] as const).map((w) => (
+                      <DropdownMenuItem
+                        key={w}
+                        onClick={() => applyChatWidth(w)}
+                        className={cn("flex items-center justify-between", chatWidth === w && "bg-accent")}
+                      >
+                        <span>
+                          {w === "default" ? (rtl ? "افتراضي" : "Default")
+                            : w === "wide" ? (rtl ? "موسّع" : "Wide")
+                            : (rtl ? "ملء الشاشة" : "Full")}
+                        </span>
+                        {chatWidth === w && <span className="text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Focus mode toggle (desktop) */}
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0 hidden md:inline-flex"
+                  onClick={toggleFocusMode}
+                  title={focusMode ? (rtl ? "الخروج من وضع التركيز" : "Exit focus mode") : (rtl ? "وضع التركيز" : "Focus mode")}
+                  aria-label="Toggle focus mode"
+                >
+                  {focusMode ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                </Button>
+
 
                 <WallpaperPicker
                   value={activeWallpaper}

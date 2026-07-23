@@ -43,8 +43,9 @@ export function Composer({
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
+    const maxH = typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches ? 220 : 140;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, maxH) + "px";
   }, [text]);
 
   useEffect(() => {
@@ -153,7 +154,7 @@ export function Composer({
       )}
 
       <div
-        className={cn("flex items-end gap-1.5 p-2 sm:p-3", "pb-[max(env(safe-area-inset-bottom),0.5rem)]")}
+        className={cn("flex items-end gap-1.5 p-2 sm:p-3 md:px-6 md:py-4 lg:px-10", "pb-[max(env(safe-area-inset-bottom),0.5rem)]")}
       >
         {!voiceActive && (
           <>
@@ -202,7 +203,7 @@ export function Composer({
               onChange={(e) => { setText(e.target.value); triggerTyping(); }}
               onKeyDown={onKeyDown}
               placeholder={rtl ? "اكتب رسالة..." : "Type a message..."}
-              className="flex-1 min-w-0 resize-none bg-muted/40 rounded-2xl px-4 py-2.5 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-primary/40 transition placeholder:text-muted-foreground/60 max-h-[140px]"
+              className="flex-1 min-w-0 resize-none bg-muted/40 rounded-2xl px-4 py-2.5 md:px-5 md:py-3.5 md:text-[15px] md:min-h-[52px] text-sm leading-relaxed outline-none focus:ring-2 focus:ring-primary/40 transition placeholder:text-muted-foreground/60 max-h-[140px] md:max-h-[220px]"
               dir={rtl ? "rtl" : "ltr"}
             />
             {text.trim() || pending ? (
@@ -210,10 +211,10 @@ export function Composer({
                 size="icon"
                 onClick={handleSend}
                 disabled={disabled || uploading}
-                className="h-10 w-10 rounded-full shrink-0 shadow-md bg-gradient-to-br from-primary to-primary/85"
+                className="h-10 w-10 md:h-12 md:w-12 rounded-full shrink-0 shadow-md bg-gradient-to-br from-primary to-primary/85"
                 aria-label={rtl ? "إرسال" : "Send"}
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-4 w-4 md:h-5 md:w-5" />
               </Button>
             ) : (
               <VoiceRecorder
