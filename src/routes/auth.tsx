@@ -408,10 +408,11 @@ function AuthPage() {
         </div>
 
         {/* Auth card */}
-        <div className="order-2 w-full max-w-md justify-self-center lg:justify-self-end">
-        <div className="relative rounded-2xl border border-[oklch(0.86_0.01_250_/_0.2)] bg-[oklch(0.13_0.003_250_/_0.85)] p-5 text-white shadow-[0_25px_70px_-25px_oklch(0_0_0_/_0.8)] backdrop-blur-xl sm:p-7">
-          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.86_0.01_250)] to-transparent" />
-          <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg bg-white/5 p-1">
+        <div className="order-2 w-full max-w-md justify-self-center stein-fade-up lg:justify-self-end" style={{ animationDelay: "120ms" }}>
+        <div className="relative rounded-[1.75rem] border border-[oklch(0.78_0.11_82_/_0.22)] bg-[oklch(0.08_0.005_60_/_0.78)] p-5 text-white shadow-[0_50px_120px_-30px_oklch(0_0_0_/_0.85),inset_0_1px_0_oklch(0.92_0.08_82_/_0.12)] backdrop-blur-2xl sm:p-7">
+          <div className="pointer-events-none absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[oklch(0.92_0.08_82)] to-transparent" />
+          <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] ring-1 ring-inset ring-white/[0.04]" />
+          <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border border-white/5 bg-black/40 p-1.5">
             {([
               { key: "login", ar: "تسجيل الدخول", en: "Sign in" },
               { key: "distributor", ar: "دخول موزعين", en: "Distributor" },
@@ -421,11 +422,12 @@ function AuthPage() {
                 key={tab.key}
                 type="button"
                 onClick={() => setMode(tab.key)}
-                className={`rounded-md px-2 py-2 text-xs font-medium transition sm:text-sm ${
+                className={`rounded-xl px-2 py-2.5 text-xs font-semibold transition-all duration-500 sm:text-sm ${
                   mode === tab.key
-                    ? "bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] shadow-sm"
-                    : "text-white/70 hover:text-white"
+                    ? "bg-gradient-to-b from-[oklch(0.92_0.08_82)] to-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.005_60)] shadow-[0_8px_24px_-8px_oklch(0.78_0.11_82_/_0.6)]"
+                    : "text-white/55 hover:text-white"
                 }`}
+                style={{ transitionTimingFunction: "cubic-bezier(0.32,0.72,0,1)" }}
               >
                 {lang === "ar" ? tab.ar : tab.en}
               </button>
