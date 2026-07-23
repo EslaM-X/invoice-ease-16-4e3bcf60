@@ -89,6 +89,7 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp.webhook'
+import { Route as ApiPublicLivekitWebhookRouteImport } from './routes/api/public/livekit/webhook'
 import { Route as ApiPublicHooksWarrantySyncWorkerRouteImport } from './routes/api/public/hooks/warranty-sync-worker'
 import { Route as ApiPublicHooksTaskOverdueRemindersRouteImport } from './routes/api/public/hooks/task-overdue-reminders'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
@@ -500,6 +501,11 @@ const ApiPublicWhatsappWebhookRoute =
     path: '/api/public/whatsapp/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicLivekitWebhookRoute = ApiPublicLivekitWebhookRouteImport.update({
+  id: '/api/public/livekit/webhook',
+  path: '/api/public/livekit/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksWarrantySyncWorkerRoute =
   ApiPublicHooksWarrantySyncWorkerRouteImport.update({
     id: '/api/public/hooks/warranty-sync-worker',
@@ -599,6 +605,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
   '/api/public/hooks/task-overdue-reminders': typeof ApiPublicHooksTaskOverdueRemindersRoute
   '/api/public/hooks/warranty-sync-worker': typeof ApiPublicHooksWarrantySyncWorkerRoute
+  '/api/public/livekit/webhook': typeof ApiPublicLivekitWebhookRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -684,6 +691,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
   '/api/public/hooks/task-overdue-reminders': typeof ApiPublicHooksTaskOverdueRemindersRoute
   '/api/public/hooks/warranty-sync-worker': typeof ApiPublicHooksWarrantySyncWorkerRoute
+  '/api/public/livekit/webhook': typeof ApiPublicLivekitWebhookRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -770,6 +778,7 @@ export interface FileRoutesById {
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
   '/api/public/hooks/task-overdue-reminders': typeof ApiPublicHooksTaskOverdueRemindersRoute
   '/api/public/hooks/warranty-sync-worker': typeof ApiPublicHooksWarrantySyncWorkerRoute
+  '/api/public/livekit/webhook': typeof ApiPublicLivekitWebhookRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -857,6 +866,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/daily-backup'
     | '/api/public/hooks/task-overdue-reminders'
     | '/api/public/hooks/warranty-sync-worker'
+    | '/api/public/livekit/webhook'
     | '/api/public/whatsapp/webhook'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -942,6 +952,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/daily-backup'
     | '/api/public/hooks/task-overdue-reminders'
     | '/api/public/hooks/warranty-sync-worker'
+    | '/api/public/livekit/webhook'
     | '/api/public/whatsapp/webhook'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -1027,6 +1038,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/daily-backup'
     | '/api/public/hooks/task-overdue-reminders'
     | '/api/public/hooks/warranty-sync-worker'
+    | '/api/public/livekit/webhook'
     | '/api/public/whatsapp/webhook'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -1113,6 +1125,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
   ApiPublicHooksTaskOverdueRemindersRoute: typeof ApiPublicHooksTaskOverdueRemindersRoute
   ApiPublicHooksWarrantySyncWorkerRoute: typeof ApiPublicHooksWarrantySyncWorkerRoute
+  ApiPublicLivekitWebhookRoute: typeof ApiPublicLivekitWebhookRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -1681,6 +1694,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/livekit/webhook': {
+      id: '/api/public/livekit/webhook'
+      path: '/api/public/livekit/webhook'
+      fullPath: '/api/public/livekit/webhook'
+      preLoaderRoute: typeof ApiPublicLivekitWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/warranty-sync-worker': {
       id: '/api/public/hooks/warranty-sync-worker'
       path: '/api/public/hooks/warranty-sync-worker'
@@ -1787,6 +1807,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksTaskOverdueRemindersRoute:
     ApiPublicHooksTaskOverdueRemindersRoute,
   ApiPublicHooksWarrantySyncWorkerRoute: ApiPublicHooksWarrantySyncWorkerRoute,
+  ApiPublicLivekitWebhookRoute: ApiPublicLivekitWebhookRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
