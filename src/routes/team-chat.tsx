@@ -928,6 +928,18 @@ function TeamChatPage() {
           )}
         </div>
       </div>
+
+      <MembersSheet
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+        roomId={activeRoomId}
+        roomName={activeRoom?.display_name ?? (rtl ? "الشات" : "Chat")}
+        roomType={activeRoom?.type ?? null}
+        roomAvatarUrl={activeRoom?.avatar_url ?? null}
+        myUserId={user?.id ?? ""}
+        iAmAdmin={(activeRoom?.my_role === "admin" || activeRoom?.my_role === "owner")}
+        rtl={rtl}
+      />
     </AppShell>
   );
 }
