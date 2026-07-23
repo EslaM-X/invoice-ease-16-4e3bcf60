@@ -237,18 +237,7 @@ function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    setBusy(true);
-    try {
-      const res = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/dashboard`,
-      });
-      if (res.error) throw res.error;
-    } catch (err: any) {
-      toast.error(err?.message ?? t("error_occurred"));
-      setBusy(false);
-    }
-  };
+
 
   const handleBiometricLogin = async (forEmail?: string) => {
     setBusy(true);
