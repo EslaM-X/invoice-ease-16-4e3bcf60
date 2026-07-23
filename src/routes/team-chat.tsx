@@ -73,17 +73,12 @@ const DEFAULT_WP: WallpaperState = {
 function TeamChatPageBoundary() {
   // Presence health probe used by the boundary's exponential-backoff retry.
   // Throwing rejects the attempt so the boundary schedules the next backoff.
+  const pingPresence = useServerFn(updatePresence);
   const probePresence = useCallback(async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw error ?? new Error("no auth");
-    const { error: pErr } = await supabase
-      .from("user_presence")
-      .upsert(
-        { user_id: data.user.id, status: "online", last_seen_at: new Date().toISOString() },
-        { onConflict: "user_id" },
-      );
-    if (pErr) throw pErr;
-  }, []);
+    await pingPresence({ data: { status: "online" } });
+  }, [pingPresence]);
   return (
     <RouteErrorBoundary label="شات الفريق" onRetry={probePresence}>
       <TeamChatPage />
