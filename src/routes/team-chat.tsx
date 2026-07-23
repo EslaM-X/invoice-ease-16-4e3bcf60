@@ -1505,7 +1505,7 @@ function TeamChatPage() {
                             ref={(el) => {
                               if (active && el) el.scrollIntoView({ block: "nearest" });
                             }}
-                            onClick={() => { setSearchIndex(i); jumpToMessageIndex(r.index); }}
+                            onClick={() => { setSearchIndex(i); jumpToMessageId(r.id); }}
                             className={cn(
                               "w-full text-start px-3 py-2 flex items-start gap-2 border-b border-border/40 hover:bg-accent/60 transition",
                               active && "bg-[color:var(--brand-gold,#d4af37)]/10 border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
