@@ -746,7 +746,7 @@ function TeamChatPage() {
   return (
     <AppShell>
       <div
-        className="flex overflow-hidden bg-card shadow-lg rounded-2xl border md:rounded-none md:border-0 md:border-t md:shadow-none md:-mx-3 md:-my-8 lg:-mx-8 h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
+        className="flex overflow-hidden bg-card shadow-lg rounded-2xl border md:rounded-none md:border-0 md:border-t md:shadow-none md:-my-8 md:relative md:left-1/2 md:right-1/2 md:-ml-[50vw] md:-mr-[50vw] md:w-screen h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
 
         dir={rtl ? "rtl" : "ltr"}
       >
