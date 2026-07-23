@@ -1594,7 +1594,7 @@ function TeamChatPage() {
                             paddingBottom: densityGapPx,
                           }}
                         >
-                          <DaySeparator label={row.label} rtl={rtl} />
+                          <DaySeparator label={row.label} />
                         </div>
                       );
                     }
