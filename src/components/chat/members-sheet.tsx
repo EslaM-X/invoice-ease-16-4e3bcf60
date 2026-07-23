@@ -165,10 +165,10 @@ export function MembersSheet({
           <LuxuryAvatar
             url={m.avatar_url}
             name={m.display_name}
-            size={48}
+            size={64}
             ring={m.is_creator ? "gold" : "soft"}
           />
-          {online && <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
+          {online && <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#141416]" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -241,7 +241,7 @@ export function MembersSheet({
                     <LuxuryAvatar
                       url={roomAvatarUrl ?? null}
                       name={roomName}
-                      size={56}
+                      size={80}
                       ring="gold"
                     />
                     <button
@@ -334,6 +334,31 @@ export function MembersSheet({
                 <div className="divide-y divide-white/5">{others.map(renderRow)}</div>
               </>
             )}
+
+            {isGroup && (
+              <div className="mx-4 mt-6 mb-2 rounded-2xl border border-[color:var(--brand-gold,#d4af37)]/20 bg-black/30 p-3">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--brand-gold,#d4af37)] mb-2 flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  {rtl ? "صلاحيات الشات" : "Chat permissions"}
+                </div>
+                <ul className="space-y-1.5 text-[12px] text-white/80">
+                  <li className="flex items-start gap-2">
+                    <Star className="h-3 w-3 mt-0.5 text-[color:var(--brand-gold,#d4af37)] shrink-0" />
+                    <span>{rtl ? "المُنشئ: كل الصلاحيات، لا يمكن إزالته." : "Owner: full control, cannot be removed."}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Crown className="h-3 w-3 mt-0.5 text-[color:var(--brand-gold,#d4af37)] shrink-0" />
+                    <span>{rtl ? "الأدمن: يقدر يغيّر الاسم والصورة ويضيف/يشيل أعضاء." : "Admin: rename, change photo, add/remove members."}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Users className="h-3 w-3 mt-0.5 text-white/60 shrink-0" />
+                    <span>{rtl ? "العضو: قراءة وإرسال رسائل فقط." : "Member: read and send messages only."}</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <DiagnosticsPanel rtl={rtl} avatarUrl={roomAvatarUrl ?? null} />
           </ScrollArea>
         </SheetContent>
       </Sheet>
@@ -351,6 +376,43 @@ export function MembersSheet({
         />
       )}
     </>
+  );
+}
+
+function DiagnosticsPanel({ rtl, avatarUrl }: { rtl: boolean; avatarUrl: string | null }) {
+  const [open, setOpen] = useState(false);
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  const rendered = avatarUrl ? (() => {
+    try {
+      const u = new URL(avatarUrl);
+      return u.searchParams.get("width") ?? "—";
+    } catch { return "—"; }
+  })() : "—";
+  return (
+    <div className="mx-4 mt-2 mb-8 rounded-2xl border border-white/10 bg-black/40">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white/60 hover:text-white"
+      >
+        <span>{rtl ? "تشخيص الصور والجودة" : "Image quality diagnostics"}</span>
+        <span>{open ? "−" : "+"}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 text-[11px] text-white/70 space-y-1.5">
+          <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{dpr}x</span></div>
+          <div><span className="text-white/50">{rtl ? "عرض الصورة الحالي:" : "Current render width:"} </span><span className="tabular-nums text-white">{rendered}px</span></div>
+          {avatarUrl && (
+            <div className="break-all"><span className="text-white/50">URL:</span> <span className="text-white/80">{avatarUrl.slice(0, 90)}…</span></div>
+          )}
+          <div className="text-white/50 pt-1 border-t border-white/10 mt-2">
+            {rtl
+              ? "لتحسين الجودة: ارفع صورة أعلى من 512×512 من محرر الشات، والنظام هيولّد نسخ 1x/2x/3x تلقائياً."
+              : "For higher quality re-upload a source ≥ 512×512 from the chat editor; the app auto-generates 1x/2x/3x variants."}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -26,7 +26,7 @@ export function EmojiPicker({
         data={data}
         onEmojiSelect={(e: any) => onPick(e.native)}
         theme="auto"
-        set="apple"
+        set="native"
         locale={locale}
         previewPosition="none"
         skinTonePosition="search"

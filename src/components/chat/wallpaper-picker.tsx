@@ -92,6 +92,7 @@ export function WallpaperPicker({
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [scope, setScope] = useState<"self" | "room">("self");
+  const [history, setHistory] = useState<WallpaperValue[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File | undefined | null) => {
@@ -138,8 +139,22 @@ export function WallpaperPicker({
   };
 
   const pickPreset = (p: WallpaperPreset) => {
+    setHistory((h) => [...h, value].slice(-10));
     if (scope === "room" && canAdminRoom && onSetRoomPreset) return onSetRoomPreset(p);
     return onSelectPreset(p);
+  };
+
+  const undoLast = async () => {
+    const prev = history[history.length - 1];
+    if (!prev) return;
+    setHistory((h) => h.slice(0, -1));
+    if (prev.type === "preset") {
+      if (scope === "room" && canAdminRoom && onSetRoomPreset) await onSetRoomPreset(prev.preset);
+      else await onSelectPreset(prev.preset);
+    } else {
+      if (scope === "room" && canAdminRoom && onUploadRoomCustom) await onUploadRoomCustom(prev.path);
+      else await onUploadCustom(prev.path);
+    }
   };
 
   const isCustom = value.type === "custom";
@@ -317,11 +332,18 @@ export function WallpaperPicker({
           </div>
         </div>
 
-        {applyPerRoom && hasRoomOverride && (
-          <Button variant="outline" size="sm" onClick={() => onResetToDefault()} className="w-full">
-            {rtl ? "استخدام الخلفية الافتراضية" : "Use default wallpaper"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {history.length > 0 && (
+            <Button variant="outline" size="sm" onClick={undoLast} className="flex-1">
+              ↶ {rtl ? "تراجع عن آخر تغيير" : "Undo last change"}
+            </Button>
+          )}
+          {applyPerRoom && hasRoomOverride && (
+            <Button variant="outline" size="sm" onClick={() => onResetToDefault()} className="flex-1">
+              {rtl ? "الخلفية الافتراضية" : "Use default"}
+            </Button>
+          )}
+        </div>
       </DialogContent>
 
       <ImageCropperDialog
