@@ -577,7 +577,13 @@ function TeamChatPage() {
     }
   }, [deleteMsg, qc, activeRoomId, rtl]);
 
-  const serverMessages: ChatMsg[] = messagesQ.data?.messages ?? [];
+  const serverMessages: ChatMsg[] = useMemo(() => {
+    const first = messagesQ.data?.messages ?? [];
+    if (olderPages.length === 0) return first;
+    const flatOlder: ChatMsg[] = [];
+    for (const p of olderPages) flatOlder.push(...p);
+    return [...flatOlder, ...first];
+  }, [messagesQ.data?.messages, olderPages]);
   const messages: ChatMsg[] = useMemo(() => {
     if (pendingMessages.length === 0) return serverMessages;
     const recentServerBodies = new Set(
