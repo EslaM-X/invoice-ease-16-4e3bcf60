@@ -455,7 +455,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         applyMessage(m);
         dirtyRef.current = true;
         if (m.t === "stroke" || m.t === "shape" || m.t === "text" || m.t === "undo" || m.t === "clear" || m.t === "delete" || m.t === "order") {
-          scheduleSave();
+          scheduleSave(m.t, "owner" in m ? m.owner : undefined);
           bumpUI();
         }
       } catch { /* noop */ }
