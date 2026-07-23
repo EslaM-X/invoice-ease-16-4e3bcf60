@@ -663,7 +663,7 @@ function TeamChatPage() {
                         <LuxuryAvatar
                           url={activeRoom.avatar_url}
                           name={activeRoom.display_name ?? (rtl ? "جروب" : "Group")}
-                          size={76}
+                          size={84}
                           ring="gold"
                           showSkeleton={false}
                         />

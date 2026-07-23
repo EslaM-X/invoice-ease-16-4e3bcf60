@@ -136,14 +136,14 @@ export function MessageBubble({
             <LuxuryAvatar
               url={msg.sender_avatar_url}
               name={displayName}
-              size={54}
+              size={60}
               ring="gold"
             />
           )}
         </div>
       )}
 
-      <div className={cn("flex flex-col max-w-[85%] sm:max-w-[70%]", mine ? "items-end" : "items-start")}>
+      <div className={cn("flex flex-col max-w-[85%] sm:max-w-[68%] md:max-w-[62%] lg:max-w-[56%]", mine ? "items-end" : "items-start")}>
         <div
           onTouchStart={startPress}
           onTouchEnd={cancelPress}
