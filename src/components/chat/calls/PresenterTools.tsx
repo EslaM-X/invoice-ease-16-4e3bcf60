@@ -1577,6 +1577,161 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
           })()}
         </div>
       ) : null}
+
+      {/* Pending-restore confirmation banner (shown when saved board exists) */}
+      {pendingRestore ? (
+        <div
+          className={cn(
+            "absolute z-50 top-16 left-1/2 -translate-x-1/2",
+            "w-[min(560px,calc(100%-1rem))] rounded-2xl border border-amber-400/40",
+            "bg-black/85 backdrop-blur-xl shadow-2xl shadow-amber-500/20 p-3",
+            "text-white/90",
+          )}
+          role="dialog"
+          aria-live="polite"
+          aria-label={rtl ? "استعادة اللوحة المحفوظة" : "Restore saved board"}
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0 rounded-full bg-amber-400/15 border border-amber-400/40 p-1.5">
+              <HistoryIcon className="size-4 text-amber-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-amber-200">
+                {rtl ? "لديك لوحة محفوظة لهذه الشاشة" : "You have a saved board for this share"}
+              </div>
+              <div className="mt-0.5 text-xs text-white/70">
+                {rtl
+                  ? `تحتوي على ${pendingRestore.snap.items.length} عنصر — هل تريد استعادتها أم البدء بلوحة نظيفة؟`
+                  : `Contains ${pendingRestore.snap.items.length} items — restore them or start with a clean board?`}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={confirmRestore}
+                  className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-300 transition"
+                >
+                  {rtl ? "استعادة" : "Restore"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dismissRestore(false)}
+                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/85 hover:bg-white/10 transition"
+                >
+                  {rtl ? "لوحة جديدة" : "Start fresh"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dismissRestore(true)}
+                  className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/20 transition"
+                >
+                  {rtl ? "حذف المحفوظ" : "Delete saved"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* History timeline panel (sharer only) */}
+      {historyOpen && isLocalSharing ? (
+        <div
+          className={cn(
+            "absolute z-40 bottom-64 sm:bottom-72",
+            rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
+            "w-[min(360px,calc(100%-1rem))] max-h-[min(60vh,420px)] overflow-y-auto",
+            "rounded-2xl border border-amber-400/30 bg-black/85 backdrop-blur-xl shadow-2xl shadow-amber-500/10 p-2",
+            "text-white/90",
+          )}
+          role="dialog"
+          aria-label={rtl ? "سجل التعديلات" : "Edit timeline"}
+        >
+          <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10">
+            <div className="text-xs font-semibold text-amber-200">
+              {rtl ? "سجل التعديلات" : "Edit timeline"}
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-1 text-white/60 hover:text-white hover:bg-white/10"
+              onClick={() => setHistoryOpen(false)}
+              aria-label={rtl ? "إغلاق" : "Close"}
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+          {history.length === 0 ? (
+            <div className="p-3 text-center text-xs text-white/50">
+              {rtl ? "لا توجد تعديلات بعد." : "No edits yet."}
+            </div>
+          ) : (
+            <ul className="mt-1 space-y-1">
+              {[...history].reverse().map((h) => (
+                <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5">
+                  <div className="min-w-0">
+                    <div className="truncate text-xs text-white/85">{h.action}</div>
+                    <div className="text-[10px] text-white/50">
+                      {new Date(h.at).toLocaleTimeString()} · {h.snap.items.length} {rtl ? "عنصر" : "items"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { applyRestore(h.snap); recordHistory("revert", localIdentity); }}
+                    className="shrink-0 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200 hover:bg-amber-400/20 transition inline-flex items-center gap-1"
+                    aria-label={rtl ? "استعادة هذه النسخة" : "Revert to this version"}
+                  >
+                    <RotateCcw className="size-3" />
+                    {rtl ? "استعادة" : "Revert"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
+      {/* Saved-board thumbnail preview panel */}
+      {previewOpen && isLocalSharing ? (
+        <div
+          className={cn(
+            "absolute z-40 bottom-64 sm:bottom-72",
+            rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
+            "w-[min(320px,calc(100%-1rem))]",
+            "rounded-2xl border border-amber-400/30 bg-black/85 backdrop-blur-xl shadow-2xl shadow-amber-500/10 p-2",
+            "text-white/90",
+          )}
+          role="dialog"
+          aria-label={rtl ? "معاينة اللوحة" : "Board preview"}
+        >
+          <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10">
+            <div className="text-xs font-semibold text-amber-200">
+              {rtl ? "معاينة اللوحة الحالية" : "Current board preview"}
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-1 text-white/60 hover:text-white hover:bg-white/10"
+              onClick={() => setPreviewOpen(false)}
+              aria-label={rtl ? "إغلاق" : "Close"}
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+          <div className="mt-2 aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black/60 grid place-items-center">
+            {(() => {
+              try {
+                const url = canvasRef.current?.toDataURL("image/png");
+                return url
+                  ? <img src={url} alt="" className="h-full w-full object-contain" />
+                  : <span className="text-[11px] text-white/50">{rtl ? "لا يوجد محتوى" : "Empty"}</span>;
+              } catch {
+                return <span className="text-[11px] text-white/50">{rtl ? "تعذر إنشاء المعاينة" : "Preview unavailable"}</span>;
+              }
+            })()}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-white/60">
+            <span>{itemsRef.current.size} {rtl ? "عنصر" : "items"}</span>
+            <span>{rtl ? "يُحفظ تلقائياً" : "Auto-saved"}</span>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
