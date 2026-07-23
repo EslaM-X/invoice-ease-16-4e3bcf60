@@ -199,6 +199,7 @@ function TeamChatPage() {
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
   const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +210,7 @@ function TeamChatPage() {
     setLoadingOlder(false);
     setIsAtBottom(true);
     setUnseenCount(0);
+    setFirstUnreadId(null);
   }, [activeRoomId]);
 
   // Load wallpaper preference once
