@@ -1402,6 +1402,27 @@ function TeamChatPage() {
                     }
                   };
 
+                  const formatRelative = (iso: string | null) => {
+                    if (!iso) return rtl ? "غير معروف" : "unknown";
+                    const diffMs = Date.now() - new Date(iso).getTime();
+                    const s = Math.max(1, Math.floor(diffMs / 1000));
+                    if (s < 60) return rtl ? `منذ ${s} ث` : `${s}s ago`;
+                    const m = Math.floor(s / 60);
+                    if (m < 60) return rtl ? `منذ ${m} د` : `${m}m ago`;
+                    const h = Math.floor(m / 60);
+                    if (h < 24) return rtl ? `منذ ${h} س` : `${h}h ago`;
+                    const d = Math.floor(h / 24);
+                    if (d < 7) return rtl ? `منذ ${d} ي` : `${d}d ago`;
+                    return new Date(iso).toLocaleDateString(rtl ? "ar-EG" : undefined, { day: "2-digit", month: "short" });
+                  };
+                  const formatAbsolute = (iso: string | null) => {
+                    if (!iso) return rtl ? "لا يوجد سجل حضور" : "No presence record";
+                    return new Date(iso).toLocaleString(rtl ? "ar-EG" : undefined, {
+                      weekday: "short", day: "2-digit", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    });
+                  };
+
                   return order.map((k) =>
                     buckets[k].length === 0 ? null : (
                       <div key={k}>
@@ -1412,34 +1433,63 @@ function TeamChatPage() {
                         </div>
                         {buckets[k].map((m: any) => {
                           const ls = lastSeen(m.user_id);
+                          const rel = formatRelative(ls);
+                          const abs = formatAbsolute(ls);
+                          const subtitle =
+                            k === "online"
+                              ? (m.job_title ?? (rtl ? "متاح للمحادثة الآن" : "Available now"))
+                              : k === "away"
+                                ? `${rtl ? "بعيد · آخر نشاط " : "Away · active "}${rel}`
+                                : ls
+                                  ? `${rtl ? "آخر ظهور " : "last seen "}${rel}`
+                                  : (rtl ? "لم يتصل من قبل" : "Never seen");
+                          const tipTitle =
+                            k === "online"
+                              ? (rtl ? "متصل الآن" : "Online now")
+                              : k === "away"
+                                ? (rtl ? "بعيد مؤقتًا" : "Away")
+                                : (rtl ? "غير متصل" : "Offline");
                           return (
-                            <button
-                              key={m.user_id}
-                              onClick={() => openDirect(m.user_id)}
-                              className="w-full text-start p-3 flex items-center gap-3 border-b border-border/60 hover:bg-accent/60 active:bg-accent transition-all"
-                            >
-                              <div className="relative shrink-0">
-                                <LuxuryAvatar url={m.avatar_url} name={m.display_name ?? m.email ?? "User"} size={56} ring="gold" showSkeleton={false} />
-                                <span className={cn(
-                                  "absolute bottom-0 end-0 h-3 w-3 rounded-full ring-2 ring-card",
-                                  dotColor[k]
-                                )} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm truncate text-foreground">
-                                  {m.display_name ?? m.email ?? "User"}
+                            <Tooltip key={m.user_id}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => openDirect(m.user_id)}
+                                  className="w-full text-start p-3 flex items-center gap-3 border-b border-border/60 hover:bg-accent/60 active:bg-accent transition-all"
+                                >
+                                  <div className="relative shrink-0">
+                                    <LuxuryAvatar url={m.avatar_url} name={m.display_name ?? m.email ?? "User"} size={56} ring="gold" showSkeleton={false} />
+                                    <span className={cn(
+                                      "absolute bottom-0 end-0 h-3 w-3 rounded-full ring-2 ring-card",
+                                      dotColor[k]
+                                    )} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm truncate text-foreground">
+                                      {m.display_name ?? m.email ?? "User"}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                      {subtitle}
+                                    </div>
+                                  </div>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side={rtl ? "left" : "right"} className="max-w-xs">
+                                <div className="space-y-1">
+                                  <div className="font-semibold flex items-center gap-1.5">
+                                    <span className={cn("h-2 w-2 rounded-full", dotColor[k])} />
+                                    {tipTitle}
+                                  </div>
+                                  <div className="text-[11px] opacity-80">
+                                    {rtl ? "آخر نشاط: " : "Last activity: "}{abs}
+                                  </div>
+                                  {ls && (
+                                    <div className="text-[11px] opacity-70">
+                                      ({rel})
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {k === "online"
-                                    ? (m.job_title ?? (rtl ? "متاح للمحادثة" : "Available"))
-                                    : k === "away"
-                                      ? (rtl ? "بعيد مؤقتًا" : "Away")
-                                      : ls
-                                        ? `${rtl ? "آخر ظهور " : "last seen "}${new Date(ls).toLocaleString(rtl ? "ar-EG" : undefined, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}`
-                                        : (rtl ? "غير متصل" : "Offline")}
-                                </div>
-                              </div>
-                            </button>
+                              </TooltipContent>
+                            </Tooltip>
                           );
                         })}
                       </div>
@@ -1450,6 +1500,7 @@ function TeamChatPage() {
             </TabsContent>
           </Tabs>
         </div>
+
 
 
 
