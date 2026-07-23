@@ -1442,7 +1442,7 @@ function TeamChatPage() {
                             k === "online"
                               ? (m.job_title ?? (rtl ? "متاح للمحادثة الآن" : "Available now"))
                               : k === "away"
-                                ? `${rtl ? "بعيد · آخر نشاط " : "Away · active "}${rel}`
+                                ? `${rtl ? "التطبيق مفتوح بس مش نشِط · آخر حركة " : "App open but idle · last active "}${rel}`
                                 : ls
                                   ? `${rtl ? "آخر ظهور " : "last seen "}${rel}`
                                   : (rtl ? "لم يتصل من قبل" : "Never seen");
@@ -1450,7 +1450,7 @@ function TeamChatPage() {
                             k === "online"
                               ? (rtl ? "متصل الآن" : "Online now")
                               : k === "away"
-                                ? (rtl ? "بعيد مؤقتًا" : "Away")
+                                ? (rtl ? "التطبيق مفتوح لكن التبويب في الخلفية" : "App open but tab in background")
                                 : (rtl ? "غير متصل" : "Offline");
                           return (
                             <Tooltip key={m.user_id}>
