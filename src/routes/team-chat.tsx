@@ -196,6 +196,8 @@ function TeamChatPage() {
 
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  type PeopleSort = "recent" | "oldest" | "name" | "status";
+  const [peopleSort, setPeopleSort] = useState<PeopleSort>("recent");
   const [wallpaperState, setWallpaperState] = useState<WallpaperState>(DEFAULT_WP);
   const [applyPerRoom, setApplyPerRoom] = useState(false);
   const [customWpUrls, setCustomWpUrls] = useState<Record<string, string>>({});
