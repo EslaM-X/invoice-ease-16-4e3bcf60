@@ -402,6 +402,9 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
   // Per-participant coalescing: one toast per person, showing the LATEST state,
   // debounced by ~2.5s so rapid mic/cam/share flips don't spam the room.
   const pendingRef = useRef<Map<string, any>>(new Map());
+  // SR-only live region text. Replaced (not appended) so screen readers
+  // always hear the LATEST change without a growing backlog of announcements.
+  const [srLine, setSrLine] = useState("");
 
   useEffect(() => {
     if (!room) return;
@@ -419,9 +422,13 @@ function MediaStateAnnouncer({ rtl }: { rtl: boolean }) {
         pendingRef.current.delete(key);
         const line = buildLine();
         (isPositive ? toast.success : toast)(line, { id: key, duration: 3500 });
+        // Broadcast to assistive tech (coalesced by the same 2.5s window).
+        setSrLine(line);
       }, 2500);
       pendingRef.current.set(key, timer);
     };
+
+
 
     const buildSummary = (participant: any, change: string) => {
       const who = whoLabel(participant);
