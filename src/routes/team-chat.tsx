@@ -1222,16 +1222,17 @@ function TeamChatPage() {
                 </div>
               )}
 
-              <div className="relative flex-1 min-h-0">
+              <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
               <div
                 ref={scrollRef}
                 onScroll={onScroll}
+                dir={rtl ? "rtl" : "ltr"}
                 className={cn(
-                  "absolute inset-0 overflow-y-auto",
+                  "absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
                   densityPaddingClass,
                   wallpaperClass
                 )}
-                style={{ ...wallpaperStyle, ...densityVars } as React.CSSProperties}
+                style={{ ...wallpaperStyle, ...densityVars, contain: "layout paint" } as React.CSSProperties}
               >
                 {/* Top sentinel: load older */}
                 <div ref={topSentinelRef} className="flex justify-center pb-2" style={{ height: 48 }}>
@@ -1256,7 +1257,7 @@ function TeamChatPage() {
                 </div>
 
                 {/* Virtualized messages */}
-                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
                   {rowVirtualizer.getVirtualItems().map((vi) => {
                     const i = vi.index;
                     const m = messages[i];
