@@ -641,6 +641,18 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         const msg = it ? itemToMsg(it) : null;
         if (msg) void publish(msg, true);
       }
+      // Rebroadcast group memberships (grouped items only)
+      const byGroup = new Map<string, string[]>();
+      for (const [id, it] of itemsRef.current) {
+        const g = (it as { groupId?: string }).groupId;
+        if (!g) continue;
+        const arr = byGroup.get(g) ?? [];
+        arr.push(id);
+        byGroup.set(g, arr);
+      }
+      for (const [g, ids] of byGroup) {
+        void publish({ t: "assignGroup", ids, groupId: g, by: localIdentity }, true);
+      }
     };
     room.on(RoomEvent.ParticipantConnected, onJoin);
     return () => { room.off(RoomEvent.ParticipantConnected, onJoin); };
