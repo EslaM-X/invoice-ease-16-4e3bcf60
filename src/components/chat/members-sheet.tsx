@@ -96,6 +96,60 @@ export function MembersSheet({
     } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
 
+  const saveName = async () => {
+    if (!roomId) return;
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === roomName) return;
+    setSavingName(true);
+    try {
+      await updateProfileFn({ data: { room_id: roomId, name: trimmed } });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      qc.invalidateQueries({ queryKey: ["chat-room-members", roomId] });
+      toast.success(rtl ? "تم تحديث اسم الشات" : "Chat renamed");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    finally { setSavingName(false); }
+  };
+
+  const pickAvatar = () => fileInputRef.current?.click();
+  const onPickAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !roomId) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(rtl ? "برجاء اختيار صورة" : "Please pick an image");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${roomId}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("chat-room-avatars")
+        .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("chat-room-avatars")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error("sign_failed");
+      await updateProfileFn({ data: { room_id: roomId, avatar_url: signed.signedUrl } });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      toast.success(rtl ? "تم تحديث صورة الشات" : "Chat photo updated");
+    } catch (err: any) {
+      toast.error(err?.message ?? (rtl ? "فشل الرفع" : "Upload failed"));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+  const clearAvatar = async () => {
+    if (!roomId) return;
+    if (!confirm(rtl ? "إزالة صورة الشات؟" : "Remove chat photo?")) return;
+    try {
+      await updateProfileFn({ data: { room_id: roomId, clear_avatar: true } });
+      qc.invalidateQueries({ queryKey: ["chat-rooms"] });
+      toast.success(rtl ? "تم" : "Done");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+  };
+
   const renderRow = (m: MemberRow) => {
     const online = isOnline(m.user_id);
     const canManage = iAmAdmin && m.user_id !== myUserId && !m.is_creator;
