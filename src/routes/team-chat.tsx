@@ -39,6 +39,9 @@ import { toast } from "sonner";
 import { useOverflowGuard } from "@/lib/use-overflow-guard";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
+import { DaySeparator } from "@/components/chat/day-separator";
+import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator";
+import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
