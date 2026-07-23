@@ -645,25 +645,61 @@ function TeamChatPage() {
     return [...serverMessages, ...stillPending];
   }, [serverMessages, pendingMessages, user?.id]);
 
-  // In-chat search: indices of matching messages
-  const searchMatches = useMemo(() => {
+
+  // Message index lookup (for virtualizer scrollToIndex)
+  const messageIndexById = useMemo(() => {
+    const m = new Map<string, number>();
+    messages.forEach((msg, i) => m.set(msg.id, i));
+    return m;
+  }, [messages]);
+
+  // Virtualized message list
+  const rowVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 76,
+    overscan: 10,
+    getItemKey: (i) => messages[i]?.id ?? i,
+    scrollMargin: 48, // space for top "Load older" sentinel
+    measureElement:
+      typeof ResizeObserver !== "undefined"
+        ? (el) => el?.getBoundingClientRect().height ?? 76
+        : undefined,
+  });
+
+  // In-chat search: rich results (id, index, snippet, ts)
+  const searchResults = useMemo(() => {
     const q = inChatQuery.trim().toLowerCase();
-    if (!q) return [] as string[];
-    return messages
-      .filter((m) => (m.body ?? "").toLowerCase().includes(q))
-      .map((m) => m.id);
+    if (!q) return [] as { id: string; index: number; snippet: string; ts: string }[];
+    const out: { id: string; index: number; snippet: string; ts: string }[] = [];
+    messages.forEach((m, i) => {
+      const body = m.body ?? "";
+      const idx = body.toLowerCase().indexOf(q);
+      if (idx === -1) return;
+      const start = Math.max(0, idx - 24);
+      const end = Math.min(body.length, idx + q.length + 40);
+      const snippet = (start > 0 ? "…" : "") + body.slice(start, end) + (end < body.length ? "…" : "");
+      out.push({ id: m.id, index: i, snippet, ts: m.created_at });
+    });
+    return out;
   }, [messages, inChatQuery]);
+  const searchMatches = useMemo(() => searchResults.map((r) => r.id), [searchResults]);
 
   useEffect(() => { setSearchIndex(0); }, [inChatQuery, activeRoomId]);
 
+  const jumpToMessageIndex = useCallback((idx: number) => {
+    if (idx < 0 || idx >= messages.length) return;
+    rowVirtualizer.scrollToIndex(idx, { align: "center" });
+  }, [messages.length, rowVirtualizer]);
+
   useEffect(() => {
-    if (!inChatSearchOpen || searchMatches.length === 0) return;
-    const id = searchMatches[searchIndex % searchMatches.length];
-    const el = document.getElementById(`msg-${id}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [searchIndex, searchMatches, inChatSearchOpen]);
+    if (!inChatSearchOpen || searchResults.length === 0) return;
+    const target = searchResults[searchIndex % searchResults.length];
+    if (target) jumpToMessageIndex(target.index);
+  }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageIndex]);
 
   const currentMatchId = searchMatches.length > 0 ? searchMatches[searchIndex % searchMatches.length] : null;
+
 
   // Mark visible messages as read (excluding own)
   useEffect(() => {
