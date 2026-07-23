@@ -527,14 +527,14 @@ function TeamChatPage() {
   return (
     <AppShell>
       <div
-        className="flex rounded-2xl border bg-card overflow-hidden shadow-lg"
+        className="flex overflow-hidden bg-card shadow-lg rounded-2xl border md:rounded-none md:border-0 md:border-t md:shadow-none md:-mx-3 md:-my-8 lg:-mx-8"
         style={{ height: "min(calc(100dvh - 8rem), calc(100vh - 8rem))" }}
         dir={rtl ? "rtl" : "ltr"}
       >
         {/* Sidebar */}
         <div
           className={cn(
-            "w-full md:w-80 md:shrink-0 md:border-e flex-col bg-background",
+            "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] md:shrink-0 md:border-e flex-col bg-background",
             activeRoomId ? "hidden md:flex" : "flex"
           )}
         >
