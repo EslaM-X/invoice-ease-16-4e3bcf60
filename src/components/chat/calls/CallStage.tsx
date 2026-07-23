@@ -648,16 +648,43 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
   );
   const [sysAudio, setSysAudio] = useState<boolean>(() => readLS(LS_SYSAUDIO, "1") !== "0");
   const [sourceInfo, setSourceInfo] = useState<{ name: string; surface: string; hasAudio: boolean } | null>(null);
+  const [confirmAudioOpen, setConfirmAudioOpen] = useState(false);
+  const [trustAudioCk, setTrustAudioCk] = useState(false);
 
   const chooseSurface = useCallback((s: DisplaySurface) => {
     setSurface(s);
     writeLS(LS_SURFACE, s);
   }, []);
 
-  const setSysAudioPref = useCallback((v: boolean) => {
+  /** Direct setter — no confirmation. Used after the user acknowledges. */
+  const commitSysAudio = useCallback((v: boolean) => {
     setSysAudio(v);
     writeLS(LS_SYSAUDIO, v ? "1" : "0");
   }, []);
+
+  /**
+   * Public toggle: turning ON asks for an explicit confirmation so the user
+   * doesn't accidentally publish music, notifications, or private meeting
+   * audio. Once acknowledged (trust checkbox), we skip future confirmations.
+   */
+  const requestSysAudioToggle = useCallback((next: boolean) => {
+    if (!next) {
+      commitSysAudio(false);
+      return;
+    }
+    const trusted = readLS(LS_SYSAUDIO_TRUSTED, "0") === "1";
+    if (trusted) {
+      commitSysAudio(true);
+      toast.warning(
+        rtl ? "تم تفعيل صوت النظام — أي شيء يعمل على جهازك سيُنشر مع المشاركة."
+            : "System audio enabled — anything playing on this device will be published with the share.",
+        { duration: 4500 }
+      );
+      return;
+    }
+    setTrustAudioCk(false);
+    setConfirmAudioOpen(true);
+  }, [commitSysAudio, rtl]);
 
   const cleanup = useCallback(() => {
     tracks?.forEach((t) => { try { t.stop(); } catch { /* ignore */ } });
