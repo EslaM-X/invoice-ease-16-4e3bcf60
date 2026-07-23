@@ -1060,18 +1060,51 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const w = box.clientWidth, h = box.clientHeight;
       const p = toNorm(e);
       const id = hitTest(p[0], p[1], w, h);
-      if (!id) { setSelectedId(null); return; }
-      const it = itemsRef.current.get(id);
-      if (!it) return;
-      setSelectedId(id);
-      selDragRef.current = {
-        mode: "move",
-        startClient: { x: e.clientX, y: e.clientY },
-        origBounds: { x1: 0, y1: 0, x2: 0, y2: 0 },
-        origItem: it,
-        overlayW: w,
-        overlayH: h,
-      };
+      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+      if (!id) {
+        if (!additive) setSelectedIds([]);
+        return;
+      }
+      // Expand to group members
+      const hit = itemsRef.current.get(id);
+      const gid = hit && (hit as { groupId?: string }).groupId;
+      const expandedIds = gid
+        ? Array.from(itemsRef.current.entries())
+            .filter(([, v]) => (v as { groupId?: string }).groupId === gid)
+            .map(([k]) => k)
+        : [id];
+
+      let nextIds: string[];
+      if (additive) {
+        // Toggle each expanded id in the current selection
+        const cur = new Set(selectedIds);
+        const allIn = expandedIds.every((x) => cur.has(x));
+        if (allIn) for (const x of expandedIds) cur.delete(x);
+        else for (const x of expandedIds) cur.add(x);
+        nextIds = Array.from(cur);
+      } else {
+        // If clicked item already selected, keep the whole current selection (for multi-drag);
+        // otherwise replace with the expanded group.
+        nextIds = selectedIds.includes(id) ? selectedIds : expandedIds;
+      }
+      setSelectedIds(nextIds);
+
+      // Begin move drag with all selected items (post-update snapshot)
+      const draggedIds = nextIds;
+      const items: AnyItem[] = [];
+      for (const sid of draggedIds) {
+        const it = itemsRef.current.get(sid);
+        if (it) items.push(it);
+      }
+      if (items.length > 0) {
+        selDragRef.current = {
+          mode: "move",
+          startClient: { x: e.clientX, y: e.clientY },
+          origItems: items,
+          overlayW: w,
+          overlayH: h,
+        };
+      }
       e.preventDefault();
       return;
     }
