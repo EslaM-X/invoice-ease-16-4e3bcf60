@@ -276,6 +276,102 @@ function useAutoSpeaker(): [boolean, (v: boolean) => void] {
   return [on, set];
 }
 
+/**
+ * NetworkResilience — reacts to sustained poor local connection quality by
+ * (1) dropping the camera capture to 180p and capping the top simulcast layer,
+ * (2) muting video entirely if quality stays poor, and
+ * (3) auto-restoring higher quality when the link recovers.
+ * Runs a single monitor per call; toasts once per state transition.
+ */
+function NetworkResilience({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const stateRef = useRef<{ level: "ok" | "low" | "audio-only"; since: number }>({
+    level: "ok",
+    since: Date.now(),
+  });
+
+  useEffect(() => {
+    if (!room) return;
+    let cancelled = false;
+    const local = room.localParticipant;
+
+    const apply = async (target: "ok" | "low" | "audio-only") => {
+      if (cancelled) return;
+      const cur = stateRef.current.level;
+      if (cur === target) return;
+      stateRef.current = { level: target, since: Date.now() };
+      try {
+        const camPub = local.getTrackPublication(Track.Source.Camera);
+        const camTrack = camPub?.track as LocalTrack | undefined;
+        if (target === "audio-only") {
+          if (camPub && !camPub.isMuted) await local.setCameraEnabled(false);
+          toast.warning(
+            rtl
+              ? "الشبكة ضعيفة جداً — تم إيقاف الكاميرا تلقائياً للحفاظ على جودة الصوت"
+              : "Very weak network — camera auto-disabled to preserve audio",
+            { id: "net-resilience" }
+          );
+        } else if (target === "low") {
+          if (camTrack && "restartTrack" in camTrack) {
+            try {
+              await (camTrack as any).restartTrack({
+                resolution: VideoPresets.h180.resolution,
+              });
+            } catch {}
+          }
+          if (camPub && camPub.isMuted) await local.setCameraEnabled(true);
+          toast.info(
+            rtl ? "تم خفض جودة الفيديو تلقائياً لتحسين الاستقرار" : "Video quality lowered automatically for stability",
+            { id: "net-resilience" }
+          );
+        } else {
+          // recover
+          if (camTrack && "restartTrack" in camTrack) {
+            try {
+              await (camTrack as any).restartTrack({
+                resolution: VideoPresets.h720.resolution,
+              });
+            } catch {}
+          }
+          toast.success(
+            rtl ? "تحسنت جودة الشبكة — تمت استعادة الجودة العالية" : "Network recovered — high quality restored",
+            { id: "net-resilience" }
+          );
+        }
+      } catch {
+        /* swallow — best-effort adaptation */
+      }
+    };
+
+    const onQual = (q: ConnectionQuality, p: Participant) => {
+      if (p.identity !== local.identity) return;
+      const now = Date.now();
+      const st = stateRef.current;
+      if (q === ConnectionQuality.Poor || q === ConnectionQuality.Lost) {
+        // 4s in Poor → low; 10s continuously poor → audio-only
+        if (st.level === "ok") {
+          stateRef.current = { level: "ok", since: st.since };
+          setTimeout(() => {
+            if (!cancelled && stateRef.current.level === "ok") apply("low");
+          }, 4000);
+        } else if (st.level === "low" && now - st.since > 10_000) {
+          apply("audio-only");
+        }
+      } else if (q === ConnectionQuality.Excellent || q === ConnectionQuality.Good) {
+        if (st.level !== "ok" && now - st.since > 8000) apply("ok");
+      }
+    };
+
+    room.on(RoomEvent.ConnectionQualityChanged, onQual);
+    return () => {
+      cancelled = true;
+      room.off(RoomEvent.ConnectionQualityChanged, onQual);
+    };
+  }, [room, rtl]);
+
+  return null;
+}
+
 /** Restore a previously-pinned participant when their track becomes available. */
 function PinRestorer() {
   const layoutCtx = useMaybeLayoutContext();
@@ -1436,31 +1532,77 @@ function FocusLockToggle({ rtl, on, setOn, disabled }: { rtl: boolean; on: boole
 /*  Room options                                                      */
 /* ------------------------------------------------------------------ */
 
-const roomOptions: RoomOptions = {
-  adaptiveStream: true,
-  dynacast: true,
-  publishDefaults: {
-    simulcast: true,
-    videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
-    videoCodec: "vp9",
-    dtx: true,
-    red: true,
-    audioPreset: { maxBitrate: 32_000, priority: "high" },
-    screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
-    screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
-  },
-  audioCaptureDefaults: {
-    autoGainControl: true,
-    echoCancellation: true,
-    noiseSuppression: true,
-    channelCount: 1,
-    sampleRate: 48_000,
-  },
-  videoCaptureDefaults: {
-    resolution: VideoPresets.h720.resolution,
-  },
-  stopLocalTrackOnUnpublish: true,
-};
+/**
+ * Detect device / network capability once per call to build a resilient
+ * RoomOptions profile. Weak CPUs, low memory, cellular links, and Data-Saver
+ * mode start on the lowest simulcast rung and a conservative capture size.
+ */
+type CapProfile = "lite" | "balanced" | "hi";
+function detectCapProfile(): CapProfile {
+  if (typeof navigator === "undefined") return "balanced";
+  const nav: any = navigator;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+  const cores = nav.hardwareConcurrency ?? 4;
+  const mem = nav.deviceMemory ?? 4;
+  const saveData = !!conn?.saveData;
+  const eff = String(conn?.effectiveType || "");
+  const downlink = Number(conn?.downlink ?? 10);
+  if (saveData || /^(slow-)?2g$/.test(eff) || cores <= 2 || mem <= 2 || downlink < 1) return "lite";
+  if (eff === "3g" || cores <= 4 || mem <= 4 || downlink < 3) return "balanced";
+  return "hi";
+}
+
+function buildRoomOptions(profile: CapProfile): RoomOptions {
+  const isLite = profile === "lite";
+  const isBal = profile === "balanced";
+  return {
+    adaptiveStream: true,
+    dynacast: true,
+    publishDefaults: {
+      simulcast: true,
+      videoSimulcastLayers: isLite
+        ? [VideoPresets.h180]
+        : isBal
+        ? [VideoPresets.h180, VideoPresets.h360]
+        : [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
+      videoCodec: isLite ? "vp8" : "vp9", // vp8 has universal HW decode on old devices
+      dtx: true,
+      red: true, // audio FEC — huge win on lossy links
+      audioPreset: {
+        maxBitrate: isLite ? 20_000 : 32_000,
+        priority: "high",
+      },
+      videoEncoding: isLite
+        ? { maxBitrate: 300_000, maxFramerate: 20, priority: "low" }
+        : isBal
+        ? { maxBitrate: 900_000, maxFramerate: 24, priority: "medium" }
+        : { maxBitrate: 1_700_000, maxFramerate: 30, priority: "medium" },
+      degradationPreference: "maintain-framerate",
+      screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+      screenShareSimulcastLayers: [ScreenSharePresets.h720fps15, ScreenSharePresets.h1080fps30],
+    },
+    audioCaptureDefaults: {
+      autoGainControl: true,
+      echoCancellation: true,
+      noiseSuppression: true,
+      channelCount: 1,
+      sampleRate: 48_000,
+    },
+    videoCaptureDefaults: {
+      resolution: isLite
+        ? VideoPresets.h180.resolution
+        : isBal
+        ? VideoPresets.h360.resolution
+        : VideoPresets.h720.resolution,
+    },
+    stopLocalTrackOnUnpublish: true,
+    reconnectPolicy: {
+      nextRetryDelayInMs: (ctx: { retryCount: number }) =>
+        Math.min(1000 * Math.pow(1.5, ctx.retryCount), 10_000),
+    },
+  };
+}
+
 
 /* ------------------------------------------------------------------ */
 
@@ -1469,6 +1611,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
   const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
+  const roomOptions = useMemo(() => buildRoomOptions(detectCapProfile()), []);
 
   // Focus lock only makes sense while speaker sort is on — disable at
   // runtime WITHOUT wiping the persisted preference so it restores next call.
@@ -1580,6 +1723,7 @@ function ShareDiagnosticsMount({
       <LocalMediaStatusBadge rtl={rtl} />
       <MediaStateAnnouncer rtl={rtl} />
       <PinRestorer />
+      <NetworkResilience rtl={rtl} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
       <PresenterTools rtl={rtl} />
       <RoomAudioRenderer />
