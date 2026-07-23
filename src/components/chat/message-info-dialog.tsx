@@ -43,7 +43,20 @@ export function MessageInfoDialog({
         </DialogHeader>
 
         <div className="px-4 pb-2 grid grid-cols-3 gap-2 text-center text-xs">
-          <StatCard label={rtl ? "شاهدها" : "Seen"} value={seen.length} tone="gold" icon={<CheckCheck className="h-3.5 w-3.5" />} />
+          <StatCard
+            label={rtl ? "شاهدها" : "Seen"}
+            value={seen.length}
+            tone="gold"
+            icon={<CheckCheck className="h-3.5 w-3.5" />}
+            hint={
+              info?.last_read_at
+                ? (rtl ? "آخر مشاهدة " : "Last read ") +
+                  new Date(info.last_read_at).toLocaleString(rtl ? "ar-EG" : undefined, {
+                    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
+                  })
+                : undefined
+            }
+          />
           <StatCard label={rtl ? "وصلته" : "Delivered"} value={delivered.length} tone="white" icon={<Check className="h-3.5 w-3.5" />} />
           <StatCard label={rtl ? "متصل" : "Online"} value={info?.online_count ?? 0} tone="green" icon={<Circle className="h-2.5 w-2.5 fill-current" />} />
         </div>
