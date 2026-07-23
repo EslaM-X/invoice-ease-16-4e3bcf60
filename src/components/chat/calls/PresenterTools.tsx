@@ -45,7 +45,10 @@ import {
   Minus,
   Type as TypeIcon,
   StickyNote,
+  Users,
+  Lock,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 /* -------------------------------------------------------------- */
