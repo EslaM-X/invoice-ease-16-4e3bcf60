@@ -52,10 +52,10 @@ const LS_SURFACE = "call.screenShare.displaySurface";
 const LS_PIN = "call.pin.identity";
 const LS_AUTOSPK = "call.autoSpeakerReorder";
 
-function readLS<T extends string>(key: string, fallback: T): T {
+function readLS(key: string, fallback: string): string {
   try {
     const v = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
-    return (v as T) || fallback;
+    return v ?? fallback;
   } catch { return fallback; }
 }
 function writeLS(key: string, value: string | null) {
