@@ -35,6 +35,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useOverflowGuard } from "@/lib/use-overflow-guard";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
 import { useRoomPresence } from "@/lib/use-chat-presence";
@@ -103,6 +104,25 @@ function TeamChatPage() {
   const [searchIndex, setSearchIndex] = useState(0);
   const [notifyEnabled, setNotifyEnabled] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const overflowToastShownRef = useRef(false);
+  const { breached: overflowBreached, reset: resetOverflowGuard } = useOverflowGuard(rootRef, {
+    label: "team-chat",
+    onBreach: (info) => {
+      if (overflowToastShownRef.current) return;
+      overflowToastShownRef.current = true;
+      try {
+        toast.error(
+          (document?.documentElement?.dir === "rtl"
+            ? "تم اكتشاف تمرير أفقي غير مقصود — تم تفعيل وضع العرض المبسّط."
+            : "Detected unintended horizontal scroll — switched to simple layout."),
+          { duration: 5000 }
+        );
+      } catch {}
+      // eslint-disable-next-line no-console
+      console.warn("[team-chat] entering simple fallback layout", info);
+    },
+  });
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
@@ -965,7 +985,11 @@ function TeamChatPage() {
   return (
     <AppShell fullBleed>
       <div
-        className="flex overflow-hidden bg-card border-t h-[calc(100dvh-3.5rem)] w-full"
+        ref={rootRef}
+        className={cn(
+          "team-chat-root flex overflow-hidden bg-card border-t h-[calc(100dvh-3.5rem)] w-full",
+          overflowBreached && "team-chat-simple"
+        )}
         dir={rtl ? "rtl" : "ltr"}
       >
         {/* Sidebar */}
@@ -1395,7 +1419,7 @@ function TeamChatPage() {
                 onScroll={onScroll}
                 dir={rtl ? "rtl" : "ltr"}
                 className={cn(
-                  "absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
+                  "team-chat-scroll absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
                   densityPaddingClass,
                   wallpaperClass
                 )}
@@ -1424,8 +1448,23 @@ function TeamChatPage() {
                 </div>
 
                 {/* Virtualized messages */}
-                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
-                  {rowVirtualizer.getVirtualItems().map((vi) => {
+                <div data-virtual-track style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
+                  {(() => {
+                    let virtualItems: ReturnType<typeof rowVirtualizer.getVirtualItems> = [];
+                    try {
+                      virtualItems = rowVirtualizer.getVirtualItems();
+                    } catch (err) {
+                      console.error("[team-chat] virtualizer.getVirtualItems failed", err, {
+                        count: messages.length,
+                        viewport: { w: window.innerWidth, h: window.innerHeight },
+                      });
+                      if (!overflowToastShownRef.current) {
+                        overflowToastShownRef.current = true;
+                        toast.error(rtl ? "تعذّر عرض قائمة الرسائل — تم تفعيل وضع مبسّط." : "Failed to render virtual list — simple mode enabled.");
+                      }
+                      return null;
+                    }
+                    return virtualItems.map((vi) => {
                     const i = vi.index;
                     const m = messages[i];
                     if (!m) return null;
@@ -1485,7 +1524,8 @@ function TeamChatPage() {
                         </motion.div>
                       </div>
                     );
-                  })}
+                  });
+                  })()}
                 </div>
 
 
@@ -1528,6 +1568,25 @@ function TeamChatPage() {
                   <ArrowUp className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" />
                   {rtl ? "تم استرجاع مكان التمرير" : "Restored your scroll position"}
                 </div>
+              )}
+
+              {overflowBreached && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    overflowToastShownRef.current = false;
+                    resetOverflowGuard();
+                    try {
+                      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                    } catch (err) {
+                      console.error("[team-chat] reset scroll failed", err);
+                    }
+                  }}
+                  className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-amber-600 hover:bg-amber-500 text-white border border-amber-300/60 shadow-lg px-3 py-1.5 text-[11px] font-bold"
+                  aria-label={rtl ? "إعادة تهيئة التخطيط" : "Reset layout"}
+                >
+                  {rtl ? "إعادة تهيئة التخطيط" : "Reset layout"}
+                </button>
               )}
 
               {!isAtBottom && (

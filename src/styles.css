@@ -1461,3 +1461,37 @@ img.twemoji {
   font-size: 0.92em;
 }
 
+
+/* =========================================================
+   Team Chat overflow guard — hard rules to prevent any
+   horizontal scroll leak from AppShell or team-chat sub-trees,
+   regardless of sidebar/focus/width/RTL state.
+   ========================================================= */
+.team-chat-root,
+.team-chat-root *,
+.team-chat-root *::before,
+.team-chat-root *::after {
+  box-sizing: border-box;
+}
+.team-chat-root {
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  contain: layout paint;
+}
+.team-chat-root .team-chat-scroll {
+  max-width: 100%;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none;
+}
+/* Any direct/indirect child that tries to exceed the container is clamped. */
+.team-chat-root img,
+.team-chat-root video,
+.team-chat-root canvas,
+.team-chat-root svg {
+  max-width: 100%;
+  height: auto;
+}
+/* Fallback simple mode: disables virtualization tricks and enforces static flow. */
+.team-chat-simple .team-chat-scroll { contain: none !important; }
+.team-chat-simple [data-virtual-track] { transform: none !important; position: static !important; }
