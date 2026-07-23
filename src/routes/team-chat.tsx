@@ -78,6 +78,8 @@ function TeamChatPage() {
   const markReadsFn = useServerFn(markMessagesRead);
   const getWallpaperFn = useServerFn(getChatWallpaper);
   const setWallpaperFn = useServerFn(setChatWallpaper);
+  const getDensityFn = useServerFn(getChatDensity);
+  const setDensityFn = useServerFn(setChatDensity);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
@@ -96,6 +98,63 @@ function TeamChatPage() {
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
+
+  // Density (comfortable | cozy | compact)
+  type Density = "comfortable" | "cozy" | "compact";
+  const [density, setDensityState] = useState<Density>("cozy");
+  useEffect(() => {
+    getDensityFn().then((r: any) => {
+      const d = r?.density;
+      if (d === "comfortable" || d === "cozy" || d === "compact") setDensityState(d);
+    }).catch(() => {});
+  }, [getDensityFn]);
+  const applyDensity = useCallback((d: Density) => {
+    setDensityState(d);
+    setDensityFn({ data: { density: d } }).catch(() => {});
+  }, [setDensityFn]);
+  const densityVars = useMemo<Record<string, string>>(() => {
+    if (density === "compact")
+      return {
+        "--chat-avatar-slot": "44px",
+        "--chat-bubble-pad": "4px 8px",
+        "--chat-bubble-font": "12.5px",
+      };
+    if (density === "comfortable")
+      return {
+        "--chat-avatar-slot": "60px",
+        "--chat-bubble-pad": "10px 14px",
+        "--chat-bubble-font": "15px",
+      };
+    return {
+      "--chat-avatar-slot": "56px",
+      "--chat-bubble-pad": "8px 12px",
+      "--chat-bubble-font": "14px",
+    };
+  }, [density]);
+  const densitySpacingClass =
+    density === "compact"
+      ? "space-y-0.5 p-2 sm:p-3"
+      : density === "comfortable"
+      ? "space-y-3 p-3 sm:p-5 md:p-7"
+      : "space-y-2 md:space-y-2.5 p-3 sm:p-4 md:p-6";
+
+  // Older-history pagination + scroll anchor state
+  const [olderPages, setOlderPages] = useState<ChatMsg[][]>([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [unseenCount, setUnseenCount] = useState(0);
+  const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset pagination when switching rooms
+  useEffect(() => {
+    setOlderPages([]);
+    setHasMoreOlder(true);
+    setLoadingOlder(false);
+    setIsAtBottom(true);
+    setUnseenCount(0);
+  }, [activeRoomId]);
 
   // Load wallpaper preference once
   useEffect(() => {
