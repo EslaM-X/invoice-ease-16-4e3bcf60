@@ -1644,6 +1644,75 @@ function AutoBitrateCap({ rtl }: { rtl: boolean }) {
 }
 
 /**
+ * SubscriberQualityAdaptor — per-subscriber degradation.
+ * When THIS client's connection quality drops to Poor/Lost, we ask the SFU
+ * to send us only the LOW simulcast layer of every remote video/screen-share
+ * track. This is a pure receive-side signal (RemoteTrackPublication
+ * .setVideoQuality) so it does NOT affect what other participants receive —
+ * strong peers keep getting HIGH from the same publishers.
+ * On recovery we restore HIGH and let adaptiveStream fine-tune per tile size.
+ */
+function SubscriberQualityAdaptor({ rtl }: { rtl: boolean }) {
+  const room = useRoomContext();
+  const { localParticipant } = useLocalParticipant();
+  const quality = localParticipant?.connectionQuality ?? ConnectionQuality.Unknown;
+  const modeRef = useRef<VideoQuality>(VideoQuality.HIGH);
+
+  const applyToAllRemotes = useCallback((q: VideoQuality) => {
+    if (!room) return;
+    const remotes = Array.from(room.remoteParticipants.values());
+    for (const rp of remotes) {
+      const pubs = Array.from(rp.trackPublications.values());
+      for (const pub of pubs) {
+        if (pub.kind !== Track.Kind.Video) continue;
+        const anyPub: any = pub;
+        try { anyPub.setVideoQuality?.(q); } catch { /* ignore */ }
+      }
+    }
+  }, [room]);
+
+  // React to local quality changes.
+  useEffect(() => {
+    if (!room) return;
+    const weak = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
+    const strong = quality === ConnectionQuality.Good || quality === ConnectionQuality.Excellent;
+
+    if (weak && modeRef.current !== VideoQuality.LOW) {
+      modeRef.current = VideoQuality.LOW;
+      applyToAllRemotes(VideoQuality.LOW);
+      toast.info(
+        rtl
+          ? "تم تخفيض جودة الاستقبال محلياً — لا يؤثر على بقية المشاركين"
+          : "Receiving lower quality locally — other participants unaffected",
+        { id: "sub-quality-adapt" }
+      );
+    } else if (strong && modeRef.current !== VideoQuality.HIGH) {
+      modeRef.current = VideoQuality.HIGH;
+      applyToAllRemotes(VideoQuality.HIGH);
+      toast.success(
+        rtl ? "استعادة جودة الاستقبال العالية" : "Restored high receive quality",
+        { id: "sub-quality-adapt" }
+      );
+    }
+  }, [quality, room, rtl, applyToAllRemotes]);
+
+  // Apply the current mode to newly-subscribed tracks too.
+  useEffect(() => {
+    if (!room) return;
+    const onSub = (_track: any, pub: any) => {
+      if (pub?.kind !== Track.Kind.Video) return;
+      try { pub.setVideoQuality?.(modeRef.current); } catch { /* ignore */ }
+    };
+    room.on(RoomEvent.TrackSubscribed, onSub);
+    return () => { room.off(RoomEvent.TrackSubscribed, onSub); };
+  }, [room]);
+
+  return null;
+}
+
+
+
+/**
  * PerfEffectsGuard — toggles a `data-perf-lite` attribute on the room root
  * whenever the effective profile is "lite" or the local quality is poor.
  * A tiny scoped stylesheet then disables backdrop-blur, heavy shadows and
@@ -2210,6 +2279,8 @@ function ShareDiagnosticsMount({
       <PinRestorer />
       <NetworkResilience rtl={rtl} />
       <AutoBitrateCap rtl={rtl} />
+      <SubscriberQualityAdaptor rtl={rtl} />
+
       <CameraFailureRetry rtl={rtl} />
       <QualityInsights rtl={rtl} shareState={monitor} onSwitchLite={() => setCallPerf("lite")} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
