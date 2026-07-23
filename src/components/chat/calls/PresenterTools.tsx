@@ -54,6 +54,10 @@ import {
   ArrowDown,
   Edit3,
   X as XIcon,
+  History as HistoryIcon,
+  RotateCcw,
+  Image as ImageIcon,
+  Hand,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -135,7 +139,26 @@ type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
 type PermMsg = { t: "perm"; mode: "presenter" | "all"; by: string };
 type DeleteMsg = { t: "delete"; id: string; by: string };
 type OrderMsg = { t: "order"; order: string[]; by: string };
-type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg | DeleteMsg | OrderMsg;
+type SnapshotMsg = {
+  t: "snapshot";
+  by: string;
+  items: AnyItem[];
+  order: string[];
+};
+type PtrKind = "mouse" | "touch" | "pen";
+type PtrMsg = {
+  t: "ptr";
+  owner: string;
+  color: string;
+  x: number;
+  y: number;
+  kind: PtrKind;
+  down: boolean;
+};
+type PtrGoneMsg = { t: "ptrgone"; owner: string };
+type Msg =
+  | StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg
+  | DeleteMsg | OrderMsg | SnapshotMsg | PtrMsg | PtrGoneMsg;
 
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
@@ -168,7 +191,19 @@ const isPlacement = (t: Tool) => t === "text" || t === "sticky";
 /* -------------------------------------------------------------- */
 
 const STORAGE_PREFIX = "lk-presenter:v1:";
+const HISTORY_PREFIX = "lk-presenter-hist:v1:";
+const MAX_HISTORY = 30;
 const storageKey = (sharer: string) => STORAGE_PREFIX + sharer;
+const historyKey = (sharer: string) => HISTORY_PREFIX + sharer;
+
+type SessionSnap = { items: AnyItem[]; order: string[]; savedAt: number };
+type HistoryEntry = {
+  id: string;
+  at: number;
+  action: string;      // short action label
+  actor?: string;      // who caused it
+  snap: SessionSnap;   // full state after this action
+};
 
 function saveSession(sharer: string, items: AnyItem[], order: string[]) {
   try {
@@ -178,14 +213,27 @@ function saveSession(sharer: string, items: AnyItem[], order: string[]) {
     );
   } catch { /* quota / private mode */ }
 }
-function loadSession(sharer: string): { items: AnyItem[]; order: string[] } | null {
+function loadSession(sharer: string): SessionSnap | null {
   try {
     const raw = localStorage.getItem(storageKey(sharer));
     if (!raw) return null;
-    const p = JSON.parse(raw) as { items?: AnyItem[]; order?: string[] };
+    const p = JSON.parse(raw) as Partial<SessionSnap>;
     if (!Array.isArray(p.items) || !Array.isArray(p.order)) return null;
-    return { items: p.items, order: p.order };
+    return { items: p.items, order: p.order, savedAt: p.savedAt ?? Date.now() };
   } catch { return null; }
+}
+function loadHistory(sharer: string): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(historyKey(sharer));
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as HistoryEntry[];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function saveHistory(sharer: string, entries: HistoryEntry[]) {
+  try {
+    localStorage.setItem(historyKey(sharer), JSON.stringify(entries.slice(-MAX_HISTORY)));
+  } catch { /* ignore */ }
 }
 function itemToMsg(it: AnyItem): Msg | null {
   if (it.kind === "stroke") {
@@ -252,6 +300,23 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         overlayH: number;
       }
   >(null);
+
+  // Remote presenter cursors (mouse pointer / finger) from anyone sharing
+  const cursorsRef = useRef<
+    Map<string, { x: number; y: number; color: string; kind: PtrKind; down: boolean; t: number }>
+  >(new Map());
+
+  // Pending restore prompt when opening a share that has saved drawings
+  const [pendingRestore, setPendingRestore] = useState<
+    | null
+    | { sharer: string; snap: SessionSnap }
+  >(null);
+
+  // Session history (only sharer maintains it)
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const lastRecordAtRef = useRef(0);
 
   const [overlaySize, setOverlaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   useEffect(() => {
@@ -337,19 +402,43 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const next = m.order.filter((id) => existing.has(id));
       for (const id of orderRef.current) if (!next.includes(id) && existing.has(id)) next.push(id);
       orderRef.current = next;
+    } else if (m.t === "snapshot") {
+      // Full-state overwrite (used by revert-to-version)
+      itemsRef.current.clear();
+      orderRef.current = [];
+      const byId = new Map(m.items.map((it) => [it.id, it]));
+      for (const id of m.order) {
+        const it = byId.get(id);
+        if (it) {
+          itemsRef.current.set(id, it);
+          orderRef.current.push(id);
+        }
+      }
+    } else if (m.t === "ptr") {
+      cursorsRef.current.set(m.owner, {
+        x: m.x, y: m.y, color: m.color, kind: m.kind,
+        down: m.down, t: performance.now(),
+      });
+    } else if (m.t === "ptrgone") {
+      cursorsRef.current.delete(m.owner);
     }
   }, []);
 
   /* --------------- persistence (sharer-owned) --------------- */
   const saveTimerRef = useRef<number | null>(null);
-  const scheduleSave = useCallback(() => {
-    if (!primarySharer || primarySharer !== localIdentity) return;
-    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(() => {
-      const items = Array.from(itemsRef.current.values());
-      saveSession(primarySharer, items, [...orderRef.current]);
-    }, 400);
-  }, [primarySharer, localIdentity]);
+  const historyRecordRef = useRef<((action: string, actor?: string) => void) | null>(null);
+  const scheduleSave = useCallback(
+    (action?: string, actor?: string) => {
+      if (!primarySharer || primarySharer !== localIdentity) return;
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => {
+        const items = Array.from(itemsRef.current.values());
+        saveSession(primarySharer, items, [...orderRef.current]);
+        if (action) historyRecordRef.current?.(action, actor);
+      }, 400);
+    },
+    [primarySharer, localIdentity],
+  );
 
 
   /* --------------- receive --------------- */
@@ -366,7 +455,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         applyMessage(m);
         dirtyRef.current = true;
         if (m.t === "stroke" || m.t === "shape" || m.t === "text" || m.t === "undo" || m.t === "clear" || m.t === "delete" || m.t === "order") {
-          scheduleSave();
+          scheduleSave(m.t, "owner" in m ? m.owner : undefined);
           bumpUI();
         }
       } catch { /* noop */ }
@@ -374,6 +463,70 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     room.on(RoomEvent.DataReceived, onData);
     return () => { room.off(RoomEvent.DataReceived, onData); };
   }, [room, applyMessage, scheduleSave, bumpUI]);
+
+  /* --------- history helpers (sharer maintains) --------- */
+  const currentSnap = useCallback((): SessionSnap => ({
+    items: Array.from(itemsRef.current.values()).map((it) => ({ ...it }) as AnyItem),
+    order: [...orderRef.current],
+    savedAt: Date.now(),
+  }), []);
+
+  const recordHistory = useCallback(
+    (action: string, actor?: string) => {
+      if (!primarySharer || primarySharer !== localIdentity) return;
+      const now = Date.now();
+      // Coalesce very rapid edits into one entry (< 350ms apart, same action)
+      if (now - lastRecordAtRef.current < 350 && history.length) {
+        const last = history[history.length - 1];
+        if (last.action === action) {
+          const updated = [...history];
+          updated[updated.length - 1] = { ...last, at: now, snap: currentSnap() };
+          setHistory(updated);
+          saveHistory(primarySharer, updated);
+          lastRecordAtRef.current = now;
+          return;
+        }
+      }
+      const entry: HistoryEntry = {
+        id: `${now.toString(36)}:${Math.random().toString(36).slice(2, 6)}`,
+        at: now, action, actor,
+        snap: currentSnap(),
+      };
+      const next = [...history, entry].slice(-MAX_HISTORY);
+      setHistory(next);
+      saveHistory(primarySharer, next);
+      lastRecordAtRef.current = now;
+    },
+    [primarySharer, localIdentity, history, currentSnap],
+  );
+  useEffect(() => { historyRecordRef.current = recordHistory; }, [recordHistory]);
+
+
+  const applyRestore = useCallback(
+    (snap: SessionSnap) => {
+      itemsRef.current.clear();
+      orderRef.current = [];
+      const byId = new Map(snap.items.map((it) => [it.id, it]));
+      for (const id of snap.order) {
+        const it = byId.get(id);
+        if (it) {
+          itemsRef.current.set(id, it);
+          orderRef.current.push(id);
+        }
+      }
+      dirtyRef.current = true;
+      bumpUI();
+      // Broadcast a full snapshot to peers so they overwrite too.
+      if (isLocalSharing) {
+        void publish(
+          { t: "snapshot", by: localIdentity, items: snap.items, order: snap.order },
+          true,
+        );
+      }
+      scheduleSave("edit", localIdentity);
+    },
+    [bumpUI, isLocalSharing, localIdentity, publish, scheduleSave],
+  );
 
   /* --------- restore saved session on new share start --------- */
   const shareCount = shares.length;
@@ -385,31 +538,56 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       lasersRef.current.clear();
       const sharer = primarySharer;
       if (sharer) {
+        // Load history unconditionally (viewer sees empty; sharer sees theirs)
+        if (sharer === localIdentity) {
+          setHistory(loadHistory(sharer));
+        } else {
+          setHistory([]);
+        }
         const saved = loadSession(sharer);
         if (saved && saved.items.length) {
-          const byId = new Map(saved.items.map((it) => [it.id, it]));
-          for (const id of saved.order) {
-            const it = byId.get(id);
-            if (it) {
-              itemsRef.current.set(id, it);
-              orderRef.current.push(id);
-            }
-          }
-          // If we are the sharer, re-broadcast so remote peers replay too.
-          if (sharer === localIdentity) {
-            for (const id of orderRef.current) {
-              const it = itemsRef.current.get(id);
-              const msg = it ? itemToMsg(it) : null;
-              if (msg) void publish(msg, true);
-            }
-          }
+          // Sharer decides: prompt them. Viewers can also see the prompt but
+          // only the sharer's confirmation actually rebroadcasts to peers.
+          setPendingRestore({ sharer, snap: saved });
+        } else {
+          setPendingRestore(null);
         }
       }
       dirtyRef.current = true;
     }
     prevShareCount.current = shareCount;
-    if (shareCount === 0 && tool !== "off") setTool("off");
-  }, [shareCount, tool, primarySharer, localIdentity, publish]);
+    if (shareCount === 0) {
+      if (tool !== "off") setTool("off");
+      setPendingRestore(null);
+      setHistoryOpen(false);
+      setPreviewOpen(false);
+      cursorsRef.current.clear();
+    }
+  }, [shareCount, tool, primarySharer, localIdentity]);
+
+  const confirmRestore = useCallback(() => {
+    if (!pendingRestore) return;
+    applyRestore(pendingRestore.snap);
+    setPendingRestore(null);
+    if (primarySharer === localIdentity) {
+      recordHistory("restore-saved", localIdentity);
+    }
+  }, [pendingRestore, applyRestore, primarySharer, localIdentity, recordHistory]);
+
+  const dismissRestore = useCallback(
+    (deleteSaved: boolean) => {
+      if (!pendingRestore) return;
+      if (deleteSaved && primarySharer === localIdentity) {
+        try {
+          localStorage.removeItem(storageKey(pendingRestore.sharer));
+          localStorage.removeItem(historyKey(pendingRestore.sharer));
+        } catch { /* ignore */ }
+        setHistory([]);
+      }
+      setPendingRestore(null);
+    },
+    [pendingRestore, primarySharer, localIdentity],
+  );
 
   /* -------- late-joiner sync: rebroadcast state + perm -------- */
   useEffect(() => {
@@ -440,6 +618,66 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     if (!canDraw && tool !== "off") setTool("off");
   }, [canDraw, tool]);
 
+  /* --------- broadcast pointer / touch while sharing --------- */
+  useEffect(() => {
+    if (!isLocalSharing) return;
+    let lastSend = 0;
+    let lastX = -1, lastY = -1;
+    const isCoarse = typeof matchMedia !== "undefined"
+      && matchMedia("(pointer: coarse)").matches;
+    const defaultKind: PtrKind = isCoarse ? "touch" : "mouse";
+
+    const send = (clientX: number, clientY: number, kind: PtrKind, down: boolean) => {
+      const vw = document.documentElement.clientWidth || 1;
+      const vh = document.documentElement.clientHeight || 1;
+      const nx = Math.max(0, Math.min(1, clientX / vw));
+      const ny = Math.max(0, Math.min(1, clientY / vh));
+      const now = performance.now();
+      if (now - lastSend < 45 && Math.abs(nx - lastX) < 0.002 && Math.abs(ny - lastY) < 0.002) return;
+      lastSend = now; lastX = nx; lastY = ny;
+      void publish(
+        { t: "ptr", owner: localIdentity, color: myColor, x: nx, y: ny, kind, down },
+        false,
+      );
+    };
+    const onMove = (e: PointerEvent) => {
+      const k: PtrKind = e.pointerType === "touch" ? "touch"
+        : e.pointerType === "pen" ? "pen" : "mouse";
+      send(e.clientX, e.clientY, k, e.buttons > 0);
+    };
+    const onTouch = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      send(t.clientX, t.clientY, "touch", true);
+    };
+    const onLeave = () => {
+      void publish({ t: "ptrgone", owner: localIdentity }, false);
+    };
+    // Fallback for browsers with only mousemove
+    const onMouse = (e: MouseEvent) => send(e.clientX, e.clientY, defaultKind, e.buttons > 0);
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onMove, { passive: true });
+    window.addEventListener("pointerup", onMove, { passive: true });
+    window.addEventListener("touchmove", onTouch, { passive: true });
+    window.addEventListener("touchstart", onTouch, { passive: true });
+    window.addEventListener("mousemove", onMouse, { passive: true });
+    window.addEventListener("blur", onLeave);
+    document.addEventListener("visibilitychange", onLeave);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onMove);
+      window.removeEventListener("pointerup", onMove);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("touchstart", onTouch);
+      window.removeEventListener("mousemove", onMouse);
+      window.removeEventListener("blur", onLeave);
+      document.removeEventListener("visibilitychange", onLeave);
+      void publish({ t: "ptrgone", owner: localIdentity }, true);
+    };
+  }, [isLocalSharing, localIdentity, myColor, publish]);
+
+
 
   /* --------------- rAF render loop --------------- */
   useEffect(() => {
@@ -461,7 +699,12 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
           if (now - l.t > 1200) lasersRef.current.delete(id);
           else laserAlive = true;
         }
-        if (dirtyRef.current || laserAlive || activeStrokeRef.current || activeShapeRef.current) {
+        let cursorAlive = false;
+        for (const [id, c] of cursorsRef.current) {
+          if (now - c.t > 4000) cursorsRef.current.delete(id);
+          else cursorAlive = true;
+        }
+        if (dirtyRef.current || laserAlive || cursorAlive || activeStrokeRef.current || activeShapeRef.current) {
           const ctx = cvs.getContext("2d")!;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           ctx.clearRect(0, 0, w, h);
@@ -492,6 +735,48 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             ctx.fillStyle = withAlpha(l.color, 0.9 * Math.max(0.4, alpha));
             ctx.fill();
           }
+
+          // Remote presenter cursors (mouse pointer or finger)
+          for (const [owner, c] of cursorsRef.current) {
+            if (owner === localIdentity) continue;
+            if (now - c.t > 4000) { cursorsRef.current.delete(owner); continue; }
+            const x = c.x * w, y = c.y * h;
+            if (c.kind === "touch") {
+              // Finger touch ring
+              const rOuter = c.down ? 26 : 20;
+              ctx.beginPath();
+              ctx.arc(x, y, rOuter, 0, Math.PI * 2);
+              ctx.fillStyle = withAlpha(c.color, c.down ? 0.28 : 0.18);
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(x, y, 8, 0, Math.PI * 2);
+              ctx.fillStyle = withAlpha(c.color, 0.95);
+              ctx.fill();
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else {
+              // Mouse arrow — small SVG-shaped polygon
+              ctx.save();
+              ctx.translate(x, y);
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(0, 18);
+              ctx.lineTo(4.5, 13.5);
+              ctx.lineTo(8, 20);
+              ctx.lineTo(11, 18.7);
+              ctx.lineTo(7.7, 12.4);
+              ctx.lineTo(13, 12);
+              ctx.closePath();
+              ctx.fillStyle = c.color;
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 1.5;
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+
           dirtyRef.current = false;
         }
       }
@@ -531,7 +816,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     };
     applyMessage(msg);
     void publish(msg, true);
-    scheduleSave();
+    scheduleSave("edit", localIdentity);
     dirtyRef.current = true;
   };
 
@@ -544,7 +829,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         const msg = itemToMsg(it);
         if (msg) void publish(msg, true);
       }
-      scheduleSave();
+      scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
       bumpUI();
     },
@@ -557,7 +842,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const i = orderRef.current.indexOf(id);
       if (i >= 0) orderRef.current.splice(i, 1);
       void publish({ t: "delete", id, by: localIdentity }, true);
-      scheduleSave();
+      scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
       setSelectedId((cur) => (cur === id ? null : cur));
       bumpUI();
@@ -569,7 +854,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     (nextOrder: string[]) => {
       orderRef.current = nextOrder;
       void publish({ t: "order", order: [...nextOrder], by: localIdentity }, true);
-      scheduleSave();
+      scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
       bumpUI();
     },
@@ -689,7 +974,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       if (cur) {
         const msg = itemToMsg(cur);
         if (msg) void publish(msg, true);
-        scheduleSave();
+        scheduleSave("edit", localIdentity);
       }
     };
     window.addEventListener("pointermove", onMove, { passive: false });
@@ -767,7 +1052,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     if (tool === "eraser") {
       void publish({ t: "clear", owner: localIdentity }, true);
       applyMessage({ t: "clear", owner: localIdentity });
-      scheduleSave();
+      scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
       return;
     }
@@ -869,7 +1154,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         t: "shape", id: sh.id, owner: sh.owner, kind: sh.kindShape,
         color: sh.color, w: sh.w, x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2, done: true,
       }, true);
-      scheduleSave();
+      scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
       return;
     }
@@ -883,7 +1168,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         t: "stroke", id: s.id, owner: s.owner, tool: s.tool, color: s.color, w: s.w,
         pts: s.pts, done: true,
       }, true);
-      scheduleSave();
+      scheduleSave("edit", localIdentity);
     }
     dirtyRef.current = true;
   };
@@ -893,7 +1178,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   const undo = useCallback(() => {
     void publish({ t: "undo", owner: localIdentity }, true);
     applyMessage({ t: "undo", owner: localIdentity });
-    scheduleSave();
+    scheduleSave("edit", localIdentity);
     dirtyRef.current = true;
   }, [publish, applyMessage, localIdentity, scheduleSave]);
 
@@ -904,7 +1189,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     if (primarySharer && primarySharer === localIdentity) {
       try { localStorage.removeItem(storageKey(primarySharer)); } catch { /* ignore */ }
     }
-    scheduleSave();
+    scheduleSave("edit", localIdentity);
     dirtyRef.current = true;
   }, [publish, applyMessage, primarySharer, localIdentity, scheduleSave]);
 
@@ -952,13 +1237,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       else if (e.key === "[" && selectedId) {
         if (e.shiftKey) sendToBack(selectedId); else backwardOne(selectedId);
       }
-      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); }
+      else if (k === "y" && isLocalSharing) {
+        setHistoryOpen((v) => !v); setPreviewOpen(false);
+      }
+      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); setHistoryOpen(false); setPreviewOpen(false); }
       else handled = false;
       if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isAnyoneSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
+  }, [isAnyoneSharing, isLocalSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
 
   if (!isAnyoneSharing) return null;
 
@@ -1120,8 +1408,23 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
                 >
                   {permMode === "presenter" ? <Lock className="size-4" /> : <Users className="size-4" />}
                 </ToolButton>
+                <ToolButton
+                  label={rtl ? "سجل التعديلات (Y)" : "History timeline (Y)"}
+                  active={historyOpen}
+                  onClick={() => { setHistoryOpen((v) => !v); setPreviewOpen(false); }}
+                >
+                  <HistoryIcon className="size-4" />
+                </ToolButton>
+                <ToolButton
+                  label={rtl ? "معاينة اللوحة المحفوظة" : "Preview saved board"}
+                  active={previewOpen}
+                  onClick={() => { setPreviewOpen((v) => !v); setHistoryOpen(false); }}
+                >
+                  <ImageIcon className="size-4" />
+                </ToolButton>
               </>
             ) : null}
+
 
 
             <Sep />
@@ -1275,6 +1578,161 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
               </>
             );
           })()}
+        </div>
+      ) : null}
+
+      {/* Pending-restore confirmation banner (shown when saved board exists) */}
+      {pendingRestore ? (
+        <div
+          className={cn(
+            "absolute z-50 top-16 left-1/2 -translate-x-1/2",
+            "w-[min(560px,calc(100%-1rem))] rounded-2xl border border-amber-400/40",
+            "bg-black/85 backdrop-blur-xl shadow-2xl shadow-amber-500/20 p-3",
+            "text-white/90",
+          )}
+          role="dialog"
+          aria-live="polite"
+          aria-label={rtl ? "استعادة اللوحة المحفوظة" : "Restore saved board"}
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0 rounded-full bg-amber-400/15 border border-amber-400/40 p-1.5">
+              <HistoryIcon className="size-4 text-amber-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-amber-200">
+                {rtl ? "لديك لوحة محفوظة لهذه الشاشة" : "You have a saved board for this share"}
+              </div>
+              <div className="mt-0.5 text-xs text-white/70">
+                {rtl
+                  ? `تحتوي على ${pendingRestore.snap.items.length} عنصر — هل تريد استعادتها أم البدء بلوحة نظيفة؟`
+                  : `Contains ${pendingRestore.snap.items.length} items — restore them or start with a clean board?`}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={confirmRestore}
+                  className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-300 transition"
+                >
+                  {rtl ? "استعادة" : "Restore"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dismissRestore(false)}
+                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/85 hover:bg-white/10 transition"
+                >
+                  {rtl ? "لوحة جديدة" : "Start fresh"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dismissRestore(true)}
+                  className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/20 transition"
+                >
+                  {rtl ? "حذف المحفوظ" : "Delete saved"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* History timeline panel (sharer only) */}
+      {historyOpen && isLocalSharing ? (
+        <div
+          className={cn(
+            "absolute z-40 bottom-64 sm:bottom-72",
+            rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
+            "w-[min(360px,calc(100%-1rem))] max-h-[min(60vh,420px)] overflow-y-auto",
+            "rounded-2xl border border-amber-400/30 bg-black/85 backdrop-blur-xl shadow-2xl shadow-amber-500/10 p-2",
+            "text-white/90",
+          )}
+          role="dialog"
+          aria-label={rtl ? "سجل التعديلات" : "Edit timeline"}
+        >
+          <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10">
+            <div className="text-xs font-semibold text-amber-200">
+              {rtl ? "سجل التعديلات" : "Edit timeline"}
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-1 text-white/60 hover:text-white hover:bg-white/10"
+              onClick={() => setHistoryOpen(false)}
+              aria-label={rtl ? "إغلاق" : "Close"}
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+          {history.length === 0 ? (
+            <div className="p-3 text-center text-xs text-white/50">
+              {rtl ? "لا توجد تعديلات بعد." : "No edits yet."}
+            </div>
+          ) : (
+            <ul className="mt-1 space-y-1">
+              {[...history].reverse().map((h) => (
+                <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5">
+                  <div className="min-w-0">
+                    <div className="truncate text-xs text-white/85">{h.action}</div>
+                    <div className="text-[10px] text-white/50">
+                      {new Date(h.at).toLocaleTimeString()} · {h.snap.items.length} {rtl ? "عنصر" : "items"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { applyRestore(h.snap); recordHistory("revert", localIdentity); }}
+                    className="shrink-0 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200 hover:bg-amber-400/20 transition inline-flex items-center gap-1"
+                    aria-label={rtl ? "استعادة هذه النسخة" : "Revert to this version"}
+                  >
+                    <RotateCcw className="size-3" />
+                    {rtl ? "استعادة" : "Revert"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
+      {/* Saved-board thumbnail preview panel */}
+      {previewOpen && isLocalSharing ? (
+        <div
+          className={cn(
+            "absolute z-40 bottom-64 sm:bottom-72",
+            rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
+            "w-[min(320px,calc(100%-1rem))]",
+            "rounded-2xl border border-amber-400/30 bg-black/85 backdrop-blur-xl shadow-2xl shadow-amber-500/10 p-2",
+            "text-white/90",
+          )}
+          role="dialog"
+          aria-label={rtl ? "معاينة اللوحة" : "Board preview"}
+        >
+          <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10">
+            <div className="text-xs font-semibold text-amber-200">
+              {rtl ? "معاينة اللوحة الحالية" : "Current board preview"}
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-1 text-white/60 hover:text-white hover:bg-white/10"
+              onClick={() => setPreviewOpen(false)}
+              aria-label={rtl ? "إغلاق" : "Close"}
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+          <div className="mt-2 aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black/60 grid place-items-center">
+            {(() => {
+              try {
+                const url = canvasRef.current?.toDataURL("image/png");
+                return url
+                  ? <img src={url} alt="" className="h-full w-full object-contain" />
+                  : <span className="text-[11px] text-white/50">{rtl ? "لا يوجد محتوى" : "Empty"}</span>;
+              } catch {
+                return <span className="text-[11px] text-white/50">{rtl ? "تعذر إنشاء المعاينة" : "Preview unavailable"}</span>;
+              }
+            })()}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-white/60">
+            <span>{itemsRef.current.size} {rtl ? "عنصر" : "items"}</span>
+            <span>{rtl ? "يُحفظ تلقائياً" : "Auto-saved"}</span>
+          </div>
         </div>
       ) : null}
     </>
