@@ -58,6 +58,11 @@ import {
   RotateCcw,
   Image as ImageIcon,
   Hand,
+  Copy,
+  CopyPlus,
+  Group,
+  Ungroup,
+  Magnet,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
