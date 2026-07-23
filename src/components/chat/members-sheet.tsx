@@ -334,6 +334,31 @@ export function MembersSheet({
                 <div className="divide-y divide-white/5">{others.map(renderRow)}</div>
               </>
             )}
+
+            {isGroup && (
+              <div className="mx-4 mt-6 mb-2 rounded-2xl border border-[color:var(--brand-gold,#d4af37)]/20 bg-black/30 p-3">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--brand-gold,#d4af37)] mb-2 flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  {rtl ? "صلاحيات الشات" : "Chat permissions"}
+                </div>
+                <ul className="space-y-1.5 text-[12px] text-white/80">
+                  <li className="flex items-start gap-2">
+                    <Star className="h-3 w-3 mt-0.5 text-[color:var(--brand-gold,#d4af37)] shrink-0" />
+                    <span>{rtl ? "المُنشئ: كل الصلاحيات، لا يمكن إزالته." : "Owner: full control, cannot be removed."}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Crown className="h-3 w-3 mt-0.5 text-[color:var(--brand-gold,#d4af37)] shrink-0" />
+                    <span>{rtl ? "الأدمن: يقدر يغيّر الاسم والصورة ويضيف/يشيل أعضاء." : "Admin: rename, change photo, add/remove members."}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Users className="h-3 w-3 mt-0.5 text-white/60 shrink-0" />
+                    <span>{rtl ? "العضو: قراءة وإرسال رسائل فقط." : "Member: read and send messages only."}</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <DiagnosticsPanel rtl={rtl} avatarUrl={roomAvatarUrl ?? null} />
           </ScrollArea>
         </SheetContent>
       </Sheet>
