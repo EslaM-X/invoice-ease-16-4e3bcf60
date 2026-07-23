@@ -43,6 +43,7 @@ import { DaySeparator } from "@/components/chat/day-separator";
 import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator";
 import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
 import { record as perfRecord } from "@/lib/chat-perf";
+import { RouteErrorBoundary } from "@/components/error-boundary";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
