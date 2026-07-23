@@ -1283,6 +1283,7 @@ function TeamChatPage() {
               />
             </div>
           </div>
+          <TooltipProvider delayDuration={200}>
           <Tabs defaultValue="chats" className="flex-1 flex flex-col min-h-0">
             <div className="px-2.5 pt-2.5 border-b bg-card">
               <div className="relative mb-2">
