@@ -285,7 +285,7 @@ function PinRestorer() {
   return null;
 }
 
-function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
+function Stage({ autoSpeaker, focusLock }: { autoSpeaker: boolean; focusLock: boolean }) {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -306,26 +306,62 @@ function Stage({ autoSpeaker }: { autoSpeaker: boolean }) {
   const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
 
   // Speaker-based ordering — active speakers first, then last-spoke recency, then join order.
+  // When focusLock is on, we FREEZE ordering after the first speaker-based sort so tiles stop
+  // shuffling around; the active-speaker outline (in StudioTile) still lights up in real time.
+  const lockedOrderRef = useRef<string[] | null>(null);
+  const lockedFocusRef = useRef<string | null>(null);
+
   const orderedCamera = useMemo(() => {
-    if (!autoSpeaker) return cameraTracks;
+    if (!autoSpeaker) {
+      lockedOrderRef.current = null;
+      return cameraTracks;
+    }
     const score = (p: Participant) => {
       const speaking = p.isSpeaking ? 1_000_000_000 : 0;
       const lastSpoke = p.lastSpokeAt ? p.lastSpokeAt.getTime() : 0;
       const joined = p.joinedAt ? -p.joinedAt.getTime() / 1000 : 0;
       return speaking + lastSpoke + joined;
     };
-    return [...cameraTracks].sort((a, b) => score(b.participant) - score(a.participant));
-  }, [cameraTracks, autoSpeaker]);
+    const sorted = [...cameraTracks].sort((a, b) => score(b.participant) - score(a.participant));
+
+    if (focusLock) {
+      // Preserve last order; append any new joiners at the end.
+      const prev = lockedOrderRef.current;
+      if (!prev) {
+        lockedOrderRef.current = sorted.map((t) => t.participant.identity);
+        return sorted;
+      }
+      const byId = new Map(sorted.map((t) => [t.participant.identity, t]));
+      const kept = prev.map((id) => byId.get(id)).filter(Boolean) as typeof sorted;
+      const added = sorted.filter((t) => !prev.includes(t.participant.identity));
+      const merged = [...kept, ...added];
+      lockedOrderRef.current = merged.map((t) => t.participant.identity);
+      return merged;
+    }
+    lockedOrderRef.current = null;
+    return sorted;
+  }, [cameraTracks, autoSpeaker, focusLock]);
 
   const pinned = usePinnedTracks() ?? [];
   const activeSpeakerTrack = autoSpeaker
     ? orderedCamera.find((t) => t.participant.isSpeaking)
     : undefined;
-  const focusTrack =
-    pinned[0] ?? screenShareTracks[0] ?? (autoSpeaker && cameraTracks.length > 3 ? activeSpeakerTrack : undefined);
+
+  // When focusLock is on we keep the SAME participant in the focus slot until unlocked.
+  let autoFocus = autoSpeaker && cameraTracks.length > 3 ? activeSpeakerTrack : undefined;
+  if (autoSpeaker && focusLock) {
+    const currentId = autoFocus?.participant.identity ?? lockedFocusRef.current ?? orderedCamera[0]?.participant.identity ?? null;
+    if (currentId) {
+      lockedFocusRef.current = currentId;
+      autoFocus = orderedCamera.find((t) => t.participant.identity === currentId) ?? autoFocus;
+    }
+  } else if (!focusLock) {
+    lockedFocusRef.current = null;
+  }
+
+  const focusTrack = pinned[0] ?? screenShareTracks[0] ?? autoFocus;
 
   const allOrdered = useMemo(() => {
-    // screen shares first (typically pinned), then ordered cameras
     return [...screenShareTracks, ...orderedCamera];
   }, [screenShareTracks, orderedCamera]);
 
