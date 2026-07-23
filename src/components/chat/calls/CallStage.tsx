@@ -262,9 +262,15 @@ function StudioTile() {
         {isPinned ? <PinOff className="h-3.5 w-3.5" aria-hidden="true" />
                   : <Pin className="h-3.5 w-3.5" aria-hidden="true" />}
       </button>
+
+      {/* Per-subscriber quality tier (remote tracks only) */}
+      {!isLocal && (
+        <SubQualityBadge identity={participant.identity} source={source} rtl={rtl} />
+      )}
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  Adaptive stage                                                    */
