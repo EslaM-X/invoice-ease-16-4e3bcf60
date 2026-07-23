@@ -143,7 +143,6 @@ type Stroke = Omit<StrokeMsg, "t" | "done">;
 type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"] };
 type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"] };
 
-type HandleKey = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 type AnyItem =
   | ({ kind: "stroke" } & Stroke)
   | ({ kind: "shape" } & Shape)
