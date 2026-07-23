@@ -1223,12 +1223,17 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const { lang } = useI18n();
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
-  const [focusLock, setFocusLock] = useFocusLock();
+  const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
 
-  // Focus lock only makes sense while speaker sort is on.
+  // Focus lock only makes sense while speaker sort is on — disable at
+  // runtime WITHOUT wiping the persisted preference so it restores next call.
   useEffect(() => {
-    if (!autoSpeaker && focusLock) setFocusLock(false);
-  }, [autoSpeaker, focusLock, setFocusLock]);
+    if (!autoSpeaker && focusLock) setFocusLockTransient(false);
+    // Re-apply the saved preference when speaker sort turns back on.
+    if (autoSpeaker && !focusLock && readLS(LS_FOCUSLOCK, "0") === "1") {
+      setFocusLockTransient(true);
+    }
+  }, [autoSpeaker, focusLock, setFocusLockTransient]);
 
   useEffect(() => {
     if (!open) return;
