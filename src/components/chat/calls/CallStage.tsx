@@ -21,7 +21,7 @@ import {
 } from "livekit-client";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useI18n } from "@/lib/i18n";
-import { Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2 } from "lucide-react";
+import { Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2, Mic, MicOff, Video as VideoIcon, VideoOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
