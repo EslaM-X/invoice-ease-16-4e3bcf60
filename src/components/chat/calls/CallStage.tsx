@@ -33,13 +33,17 @@ import {
 } from "livekit-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import {
   Signal, SignalHigh, SignalLow, SignalMedium, WifiOff, Loader2,
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
   MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
-  Lock, Unlock, Volume2, VolumeX, MonitorPlay,
+  Lock, Unlock, Volume2, VolumeX, MonitorPlay, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
