@@ -1866,13 +1866,68 @@ function detectCapProfile(): CapProfile {
 }
 
 /**
+ * Preflight probe — pings the LiveKit server a few times to estimate RTT and
+ * combines it with the static capability detector to recommend Auto / Lite /
+ * Balanced. Runs for ~1.2s max; returns immediately if offline or errored.
+ */
+async function runNetworkPreflight(url: string): Promise<{
+  profile: CapProfile;
+  rttMs: number;
+  jitterMs: number;
+  reason: string;
+}> {
+  const base = detectCapProfile();
+  // Convert wss:// → https:// for a same-origin HEAD probe
+  const probeUrl = (() => {
+    try {
+      const u = new URL(url);
+      u.protocol = u.protocol === "wss:" ? "https:" : "http:";
+      u.pathname = "/";
+      u.search = "";
+      return u.toString();
+    } catch { return null; }
+  })();
+  if (!probeUrl || typeof fetch === "undefined") {
+    return { profile: base, rttMs: 0, jitterMs: 0, reason: "no-probe" };
+  }
+  const samples: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    try {
+      await fetch(probeUrl + "?_pf=" + Date.now() + i, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-store",
+      });
+      samples.push(performance.now() - t0);
+    } catch { /* skip failed sample */ }
+    if (samples.length && samples[samples.length - 1] > 1500) break;
+  }
+  if (!samples.length) return { profile: base, rttMs: 0, jitterMs: 0, reason: "unreachable" };
+  const rtt = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+  const jitter = Math.round(Math.max(...samples) - Math.min(...samples));
+
+  // Merge probe with static detector — network wins if worse
+  let profile: CapProfile = base;
+  let reason = "static";
+  if (rtt > 450 || jitter > 250) { profile = "lite"; reason = "high-latency"; }
+  else if (rtt > 220 || jitter > 120) {
+    if (base === "hi") profile = "balanced";
+    reason = "moderate-latency";
+  } else {
+    reason = "healthy";
+  }
+  return { profile, rttMs: rtt, jitterMs: jitter, reason };
+}
+
+/**
  * Merge the user's saved call-perf pref with detected capability. The user
  * can force "lite" or "balanced"; "auto" defers to the detector.
  */
-function effectiveProfile(pref: CallPerfPref): CapProfile {
+function effectiveProfile(pref: CallPerfPref, override?: CapProfile | null): CapProfile {
   if (pref === "lite") return "lite";
   if (pref === "balanced") return "balanced";
-  return detectCapProfile();
+  return override ?? detectCapProfile();
 }
 
 function buildRoomOptions(profile: CapProfile): RoomOptions {
