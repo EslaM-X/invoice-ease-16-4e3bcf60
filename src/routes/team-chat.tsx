@@ -142,6 +142,43 @@ function TeamChatPage() {
       "--chat-bubble-font": "14px",
     };
   }, [density]);
+
+  // Auto-realign after density change: preserve distance-from-bottom (or stick to bottom).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const snap = pendingRealignRef.current;
+    if (!el || !snap) return;
+    pendingRealignRef.current = null;
+    requestAnimationFrame(() => {
+      const el2 = scrollRef.current;
+      if (!el2) return;
+      if (snap.atBottom) {
+        el2.scrollTop = el2.scrollHeight;
+      } else {
+        el2.scrollTop = el2.scrollHeight - el2.clientHeight - snap.bottom;
+      }
+    });
+  }, [density]);
+
+  // Re-align when DPR changes (zoom / display switch) so bubbles don't jump.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    let mq: MediaQueryList | null = null;
+    const attach = () => {
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      const handler = () => {
+        captureRealign();
+        // Trigger the same layout-effect path by nudging density state to itself
+        setDensityState((d) => d);
+        // Detach and re-attach on new DPR
+        if (mq) mq.removeEventListener?.("change", handler);
+        attach();
+      };
+      mq.addEventListener?.("change", handler);
+    };
+    attach();
+    return () => { if (mq) mq.onchange = null; };
+  }, [captureRealign]);
   const densitySpacingClass =
     density === "compact"
       ? "space-y-0.5 p-2 sm:p-3"
