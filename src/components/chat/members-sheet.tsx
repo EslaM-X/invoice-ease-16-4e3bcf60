@@ -251,6 +251,7 @@ export function MembersSheet({
                       name={roomName}
                       size={104}
                       ring="gold"
+                      bust={bustKey || null}
                     />
                     <button
                       type="button"
