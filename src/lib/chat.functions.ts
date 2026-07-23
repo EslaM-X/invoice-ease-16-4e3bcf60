@@ -74,7 +74,7 @@ export const listChatRooms = createServerFn({ method: "GET" })
           });
 
         let display_name: string | null = r.name ?? null;
-        let avatar_url: string | null = null;
+        let avatar_url: string | null = r.avatar_url ?? null;
         if (r.type === "direct" && !display_name) {
           const other = roomMembers.find((m: any) => !m.is_me);
           if (other) {
@@ -89,6 +89,7 @@ export const listChatRooms = createServerFn({ method: "GET" })
           members: roomMembers,
           display_name,
           avatar_url,
+          my_role: myRoleByRoom[r.id] ?? "member",
         };
       })
     );
