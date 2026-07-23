@@ -320,6 +320,106 @@ export type Database = {
           },
         ]
       }
+      chat_call_participants: {
+        Row: {
+          call_id: string
+          created_at: string
+          id: string
+          join_status: string
+          joined_at: string | null
+          leave_reason: string | null
+          left_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          id?: string
+          join_status?: string
+          joined_at?: string | null
+          leave_reason?: string | null
+          left_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          id?: string
+          join_status?: string
+          joined_at?: string | null
+          leave_reason?: string | null
+          left_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_call_participants_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "chat_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_calls: {
+        Row: {
+          connected_at: string | null
+          created_at: string
+          duration_seconds: number
+          ended_at: string | null
+          id: string
+          initiator_id: string
+          livekit_room: string
+          mode: string
+          room_id: string
+          scope: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          connected_at?: string | null
+          created_at?: string
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          initiator_id: string
+          livekit_room: string
+          mode: string
+          room_id: string
+          scope: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          connected_at?: string | null
+          created_at?: string
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          initiator_id?: string
+          livekit_room?: string
+          mode?: string
+          room_id?: string
+          scope?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_calls_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_message_reads: {
         Row: {
           message_id: string
@@ -360,6 +460,7 @@ export type Database = {
         Row: {
           attachments: Json
           body: string | null
+          call_id: string | null
           created_at: string
           deleted_at: string | null
           edited_at: string | null
@@ -375,6 +476,7 @@ export type Database = {
         Insert: {
           attachments?: Json
           body?: string | null
+          call_id?: string | null
           created_at?: string
           deleted_at?: string | null
           edited_at?: string | null
@@ -390,6 +492,7 @@ export type Database = {
         Update: {
           attachments?: Json
           body?: string | null
+          call_id?: string | null
           created_at?: string
           deleted_at?: string | null
           edited_at?: string | null
@@ -403,6 +506,13 @@ export type Database = {
           voice_note_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "chat_calls"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_reply_to_id_fkey"
             columns: ["reply_to_id"]
@@ -4612,10 +4722,9 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_allowed_company_email: { Args: { _email: string }; Returns: boolean }
-      is_chat_room_member: {
-        Args: { _room_id: string; _user_id: string }
-        Returns: boolean
-      }
+      is_chat_room_member:
+        | { Args: { _room_id: string }; Returns: boolean }
+        | { Args: { _room_id: string; _user_id: string }; Returns: boolean }
       is_company_member: { Args: never; Returns: boolean }
       is_distributor: { Args: { _user_id?: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }

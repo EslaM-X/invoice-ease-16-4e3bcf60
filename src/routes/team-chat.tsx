@@ -18,8 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
   Bell, BellOff, X, ArrowUp, ArrowDown, Users2, Rows3, ArrowDownToLine, Loader2,
-  Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal,
+  Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal, Phone, Video,
 } from "lucide-react";
+import { startCall, joinCall, declineCall, leaveCall } from "@/lib/calls.functions";
+import { CallStage } from "@/components/chat/calls/CallStage";
+import { IncomingCallDialog } from "@/components/chat/calls/IncomingCallDialog";
+import { useIncomingCall } from "@/components/chat/calls/useIncomingCall";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,6 +136,62 @@ function TeamChatPage() {
   }, [activeRoomId]);
   const [newOpen, setNewOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+
+  // ============ Voice / Video Calls ============
+  const startCallFn = useServerFn(startCall);
+  const joinCallFn = useServerFn(joinCall);
+  const declineCallFn = useServerFn(declineCall);
+  const leaveCallFn = useServerFn(leaveCall);
+  const [activeCall, setActiveCall] = useState<
+    | { call_id: string; url: string; token: string; video: boolean }
+    | null
+  >(null);
+  const [callStarting, setCallStarting] = useState<null | "audio" | "video">(null);
+  const { incoming, dismiss: dismissIncoming } = useIncomingCall(user?.id, activeCall?.call_id ?? null);
+
+  const handleStartCall = useCallback(
+    async (mode: "audio" | "video") => {
+      if (!activeRoomId) return;
+      if (callStarting || activeCall) return;
+      setCallStarting(mode);
+      try {
+        const r = await startCallFn({ data: { room_id: activeRoomId, mode } });
+        setActiveCall({ call_id: r.call_id, url: r.url, token: r.token, video: mode === "video" });
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to start call");
+      } finally {
+        setCallStarting(null);
+      }
+    },
+    [activeRoomId, activeCall, callStarting, startCallFn]
+  );
+
+  const handleAcceptIncoming = useCallback(async () => {
+    if (!incoming) return;
+    const c = incoming;
+    dismissIncoming();
+    try {
+      const r = await joinCallFn({ data: { call_id: c.call_id } });
+      setActiveCall({ call_id: c.call_id, url: r.url, token: r.token, video: c.mode === "video" });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to join call");
+    }
+  }, [incoming, dismissIncoming, joinCallFn]);
+
+  const handleDeclineIncoming = useCallback(async () => {
+    if (!incoming) return;
+    const c = incoming;
+    dismissIncoming();
+    try { await declineCallFn({ data: { call_id: c.call_id } }); } catch {}
+  }, [incoming, dismissIncoming, declineCallFn]);
+
+  const handleLeaveCall = useCallback(async () => {
+    if (!activeCall) return;
+    const id = activeCall.call_id;
+    setActiveCall(null);
+    try { await leaveCallFn({ data: { call_id: id } }); } catch {}
+  }, [activeCall, leaveCallFn]);
+
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [wallpaperState, setWallpaperState] = useState<WallpaperState>(DEFAULT_WP);
@@ -1393,6 +1453,28 @@ function TeamChatPage() {
 
                 <Button
                   size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0 text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50"
+                  onClick={() => handleStartCall("audio")}
+                  disabled={!activeRoomId || !!activeCall || callStarting !== null}
+                  title={rtl ? "مكالمة صوت" : "Voice call"}
+                  aria-label="Voice call"
+                >
+                  {callStarting === "audio" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-5 w-5" />}
+                </Button>
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0 text-sky-600 hover:bg-sky-500/10 disabled:opacity-50"
+                  onClick={() => handleStartCall("video")}
+                  disabled={!activeRoomId || !!activeCall || callStarting !== null}
+                  title={rtl ? "مكالمة فيديو" : "Video call"}
+                  aria-label="Video call"
+                >
+                  {callStarting === "video" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Video className="h-5 w-5" />}
+                </Button>
+
+
+                <Button
+                  size="icon" variant="ghost"
                   className="h-10 w-10 rounded-full shrink-0"
                   onClick={() => setMembersOpen(true)}
                   title={rtl ? "معلومات الشات والأعضاء" : "Chat info & members"}
@@ -1856,6 +1938,22 @@ function TeamChatPage() {
         iAmAdmin={(activeRoom?.my_role === "admin" || activeRoom?.my_role === "owner")}
         rtl={rtl}
       />
+
+      <IncomingCallDialog
+        call={incoming}
+        onAccept={handleAcceptIncoming}
+        onDecline={handleDeclineIncoming}
+      />
+      {activeCall && (
+        <CallStage
+          open={!!activeCall}
+          onClose={() => setActiveCall(null)}
+          url={activeCall.url}
+          token={activeCall.token}
+          video={activeCall.video}
+          onLeave={handleLeaveCall}
+        />
+      )}
     </AppShell>
   );
 }
