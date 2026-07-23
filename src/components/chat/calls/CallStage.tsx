@@ -183,10 +183,12 @@ function StudioTile() {
     if (!layoutCtx) return;
     if (isPinned) {
       layoutCtx.pin.dispatch?.({ msg: "clear_pin" });
+      writeLS(LS_PIN, null);
     } else {
       layoutCtx.pin.dispatch?.({ msg: "set_pin", trackReference: trackRef });
+      writeLS(LS_PIN, `${participant.identity}::${source}`);
     }
-  }, [layoutCtx, isPinned, trackRef]);
+  }, [layoutCtx, isPinned, trackRef, participant.identity, source]);
 
   const label = rtl
     ? `${name}${isLocal ? " (أنت)" : ""} — ${
