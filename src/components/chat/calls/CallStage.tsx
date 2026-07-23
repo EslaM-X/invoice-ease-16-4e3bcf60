@@ -1114,13 +1114,22 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
 /*  Auto speaker-reorder toggle + focus lock                          */
 /* ------------------------------------------------------------------ */
 
-function useFocusLock(): [boolean, (v: boolean) => void] {
+/**
+ * Persisted user preference for the "lock focus on current speaker" toggle.
+ * Returns `[on, set, setTransient]`:
+ *  - `set` updates state AND writes to localStorage (user intent)
+ *  - `setTransient` updates only in-memory state (used for runtime guards
+ *    such as "auto-off while speaker sort is disabled") so the saved
+ *    preference is restored automatically on the next call.
+ */
+function useFocusLock(): [boolean, (v: boolean) => void, (v: boolean) => void] {
   const [on, setOn] = useState<boolean>(() => readLS(LS_FOCUSLOCK, "0") === "1");
   const set = useCallback((v: boolean) => {
     setOn(v);
     writeLS(LS_FOCUSLOCK, v ? "1" : "0");
   }, []);
-  return [on, set];
+  const setTransient = useCallback((v: boolean) => setOn(v), []);
+  return [on, set, setTransient];
 }
 
 function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void }) {
