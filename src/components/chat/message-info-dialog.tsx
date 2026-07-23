@@ -43,7 +43,20 @@ export function MessageInfoDialog({
         </DialogHeader>
 
         <div className="px-4 pb-2 grid grid-cols-3 gap-2 text-center text-xs">
-          <StatCard label={rtl ? "شاهدها" : "Seen"} value={seen.length} tone="gold" icon={<CheckCheck className="h-3.5 w-3.5" />} />
+          <StatCard
+            label={rtl ? "شاهدها" : "Seen"}
+            value={seen.length}
+            tone="gold"
+            icon={<CheckCheck className="h-3.5 w-3.5" />}
+            hint={
+              info?.last_read_at
+                ? (rtl ? "آخر مشاهدة " : "Last read ") +
+                  new Date(info.last_read_at).toLocaleString(rtl ? "ar-EG" : undefined, {
+                    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
+                  })
+                : undefined
+            }
+          />
           <StatCard label={rtl ? "وصلته" : "Delivered"} value={delivered.length} tone="white" icon={<Check className="h-3.5 w-3.5" />} />
           <StatCard label={rtl ? "متصل" : "Online"} value={info?.online_count ?? 0} tone="green" icon={<Circle className="h-2.5 w-2.5 fill-current" />} />
         </div>
@@ -58,7 +71,7 @@ export function MessageInfoDialog({
   );
 }
 
-function StatCard({ label, value, tone, icon }: { label: string; value: number; tone: "gold" | "white" | "green"; icon: React.ReactNode }) {
+function StatCard({ label, value, tone, icon, hint }: { label: string; value: number; tone: "gold" | "white" | "green"; icon: React.ReactNode; hint?: string }) {
   const toneCls =
     tone === "gold" ? "text-[color:var(--brand-gold,#d4af37)] border-[color:var(--brand-gold,#d4af37)]/30 bg-[color:var(--brand-gold,#d4af37)]/10"
     : tone === "green" ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
@@ -67,6 +80,7 @@ function StatCard({ label, value, tone, icon }: { label: string; value: number; 
     <div className={cn("rounded-xl border p-2.5", toneCls)}>
       <div className="flex items-center justify-center gap-1 opacity-80">{icon}<span>{label}</span></div>
       <div className="text-2xl font-black tabular-nums mt-1">{value}</div>
+      {hint && <div className="text-[10px] opacity-70 mt-1 leading-tight">{hint}</div>}
     </div>
   );
 }
