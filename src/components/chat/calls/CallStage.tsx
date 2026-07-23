@@ -1018,6 +1018,9 @@ function KeyboardShortcuts({
         e.preventDefault();
         if (autoSpeaker) setFocusLock(!focusLock);
         else toast(rtl ? "فعّل ترتيب المتحدث أولًا (L)" : "Enable speaker sort first (L)");
+      } else if (key === "u") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent(EVT_TOGGLE_PARTICIPANTS));
       } else if (key === "?" || (e.shiftKey && key === "/")) {
         e.preventDefault();
         setHelpOpen((o) => !o);
