@@ -1537,6 +1537,11 @@ function TeamChatPage() {
               )}
 
               <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
+              {stickyDayLabel && messages.length > 0 && (
+                <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-[5]">
+                  <DaySeparator label={stickyDayLabel} className="!py-0" />
+                </div>
+              )}
               <div
                 ref={scrollRef}
                 onScroll={onScroll}
