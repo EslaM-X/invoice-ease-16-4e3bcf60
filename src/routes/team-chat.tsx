@@ -1453,6 +1453,28 @@ function TeamChatPage() {
 
                 <Button
                   size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0 text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50"
+                  onClick={() => handleStartCall("audio")}
+                  disabled={!activeRoomId || !!activeCall || callStarting !== null}
+                  title={rtl ? "مكالمة صوت" : "Voice call"}
+                  aria-label="Voice call"
+                >
+                  {callStarting === "audio" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-5 w-5" />}
+                </Button>
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-10 w-10 rounded-full shrink-0 text-sky-600 hover:bg-sky-500/10 disabled:opacity-50"
+                  onClick={() => handleStartCall("video")}
+                  disabled={!activeRoomId || !!activeCall || callStarting !== null}
+                  title={rtl ? "مكالمة فيديو" : "Video call"}
+                  aria-label="Video call"
+                >
+                  {callStarting === "video" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Video className="h-5 w-5" />}
+                </Button>
+
+
+                <Button
+                  size="icon" variant="ghost"
                   className="h-10 w-10 rounded-full shrink-0"
                   onClick={() => setMembersOpen(true)}
                   title={rtl ? "معلومات الشات والأعضاء" : "Chat info & members"}
