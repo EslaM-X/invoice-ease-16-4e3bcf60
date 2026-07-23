@@ -1603,19 +1603,19 @@ function AutoBitrateCap({ rtl }: { rtl: boolean }) {
     if (!room) return;
     const local = room.localParticipant;
 
-    const applyLayers = (qualities: VideoQuality[]) => {
+    const applyMaxQuality = (max: VideoQuality) => {
       const pubs = Array.from(local.trackPublications.values());
       for (const pub of pubs) {
         if (pub.kind !== Track.Kind.Video) continue;
-        const lp = pub as LocalTrackPublication;
-        try { lp.setPublishingLayers?.(qualities); } catch { /* ignore */ }
+        const t: any = (pub as LocalTrackPublication).track;
+        try { t?.setPublishingQuality?.(max); } catch { /* ignore */ }
       }
     };
 
     const cap = () => {
       if (cappedRef.current) return;
       cappedRef.current = true;
-      applyLayers([VideoQuality.LOW]);
+      applyMaxQuality(VideoQuality.LOW);
       toast.info(
         rtl ? "تم تقليل بترييت الفيديو تلقائياً بسبب ضعف الشبكة" : "Video bitrate auto-capped for weak network",
         { id: "auto-bitrate-cap" }
@@ -1624,7 +1624,7 @@ function AutoBitrateCap({ rtl }: { rtl: boolean }) {
     const uncap = () => {
       if (!cappedRef.current) return;
       cappedRef.current = false;
-      applyLayers([VideoQuality.LOW, VideoQuality.MEDIUM, VideoQuality.HIGH]);
+      applyMaxQuality(VideoQuality.HIGH);
       toast.success(
         rtl ? "استعادة البترييت الكامل — الشبكة تحسنت" : "Full bitrate restored — network recovered",
         { id: "auto-bitrate-cap" }
