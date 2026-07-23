@@ -23,11 +23,13 @@ import {
   ConnectionState,
   ConnectionQuality,
   VideoPresets,
+  VideoQuality,
   ScreenSharePresets,
   RoomEvent,
   createLocalScreenTracks,
   type RoomOptions,
   type LocalTrack,
+  type LocalTrackPublication,
   type TrackPublication,
   type Participant,
 } from "livekit-client";
@@ -44,6 +46,7 @@ import {
   Mic, MicOff, Video as VideoIcon, VideoOff, Pin, PinOff,
   MonitorUp, Keyboard, X, Users, Sparkles, Monitor, AppWindow, Globe,
   Lock, Unlock, Volume2, VolumeX, MonitorPlay, AlertTriangle,
+  Gauge, Cpu, Activity, Lightbulb, Zap, Feather, Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
