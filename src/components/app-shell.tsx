@@ -75,7 +75,7 @@ const items: NavEntry[] = [
   },
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang, setLang } = useI18n();
   const { theme, toggle } = useTheme();
