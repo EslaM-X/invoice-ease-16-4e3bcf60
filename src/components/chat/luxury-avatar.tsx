@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { getAvatarSrc, getAvatarSrcSet } from "@/lib/avatar-url";
+import { useAvatarBust } from "@/lib/avatar-bust";
 
 type Props = {
   url?: string | null;
