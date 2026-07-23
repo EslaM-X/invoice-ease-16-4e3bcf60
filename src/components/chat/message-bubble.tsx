@@ -15,6 +15,7 @@ import { QUICK_REACTIONS } from "@/components/chat/emoji-picker";
 import { MessageInfoDialog } from "@/components/chat/message-info-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { TwemojiBody } from "@/components/chat/twemoji-body";
 
 type Reaction = { emoji: string; user_id: string };
 export type ChatMsg = {
