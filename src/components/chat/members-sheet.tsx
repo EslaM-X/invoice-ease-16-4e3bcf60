@@ -379,6 +379,43 @@ export function MembersSheet({
   );
 }
 
+function DiagnosticsPanel({ rtl, avatarUrl }: { rtl: boolean; avatarUrl: string | null }) {
+  const [open, setOpen] = useState(false);
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  const rendered = avatarUrl ? (() => {
+    try {
+      const u = new URL(avatarUrl);
+      return u.searchParams.get("width") ?? "—";
+    } catch { return "—"; }
+  })() : "—";
+  return (
+    <div className="mx-4 mt-2 mb-8 rounded-2xl border border-white/10 bg-black/40">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white/60 hover:text-white"
+      >
+        <span>{rtl ? "تشخيص الصور والجودة" : "Image quality diagnostics"}</span>
+        <span>{open ? "−" : "+"}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 text-[11px] text-white/70 space-y-1.5">
+          <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{dpr}x</span></div>
+          <div><span className="text-white/50">{rtl ? "عرض الصورة الحالي:" : "Current render width:"} </span><span className="tabular-nums text-white">{rendered}px</span></div>
+          {avatarUrl && (
+            <div className="break-all"><span className="text-white/50">URL:</span> <span className="text-white/80">{avatarUrl.slice(0, 90)}…</span></div>
+          )}
+          <div className="text-white/50 pt-1 border-t border-white/10 mt-2">
+            {rtl
+              ? "لتحسين الجودة: ارفع صورة أعلى من 512×512 من محرر الشات، والنظام هيولّد نسخ 1x/2x/3x تلقائياً."
+              : "For higher quality re-upload a source ≥ 512×512 from the chat editor; the app auto-generates 1x/2x/3x variants."}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddMembersDialog({
   open, onOpenChange, roomId, rtl, onAdded,
 }: {
