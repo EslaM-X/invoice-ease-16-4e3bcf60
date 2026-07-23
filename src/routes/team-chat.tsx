@@ -1075,6 +1075,24 @@ function TeamChatPage() {
                 )}
               </div>
 
+              {!isAtBottom && (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="absolute bottom-4 end-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 hover:bg-black text-white border border-[color:var(--brand-gold,#d4af37)]/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.7)] px-3 py-2 backdrop-blur-md transition"
+                  aria-label={rtl ? "الرجوع لأحدث رسالة" : "Jump to latest"}
+                  title={rtl ? "الرجوع لأحدث رسالة" : "Jump to latest"}
+                >
+                  <ArrowDownToLine className="h-4 w-4" />
+                  {unseenCount > 0 && (
+                    <span className="text-[11px] font-bold tabular-nums bg-[color:var(--brand-gold,#d4af37)] text-black rounded-full min-w-[18px] px-1 text-center">
+                      {unseenCount > 99 ? "99+" : unseenCount}
+                    </span>
+                  )}
+                </button>
+              )}
+              </div>
+
               <Composer
                 rtl={rtl}
                 activeRoomId={activeRoom.id}
