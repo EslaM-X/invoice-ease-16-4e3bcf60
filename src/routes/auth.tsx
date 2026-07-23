@@ -752,9 +752,10 @@ function AuthPage() {
             <Button
               type="submit"
               disabled={busy}
-              className="w-full bg-[oklch(0.86_0.01_250)] text-[oklch(0.15_0.003_250)] hover:bg-[oklch(0.91_0.008_250)]"
+              className="stein-shimmer-track relative h-12 w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[oklch(0.78_0.11_82)] via-[oklch(0.92_0.08_82)] to-[oklch(0.78_0.11_82)] text-[oklch(0.1_0.005_60)] font-bold tracking-wide shadow-[0_18px_40px_-14px_oklch(0.78_0.11_82_/_0.55)] transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-14px_oklch(0.78_0.11_82_/_0.75)] active:translate-y-0"
+              style={{ transitionTimingFunction: "cubic-bezier(0.32,0.72,0,1)" }}
             >
-              {mode === "signup" ? t("signup") : mode === "distributor" ? (lang === "ar" ? "دخول بوابة الموزعين" : "Distributor sign in") : t("login")}
+              <span className="relative z-10">{mode === "signup" ? t("signup") : mode === "distributor" ? (lang === "ar" ? "دخول بوابة الموزعين" : "Distributor sign in") : t("login")}</span>
             </Button>
           </form>
 
