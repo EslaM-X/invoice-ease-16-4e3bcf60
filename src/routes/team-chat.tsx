@@ -39,6 +39,9 @@ import { toast } from "sonner";
 import { useOverflowGuard } from "@/lib/use-overflow-guard";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
+import { DaySeparator } from "@/components/chat/day-separator";
+import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator";
+import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
@@ -92,6 +95,21 @@ function TeamChatPage() {
     if (rid) setActiveRoomId(rid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mobile browser back-button: while a room is open on a phone, register a
+  // history entry so the hardware/gesture Back returns to the room list
+  // instead of leaving the chat page.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!activeRoomId) return;
+    const isMobile = window.matchMedia?.("(max-width: 767px)")?.matches;
+    if (!isMobile) return;
+    const state = { teamChatRoom: activeRoomId };
+    try { window.history.pushState(state, "", window.location.href); } catch {/* ignore */}
+    const onPop = () => setActiveRoomId(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [activeRoomId]);
   const [newOpen, setNewOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
@@ -937,17 +955,75 @@ function TeamChatPage() {
     return m;
   }, [messages]);
 
+  // Build a unified row list: interleave "day" separators before the first
+  // message of each local-day. Message rows remain 1:1 with `messages`, so
+  // `msgIndex` still maps 1:1 to the messages array for search/highlight.
+  type Row =
+    | { kind: "day"; key: string; dayKey: string; label: string; ts: string }
+    | { kind: "msg"; key: string; dayKey: string; msgIndex: number };
+  const rows: Row[] = useMemo(() => {
+    const out: Row[] = [];
+    let prevDay = "";
+    const loc: "ar" | "en" = rtl ? "ar" : "en";
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      const dk = chatDayKey(m.created_at);
+      if (dk !== prevDay) {
+        out.push({
+          kind: "day",
+          key: `day-${dk}`,
+          dayKey: dk,
+          label: formatChatDayLabel(m.created_at, loc),
+          ts: m.created_at,
+        });
+        prevDay = dk;
+      }
+      out.push({ kind: "msg", key: m.id, dayKey: dk, msgIndex: i });
+    }
+    return out;
+  }, [messages, rtl]);
+
+  const rowIndexByMsgId = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((r, i) => { if (r.kind === "msg") map.set(messages[r.msgIndex].id, i); });
+    return map;
+  }, [rows, messages]);
+
   // Virtualized message list
   // NOTE: rely on the virtualizer's built-in ResizeObserver-based measurement
   // to avoid subpixel jumps when bubbles grow (images/wallpaper loading).
   const rowVirtualizer = useVirtualizer({
-    count: messages.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 76,
-    overscan: 10,
-    getItemKey: (i) => messages[i]?.id ?? i,
+    estimateSize: (i) => (rows[i]?.kind === "day" ? 36 : 76),
+    overscan: 12,
+    getItemKey: (i) => rows[i]?.key ?? i,
     scrollMargin: 48, // space for top "Load older" sentinel
   });
+
+  // Sticky day chip: reflect the day of the top-most visible message row.
+  const [stickyDayLabel, setStickyDayLabel] = useState<string>("");
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      try {
+        const items = rowVirtualizer.getVirtualItems();
+        if (!items.length) { setStickyDayLabel(""); return; }
+        const scrollTop = el.scrollTop;
+        const visible = items.find((it) => it.end >= scrollTop) ?? items[0];
+        const r = rows[visible.index];
+        if (!r) return;
+        const label = r.kind === "day"
+          ? r.label
+          : formatChatDayLabel(messages[r.msgIndex].created_at, rtl ? "ar" : "en");
+        setStickyDayLabel((prev) => (prev === label ? prev : label));
+      } catch {/* ignore */}
+    };
+    recompute();
+    el.addEventListener("scroll", recompute, { passive: true });
+    return () => el.removeEventListener("scroll", recompute);
+  }, [rows, messages, rtl, rowVirtualizer, activeRoomId]);
 
   // In-chat search: rich results (id, index, snippet, ts)
   const searchResults = useMemo(() => {
@@ -969,21 +1045,22 @@ function TeamChatPage() {
 
   useEffect(() => { setSearchIndex(0); }, [inChatQuery, activeRoomId]);
 
-  const jumpToMessageIndex = useCallback((idx: number) => {
-    if (idx < 0 || idx >= messages.length) return;
+  const jumpToMessageId = useCallback((msgId: string) => {
+    const rowIdx = rowIndexByMsgId.get(msgId);
+    if (rowIdx == null) return;
     try {
-      rowVirtualizer.scrollToIndex(idx, { align: "center" });
+      rowVirtualizer.scrollToIndex(rowIdx, { align: "center" });
     } catch (err) {
       console.error("[team-chat] scrollToIndex failed", err);
       toast.error(rtl ? "تعذّر الانتقال للرسالة المطلوبة" : "Failed to jump to message");
     }
-  }, [messages.length, rowVirtualizer, rtl]);
+  }, [rowIndexByMsgId, rowVirtualizer, rtl]);
 
   useEffect(() => {
     if (!inChatSearchOpen || searchResults.length === 0) return;
     const target = searchResults[searchIndex % searchResults.length];
-    if (target) jumpToMessageIndex(target.index);
-  }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageIndex]);
+    if (target) jumpToMessageId(target.id);
+  }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageId]);
 
   // Global shortcut: Ctrl/⌘+F opens in-chat search when a room is active
   useEffect(() => {
@@ -1016,12 +1093,21 @@ function TeamChatPage() {
     markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
   }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
-  const typingNames = useMemo(() => {
+  const typers = useMemo<Typer[]>(() => {
     if (!activeRoom) return [];
-    return (activeRoom.members ?? [])
-      .filter((m: any) => typingUserIds.includes(m.user_id))
-      .map((m: any) => (m.display_name ?? m.email ?? "?").split(" ")[0]);
-  }, [activeRoom, typingUserIds]);
+    const memberById = new Map<string, any>();
+    for (const m of activeRoom.members ?? []) memberById.set(m.user_id, m);
+    return typingUserIds
+      .filter((id: string) => id !== user?.id)
+      .map((id: string): Typer => {
+        const m = memberById.get(id);
+        return {
+          id,
+          name: (m?.display_name ?? m?.email ?? "?"),
+          avatarUrl: m?.avatar_url ?? null,
+        };
+      });
+  }, [activeRoom, typingUserIds, user?.id]);
 
   const wallpaperClass = activeWallpaper.type === "preset"
     ? WALLPAPER_STYLES[activeWallpaper.preset as WallpaperPreset] ?? WALLPAPER_STYLES.noir
@@ -1209,10 +1295,8 @@ function TeamChatPage() {
                           <ChevronDown className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition" />
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {typingNames.length > 0 ? (
-                            <span className="text-primary italic">
-                              {typingNames.slice(0, 2).join(", ")} {rtl ? "يكتب..." : "typing..."}
-                            </span>
+                          {typers.length > 0 ? (
+                            <TypingIndicator typers={typers} rtl={rtl} variant="inline" />
                           ) : activeRoom.type === "group" ? (
                             `${(activeRoom.members ?? []).length} ${rtl ? "عضو" : "members"}`
                           ) : (() => {
@@ -1449,7 +1533,7 @@ function TeamChatPage() {
                             ref={(el) => {
                               if (active && el) el.scrollIntoView({ block: "nearest" });
                             }}
-                            onClick={() => { setSearchIndex(i); jumpToMessageIndex(r.index); }}
+                            onClick={() => { setSearchIndex(i); jumpToMessageId(r.id); }}
                             className={cn(
                               "w-full text-start px-3 py-2 flex items-start gap-2 border-b border-border/40 hover:bg-accent/60 transition",
                               active && "bg-[color:var(--brand-gold,#d4af37)]/10 border-s-2 border-s-[color:var(--brand-gold,#d4af37)]"
@@ -1468,6 +1552,11 @@ function TeamChatPage() {
               )}
 
               <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
+              {stickyDayLabel && messages.length > 0 && (
+                <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-[5]">
+                  <DaySeparator label={stickyDayLabel} className="!py-0" />
+                </div>
+              )}
               <div
                 ref={scrollRef}
                 onScroll={onScroll}
@@ -1519,14 +1608,41 @@ function TeamChatPage() {
                       return null;
                     }
                     return virtualItems.map((vi) => {
-                    const i = vi.index;
+                    const row = rows[vi.index];
+                    if (!row) return null;
+
+                    // Day separator row
+                    if (row.kind === "day") {
+                      return (
+                        <div
+                          key={vi.key}
+                          data-index={vi.index}
+                          ref={rowVirtualizer.measureElement}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            insetInlineStart: 0,
+                            insetInlineEnd: 0,
+                            transform: `translateY(${vi.start}px)`,
+                            paddingBottom: densityGapPx,
+                          }}
+                        >
+                          <DaySeparator label={row.label} />
+                        </div>
+                      );
+                    }
+
+                    // Message row
+                    const i = row.msgIndex;
                     const m = messages[i];
                     if (!m) return null;
                     const prev = messages[i - 1];
                     const next = messages[i + 1];
                     const mine = m.sender_id === user?.id;
-                    const sameSenderAsPrev = prev && prev.sender_id === m.sender_id;
-                    const sameSenderAsNext = next && next.sender_id === m.sender_id;
+                    const prevSameDay = prev ? chatDayKey(prev.created_at) === row.dayKey : false;
+                    const nextSameDay = next ? chatDayKey(next.created_at) === row.dayKey : false;
+                    const sameSenderAsPrev = !!prev && prev.sender_id === m.sender_id && prevSameDay;
+                    const sameSenderAsNext = !!next && next.sender_id === m.sender_id && nextSameDay;
                     const showName = !sameSenderAsPrev;
                     const showAvatar = !sameSenderAsNext;
                     const isMatch = currentMatchId === m.id;
@@ -1534,7 +1650,7 @@ function TeamChatPage() {
                     return (
                       <div
                         key={vi.key}
-                        data-index={i}
+                        data-index={vi.index}
                         ref={rowVirtualizer.measureElement}
                         id={`msg-${m.id}`}
                         style={{
@@ -1583,18 +1699,14 @@ function TeamChatPage() {
                 </div>
 
 
-                {typingNames.length > 0 && (
+
+                {typers.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 text-xs text-muted-foreground ps-10"
+                    className="ps-3 pe-3 pb-1"
                   >
-                    <div className="flex gap-0.5">
-                      {[0, 150, 300].map((d) => (
-                        <span key={d} className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                      ))}
-                    </div>
-                    <span className="italic">{typingNames.join(", ")} {rtl ? "يكتب..." : "typing..."}</span>
+                    <TypingIndicator typers={typers} rtl={rtl} variant="line" />
                   </motion.div>
                 )}
 

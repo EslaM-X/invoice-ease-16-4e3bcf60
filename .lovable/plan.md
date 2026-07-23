@@ -1,46 +1,68 @@
-## المشكلة (السبب الجذري)
+# Chat: date separators + smart typing + mobile Telegram-like polish
 
-`AppShell` يضع محتوى الصفحة داخل `<main class="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8">` بجانب شريط جانبي ثابت للديسكتوب. صفحة `team-chat` كانت تحاول كسر هذا القيد عبر الحيلة:
+Three additions on top of the existing `src/routes/team-chat.tsx` chat, all responsive and mobile-first.
 
-```
-md:-my-8 md:w-screen md:max-w-[100vw] md:mx-[calc(50%-50vw)]
-```
+## 1) WhatsApp-style date separators inside the message list
 
-هذه الحيلة تحسب `50vw` من كامل عرض المتصفح، لكن الـ`<main>` ليس ممتدًا لكامل العرض — بل يزاحمه الشريط الجانبي (lg+) و`max-w-7xl`. النتيجة: يمتد الشات فوق الشريط الجانبي وعناصر الهيدر الخاصة بالتطبيق، فيبان كل شيء متراكب ومنزلق كما في اللقطة، مع ظهور الـ`ChatPopupNotifier` فوقه لأن كلاهما مرسي على حواف viewport مختلفة.
+Add a sticky, centered date chip that appears before the first message of each day, computed from `message.created_at` in the user's local timezone.
 
-## الحل
+Labels (bilingual, RTL-aware):
+- Today → "اليوم" / "Today"
+- Yesterday → "أمس" / "Yesterday"
+- Within last 7 days → weekday name (e.g. "الاثنين" / "Monday")
+- Older → localized full date (e.g. "12 يوليو 2026")
 
-استبدال حيلة الـfull-bleed بميزة مدعومة من `AppShell` نفسها لضمان ملء المساحة المتاحة **بجانب الشريط الجانبي** فقط، بدون أي `100vw`.
+Rendering rules:
+- Injected as virtual rows inside the existing virtualized list so scroll offsets, history-prepend preservation, and search jump-to-index keep working.
+- The chip that corresponds to the topmost visible day sticks to the top of the viewport as you scroll (WhatsApp behavior), then swaps as the day changes.
+- Style matches the current Noir & Gold surface (soft dark pill, gold hairline, subtle blur), sized down on mobile.
 
-### 1) `src/components/app-shell.tsx` — دعم `fullBleed`
+## 2) Smart "typing…" indicator
 
-- إضافة prop اختياري `fullBleed?: boolean` على `AppShell`.
-- عندما يكون `true`: تنطبق كلاسات الـ`<main>` كالتالي بدل `mx-auto max-w-7xl px-* py-*`:
-  ```
-  flex-1 min-w-0 min-h-0 w-full overflow-hidden p-0 pb-tabbar lg:pb-0
-  ```
-  يبقى الهيدر الخاص بـAppShell أعلى الصفحة، ويملأ الشات الباقي بدون padding ولا `max-w`.
+Replaces the current "X, Y typing…" text with a live, animated indicator both in the header and above the composer.
 
-### 2) `src/routes/team-chat.tsx` — استخدام `fullBleed` وإزالة الحيلة
+Behavior:
+- 1 typer → "أحمد يكتب الآن…" / "Ahmed is typing…"
+- 2 typers → "أحمد ومحمد يكتبان الآن…" / "Ahmed and Mohamed are typing…"
+- 3 typers → "أحمد ومحمد و+1 يكتبون الآن…" / "Ahmed, Mohamed and 1 more are typing…"
+- 4+ typers → "عدة أعضاء يكتبون الآن…" / "Several people are typing…"
 
-- `<AppShell fullBleed>` بدل `<AppShell>`.
-- الحاوية الرئيسية للشات تصبح:
-  ```
-  flex overflow-hidden bg-card border-t h-[calc(100dvh-3.5rem)] w-full
-  ```
-  حذف كل من: `md:-my-8`, `md:w-screen`, `md:max-w-[100vw]`, `md:mx-[calc(50%-50vw)]`, `rounded-2xl md:rounded-none`, `shadow-lg md:shadow-none`, `border md:border-0`. تبقى الحواف نظيفة داخل الـshell.
-- ارتفاع الحاوية يعتمد على ارتفاع هيدر AppShell (14 = 3.5rem) بدل `8rem/4rem` المرتبطة بالـpadding المحذوف.
+Visuals:
+- Three bouncing dots animation next to the text, disabled automatically under `prefers-reduced-motion`.
+- Small round avatars of up to the first 3 typers stack next to the indicator in DMs/rooms.
+- In the rooms sidebar, the current row keeps its existing "typing…" hint but upgraded with the animated dots.
+- All wording flips correctly in RTL and uses proper Arabic dual/plural forms.
 
-### 3) التحقق البصري
+Data source: the existing `useRoomPresence` `typingUserIds` — no schema change.
 
-- التقاط شاشة تلقائية (Playwright headless) في وضعي RTL/LTR على viewport 1280 و1440 للتأكد:
-  - لا يوجد تمرير أفقي (`documentElement.scrollWidth === clientWidth`).
-  - الشريط الجانبي للشات ملاصق لحدود منطقة الـ`<main>`، والفقاعات محاذية بشكل صحيح.
-  - `ChatPopupNotifier` لا يتراكب مع أزرار الهيدر الخاصة بالتطبيق.
-- تشغيل `tsgo --noEmit`.
+## 3) Telegram-like mobile experience (phones only)
 
-## ملاحظات
+Applied only under `md` breakpoint; desktop stays as it is today.
 
-- لا حاجة لأي تغيير في قاعدة البيانات — التعديلات تنسيقية بحتة.
-- إعدادات المستخدم (عرض الشات، وضع التركيز، الكثافة، الخلفية) تبقى كما هي؛ فقط ألغيت الحيلة التي كانت تخترق حاوية AppShell.
-- بعد التعديل: `chatWidth = full` يعني ملء كامل مساحة الـ`<main>` بجانب الشريط الجانبي (وهذا هو السلوك الصحيح المتوقع من "ملء الشاشة" داخل التطبيق).
+Navigation model:
+- Single active pane: on mobile the sidebar and the chat never show side-by-side.
+- Room list is the default view. Tapping a room slides the chat pane in from the inline-end side (RTL-aware) with a short, smooth transition; a back arrow in the chat header slides back to the list.
+- Uses the browser history stack so the phone back gesture returns to the list instead of leaving the page.
+
+Layout & density on phones:
+- Full-viewport chat surface (`100dvh`), safe-area padding for notch/home indicator.
+- Denser header (avatar 40px, single-line title with truncation, subtitle shows online/last seen or the smart typing text).
+- Message bubbles use up to ~78% width, tighter vertical spacing, larger tap targets (44px min).
+- Composer pinned to the bottom above the on-screen keyboard, auto-grow up to ~5 lines, mic + attach + emoji as icon-only round buttons.
+- Floating "jump to latest" pill sits just above the composer when scrolled up, with unread count.
+- Sticky day chip and the smart typing indicator both remain visible and legible on small screens.
+- Popup notifier is auto-hidden on phones inside `/team-chat` (it already exists elsewhere in the app), to avoid covering the chat.
+
+## Responsiveness & QA
+
+- Verified across 360, 390, 414, 768, 1024, 1280, 1440, 1920 widths in both LTR and RTL using the existing overflow-guard test hook.
+- Reduced-motion honored for slide transitions, typing dots, and sticky-chip swaps.
+- No changes to database, RLS, or server functions.
+
+## Technical notes
+
+- Files touched: `src/routes/team-chat.tsx`, `src/components/chat/message-bubble.tsx` (spacing tokens only), new `src/components/chat/day-separator.tsx`, new `src/components/chat/typing-indicator.tsx`, small additions to `src/styles.css` for the sticky chip and bounce animation with reduced-motion guard.
+- Virtualizer: day separators become their own row type; `getVirtualItems()` renders either a message row or a separator row based on a precomputed `rows` array `(kind: "msg" | "day", ...)`.
+- Sticky chip: an absolutely positioned top overlay reads the top-most visible row's day from the virtualizer's `range` and updates on scroll (throttled via `requestAnimationFrame`).
+- Mobile pane switch: a `view: "list" | "chat"` state on `< md`, wired to `history.pushState`/`popstate` so the hardware back button returns to the list; on `md+` both panes render as today.
+- No new dependencies; date formatting uses `Intl.DateTimeFormat` with the current locale (`ar` / `en`).
