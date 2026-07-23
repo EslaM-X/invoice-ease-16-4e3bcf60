@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
-export const Route = createFileRoute("/call-history" as any)({
+export const Route = createFileRoute("/call-history")({
   head: () => ({
     meta: [
       { title: "Call History · Steinheim" },
@@ -65,7 +65,7 @@ function CallHistoryPage() {
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : rtl ? "تحديث" : "Refresh"}
             </Button>
-            <Link to={"/team-chat" as any}>
+            <Link to="/team-chat">
               <Button size="sm" variant="ghost">{rtl ? "شات الفريق" : "Team chat"}</Button>
             </Link>
           </div>
