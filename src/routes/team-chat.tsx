@@ -42,6 +42,7 @@ import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
 import { DaySeparator } from "@/components/chat/day-separator";
 import { TypingIndicator, type Typer } from "@/components/chat/typing-indicator";
 import { chatDayKey, formatChatDayLabel } from "@/lib/format-chat-day";
+import { record as perfRecord } from "@/lib/chat-perf";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import {
   WallpaperPicker, WALLPAPER_STYLES,
@@ -1016,7 +1017,9 @@ function TeamChatPage() {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    let raf = 0;
     const recompute = () => {
+      const t0 = performance.now();
       try {
         const items = rowVirtualizer.getVirtualItems();
         if (!items.length) { setStickyDayLabel(""); return; }
@@ -1029,10 +1032,18 @@ function TeamChatPage() {
           : formatChatDayLabel(messages[r.msgIndex].created_at, rtl ? "ar" : "en");
         setStickyDayLabel((prev) => (prev === label ? prev : label));
       } catch {/* ignore */}
+      finally { perfRecord("stickyDay:recompute", performance.now() - t0); }
+    };
+    const onScrollRaf = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; recompute(); });
     };
     recompute();
-    el.addEventListener("scroll", recompute, { passive: true });
-    return () => el.removeEventListener("scroll", recompute);
+    el.addEventListener("scroll", onScrollRaf, { passive: true });
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", onScrollRaf);
+    };
   }, [rows, messages, rtl, rowVirtualizer, activeRoomId]);
 
   // In-chat search: rich results (id, index, snippet, ts)
@@ -1563,8 +1574,8 @@ function TeamChatPage() {
 
               <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
               {stickyDayLabel && messages.length > 0 && (
-                <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-[5]">
-                  <DaySeparator label={stickyDayLabel} className="!py-0" />
+                <div className="chat-sticky-day pointer-events-none absolute left-1/2 -translate-x-1/2 z-[5] max-w-[70vw] sm:max-w-none">
+                  <DaySeparator label={stickyDayLabel} compact className="!py-0" />
                 </div>
               )}
               <div
