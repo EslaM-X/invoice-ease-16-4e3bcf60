@@ -499,6 +499,8 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     },
     [primarySharer, localIdentity, history, currentSnap],
   );
+  useEffect(() => { historyRecordRef.current = recordHistory; }, [recordHistory]);
+
 
   const applyRestore = useCallback(
     (snap: SessionSnap) => {
