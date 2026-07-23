@@ -318,13 +318,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         const m = JSON.parse(dec.decode(payload)) as Msg;
         applyMessage(m);
         dirtyRef.current = true;
+        if (m.t === "stroke" || m.t === "shape" || m.t === "text" || m.t === "undo" || m.t === "clear") {
+          scheduleSave();
+        }
       } catch { /* noop */ }
     };
     room.on(RoomEvent.DataReceived, onData);
     return () => { room.off(RoomEvent.DataReceived, onData); };
-  }, [room, applyMessage]);
+  }, [room, applyMessage, scheduleSave]);
 
-  /* --------------- clear on new share start --------------- */
+  /* --------- restore saved session on new share start --------- */
   const shareCount = shares.length;
   const prevShareCount = useRef(shareCount);
   useEffect(() => {
@@ -332,11 +335,63 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       itemsRef.current.clear();
       orderRef.current = [];
       lasersRef.current.clear();
+      const sharer = primarySharer;
+      if (sharer) {
+        const saved = loadSession(sharer);
+        if (saved && saved.items.length) {
+          const byId = new Map(saved.items.map((it) => [it.id, it]));
+          for (const id of saved.order) {
+            const it = byId.get(id);
+            if (it) {
+              itemsRef.current.set(id, it);
+              orderRef.current.push(id);
+            }
+          }
+          // If we are the sharer, re-broadcast so remote peers replay too.
+          if (sharer === localIdentity) {
+            for (const id of orderRef.current) {
+              const it = itemsRef.current.get(id);
+              const msg = it ? itemToMsg(it) : null;
+              if (msg) void publish(msg, true);
+            }
+          }
+        }
+      }
       dirtyRef.current = true;
     }
     prevShareCount.current = shareCount;
     if (shareCount === 0 && tool !== "off") setTool("off");
-  }, [shareCount, tool]);
+  }, [shareCount, tool, primarySharer, localIdentity, publish]);
+
+  /* -------- late-joiner sync: rebroadcast state + perm -------- */
+  useEffect(() => {
+    const onJoin = () => {
+      if (!isLocalSharing) return;
+      void publish({ t: "perm", mode: permMode, by: localIdentity }, true);
+      for (const id of orderRef.current) {
+        const it = itemsRef.current.get(id);
+        const msg = it ? itemToMsg(it) : null;
+        if (msg) void publish(msg, true);
+      }
+    };
+    room.on(RoomEvent.ParticipantConnected, onJoin);
+    return () => { room.off(RoomEvent.ParticipantConnected, onJoin); };
+  }, [room, isLocalSharing, permMode, localIdentity, publish]);
+
+  /* --------- broadcast perm on start of local share --------- */
+  const prevLocalShare = useRef(isLocalSharing);
+  useEffect(() => {
+    if (!prevLocalShare.current && isLocalSharing) {
+      void publish({ t: "perm", mode: permMode, by: localIdentity }, true);
+    }
+    prevLocalShare.current = isLocalSharing;
+  }, [isLocalSharing, permMode, localIdentity, publish]);
+
+  /* --------- force tool off when losing draw permission --------- */
+  useEffect(() => {
+    if (!canDraw && tool !== "off") setTool("off");
+  }, [canDraw, tool]);
+
 
   /* --------------- rAF render loop --------------- */
   useEffect(() => {
