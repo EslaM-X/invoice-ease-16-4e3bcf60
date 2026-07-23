@@ -308,15 +308,26 @@ export function MembersSheet({
                 </div>
               </div>
             )}
-            {canAdd && roomId && (
+            <div className="mt-2 flex items-center gap-2">
+              {canAdd && roomId && (
+                <Button
+                  onClick={() => setAddOpen(true)}
+                  className="flex-1 h-9 bg-[color:var(--brand-gold,#d4af37)] hover:bg-[color:var(--brand-gold,#d4af37)]/90 text-black font-semibold gap-1.5"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  {rtl ? "إضافة عضو للجروب" : "Add member to group"}
+                </Button>
+              )}
               <Button
-                onClick={() => setAddOpen(true)}
-                className="mt-2 h-9 bg-[color:var(--brand-gold,#d4af37)] hover:bg-[color:var(--brand-gold,#d4af37)]/90 text-black font-semibold gap-1.5"
+                onClick={refreshAvatars}
+                variant="outline"
+                className="h-9 gap-1.5 bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white"
+                title={rtl ? "إعادة تحميل كل الصور" : "Reload all avatars"}
               >
-                <UserPlus className="h-4 w-4" />
-                {rtl ? "إضافة عضو للجروب" : "Add member to group"}
+                <RefreshCcw className="h-4 w-4" />
+                {rtl ? "تحديث الصور" : "Refresh"}
               </Button>
-            )}
+            </div>
           </SheetHeader>
           <ScrollArea className="h-[calc(100dvh-9rem)]">
             {creatorRow && (
