@@ -1,15 +1,29 @@
 /**
  * PresenterTools — professional annotation & pointer layer for LiveKit calls.
  *
- * Features
- *  - Laser pointer (fading trail), Pen, Highlighter, Arrow, Eraser (own strokes)
- *  - Undo (own last stroke), Clear all
+ * Tools
+ *  - Laser pointer (fading trail)
+ *  - Pen, Highlighter, Arrow (freehand / drag)
+ *  - Shapes: Rectangle, Ellipse (filled), Ring (stroked circle), Line
+ *  - Text label + Sticky note (tap/click to place → inline prompt)
+ *  - Eraser (own annotations), Undo (own last), Clear all
+ *
+ * Style controls
+ *  - Color palette (7 colors incl. identity color)
+ *  - Size: S / M / L (stroke width / text size)
+ *  - Font: Sans / Serif / Mono (for text + stickies)
+ *
+ * Delivery
  *  - Broadcast over LiveKit data channel (topic "presenter") to every peer
  *  - Overlay renders on ALL participants' screens whenever anyone is sharing
- *  - Per-participant identity color so it's clear who's drawing
- *  - Works in audio-only and video calls (screen share is a separate track)
- *  - Keyboard: A toggle toolbar, 1 laser, 2 pen, 3 highlighter, 4 arrow,
- *              5 eraser, Z undo, X clear, Esc off
+ *  - Per-participant identity color when no explicit color chosen
+ *  - Fully touch-enabled (pointer events + touchAction:none) — works on
+ *    phone, tablet, and desktop; toolbar wraps on narrow viewports.
+ *
+ * Keyboard (desktop)
+ *  A toggle toolbar · 1 laser · 2 pen · 3 highlighter · 4 arrow ·
+ *  5 rectangle · 6 ellipse · 7 ring · 8 line · T text · N sticky ·
+ *  E eraser · Z undo · X clear · Esc off
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoomContext, useTracks } from "@livekit/components-react";
@@ -25,10 +39,53 @@ import {
   ChevronRight,
   ChevronLeft,
   PenTool,
+  Square,
+  Circle,
+  CircleDot,
+  Minus,
+  Type as TypeIcon,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tool = "off" | "laser" | "pen" | "highlighter" | "arrow" | "eraser";
+/* -------------------------------------------------------------- */
+/* Types                                                          */
+/* -------------------------------------------------------------- */
+
+type Tool =
+  | "off" | "laser"
+  | "pen" | "highlighter" | "arrow"
+  | "rect" | "ellipse" | "ring" | "line"
+  | "text" | "sticky"
+  | "eraser";
+
+type SizeKey = "s" | "m" | "l";
+type FontKey = "sans" | "serif" | "mono";
+
+const FONT_STACK: Record<FontKey, string> = {
+  sans: 'ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  serif: 'ui-serif, Georgia, "Times New Roman", serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+};
+
+// Stroke widths per size for pen/arrow/shapes
+const STROKE_W: Record<SizeKey, number> = { s: 2, m: 4, l: 7 };
+// Highlighter is thicker
+const HIGHLIGHT_W: Record<SizeKey, number> = { s: 14, m: 22, l: 34 };
+// Text pixel size
+const TEXT_PX: Record<SizeKey, number> = { s: 16, m: 22, l: 30 };
+// Sticky pixel size (slightly smaller than plain text at the same setting)
+const STICKY_PX: Record<SizeKey, number> = { s: 14, m: 18, l: 24 };
+
+const PALETTE = [
+  "#f43f5e", // rose
+  "#f59e0b", // amber
+  "#facc15", // yellow
+  "#22c55e", // green
+  "#38bdf8", // sky
+  "#a855f7", // violet
+  "#f8fafc", // near-white
+];
 
 type StrokeMsg = {
   t: "stroke";
@@ -40,12 +97,43 @@ type StrokeMsg = {
   pts: [number, number][]; // normalized 0..1
   done?: boolean;
 };
+type ShapeMsg = {
+  t: "shape";
+  id: string;
+  owner: string;
+  kind: "rect" | "ellipse" | "ring" | "line";
+  color: string;
+  w: number;         // stroke width for outlines
+  x1: number; y1: number; x2: number; y2: number; // normalized
+  done?: boolean;
+};
+type TextMsg = {
+  t: "text";
+  id: string;
+  owner: string;
+  kind: "text" | "sticky";
+  color: string;
+  font: FontKey;
+  size: SizeKey;
+  x: number; y: number;      // top-left (normalized)
+  maxW: number;              // wrap width (normalized)
+  content: string;
+};
 type LaserMsg = { t: "laser"; owner: string; x: number; y: number; color: string };
 type UndoMsg = { t: "undo"; owner: string };
 type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
-type Msg = StrokeMsg | LaserMsg | UndoMsg | ClearMsg;
+type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg;
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
+// Rename inner "kind" to avoid clashing with the AnyItem discriminator.
+type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"] };
+type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"] };
+
+type AnyItem =
+  | ({ kind: "stroke" } & Stroke)
+  | ({ kind: "shape" } & Shape)
+  | ({ kind: "text" } & TextAnn);
+
 
 const TOPIC = "presenter";
 const enc = new TextEncoder();
@@ -56,6 +144,10 @@ function ownerColor(identity: string) {
   for (let i = 0; i < identity.length; i++) h = (h * 31 + identity.charCodeAt(i)) >>> 0;
   return `hsl(${h % 360} 92% 58%)`;
 }
+
+const isDraggingShape = (t: Tool) => t === "rect" || t === "ellipse" || t === "ring" || t === "line";
+const isFreeStroke = (t: Tool) => t === "pen" || t === "highlighter" || t === "arrow";
+const isPlacement = (t: Tool) => t === "text" || t === "sticky";
 
 /* -------------------------------------------------------------- */
 
@@ -69,15 +161,19 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
   const localIdentity = room.localParticipant.identity;
   const myColor = useMemo(() => ownerColor(localIdentity), [localIdentity]);
+  const [color, setColor] = useState<string>(myColor);
+  const [size, setSize] = useState<SizeKey>("m");
+  const [font, setFont] = useState<FontKey>("sans");
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Shared state: strokes by id, laser cursors by owner, order of strokes for undo
-  const strokesRef = useRef<Map<string, Stroke>>(new Map());
+  // Shared state: annotations by id + insertion order for undo/clear
+  const itemsRef = useRef<Map<string, AnyItem>>(new Map());
   const orderRef = useRef<string[]>([]);
   const lasersRef = useRef<Map<string, { x: number; y: number; color: string; t: number }>>(new Map());
   const activeStrokeRef = useRef<Stroke | null>(null);
+  const activeShapeRef = useRef<Shape | null>(null);
   const rafRef = useRef<number | null>(null);
   const dirtyRef = useRef(true);
 
@@ -86,15 +182,64 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     async (msg: Msg, reliable: boolean) => {
       try {
         await room.localParticipant.publishData(enc.encode(JSON.stringify(msg)), {
-          reliable,
-          topic: TOPIC,
+          reliable, topic: TOPIC,
         });
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     },
     [room],
   );
+
+  const applyMessage = useCallback((m: Msg) => {
+    if (m.t === "stroke") {
+      itemsRef.current.set(m.id, {
+        kind: "stroke", id: m.id, owner: m.owner, tool: m.tool,
+        color: m.color, w: m.w, pts: m.pts,
+      });
+      if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
+    } else if (m.t === "shape") {
+      itemsRef.current.set(m.id, {
+        kind: "shape",
+        id: m.id, owner: m.owner, color: m.color, w: m.w,
+        x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2,
+        kindShape: m.kind,
+      });
+      if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
+    } else if (m.t === "text") {
+      itemsRef.current.set(m.id, {
+        kind: "text", id: m.id, owner: m.owner, kindText: m.kind,
+        color: m.color, font: m.font, size: m.size,
+        x: m.x, y: m.y, maxW: m.maxW, content: m.content,
+      });
+      if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
+
+    } else if (m.t === "laser") {
+      lasersRef.current.set(m.owner, { x: m.x, y: m.y, color: m.color, t: performance.now() });
+    } else if (m.t === "undo") {
+      for (let i = orderRef.current.length - 1; i >= 0; i--) {
+        const id = orderRef.current[i];
+        const it = itemsRef.current.get(id);
+        if (it && it.owner === m.owner) {
+          itemsRef.current.delete(id);
+          orderRef.current.splice(i, 1);
+          break;
+        }
+      }
+    } else if (m.t === "clear") {
+      if (m.owner) {
+        for (let i = orderRef.current.length - 1; i >= 0; i--) {
+          const id = orderRef.current[i];
+          const it = itemsRef.current.get(id);
+          if (it && it.owner === m.owner) {
+            itemsRef.current.delete(id);
+            orderRef.current.splice(i, 1);
+          }
+        }
+      } else {
+        itemsRef.current.clear();
+        orderRef.current = [];
+      }
+    }
+  }, []);
 
   /* --------------- receive --------------- */
   useEffect(() => {
@@ -112,53 +257,15 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       } catch { /* noop */ }
     };
     room.on(RoomEvent.DataReceived, onData);
-    return () => {
-      room.off(RoomEvent.DataReceived, onData);
-    };
-  }, [room]);
-
-  const applyMessage = useCallback((m: Msg) => {
-    if (m.t === "stroke") {
-      strokesRef.current.set(m.id, {
-        id: m.id, owner: m.owner, tool: m.tool, color: m.color, w: m.w, pts: m.pts,
-      });
-      if (!orderRef.current.includes(m.id)) orderRef.current.push(m.id);
-    } else if (m.t === "laser") {
-      lasersRef.current.set(m.owner, { x: m.x, y: m.y, color: m.color, t: performance.now() });
-    } else if (m.t === "undo") {
-      // remove last stroke by owner
-      for (let i = orderRef.current.length - 1; i >= 0; i--) {
-        const id = orderRef.current[i];
-        const s = strokesRef.current.get(id);
-        if (s && s.owner === m.owner) {
-          strokesRef.current.delete(id);
-          orderRef.current.splice(i, 1);
-          break;
-        }
-      }
-    } else if (m.t === "clear") {
-      if (m.owner) {
-        for (let i = orderRef.current.length - 1; i >= 0; i--) {
-          const id = orderRef.current[i];
-          const s = strokesRef.current.get(id);
-          if (s && s.owner === m.owner) {
-            strokesRef.current.delete(id);
-            orderRef.current.splice(i, 1);
-          }
-        }
-      } else {
-        strokesRef.current.clear();
-        orderRef.current = [];
-      }
-    }
-  }, []);
+    return () => { room.off(RoomEvent.DataReceived, onData); };
+  }, [room, applyMessage]);
 
   /* --------------- clear on new share start --------------- */
   const shareCount = shares.length;
   const prevShareCount = useRef(shareCount);
   useEffect(() => {
     if (prevShareCount.current === 0 && shareCount > 0) {
-      strokesRef.current.clear();
+      itemsRef.current.clear();
       orderRef.current = [];
       lasersRef.current.clear();
       dirtyRef.current = true;
@@ -181,25 +288,30 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
           cvs.style.width = w + "px"; cvs.style.height = h + "px";
           dirtyRef.current = true;
         }
-        // laser fade forces continuous redraw
         const now = performance.now();
         let laserAlive = false;
         for (const [id, l] of lasersRef.current) {
           if (now - l.t > 1200) lasersRef.current.delete(id);
           else laserAlive = true;
         }
-        if (dirtyRef.current || laserAlive || activeStrokeRef.current) {
+        if (dirtyRef.current || laserAlive || activeStrokeRef.current || activeShapeRef.current) {
           const ctx = cvs.getContext("2d")!;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           ctx.clearRect(0, 0, w, h);
-          // strokes
+
           for (const id of orderRef.current) {
-            const s = strokesRef.current.get(id);
-            if (s) drawStroke(ctx, s, w, h);
+            const it = itemsRef.current.get(id);
+            if (!it) continue;
+            if (it.kind === "stroke") drawStroke(ctx, it as unknown as Stroke, w, h);
+            else if (it.kind === "shape") drawShape(ctx, it as any, w, h);
+            else if (it.kind === "text") drawText(ctx, it as any, w, h);
           }
-          // active local stroke (in-progress)
           if (activeStrokeRef.current) drawStroke(ctx, activeStrokeRef.current, w, h);
-          // lasers
+          if (activeShapeRef.current) drawShape(ctx, {
+            ...activeShapeRef.current,
+            kindShape: (activeShapeRef.current as any).kindShape,
+          } as any, w, h);
+
           for (const [, l] of lasersRef.current) {
             const age = (now - l.t) / 1200;
             const alpha = Math.max(0, 1 - age);
@@ -219,9 +331,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       rafRef.current = requestAnimationFrame(draw);
     };
     rafRef.current = requestAnimationFrame(draw);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [isAnyoneSharing]);
 
   /* --------------- pointer interaction --------------- */
@@ -234,51 +344,108 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height] as [number, number];
   };
 
+  const promptContent = (kind: "text" | "sticky") => {
+    const label = rtl
+      ? (kind === "sticky" ? "اكتب ملاحظتك اللاصقة" : "اكتب النص")
+      : (kind === "sticky" ? "Sticky note" : "Text");
+    // Native prompt: works on mobile & desktop, no extra UI required.
+    // eslint-disable-next-line no-alert
+    const v = window.prompt(label, "");
+    return v?.trim() || null;
+  };
+
+  const placeText = (kind: "text" | "sticky", p: [number, number]) => {
+    const content = promptContent(kind);
+    if (!content) return;
+    const id = `${localIdentity}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+    const msg: TextMsg = {
+      t: "text", id, owner: localIdentity, kind, color, font, size,
+      x: p[0], y: p[1], maxW: 0.32, content,
+    };
+    applyMessage(msg);
+    void publish(msg, true);
+    dirtyRef.current = true;
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (tool === "off") return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toNorm(e);
+
     if (tool === "laser") {
-      lasersRef.current.set(localIdentity, { x: p[0], y: p[1], color: myColor, t: performance.now() });
-      void publish({ t: "laser", owner: localIdentity, x: p[0], y: p[1], color: myColor }, false);
+      lasersRef.current.set(localIdentity, { x: p[0], y: p[1], color, t: performance.now() });
+      void publish({ t: "laser", owner: localIdentity, x: p[0], y: p[1], color }, false);
       dirtyRef.current = true;
       return;
     }
     if (tool === "eraser") {
-      // erase own strokes only
       void publish({ t: "clear", owner: localIdentity }, true);
       applyMessage({ t: "clear", owner: localIdentity });
       dirtyRef.current = true;
       return;
     }
+    if (isPlacement(tool)) {
+      placeText(tool as "text" | "sticky", p);
+      return;
+    }
     const id = `${localIdentity}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
-    const stroke: Stroke = {
-      id, owner: localIdentity, tool: tool as Stroke["tool"], color: myColor,
-      w: tool === "highlighter" ? 22 : tool === "arrow" ? 4 : 3, pts: [p],
-    };
-    activeStrokeRef.current = stroke;
-    dirtyRef.current = true;
+
+    if (isDraggingShape(tool)) {
+      const shape: Shape & { kindShape: ShapeMsg["kind"] } = {
+        id, owner: localIdentity, color, w: STROKE_W[size],
+        x1: p[0], y1: p[1], x2: p[0], y2: p[1],
+        kindShape: tool as ShapeMsg["kind"],
+      } as any;
+      activeShapeRef.current = shape as any;
+      dirtyRef.current = true;
+      return;
+    }
+
+    if (isFreeStroke(tool)) {
+      const stroke: Stroke = {
+        id, owner: localIdentity, tool: tool as Stroke["tool"], color,
+        w: tool === "highlighter" ? HIGHLIGHT_W[size] : STROKE_W[size],
+        pts: [p],
+      };
+      activeStrokeRef.current = stroke;
+      dirtyRef.current = true;
+    }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (tool === "off") return;
     const p = toNorm(e);
+
     if (tool === "laser") {
       const now = performance.now();
-      if (now - laserThrottleRef.current < 33) return; // ~30fps
+      if (now - laserThrottleRef.current < 33) return;
       laserThrottleRef.current = now;
-      lasersRef.current.set(localIdentity, { x: p[0], y: p[1], color: myColor, t: now });
-      void publish({ t: "laser", owner: localIdentity, x: p[0], y: p[1], color: myColor }, false);
+      lasersRef.current.set(localIdentity, { x: p[0], y: p[1], color, t: now });
+      void publish({ t: "laser", owner: localIdentity, x: p[0], y: p[1], color }, false);
       dirtyRef.current = true;
       return;
     }
+
+    const sh = activeShapeRef.current as (Shape & { kindShape: ShapeMsg["kind"] }) | null;
+    if (sh) {
+      sh.x2 = p[0]; sh.y2 = p[1];
+      dirtyRef.current = true;
+      const now = performance.now();
+      if (now - strokeSendRef.current > 90) {
+        strokeSendRef.current = now;
+        void publish({
+          t: "shape", id: sh.id, owner: sh.owner, kind: sh.kindShape,
+          color: sh.color, w: sh.w, x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2, done: false,
+        }, true);
+      }
+      return;
+    }
+
     const s = activeStrokeRef.current;
     if (!s) return;
     if (s.tool === "arrow") {
-      // arrow uses just start & current end point
       s.pts = [s.pts[0], p];
     } else {
-      // simple distance filter to reduce points
       const last = s.pts[s.pts.length - 1];
       const dx = p[0] - last[0], dy = p[1] - last[1];
       if (dx * dx + dy * dy < 1e-5) return;
@@ -297,10 +464,30 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
   const onPointerUp = (_e: React.PointerEvent) => {
     if (tool === "off") return;
+
+    const sh = activeShapeRef.current as (Shape & { kindShape: ShapeMsg["kind"] }) | null;
+    if (sh) {
+      const finalItem: AnyItem = {
+        kind: "shape",
+        id: sh.id, owner: sh.owner, color: sh.color, w: sh.w,
+        x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2,
+        kindShape: sh.kindShape,
+
+      };
+      itemsRef.current.set(sh.id, finalItem);
+      orderRef.current.push(sh.id);
+      activeShapeRef.current = null;
+      void publish({
+        t: "shape", id: sh.id, owner: sh.owner, kind: sh.kindShape,
+        color: sh.color, w: sh.w, x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2, done: true,
+      }, true);
+      dirtyRef.current = true;
+      return;
+    }
+
     const s = activeStrokeRef.current;
     if (s) {
-      // commit locally
-      strokesRef.current.set(s.id, s);
+      itemsRef.current.set(s.id, { kind: "stroke", ...s } as unknown as AnyItem);
       orderRef.current.push(s.id);
       activeStrokeRef.current = null;
       void publish({
@@ -332,17 +519,24 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
-      if (k === "a") { setCollapsed((v) => !v); }
+      let handled = true;
+      if (k === "a") setCollapsed((v) => !v);
       else if (k === "1") setTool("laser");
       else if (k === "2") setTool("pen");
       else if (k === "3") setTool("highlighter");
       else if (k === "4") setTool("arrow");
-      else if (k === "5") setTool("eraser");
+      else if (k === "5") setTool("rect");
+      else if (k === "6") setTool("ellipse");
+      else if (k === "7") setTool("ring");
+      else if (k === "8") setTool("line");
+      else if (k === "t") setTool("text");
+      else if (k === "n") setTool("sticky");
+      else if (k === "e") setTool("eraser");
       else if (k === "z") undo();
       else if (k === "x") clearAll();
       else if (e.key === "Escape") setTool("off");
-      else return;
-      e.preventDefault();
+      else handled = false;
+      if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -359,10 +553,10 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         ref={overlayRef}
         className={cn(
           "absolute left-0 right-0 top-0 z-30",
-          "bottom-32", // leave room for control bar (matches h-[calc(100%-128px)] stage)
+          "bottom-32",
           interactive ? "cursor-crosshair pointer-events-auto" : "pointer-events-none",
         )}
-        style={{ touchAction: interactive ? "none" : undefined }}
+        style={{ touchAction: interactive ? "none" : undefined, userSelect: interactive ? "none" : undefined }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -376,23 +570,23 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             role="status"
             aria-live="polite"
           >
-            {rtl ? "وضع الشرح مفعّل — اضغط Esc للخروج" : "Presenter mode — press Esc to exit"}
+            {rtl ? "وضع الشرح مفعّل — Esc للخروج" : "Presenter mode — press Esc to exit"}
           </div>
         ) : null}
       </div>
 
-      {/* Floating toolbar */}
+      {/* Floating toolbar (wraps on small screens, stays inside stage) */}
       <div
         className={cn(
-          "absolute z-40 flex items-center gap-1 rounded-2xl border border-amber-400/30 bg-black/70 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
-          rtl ? "left-4" : "right-4",
-          "bottom-40",
+          "absolute z-40 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1 rounded-2xl border border-amber-400/30 bg-black/70 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
+          rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
+          "bottom-36 sm:bottom-40",
         )}
         role="toolbar"
         aria-label={rtl ? "أدوات المُقدِّم" : "Presenter tools"}
       >
         <ToolButton
-          label={rtl ? "طي الأدوات" : "Collapse"}
+          label={rtl ? "طي الأدوات (A)" : "Collapse (A)"}
           onClick={() => setCollapsed((v) => !v)}
           active={false}
         >
@@ -402,7 +596,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
         {!collapsed ? (
           <>
-            <div className="mx-1 h-6 w-px bg-white/10" aria-hidden />
+            <Sep />
             <ToolButton label={rtl ? "مؤشر ليزر (1)" : "Laser (1)"} active={tool === "laser"}
               onClick={() => setTool(tool === "laser" ? "off" : "laser")}>
               <MousePointer2 className="size-4" />
@@ -419,22 +613,121 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
               onClick={() => setTool(tool === "arrow" ? "off" : "arrow")}>
               <ArrowUpRight className="size-4" />
             </ToolButton>
-            <ToolButton label={rtl ? "مسح رسوماتي (5)" : "Erase mine (5)"} active={tool === "eraser"}
+
+            <Sep />
+            <ToolButton label={rtl ? "مربع (5)" : "Rectangle (5)"} active={tool === "rect"}
+              onClick={() => setTool(tool === "rect" ? "off" : "rect")}>
+              <Square className="size-4" />
+            </ToolButton>
+            <ToolButton label={rtl ? "دائرة (6)" : "Ellipse (6)"} active={tool === "ellipse"}
+              onClick={() => setTool(tool === "ellipse" ? "off" : "ellipse")}>
+              <Circle className="size-4" />
+            </ToolButton>
+            <ToolButton label={rtl ? "حلقة (7)" : "Ring (7)"} active={tool === "ring"}
+              onClick={() => setTool(tool === "ring" ? "off" : "ring")}>
+              <CircleDot className="size-4" />
+            </ToolButton>
+            <ToolButton label={rtl ? "خط (8)" : "Line (8)"} active={tool === "line"}
+              onClick={() => setTool(tool === "line" ? "off" : "line")}>
+              <Minus className="size-4" />
+            </ToolButton>
+
+            <Sep />
+            <ToolButton label={rtl ? "نص (T)" : "Text (T)"} active={tool === "text"}
+              onClick={() => setTool(tool === "text" ? "off" : "text")}>
+              <TypeIcon className="size-4" />
+            </ToolButton>
+            <ToolButton label={rtl ? "ملاحظة لاصقة (N)" : "Sticky note (N)"} active={tool === "sticky"}
+              onClick={() => setTool(tool === "sticky" ? "off" : "sticky")}>
+              <StickyNote className="size-4" />
+            </ToolButton>
+
+            <Sep />
+            <ToolButton label={rtl ? "مسح رسوماتي (E)" : "Erase mine (E)"} active={tool === "eraser"}
               onClick={() => setTool(tool === "eraser" ? "off" : "eraser")}>
               <Eraser className="size-4" />
             </ToolButton>
-            <div className="mx-1 h-6 w-px bg-white/10" aria-hidden />
             <ToolButton label={rtl ? "تراجع (Z)" : "Undo (Z)"} onClick={undo} active={false}>
               <Undo2 className="size-4" />
             </ToolButton>
             <ToolButton label={rtl ? "مسح الكل (X)" : "Clear all (X)"} onClick={clearAll} active={false} danger>
               <Trash2 className="size-4" />
             </ToolButton>
-            <div
-              className="mx-1 rounded-md border border-white/10 px-2 py-1 text-[10px] uppercase tracking-wide text-white/70"
-              title={rtl ? "لونك" : "Your color"}
-            >
-              <span className="inline-block size-2.5 rounded-full align-middle" style={{ background: myColor }} />
+
+            <Sep />
+            {/* Color palette */}
+            <div className="flex items-center gap-1 px-1" role="radiogroup" aria-label={rtl ? "اللون" : "Color"}>
+              {PALETTE.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={color === c}
+                  aria-label={c}
+                  onClick={() => setColor(c)}
+                  className={cn(
+                    "size-6 rounded-full border transition",
+                    color === c ? "border-white ring-2 ring-amber-300/70 scale-110" : "border-white/25 hover:border-white/60"
+                  )}
+                  style={{ background: c }}
+                />
+              ))}
+              <button
+                key="mine"
+                type="button"
+                role="radio"
+                aria-checked={color === myColor}
+                aria-label={rtl ? "لوني" : "My color"}
+                title={rtl ? "لوني" : "My color"}
+                onClick={() => setColor(myColor)}
+                className={cn(
+                  "size-6 rounded-full border transition",
+                  color === myColor ? "border-white ring-2 ring-amber-300/70 scale-110" : "border-white/25 hover:border-white/60"
+                )}
+                style={{ background: myColor }}
+              />
+            </div>
+
+            <Sep />
+            {/* Size */}
+            <div className="flex items-center overflow-hidden rounded-lg border border-white/10" role="radiogroup" aria-label={rtl ? "الحجم" : "Size"}>
+              {(["s","m","l"] as SizeKey[]).map((sz) => (
+                <button
+                  key={sz}
+                  type="button"
+                  role="radio"
+                  aria-checked={size === sz}
+                  onClick={() => setSize(sz)}
+                  className={cn(
+                    "px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/80",
+                    size === sz ? "bg-amber-400/20 text-amber-100" : "hover:bg-white/10"
+                  )}
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
+
+            {/* Font (only meaningful for text/sticky) */}
+            <div className="flex items-center overflow-hidden rounded-lg border border-white/10" role="radiogroup" aria-label={rtl ? "الخط" : "Font"}>
+              {(["sans","serif","mono"] as FontKey[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="radio"
+                  aria-checked={font === f}
+                  onClick={() => setFont(f)}
+                  className={cn(
+                    "px-2 py-1 text-[11px] text-white/80",
+                    size ? "" : "",
+                    font === f ? "bg-amber-400/20 text-amber-100" : "hover:bg-white/10"
+                  )}
+                  style={{ fontFamily: FONT_STACK[f] }}
+                  title={f}
+                >
+                  Aa
+                </button>
+              ))}
             </div>
           </>
         ) : null}
@@ -444,6 +737,10 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 }
 
 /* -------------------------------------------------------------- */
+
+function Sep() {
+  return <div className="mx-1 h-6 w-px bg-white/10" aria-hidden />;
+}
 
 function ToolButton({
   label, onClick, active, danger, children,
@@ -462,7 +759,8 @@ function ToolButton({
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        "inline-flex size-9 items-center justify-center rounded-xl text-white/85 transition-all",
+        // 40px hit area on mobile for reliable touch input
+        "inline-flex size-10 sm:size-9 items-center justify-center rounded-xl text-white/85 transition-all",
         "hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300/50",
         active && "bg-amber-400/20 text-amber-200 ring-1 ring-amber-300/50",
         danger && "hover:bg-red-500/20 hover:text-red-200",
@@ -473,6 +771,8 @@ function ToolButton({
   );
 }
 
+/* -------------------------------------------------------------- */
+/* Drawing helpers                                                */
 /* -------------------------------------------------------------- */
 
 function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke, w: number, h: number) {
@@ -495,7 +795,6 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke, w: number, h: numb
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
-    // arrow head
     const ang = Math.atan2(y2 - y1, x2 - x1);
     const len = Math.max(10, s.w * 4);
     ctx.beginPath();
@@ -513,7 +812,153 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke, w: number, h: numb
   ctx.globalCompositeOperation = "source-over";
 }
 
-function withAlpha(hsl: string, a: number) {
-  // convert "hsl(H S% L%)" to "hsla(H S% L% / a)"
-  return hsl.replace(/^hsl\(([^)]+)\)$/, (_m, inner) => `hsla(${inner} / ${a})`);
+function drawShape(
+  ctx: CanvasRenderingContext2D,
+  s: Shape & { kindShape: ShapeMsg["kind"] },
+  w: number, h: number,
+) {
+  const x1 = s.x1 * w, y1 = s.y1 * h, x2 = s.x2 * w, y2 = s.y2 * h;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = s.w;
+  ctx.strokeStyle = s.color;
+  ctx.fillStyle = withAlpha(s.color, 0.18);
+  ctx.globalCompositeOperation = "source-over";
+  const k = s.kindShape;
+  if (k === "line") {
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    return;
+  }
+  if (k === "rect") {
+    const x = Math.min(x1, x2), y = Math.min(y1, y2);
+    const rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+    const rad = Math.min(10, Math.min(rw, rh) * 0.15);
+    roundRect(ctx, x, y, rw, rh, rad);
+    ctx.fill(); ctx.stroke();
+    return;
+  }
+  // ellipse & ring
+  const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+  const rx = Math.max(1, Math.abs(x2 - x1) / 2);
+  const ry = Math.max(1, Math.abs(y2 - y1) / 2);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  if (k === "ellipse") { ctx.fill(); ctx.stroke(); }
+  else /* ring */ { ctx.stroke(); }
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+) {
+  const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+}
+
+function drawText(
+  ctx: CanvasRenderingContext2D,
+  t: TextAnn & { kindText: "text" | "sticky" },
+  w: number, h: number,
+) {
+  const isSticky = t.kindText === "sticky";
+  const px = isSticky ? STICKY_PX[t.size] : TEXT_PX[t.size];
+  ctx.font = `${isSticky ? 600 : 500} ${px}px ${FONT_STACK[t.font]}`;
+  ctx.textBaseline = "top";
+  const maxW = Math.max(80, t.maxW * w);
+  const lines = wrapText(ctx, t.content, maxW);
+  const lineH = Math.round(px * 1.25);
+  const padX = isSticky ? 12 : 6;
+  const padY = isSticky ? 10 : 4;
+  const x = t.x * w, y = t.y * h;
+  const bw = Math.min(maxW, Math.max(...lines.map((l) => ctx.measureText(l).width))) + padX * 2;
+  const bh = lines.length * lineH + padY * 2;
+
+  if (isSticky) {
+    // sticky background — soft tint of chosen color
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = withAlpha(t.color, 0.92);
+    roundRect(ctx, x, y, bw, bh, 8);
+    ctx.fill();
+    ctx.restore();
+    // corner fold
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.beginPath();
+    ctx.moveTo(x + bw - 14, y);
+    ctx.lineTo(x + bw, y);
+    ctx.lineTo(x + bw, y + 14);
+    ctx.closePath();
+    ctx.fill();
+    // text on sticky — readable ink
+    ctx.fillStyle = readableInk(t.color);
+  } else {
+    // plain text: subtle dark chip behind for legibility over any content
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, x, y, bw, bh, 6);
+    ctx.fill();
+    ctx.fillStyle = t.color;
+  }
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], x + padX, y + padY + i * lineH);
+  }
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const paragraphs = text.split(/\n/);
+  const out: string[] = [];
+  for (const para of paragraphs) {
+    const words = para.split(/\s+/);
+    let line = "";
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxW && line) {
+        out.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) out.push(line);
+    if (para === "") out.push("");
+  }
+  return out.length ? out : [""];
+}
+
+function readableInk(bg: string): string {
+  // For sticky notes: pick dark ink for light backgrounds, light ink for dark.
+  // Cheap heuristic on HSL / hex.
+  const hsl = bg.match(/hsl\(\s*(-?\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/);
+  if (hsl) return Number(hsl[3]) > 60 ? "rgba(15,15,15,0.92)" : "rgba(255,255,255,0.95)";
+  const hex = bg.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return l > 0.6 ? "rgba(15,15,15,0.92)" : "rgba(255,255,255,0.95)";
+  }
+  return "rgba(255,255,255,0.95)";
+}
+
+function withAlpha(c: string, a: number) {
+  const hsl = c.match(/^hsl\(([^)]+)\)$/);
+  if (hsl) return `hsla(${hsl[1]} / ${a})`;
+  const hex = c.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  return c;
 }
