@@ -206,7 +206,9 @@ export default function ChatPopupNotifier() {
 
   const openRoom = (roomId: string) => {
     setQueue((q) => q.filter((x) => x.room_id !== roomId));
-    navigate({ to: "/team-chat", search: { room: roomId } as any });
+    if (typeof window !== "undefined") {
+      window.location.href = `/team-chat?room=${encodeURIComponent(roomId)}`;
+    }
   };
 
   if (!user || onChatPage || total === 0) return null;
