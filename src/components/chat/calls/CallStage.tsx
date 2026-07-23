@@ -2279,6 +2279,8 @@ function ShareDiagnosticsMount({
       <PinRestorer />
       <NetworkResilience rtl={rtl} />
       <AutoBitrateCap rtl={rtl} />
+      <SubscriberQualityAdaptor rtl={rtl} />
+
       <CameraFailureRetry rtl={rtl} />
       <QualityInsights rtl={rtl} shareState={monitor} onSwitchLite={() => setCallPerf("lite")} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
