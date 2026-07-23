@@ -459,6 +459,68 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     return () => { room.off(RoomEvent.DataReceived, onData); };
   }, [room, applyMessage, scheduleSave, bumpUI]);
 
+  /* --------- history helpers (sharer maintains) --------- */
+  const currentSnap = useCallback((): SessionSnap => ({
+    items: Array.from(itemsRef.current.values()).map((it) => ({ ...it }) as AnyItem),
+    order: [...orderRef.current],
+    savedAt: Date.now(),
+  }), []);
+
+  const recordHistory = useCallback(
+    (action: string, actor?: string) => {
+      if (!primarySharer || primarySharer !== localIdentity) return;
+      const now = Date.now();
+      // Coalesce very rapid edits into one entry (< 350ms apart, same action)
+      if (now - lastRecordAtRef.current < 350 && history.length) {
+        const last = history[history.length - 1];
+        if (last.action === action) {
+          const updated = [...history];
+          updated[updated.length - 1] = { ...last, at: now, snap: currentSnap() };
+          setHistory(updated);
+          saveHistory(primarySharer, updated);
+          lastRecordAtRef.current = now;
+          return;
+        }
+      }
+      const entry: HistoryEntry = {
+        id: `${now.toString(36)}:${Math.random().toString(36).slice(2, 6)}`,
+        at: now, action, actor,
+        snap: currentSnap(),
+      };
+      const next = [...history, entry].slice(-MAX_HISTORY);
+      setHistory(next);
+      saveHistory(primarySharer, next);
+      lastRecordAtRef.current = now;
+    },
+    [primarySharer, localIdentity, history, currentSnap],
+  );
+
+  const applyRestore = useCallback(
+    (snap: SessionSnap) => {
+      itemsRef.current.clear();
+      orderRef.current = [];
+      const byId = new Map(snap.items.map((it) => [it.id, it]));
+      for (const id of snap.order) {
+        const it = byId.get(id);
+        if (it) {
+          itemsRef.current.set(id, it);
+          orderRef.current.push(id);
+        }
+      }
+      dirtyRef.current = true;
+      bumpUI();
+      // Broadcast a full snapshot to peers so they overwrite too.
+      if (isLocalSharing) {
+        void publish(
+          { t: "snapshot", by: localIdentity, items: snap.items, order: snap.order },
+          true,
+        );
+      }
+      scheduleSave();
+    },
+    [bumpUI, isLocalSharing, localIdentity, publish, scheduleSave],
+  );
+
   /* --------- restore saved session on new share start --------- */
   const shareCount = shares.length;
   const prevShareCount = useRef(shareCount);
@@ -469,31 +531,56 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       lasersRef.current.clear();
       const sharer = primarySharer;
       if (sharer) {
+        // Load history unconditionally (viewer sees empty; sharer sees theirs)
+        if (sharer === localIdentity) {
+          setHistory(loadHistory(sharer));
+        } else {
+          setHistory([]);
+        }
         const saved = loadSession(sharer);
         if (saved && saved.items.length) {
-          const byId = new Map(saved.items.map((it) => [it.id, it]));
-          for (const id of saved.order) {
-            const it = byId.get(id);
-            if (it) {
-              itemsRef.current.set(id, it);
-              orderRef.current.push(id);
-            }
-          }
-          // If we are the sharer, re-broadcast so remote peers replay too.
-          if (sharer === localIdentity) {
-            for (const id of orderRef.current) {
-              const it = itemsRef.current.get(id);
-              const msg = it ? itemToMsg(it) : null;
-              if (msg) void publish(msg, true);
-            }
-          }
+          // Sharer decides: prompt them. Viewers can also see the prompt but
+          // only the sharer's confirmation actually rebroadcasts to peers.
+          setPendingRestore({ sharer, snap: saved });
+        } else {
+          setPendingRestore(null);
         }
       }
       dirtyRef.current = true;
     }
     prevShareCount.current = shareCount;
-    if (shareCount === 0 && tool !== "off") setTool("off");
-  }, [shareCount, tool, primarySharer, localIdentity, publish]);
+    if (shareCount === 0) {
+      if (tool !== "off") setTool("off");
+      setPendingRestore(null);
+      setHistoryOpen(false);
+      setPreviewOpen(false);
+      cursorsRef.current.clear();
+    }
+  }, [shareCount, tool, primarySharer, localIdentity]);
+
+  const confirmRestore = useCallback(() => {
+    if (!pendingRestore) return;
+    applyRestore(pendingRestore.snap);
+    setPendingRestore(null);
+    if (primarySharer === localIdentity) {
+      recordHistory("restore-saved", localIdentity);
+    }
+  }, [pendingRestore, applyRestore, primarySharer, localIdentity, recordHistory]);
+
+  const dismissRestore = useCallback(
+    (deleteSaved: boolean) => {
+      if (!pendingRestore) return;
+      if (deleteSaved && primarySharer === localIdentity) {
+        try {
+          localStorage.removeItem(storageKey(pendingRestore.sharer));
+          localStorage.removeItem(historyKey(pendingRestore.sharer));
+        } catch { /* ignore */ }
+        setHistory([]);
+      }
+      setPendingRestore(null);
+    },
+    [pendingRestore, primarySharer, localIdentity],
+  );
 
   /* -------- late-joiner sync: rebroadcast state + perm -------- */
   useEffect(() => {
@@ -523,6 +610,66 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   useEffect(() => {
     if (!canDraw && tool !== "off") setTool("off");
   }, [canDraw, tool]);
+
+  /* --------- broadcast pointer / touch while sharing --------- */
+  useEffect(() => {
+    if (!isLocalSharing) return;
+    let lastSend = 0;
+    let lastX = -1, lastY = -1;
+    const isCoarse = typeof matchMedia !== "undefined"
+      && matchMedia("(pointer: coarse)").matches;
+    const defaultKind: PtrKind = isCoarse ? "touch" : "mouse";
+
+    const send = (clientX: number, clientY: number, kind: PtrKind, down: boolean) => {
+      const vw = document.documentElement.clientWidth || 1;
+      const vh = document.documentElement.clientHeight || 1;
+      const nx = Math.max(0, Math.min(1, clientX / vw));
+      const ny = Math.max(0, Math.min(1, clientY / vh));
+      const now = performance.now();
+      if (now - lastSend < 45 && Math.abs(nx - lastX) < 0.002 && Math.abs(ny - lastY) < 0.002) return;
+      lastSend = now; lastX = nx; lastY = ny;
+      void publish(
+        { t: "ptr", owner: localIdentity, color: myColor, x: nx, y: ny, kind, down },
+        false,
+      );
+    };
+    const onMove = (e: PointerEvent) => {
+      const k: PtrKind = e.pointerType === "touch" ? "touch"
+        : e.pointerType === "pen" ? "pen" : "mouse";
+      send(e.clientX, e.clientY, k, e.buttons > 0);
+    };
+    const onTouch = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      send(t.clientX, t.clientY, "touch", true);
+    };
+    const onLeave = () => {
+      void publish({ t: "ptrgone", owner: localIdentity }, false);
+    };
+    // Fallback for browsers with only mousemove
+    const onMouse = (e: MouseEvent) => send(e.clientX, e.clientY, defaultKind, e.buttons > 0);
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onMove, { passive: true });
+    window.addEventListener("pointerup", onMove, { passive: true });
+    window.addEventListener("touchmove", onTouch, { passive: true });
+    window.addEventListener("touchstart", onTouch, { passive: true });
+    window.addEventListener("mousemove", onMouse, { passive: true });
+    window.addEventListener("blur", onLeave);
+    document.addEventListener("visibilitychange", onLeave);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onMove);
+      window.removeEventListener("pointerup", onMove);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("touchstart", onTouch);
+      window.removeEventListener("mousemove", onMouse);
+      window.removeEventListener("blur", onLeave);
+      document.removeEventListener("visibilitychange", onLeave);
+      void publish({ t: "ptrgone", owner: localIdentity }, true);
+    };
+  }, [isLocalSharing, localIdentity, myColor, publish]);
+
 
 
   /* --------------- rAF render loop --------------- */
