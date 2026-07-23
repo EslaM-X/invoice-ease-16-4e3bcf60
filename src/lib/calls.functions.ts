@@ -30,10 +30,10 @@ async function mintToken(identity: string, name: string, room: string) {
 async function displayName(supabase: any, uid: string): Promise<string> {
   const { data } = await supabase
     .from("profiles")
-    .select("display_name, full_name, email")
-    .eq("id", uid)
+    .select("display_name, email")
+    .eq("user_id", uid)
     .maybeSingle();
-  return data?.display_name || data?.full_name || data?.email || "User";
+  return data?.display_name || data?.email || "User";
 }
 
 /** Start a new call in a room. Creates chat_calls + participant rows + a system chat message. */
