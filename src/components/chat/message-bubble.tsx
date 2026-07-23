@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -133,34 +133,12 @@ export function MessageBubble({
       {!mine && (
         <div className="w-11 shrink-0 self-end">
           {showAvatar && (
-            <div className="relative">
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-full bg-[conic-gradient(from_140deg,rgba(212,175,55,0.9),rgba(240,215,140,0.35),rgba(212,175,55,0.9))] blur-[1px] opacity-80"
-              />
-              <Avatar
-                className="relative h-11 w-11 ring-2 ring-[color:var(--brand-gold,#d4af37)]/70 ring-offset-2 ring-offset-transparent shadow-[0_6px_18px_-6px_rgba(0,0,0,0.55)]"
-                style={{ imageRendering: "auto" as any }}
-              >
-                {msg.sender_avatar_url && (
-                  <AvatarImage
-                    src={msg.sender_avatar_url}
-                    alt={displayName}
-                    loading="lazy"
-                    decoding="async"
-                    className="object-cover"
-                    style={{
-                      imageRendering: "auto" as any,
-                      transform: "translateZ(0)",
-                      backfaceVisibility: "hidden",
-                    }}
-                  />
-                )}
-                <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-[#2a2a2e] via-[#1a1a1c] to-black text-[color:var(--brand-gold,#d4af37)]">
-                  {displayName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            <LuxuryAvatar
+              url={msg.sender_avatar_url}
+              name={displayName}
+              size={44}
+              ring="gold"
+            />
           )}
         </div>
       )}
