@@ -827,6 +827,7 @@ const roomOptions: RoomOptions = {
 export function CallStage({ open, onClose, url, token, video, onLeave }: Props) {
   const { lang } = useI18n();
   const rtl = lang === "ar";
+  const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
 
   useEffect(() => {
     if (!open) return;
