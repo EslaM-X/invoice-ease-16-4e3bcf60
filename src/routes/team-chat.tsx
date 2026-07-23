@@ -940,17 +940,62 @@ function TeamChatPage() {
     return m;
   }, [messages]);
 
+  // Build a unified row list: interleave "day" separators before the first
+  // message of each local-day. Message rows remain 1:1 with `messages`, so
+  // `msgIndex` still maps 1:1 to the messages array for search/highlight.
+  type Row =
+    | { kind: "day"; key: string; dayKey: string; label: string; ts: string }
+    | { kind: "msg"; key: string; dayKey: string; msgIndex: number };
+  const rows: Row[] = useMemo(() => {
+    const out: Row[] = [];
+    let prevDay = "";
+    const loc: "ar" | "en" = rtl ? "ar" : "en";
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      const dk = chatDayKey(m.created_at);
+      if (dk !== prevDay) {
+        out.push({
+          kind: "day",
+          key: `day-${dk}`,
+          dayKey: dk,
+          label: formatChatDayLabel(m.created_at, loc),
+          ts: m.created_at,
+        });
+        prevDay = dk;
+      }
+      out.push({ kind: "msg", key: m.id, dayKey: dk, msgIndex: i });
+    }
+    return out;
+  }, [messages, rtl]);
+
+  const rowIndexByMsgId = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((r, i) => { if (r.kind === "msg") map.set(messages[r.msgIndex].id, i); });
+    return map;
+  }, [rows, messages]);
+
   // Virtualized message list
   // NOTE: rely on the virtualizer's built-in ResizeObserver-based measurement
   // to avoid subpixel jumps when bubbles grow (images/wallpaper loading).
   const rowVirtualizer = useVirtualizer({
-    count: messages.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 76,
-    overscan: 10,
-    getItemKey: (i) => messages[i]?.id ?? i,
+    estimateSize: (i) => (rows[i]?.kind === "day" ? 36 : 76),
+    overscan: 12,
+    getItemKey: (i) => rows[i]?.key ?? i,
     scrollMargin: 48, // space for top "Load older" sentinel
   });
+
+  // Sticky day chip: reflect the day of the top-most visible message row.
+  const [stickyDayLabel, setStickyDayLabel] = useState<string>("");
+  useEffect(() => {
+    // Recompute whenever the row set changes so the initial label is right.
+    const items = (() => { try { return rowVirtualizer.getVirtualItems(); } catch { return []; } })();
+    const first = items.find((it) => rows[it.index]?.kind !== undefined);
+    if (!first) { setStickyDayLabel(""); return; }
+    const r = rows[first.index];
+    setStickyDayLabel(r?.kind === "day" ? r.label : (r?.kind === "msg" ? formatChatDayLabel(messages[r.msgIndex].created_at, rtl ? "ar" : "en") : ""));
+  }, [rows, messages, rtl, rowVirtualizer]);
 
   // In-chat search: rich results (id, index, snippet, ts)
   const searchResults = useMemo(() => {
@@ -972,21 +1017,22 @@ function TeamChatPage() {
 
   useEffect(() => { setSearchIndex(0); }, [inChatQuery, activeRoomId]);
 
-  const jumpToMessageIndex = useCallback((idx: number) => {
-    if (idx < 0 || idx >= messages.length) return;
+  const jumpToMessageId = useCallback((msgId: string) => {
+    const rowIdx = rowIndexByMsgId.get(msgId);
+    if (rowIdx == null) return;
     try {
-      rowVirtualizer.scrollToIndex(idx, { align: "center" });
+      rowVirtualizer.scrollToIndex(rowIdx, { align: "center" });
     } catch (err) {
       console.error("[team-chat] scrollToIndex failed", err);
       toast.error(rtl ? "تعذّر الانتقال للرسالة المطلوبة" : "Failed to jump to message");
     }
-  }, [messages.length, rowVirtualizer, rtl]);
+  }, [rowIndexByMsgId, rowVirtualizer, rtl]);
 
   useEffect(() => {
     if (!inChatSearchOpen || searchResults.length === 0) return;
     const target = searchResults[searchIndex % searchResults.length];
-    if (target) jumpToMessageIndex(target.index);
-  }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageIndex]);
+    if (target) jumpToMessageId(target.id);
+  }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageId]);
 
   // Global shortcut: Ctrl/⌘+F opens in-chat search when a room is active
   useEffect(() => {
