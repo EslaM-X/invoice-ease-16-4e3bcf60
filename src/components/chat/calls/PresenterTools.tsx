@@ -125,13 +125,15 @@ type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
 type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg;
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
-type Shape  = Omit<ShapeMsg, "t" | "done">;
-type TextAnn = Omit<TextMsg, "t">;
+// Rename inner "kind" to avoid clashing with the AnyItem discriminator.
+type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"] };
+type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"] };
 
 type AnyItem =
   | ({ kind: "stroke" } & Stroke)
   | ({ kind: "shape" } & Shape)
   | ({ kind: "text" } & TextAnn);
+
 
 const TOPIC = "presenter";
 const enc = new TextEncoder();
