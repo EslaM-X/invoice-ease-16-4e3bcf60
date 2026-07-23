@@ -869,10 +869,14 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
             }}
           >
             <NetworkQualityBadge rtl={rtl} />
+            <ParticipantCountBadge rtl={rtl} />
             <LocalMediaStatusBadge rtl={rtl} />
             <MediaStateAnnouncer rtl={rtl} />
             <KeyboardShortcuts rtl={rtl} />
-            <Stage />
+            <PinRestorer />
+            <Stage autoSpeaker={autoSpeaker} />
+            <RoomAudioRenderer />
+            <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
             <RoomAudioRenderer />
             <div
               className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
