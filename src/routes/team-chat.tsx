@@ -107,6 +107,20 @@ function TeamChatPage() {
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
 
+  // Per-room scroll position (persisted in localStorage) + restore indicator
+  const pendingRestoreRef = useRef<number | null>(null);
+  const didRestoreRef = useRef<Record<string, boolean>>({});
+  const saveScrollTimerRef = useRef<number | null>(null);
+  const [restoredPill, setRestoredPill] = useState(false);
+  const scrollStorageKey = useCallback(
+    (roomId: string) => `chat:scroll:v1:${user?.id ?? "anon"}:${roomId}`,
+    [user?.id]
+  );
+  const prefersReducedMotion = useCallback(
+    () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+    []
+  );
+
   // Density (comfortable | cozy | compact)
   type Density = "comfortable" | "cozy" | "compact";
   const [density, setDensityState] = useState<Density>("cozy");
