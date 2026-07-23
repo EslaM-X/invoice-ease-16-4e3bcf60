@@ -28,9 +28,6 @@ function markImgComplete(container: HTMLElement) {
 }
 
 describe("LuxuryAvatar filter stability", () => {
-  beforeEach(() => {
-    // reset module cache between tests via fresh URLs
-  });
 
   it("keeps loaded state across rapid re-renders (filter churn)", () => {
     const url = "https://example.com/img-a.png";
