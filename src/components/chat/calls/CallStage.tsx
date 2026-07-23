@@ -617,17 +617,15 @@ function ScreenShareWithPreview({ rtl }: { rtl: boolean }) {
     setBusy(true);
     try {
       // Surface preference is a hint to Chrome/Edge (displaySurface constraint).
-      const videoConstraint: MediaTrackConstraints = {
-        // @ts-expect-error – displaySurface is a valid getDisplayMedia hint in modern browsers
+      const videoConstraint = {
         displaySurface: surface,
-      };
+      } as unknown as MediaTrackConstraints;
       const created = await createLocalScreenTracks({
         audio: true,
         resolution: ScreenSharePresets.h1080fps30.resolution,
-        // Pass through to underlying getDisplayMedia via LiveKit
-        // @ts-expect-error – LiveKit forwards extra constraints to getDisplayMedia
-        video: videoConstraint,
-      });
+        // LiveKit forwards extra constraints to getDisplayMedia
+        video: videoConstraint as any,
+      } as any);
       setTracks(created);
     } catch (e: any) {
       if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
