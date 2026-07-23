@@ -39,7 +39,7 @@ export const listChatRooms = createServerFn({ method: "GET" })
     const { data: profiles } = otherUserIds.size
       ? await supabase
           .from("profiles")
-          .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
+          .select("user_id, display_name, avatar_url, email, job_title, job_title_color, hide_job_title")
           .in("user_id", Array.from(otherUserIds))
       : { data: [] as any[] };
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
@@ -108,7 +108,7 @@ export const listCompanyMembers = createServerFn({ method: "GET" })
     const ids = (data ?? []).map((m: any) => m.user_id);
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
+      .select("user_id, display_name, avatar_url, email, job_title, job_title_color, hide_job_title")
       .in("user_id", ids);
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
     return {
@@ -218,7 +218,7 @@ export const listChatMessages = createServerFn({ method: "GET" })
     const { data: profiles } = senderIds.length
       ? await supabase
           .from("profiles")
-          .select("user_id, display_name, avatar_url, job_title, job_title_color")
+          .select("user_id, display_name, avatar_url, job_title, job_title_color, hide_job_title")
           .in("user_id", senderIds)
       : { data: [] as any[] };
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
@@ -607,7 +607,7 @@ export const listRoomMembers = createServerFn({ method: "GET" })
     const { data: profiles } = ids.length
       ? await supabase
           .from("profiles")
-          .select("user_id, display_name, avatar_url, email, job_title, job_title_color")
+          .select("user_id, display_name, avatar_url, email, job_title, job_title_color, hide_job_title")
           .in("user_id", ids)
       : { data: [] as any[] };
     const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
@@ -646,7 +646,7 @@ export const listAddableUsers = createServerFn({ method: "GET" })
     const existing = new Set((mems ?? []).map((m: any) => m.user_id));
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("user_id, display_name, email, avatar_url, job_title, job_title_color")
+      .select("user_id, display_name, email, avatar_url, job_title, job_title_color, hide_job_title")
       .order("display_name", { ascending: true });
     if (error) throw new Error(error.message);
     return {
