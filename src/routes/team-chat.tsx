@@ -152,20 +152,25 @@ function TeamChatPage() {
 
   // Auto-realign after density change: preserve distance-from-bottom (or stick to bottom).
   useLayoutEffect(() => {
-    const el = scrollRef.current;
-    const snap = pendingRealignRef.current;
-    if (!el || !snap) return;
-    pendingRealignRef.current = null;
-    requestAnimationFrame(() => {
-      const el2 = scrollRef.current;
-      if (!el2) return;
-      if (snap.atBottom) {
-        el2.scrollTop = el2.scrollHeight;
-      } else {
-        el2.scrollTop = el2.scrollHeight - el2.clientHeight - snap.bottom;
-      }
-    });
-  }, [density]);
+    try {
+      const el = scrollRef.current;
+      const snap = pendingRealignRef.current;
+      if (!el || !snap) return;
+      pendingRealignRef.current = null;
+      requestAnimationFrame(() => {
+        const el2 = scrollRef.current;
+        if (!el2) return;
+        if (snap.atBottom) {
+          el2.scrollTop = el2.scrollHeight;
+        } else {
+          el2.scrollTop = Math.max(0, el2.scrollHeight - el2.clientHeight - snap.bottom);
+        }
+      });
+    } catch (err) {
+      console.error("[team-chat] density realign failed", err);
+      toast.error(lang === "ar" ? "تعذّرت إعادة محاذاة الرسائل بعد تغيير الكثافة" : "Failed to realign chat after density change");
+    }
+  }, [density, lang]);
 
   // Re-align when DPR changes (zoom / display switch) so bubbles don't jump.
   useEffect(() => {
@@ -557,15 +562,20 @@ function TeamChatPage() {
   }, []);
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const atBottom = distanceFromBottom < 60;
-    setIsAtBottom(atBottom);
-    if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
-    if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
-      loadOlderMessages();
+    try {
+      const el = e.currentTarget;
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const atBottom = distanceFromBottom < 60;
+      setIsAtBottom(atBottom);
+      if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
+      if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
+        loadOlderMessages();
+      }
+    } catch (err) {
+      console.error("[team-chat] scroll handler failed", err);
+      toast.error(rtl ? "تعذّر متابعة موضع التمرير" : "Chat scroll tracking failed");
     }
-  }, [hasMoreOlder, loadingOlder, loadOlderMessages]);
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
@@ -710,6 +720,8 @@ function TeamChatPage() {
   }, [messages]);
 
   // Virtualized message list
+  // NOTE: rely on the virtualizer's built-in ResizeObserver-based measurement
+  // to avoid subpixel jumps when bubbles grow (images/wallpaper loading).
   const rowVirtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
@@ -717,10 +729,6 @@ function TeamChatPage() {
     overscan: 10,
     getItemKey: (i) => messages[i]?.id ?? i,
     scrollMargin: 48, // space for top "Load older" sentinel
-    measureElement:
-      typeof ResizeObserver !== "undefined"
-        ? (el) => el?.getBoundingClientRect().height ?? 76
-        : undefined,
   });
 
   // In-chat search: rich results (id, index, snippet, ts)
@@ -745,14 +753,32 @@ function TeamChatPage() {
 
   const jumpToMessageIndex = useCallback((idx: number) => {
     if (idx < 0 || idx >= messages.length) return;
-    rowVirtualizer.scrollToIndex(idx, { align: "center" });
-  }, [messages.length, rowVirtualizer]);
+    try {
+      rowVirtualizer.scrollToIndex(idx, { align: "center" });
+    } catch (err) {
+      console.error("[team-chat] scrollToIndex failed", err);
+      toast.error(rtl ? "تعذّر الانتقال للرسالة المطلوبة" : "Failed to jump to message");
+    }
+  }, [messages.length, rowVirtualizer, rtl]);
 
   useEffect(() => {
     if (!inChatSearchOpen || searchResults.length === 0) return;
     const target = searchResults[searchIndex % searchResults.length];
     if (target) jumpToMessageIndex(target.index);
   }, [searchIndex, searchResults, inChatSearchOpen, jumpToMessageIndex]);
+
+  // Global shortcut: Ctrl/⌘+F opens in-chat search when a room is active
+  useEffect(() => {
+    if (!activeRoomId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        setInChatSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeRoomId]);
 
   const currentMatchId = searchMatches.length > 0 ? searchMatches[searchIndex % searchMatches.length] : null;
 
@@ -1219,16 +1245,17 @@ function TeamChatPage() {
                 </div>
               )}
 
-              <div className="relative flex-1 min-h-0">
+              <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
               <div
                 ref={scrollRef}
                 onScroll={onScroll}
+                dir={rtl ? "rtl" : "ltr"}
                 className={cn(
-                  "absolute inset-0 overflow-y-auto",
+                  "absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
                   densityPaddingClass,
                   wallpaperClass
                 )}
-                style={{ ...wallpaperStyle, ...densityVars } as React.CSSProperties}
+                style={{ ...wallpaperStyle, ...densityVars, contain: "layout paint" } as React.CSSProperties}
               >
                 {/* Top sentinel: load older */}
                 <div ref={topSentinelRef} className="flex justify-center pb-2" style={{ height: 48 }}>
@@ -1253,7 +1280,7 @@ function TeamChatPage() {
                 </div>
 
                 {/* Virtualized messages */}
-                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%", maxWidth: "100%", overflowX: "hidden" }}>
                   {rowVirtualizer.getVirtualItems().map((vi) => {
                     const i = vi.index;
                     const m = messages[i];
