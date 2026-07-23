@@ -1332,11 +1332,13 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
         <SelectionOverlay
           tool={tool}
-          selectedId={selectedId}
+          selectedIds={selectedIds}
           itemsRef={itemsRef}
           overlayW={overlaySize.w}
           overlayH={overlaySize.h}
           beginResize={beginResize}
+          isCoarse={isCoarse}
+          guides={guidesRef.current}
         />
       </div>
 
