@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PresenterTools } from "./PresenterTools";
 
 /* ------------------------------------------------------------------ */
 /*  Persisted preferences (screen-share surface + pinned participant) */
