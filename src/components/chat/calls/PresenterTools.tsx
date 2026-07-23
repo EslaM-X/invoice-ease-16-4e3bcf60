@@ -471,8 +471,8 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         kind: "shape",
         id: sh.id, owner: sh.owner, color: sh.color, w: sh.w,
         x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2,
-        // @ts-expect-error narrowing helper — read by drawShape
         kindShape: sh.kindShape,
+
       };
       itemsRef.current.set(sh.id, finalItem);
       orderRef.current.push(sh.id);
