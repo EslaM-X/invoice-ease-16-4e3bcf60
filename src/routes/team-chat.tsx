@@ -199,12 +199,17 @@ function TeamChatPage() {
       : "p-3 sm:p-4 md:p-6 lg:px-10 xl:px-14";
   const densityGapPx = density === "compact" ? 2 : density === "comfortable" ? 12 : 8;
 
-  // Focus mode (hide sidebar) + Chat width preference — persisted per user in localStorage.
+  // Chat layout preference (width + focus mode) — persisted per user via Supabase (localStorage as fast cache).
   type ChatWidth = "default" | "wide" | "full";
   const widthKey = user?.id ? `chat:width:${user.id}` : "chat:width:anon";
   const focusKey = user?.id ? `chat:focus:${user.id}` : "chat:focus:anon";
   const [focusMode, setFocusMode] = useState<boolean>(false);
   const [chatWidth, setChatWidth] = useState<ChatWidth>("wide");
+  const getLayoutFn = useServerFn(getChatLayout);
+  const setLayoutFn = useServerFn(setChatLayout);
+  const layoutLoadedRef = useRef(false);
+
+  // 1) Warm from localStorage instantly.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -214,17 +219,98 @@ function TeamChatPage() {
       if (f === "1") setFocusMode(true);
     } catch { /* ignore */ }
   }, [widthKey, focusKey]);
+
+  // 2) Sync from Supabase (authoritative across devices).
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    getLayoutFn().then((r: any) => {
+      if (cancelled) return;
+      const L = r?.layout ?? {};
+      if (L.width === "default" || L.width === "wide" || L.width === "full") {
+        setChatWidth(L.width);
+        try { localStorage.setItem(widthKey, L.width); } catch { /* ignore */ }
+      }
+      if (typeof L.focus === "boolean") {
+        setFocusMode(L.focus);
+        try { localStorage.setItem(focusKey, L.focus ? "1" : "0"); } catch { /* ignore */ }
+      }
+      layoutLoadedRef.current = true;
+    }).catch(() => { layoutLoadedRef.current = true; });
+    return () => { cancelled = true; };
+  }, [user?.id, getLayoutFn, widthKey, focusKey]);
+
+  // Preserve scroll bottom-offset across layout mutations that resize the message viewport.
+  const preserveScrollThroughLayoutChange = useCallback((run: () => void) => {
+    const el = scrollRef.current;
+    const bottom = el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0;
+    const atBottom = bottom < 60;
+    run();
+    if (!el) return;
+    // Restore after the CSS width transition + a paint tick.
+    let ticks = 0;
+    const restore = () => {
+      const cur = scrollRef.current;
+      if (!cur) return;
+      if (atBottom) {
+        cur.scrollTop = cur.scrollHeight;
+      } else {
+        cur.scrollTop = Math.max(0, cur.scrollHeight - cur.clientHeight - bottom);
+      }
+      ticks += 1;
+      if (ticks < 4) requestAnimationFrame(restore);
+    };
+    requestAnimationFrame(restore);
+  }, []);
+
   const applyChatWidth = useCallback((w: ChatWidth) => {
-    setChatWidth(w);
+    preserveScrollThroughLayoutChange(() => setChatWidth(w));
     try { localStorage.setItem(widthKey, w); } catch { /* ignore */ }
-  }, [widthKey]);
+    if (layoutLoadedRef.current) setLayoutFn({ data: { width: w } }).catch(() => {});
+  }, [widthKey, setLayoutFn, preserveScrollThroughLayoutChange]);
+
   const toggleFocusMode = useCallback(() => {
     setFocusMode((v) => {
       const nv = !v;
+      preserveScrollThroughLayoutChange(() => {});
       try { localStorage.setItem(focusKey, nv ? "1" : "0"); } catch { /* ignore */ }
+      if (layoutLoadedRef.current) setLayoutFn({ data: { focus: nv } }).catch(() => {});
       return nv;
     });
-  }, [focusKey]);
+  }, [focusKey, setLayoutFn, preserveScrollThroughLayoutChange]);
+
+  const resetChatView = useCallback(() => {
+    preserveScrollThroughLayoutChange(() => {
+      setChatWidth("wide");
+      setFocusMode(false);
+    });
+    try {
+      localStorage.setItem(widthKey, "wide");
+      localStorage.setItem(focusKey, "0");
+    } catch { /* ignore */ }
+    if (layoutLoadedRef.current) {
+      setLayoutFn({ data: { width: "wide", focus: false } }).catch(() => {});
+    }
+  }, [widthKey, focusKey, setLayoutFn, preserveScrollThroughLayoutChange]);
+
+  // Keyboard shortcuts: Alt+Shift+F focus mode, Alt+Shift+S toggle sidebar (same on desktop), Alt+Shift+0 reset.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || !e.shiftKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "f" || k === "s") {
+        e.preventDefault();
+        toggleFocusMode();
+      } else if (k === "0") {
+        e.preventDefault();
+        resetChatView();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleFocusMode, resetChatView]);
+
   const widthMaxClass =
     chatWidth === "full" ? "max-w-none"
       : chatWidth === "wide" ? "max-w-[1600px]"
