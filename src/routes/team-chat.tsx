@@ -1223,6 +1223,7 @@ function TeamChatPage() {
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
                         />
+                        </motion.div>
                       </div>
                     );
                   })}
