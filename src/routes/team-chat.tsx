@@ -48,9 +48,6 @@ export const Route = createFileRoute("/team-chat")({
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
   },
-  validateSearch: (s: Record<string, unknown>) => ({
-    room: typeof s.room === "string" ? s.room : undefined,
-  }),
   component: TeamChatPage,
 });
 
@@ -86,11 +83,12 @@ function TeamChatPage() {
   const setDensityFn = useServerFn(setChatDensity);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
-  const search = Route.useSearch();
   useEffect(() => {
-    if (search?.room && search.room !== activeRoomId) setActiveRoomId(search.room);
+    if (typeof window === "undefined") return;
+    const rid = new URLSearchParams(window.location.search).get("room");
+    if (rid) setActiveRoomId(rid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search?.room]);
+  }, []);
   const [newOpen, setNewOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
