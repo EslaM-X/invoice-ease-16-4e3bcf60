@@ -827,3 +827,26 @@ export const removeMember = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Update the group chat's name and/or avatar. Admin or creator only (enforced by RPC). */
+export const updateRoomProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      room_id: z.string().uuid(),
+      name: z.string().max(80).nullable().optional(),
+      avatar_url: z.string().url().nullable().optional(),
+      clear_avatar: z.boolean().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await (supabase as any).rpc("chat_update_room_profile", {
+      _room_id: data.room_id,
+      _name: data.name ?? null,
+      _avatar_url: data.avatar_url ?? null,
+      _clear_avatar: data.clear_avatar ?? false,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
