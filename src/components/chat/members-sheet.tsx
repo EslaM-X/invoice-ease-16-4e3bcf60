@@ -36,12 +36,14 @@ type MemberRow = {
 };
 
 export function MembersSheet({
-  open, onOpenChange, roomId, roomName, myUserId, iAmAdmin, rtl,
+  open, onOpenChange, roomId, roomName, roomType, roomAvatarUrl, myUserId, iAmAdmin, rtl,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   roomId: string | null;
   roomName: string;
+  roomType?: "direct" | "group" | null;
+  roomAvatarUrl?: string | null;
   myUserId: string;
   iAmAdmin: boolean;
   rtl: boolean;
@@ -50,7 +52,12 @@ export function MembersSheet({
   const fetchMembers = useServerFn(listRoomMembers);
   const setRoleFn = useServerFn(setMemberRole);
   const removeFn = useServerFn(removeMember);
+  const updateProfileFn = useServerFn(updateRoomProfile);
   const [addOpen, setAddOpen] = useState(false);
+  const [editName, setEditName] = useState<string>("");
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const q = useQuery({
     queryKey: ["chat-room-members", roomId],
