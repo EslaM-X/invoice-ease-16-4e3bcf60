@@ -623,7 +623,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
           </div>
         </header>
         <ImpersonationBanner />
-        <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-visible px-3 py-6 pb-tabbar sm:px-6 sm:py-8 lg:px-8 lg:pb-safe">
+        <main className={fullBleed ? "flex-1 min-w-0 min-h-0 w-full overflow-hidden p-0 pb-tabbar lg:pb-0" : "mx-auto w-full max-w-7xl flex-1 overflow-x-visible px-3 py-6 pb-tabbar sm:px-6 sm:py-8 lg:px-8 lg:pb-safe"}>
           <PageTransition>{children}</PageTransition>
         </main>
         <MobileTabBar onMore={() => setOpen(true)} />
