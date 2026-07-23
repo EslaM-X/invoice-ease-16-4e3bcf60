@@ -793,6 +793,60 @@ function KeyboardShortcuts({ rtl }: { rtl: boolean }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Live participant count badge                                      */
+/* ------------------------------------------------------------------ */
+
+function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
+  const participants = useParticipants(); // reactive to join/leave for everyone
+  const count = participants.length;
+  const label = rtl ? `${count} في المكالمة` : `${count} in call`;
+  return (
+    <div
+      className="absolute top-16 left-4 z-20 flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/55 px-3 py-1.5 text-xs font-semibold text-amber-100 backdrop-blur-xl shadow-lg"
+      dir={rtl ? "rtl" : "ltr"}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={label}
+      title={label}
+    >
+      <Users className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="tabular-nums">{count}</span>
+      <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Auto speaker-reorder toggle                                       */
+/* ------------------------------------------------------------------ */
+
+function AutoSpeakerToggle({ rtl, on, setOn }: { rtl: boolean; on: boolean; setOn: (v: boolean) => void }) {
+  const label = rtl
+    ? (on ? "ترتيب حسب المتحدث: مفعّل" : "ترتيب حسب المتحدث: متوقف")
+    : (on ? "Speaker sort: on" : "Speaker sort: off");
+  return (
+    <button
+      type="button"
+      onClick={() => setOn(!on)}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "absolute bottom-24 z-20 rounded-full border p-2 backdrop-blur-md transition",
+        "hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300",
+        on
+          ? "border-amber-400/40 bg-amber-500/20 text-amber-100"
+          : "border-white/15 bg-black/55 text-white/80",
+        rtl ? "left-16" : "right-16"
+      )}
+    >
+      <Sparkles className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Room options                                                      */
 /* ------------------------------------------------------------------ */
 
