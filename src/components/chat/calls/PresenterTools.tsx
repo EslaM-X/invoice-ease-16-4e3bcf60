@@ -1310,6 +1310,114 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     void publish({ t: "perm", mode: next, by: localIdentity }, true);
   }, [isLocalSharing, permMode, publish, localIdentity]);
 
+  /* --------------- multi-select / clipboard / group helpers --------------- */
+
+  const selectAll = useCallback(() => {
+    const ids = orderRef.current.filter((id) => itemsRef.current.has(id));
+    setSelectedIds(ids);
+  }, []);
+
+  const copySelection = useCallback(() => {
+    const ids = selectedIds;
+    if (ids.length === 0) return;
+    const clones: AnyItem[] = [];
+    for (const id of ids) {
+      const it = itemsRef.current.get(id);
+      if (it) clones.push(JSON.parse(JSON.stringify(it)) as AnyItem);
+    }
+    clipboardRef.current = clones;
+  }, [selectedIds]);
+
+  const pasteClipboard = useCallback(() => {
+    const src = clipboardRef.current;
+    if (!src || src.length === 0) return;
+    // Regenerate ids; preserve intra-clipboard groups by remapping group ids
+    const groupRemap = new Map<string, string>();
+    const OFFSET = 0.02; // normalized
+    const created: AnyItem[] = [];
+    for (const it of src) {
+      const newId = `${localIdentity}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+      const g = (it as { groupId?: string }).groupId;
+      let newG: string | undefined;
+      if (g) {
+        newG = groupRemap.get(g);
+        if (!newG) {
+          newG = `g:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+          groupRemap.set(g, newG);
+        }
+      }
+      const shifted = translateItem(it as AnyItem, OFFSET, OFFSET);
+      const clone: AnyItem = { ...(shifted as AnyItem), id: newId, owner: localIdentity } as AnyItem;
+      if (newG) (clone as { groupId?: string }).groupId = newG;
+      created.push(clone);
+    }
+    for (const it of created) {
+      itemsRef.current.set(it.id, it);
+      orderRef.current.push(it.id);
+      const msg = itemToMsg(it);
+      if (msg) void publish(msg, true);
+    }
+    // Broadcast group assignments after items
+    const byGroup = new Map<string, string[]>();
+    for (const it of created) {
+      const g = (it as { groupId?: string }).groupId;
+      if (!g) continue;
+      const arr = byGroup.get(g) ?? [];
+      arr.push(it.id);
+      byGroup.set(g, arr);
+    }
+    for (const [g, ids] of byGroup) {
+      void publish({ t: "assignGroup", ids, groupId: g, by: localIdentity }, true);
+    }
+    setSelectedIds(created.map((c) => c.id));
+    scheduleSave("edit", localIdentity);
+    dirtyRef.current = true;
+    bumpUI();
+  }, [publish, localIdentity, scheduleSave, bumpUI]);
+
+  const duplicateSelection = useCallback(() => {
+    // Copy → paste (uses last snapshot of selection)
+    const ids = selectedIds;
+    if (ids.length === 0) return;
+    const clones: AnyItem[] = [];
+    for (const id of ids) {
+      const it = itemsRef.current.get(id);
+      if (it) clones.push(JSON.parse(JSON.stringify(it)) as AnyItem);
+    }
+    clipboardRef.current = clones;
+    pasteClipboard();
+  }, [selectedIds, pasteClipboard]);
+
+  const groupSelection = useCallback(() => {
+    if (selectedIds.length < 2) return;
+    const g = `g:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+    for (const id of selectedIds) {
+      const it = itemsRef.current.get(id);
+      if (!it) continue;
+      itemsRef.current.set(id, { ...(it as AnyItem), groupId: g } as AnyItem);
+    }
+    void publish({ t: "assignGroup", ids: [...selectedIds], groupId: g, by: localIdentity }, true);
+    scheduleSave("edit", localIdentity);
+    dirtyRef.current = true;
+    bumpUI();
+  }, [selectedIds, publish, localIdentity, scheduleSave, bumpUI]);
+
+  const ungroupSelection = useCallback(() => {
+    const ids = selectedIds.filter((id) => (itemsRef.current.get(id) as { groupId?: string } | undefined)?.groupId);
+    if (ids.length === 0) return;
+    for (const id of ids) {
+      const it = itemsRef.current.get(id);
+      if (!it) continue;
+      const clone = { ...(it as AnyItem) } as AnyItem & { groupId?: string };
+      delete clone.groupId;
+      itemsRef.current.set(id, clone as AnyItem);
+    }
+    void publish({ t: "assignGroup", ids, groupId: null, by: localIdentity }, true);
+    scheduleSave("edit", localIdentity);
+    dirtyRef.current = true;
+    bumpUI();
+  }, [selectedIds, publish, localIdentity, scheduleSave, bumpUI]);
+
 
   /* --------------- keyboard --------------- */
   useEffect(() => {
