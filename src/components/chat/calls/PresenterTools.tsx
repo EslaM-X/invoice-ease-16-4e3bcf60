@@ -1244,8 +1244,25 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Cmd/Ctrl combos first (clipboard, group, select-all)
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === "c" && selectedIds.length > 0) { copySelection(); e.preventDefault(); return; }
+        if (k === "v" && clipboardRef.current.length > 0) { pasteClipboard(); e.preventDefault(); return; }
+        if (k === "d" && selectedIds.length > 0) { duplicateSelection(); e.preventDefault(); return; }
+        if (k === "a") { selectAll(); e.preventDefault(); return; }
+        if (k === "g") {
+          if (e.shiftKey) ungroupSelection(); else groupSelection();
+          e.preventDefault(); return;
+        }
+        return;
+      }
+      if (e.altKey) return;
+
       const k = e.key.toLowerCase();
+      const primary = selectedIds.length === 1 ? selectedIds[0] : null;
       let handled = true;
       if (k === "a") setCollapsed((v) => !v);
       else if (k === "v") { setTool("select"); }
@@ -1262,28 +1279,29 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       else if (k === "e") setTool("eraser");
       else if (k === "z") undo();
       else if (k === "x") clearAll();
-      else if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
-        deleteItem(selectedId);
+      else if (k === "s") setSnapEnabled((v) => !v);
+      else if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0) {
+        for (const id of [...selectedIds]) deleteItem(id);
       }
-      else if (e.key === "Enter" && selectedId) {
+      else if (e.key === "Enter" && primary) {
         editSelectedText();
       }
-      else if (e.key === "]" && selectedId) {
-        if (e.shiftKey) bringToFront(selectedId); else forwardOne(selectedId);
+      else if (e.key === "]" && primary) {
+        if (e.shiftKey) bringToFront(primary); else forwardOne(primary);
       }
-      else if (e.key === "[" && selectedId) {
-        if (e.shiftKey) sendToBack(selectedId); else backwardOne(selectedId);
+      else if (e.key === "[" && primary) {
+        if (e.shiftKey) sendToBack(primary); else backwardOne(primary);
       }
       else if (k === "y" && isLocalSharing) {
         setHistoryOpen((v) => !v); setPreviewOpen(false);
       }
-      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); setHistoryOpen(false); setPreviewOpen(false); }
+      else if (e.key === "Escape") { setTool("off"); setSelectedIds([]); setHistoryOpen(false); setPreviewOpen(false); }
       else handled = false;
       if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isAnyoneSharing, isLocalSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
+  }, [isAnyoneSharing, isLocalSharing, undo, clearAll, selectedIds, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne, copySelection, pasteClipboard, duplicateSelection, selectAll, groupSelection, ungroupSelection]);
 
   if (!isAnyoneSharing) return null;
 
