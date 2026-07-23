@@ -241,7 +241,7 @@ export function MembersSheet({
                     <LuxuryAvatar
                       url={roomAvatarUrl ?? null}
                       name={roomName}
-                      size={56}
+                      size={80}
                       ring="gold"
                     />
                     <button
