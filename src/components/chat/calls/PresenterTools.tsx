@@ -1683,6 +1683,13 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             <ToolButton label={rtl ? "مسح الكل (X)" : "Clear all (X)"} onClick={clearAll} active={false} danger>
               <Trash2 className="size-4" />
             </ToolButton>
+            <ToolButton
+              label={rtl ? "التقاط للشبكة (S)" : "Snap to grid (S)"}
+              active={snapEnabled}
+              onClick={() => setSnapEnabled((v) => !v)}
+            >
+              <Magnet className="size-4" />
+            </ToolButton>
 
             {isLocalSharing ? (
               <>
