@@ -332,11 +332,18 @@ export function WallpaperPicker({
           </div>
         </div>
 
-        {applyPerRoom && hasRoomOverride && (
-          <Button variant="outline" size="sm" onClick={() => onResetToDefault()} className="w-full">
-            {rtl ? "استخدام الخلفية الافتراضية" : "Use default wallpaper"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {history.length > 0 && (
+            <Button variant="outline" size="sm" onClick={undoLast} className="flex-1">
+              ↶ {rtl ? "تراجع عن آخر تغيير" : "Undo last change"}
+            </Button>
+          )}
+          {applyPerRoom && hasRoomOverride && (
+            <Button variant="outline" size="sm" onClick={() => onResetToDefault()} className="flex-1">
+              {rtl ? "الخلفية الافتراضية" : "Use default"}
+            </Button>
+          )}
+        </div>
       </DialogContent>
 
       <ImageCropperDialog
