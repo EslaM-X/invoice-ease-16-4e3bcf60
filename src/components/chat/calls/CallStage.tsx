@@ -1103,8 +1103,12 @@ function ParticipantRow({ p, rtl }: { p: Participant; rtl: boolean }) {
 
   return (
     <li
+      tabIndex={0}
+      role="option"
+      data-participant-row
       className={cn(
         "flex items-center gap-3 rounded-lg border px-3 py-2 transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
         speaking ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 bg-white/[0.03]"
       )}
       aria-label={`${name}${isLocal ? (rtl ? " (أنت)" : " (You)") : ""} — ${mic ? (rtl ? "الميكروفون مفتوح" : "mic on") : (rtl ? "الميكروفون مكتوم" : "mic off")}, ${cam ? (rtl ? "الكاميرا مفتوحة" : "camera on") : (rtl ? "الكاميرا مقفولة" : "camera off")}${share ? (rtl ? "، يشارك الشاشة" : ", sharing screen") : ""}`}
@@ -1148,7 +1152,30 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
   const participants = useParticipants(); // reactive to join/leave for everyone
   const count = participants.length;
   const [open, setOpen] = useState(false);
-  const label = rtl ? `${count} في المكالمة — اضغط للتفاصيل` : `${count} in call — click for details`;
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const label = rtl
+    ? `${count} في المكالمة — اضغط للتفاصيل (U)`
+    : `${count} in call — click for details (U)`;
+
+  // sr-only live region text: announces join/leave transitions politely.
+  const prevCountRef = useRef(count);
+  const [srCount, setSrCount] = useState("");
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    if (count !== prev) {
+      const delta = count - prev;
+      setSrCount(
+        rtl
+          ? (delta > 0
+              ? `انضم مشارك — الآن ${count} في المكالمة`
+              : `غادر مشارك — الآن ${count} في المكالمة`)
+          : (delta > 0
+              ? `A participant joined — ${count} now in the call`
+              : `A participant left — ${count} now in the call`)
+      );
+      prevCountRef.current = count;
+    }
+  }, [count, rtl]);
 
   const sorted = useMemo(() => {
     return [...participants].sort((a, b) => {
@@ -1159,8 +1186,48 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
     });
   }, [participants]);
 
+  // Global keyboard shortcut ("U") + programmatic toggle from KeyboardShortcuts.
+  useEffect(() => {
+    const onToggle = () => setOpen((o) => !o);
+    window.addEventListener(EVT_TOGGLE_PARTICIPANTS, onToggle);
+    return () => window.removeEventListener(EVT_TOGGLE_PARTICIPANTS, onToggle);
+  }, []);
+
+  // When the panel opens, move focus to the first row so the user can
+  // navigate the list immediately with the keyboard.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const first = listRef.current?.querySelector<HTMLElement>("[data-participant-row]");
+      first?.focus();
+    }, 60);
+    return () => clearTimeout(t);
+  }, [open, sorted.length]);
+
+  // Arrow-key navigation inside the list.
+  const onListKeyDown: React.KeyboardEventHandler<HTMLUListElement> = (e) => {
+    const rows = Array.from(
+      listRef.current?.querySelectorAll<HTMLElement>("[data-participant-row]") ?? []
+    );
+    if (rows.length === 0) return;
+    const idx = rows.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (e.key === "ArrowDown") next = Math.min(rows.length - 1, idx + 1);
+    else if (e.key === "ArrowUp") next = Math.max(0, idx - 1);
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = rows.length - 1;
+    else return;
+    e.preventDefault();
+    rows[next < 0 ? 0 : next]?.focus();
+  };
+
   return (
     <>
+      {/* SR-only live region: participant count transitions */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {srCount}
+      </div>
+
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -1173,11 +1240,13 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
         aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-keyshortcuts="u"
         title={label}
       >
         <Users className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="tabular-nums">{count}</span>
         <span className="opacity-75">{rtl ? "في المكالمة" : "in call"}</span>
+        <kbd className="ml-1 rounded border border-white/20 bg-white/10 px-1 py-0 font-mono text-[9px] text-white/80">U</kbd>
       </button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
@@ -1191,10 +1260,20 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
               {rtl ? `المشاركون (${count})` : `Participants (${count})`}
             </SheetTitle>
             <SheetDescription className="text-white/60">
-              {rtl ? "كل من في المكالمة الآن مع حالة الميكروفون والكاميرا والمشاركة." : "Everyone in the call now with mic, camera and share state."}
+              {rtl
+                ? "استخدم الأسهم للتنقّل، U للإغلاق. حالة الميكروفون والكاميرا والمشاركة محدَّثة لحظيًا."
+                : "Use ↑/↓ to navigate, U to close. Mic, camera and share state update in real time."}
             </SheetDescription>
           </SheetHeader>
-          <ul className="mt-4 space-y-2 max-h-[calc(100dvh-140px)] overflow-y-auto pr-1" role="list">
+          <ul
+            ref={listRef}
+            onKeyDown={onListKeyDown}
+            className="mt-4 space-y-2 max-h-[calc(100dvh-140px)] overflow-y-auto pr-1 focus:outline-none"
+            role="listbox"
+            aria-label={rtl ? "قائمة المشاركين" : "Participants list"}
+            aria-activedescendant={undefined}
+            tabIndex={-1}
+          >
             {sorted.map((p) => (
               <ParticipantRow key={p.identity} p={p} rtl={rtl} />
             ))}
