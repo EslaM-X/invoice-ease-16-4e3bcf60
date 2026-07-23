@@ -1994,7 +1994,59 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
   const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
   const [callPerf, setCallPerf] = useCallPerf();
-  const roomOptions = useMemo(() => buildRoomOptions(effectiveProfile(callPerf)), [callPerf]);
+
+  // Preflight — run once per call-open. If pref is "auto" the probe result
+  // drives room options; otherwise we still measure so we can announce it.
+  const [preflight, setPreflight] = useState<null | {
+    profile: CapProfile;
+    rttMs: number;
+    jitterMs: number;
+    reason: string;
+  }>(null);
+  const [probing, setProbing] = useState(false);
+
+  useEffect(() => {
+    if (!open || !url) { setPreflight(null); return; }
+    let cancelled = false;
+    setProbing(true);
+    const timeout = window.setTimeout(() => {
+      // Hard timeout — never block the call more than 1.6s
+      if (!cancelled) { setProbing(false); }
+    }, 1600);
+    runNetworkPreflight(url).then((res) => {
+      if (cancelled) return;
+      setPreflight(res);
+      setProbing(false);
+      clearTimeout(timeout);
+      const labels: Record<CapProfile, string> = {
+        lite: rtl ? "خفيف" : "Lite",
+        balanced: rtl ? "متوازن" : "Balanced",
+        hi: rtl ? "عالي (Auto)" : "High (Auto)",
+      };
+      const msg = res.reason === "healthy"
+        ? (rtl ? `الشبكة ممتازة (RTT ${res.rttMs}ms) — الوضع: ${labels[res.profile]}` : `Network healthy (RTT ${res.rttMs}ms) — mode: ${labels[res.profile]}`)
+        : res.reason === "moderate-latency"
+        ? (rtl ? `شبكة متوسطة (RTT ${res.rttMs}ms · Jitter ${res.jitterMs}ms) — اقتراح: ${labels[res.profile]}` : `Moderate network (RTT ${res.rttMs}ms · jitter ${res.jitterMs}ms) — suggesting ${labels[res.profile]}`)
+        : res.reason === "high-latency"
+        ? (rtl ? `شبكة ضعيفة (RTT ${res.rttMs}ms) — تفعيل الوضع الخفيف تلقائياً` : `Weak network (RTT ${res.rttMs}ms) — auto-enabling Lite`)
+        : (rtl ? `تعذّر فحص الشبكة — استخدام الافتراضي` : `Preflight skipped — using defaults`);
+      toast.info(msg, { id: "call-preflight", duration: 4500 });
+    }).catch(() => { if (!cancelled) { setProbing(false); clearTimeout(timeout); } });
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [open, url, rtl]);
+
+  const roomOptions = useMemo(
+    () => buildRoomOptions(effectiveProfile(callPerf, preflight?.profile ?? null)),
+    [callPerf, preflight]
+  );
+
+  const preflightAnnouncement = preflight
+    ? (rtl
+        ? `اكتمل فحص الشبكة. زمن الاستجابة ${preflight.rttMs} مللي ثانية. الوضع المقترح ${preflight.profile === "lite" ? "خفيف" : preflight.profile === "balanced" ? "متوازن" : "عالي"}.`
+        : `Network preflight complete. Round-trip ${preflight.rttMs} ms. Suggested mode ${preflight.profile}.`)
+    : probing
+    ? (rtl ? "جاري فحص جودة الشبكة قبل الاتصال" : "Measuring network quality before connecting")
+    : "";
 
   // Focus lock only makes sense while speaker sort is on — disable at
   // runtime WITHOUT wiping the persisted preference so it restores next call.
@@ -2014,6 +2066,8 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
     };
   }, [open]);
 
+  const ready = open && !!url && !!token && !probing;
+
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
@@ -2021,10 +2075,31 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
         className="h-[100dvh] w-full p-0 border-0 bg-black text-white"
         dir={rtl ? "rtl" : "ltr"}
       >
-        {open && url && token ? (
+        {/* aria-live for screen readers — preflight status */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {preflightAnnouncement}
+        </div>
+
+        {open && probing ? (
+          <div
+            className="flex h-[100dvh] w-full flex-col items-center justify-center gap-4 bg-black text-white"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-10 w-10 animate-spin text-amber-300" aria-hidden="true" />
+            <div className="text-center">
+              <div className="text-base font-semibold">
+                {rtl ? "فحص جودة الشبكة…" : "Checking network quality…"}
+              </div>
+              <div className="mt-1 text-xs text-white/60">
+                {rtl ? "نقيس زمن الاستجابة لاختيار أفضل وضع للمكالمة" : "Measuring latency to pick the best call profile"}
+              </div>
+            </div>
+          </div>
+        ) : ready ? (
           <LiveKitRoom
-            serverUrl={url}
-            token={token}
+            serverUrl={url!}
+            token={token!}
             connect
             video={video}
             audio
