@@ -605,6 +605,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         t: "shape", id: sh.id, owner: sh.owner, kind: sh.kindShape,
         color: sh.color, w: sh.w, x1: sh.x1, y1: sh.y1, x2: sh.x2, y2: sh.y2, done: true,
       }, true);
+      scheduleSave();
       dirtyRef.current = true;
       return;
     }
@@ -618,11 +619,13 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         t: "stroke", id: s.id, owner: s.owner, tool: s.tool, color: s.color, w: s.w,
         pts: s.pts, done: true,
       }, true);
+      scheduleSave();
     }
     dirtyRef.current = true;
   };
 
   /* --------------- toolbar actions --------------- */
+
   const undo = useCallback(() => {
     void publish({ t: "undo", owner: localIdentity }, true);
     applyMessage({ t: "undo", owner: localIdentity });
