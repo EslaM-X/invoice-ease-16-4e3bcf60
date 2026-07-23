@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Users, MessageSquare, ArrowLeft, ArrowRight, Search, ChevronDown,
-  Bell, BellOff, X, ArrowUp, ArrowDown, Users2,
+  Bell, BellOff, X, ArrowUp, ArrowDown, Users2, Rows3, ArrowDownToLine, Loader2,
 } from "lucide-react";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
@@ -27,7 +27,11 @@ import {
   listCompanyMembers, createChatRoom, deleteChatMessage,
   toggleReaction, setTypingState, updatePresence,
   markMessagesRead, getChatWallpaper, setChatWallpaper,
+  getChatDensity, setChatDensity,
 } from "@/lib/chat.functions";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Composer } from "@/components/chat/composer";
 import { MessageBubble, type ChatMsg } from "@/components/chat/message-bubble";
@@ -74,6 +78,8 @@ function TeamChatPage() {
   const markReadsFn = useServerFn(markMessagesRead);
   const getWallpaperFn = useServerFn(getChatWallpaper);
   const setWallpaperFn = useServerFn(setChatWallpaper);
+  const getDensityFn = useServerFn(getChatDensity);
+  const setDensityFn = useServerFn(setChatDensity);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
@@ -92,6 +98,63 @@ function TeamChatPage() {
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const lastNotifiedRef = useRef<string | null>(null);
+
+  // Density (comfortable | cozy | compact)
+  type Density = "comfortable" | "cozy" | "compact";
+  const [density, setDensityState] = useState<Density>("cozy");
+  useEffect(() => {
+    getDensityFn().then((r: any) => {
+      const d = r?.density;
+      if (d === "comfortable" || d === "cozy" || d === "compact") setDensityState(d);
+    }).catch(() => {});
+  }, [getDensityFn]);
+  const applyDensity = useCallback((d: Density) => {
+    setDensityState(d);
+    setDensityFn({ data: { density: d } }).catch(() => {});
+  }, [setDensityFn]);
+  const densityVars = useMemo<Record<string, string>>(() => {
+    if (density === "compact")
+      return {
+        "--chat-avatar-slot": "44px",
+        "--chat-bubble-pad": "4px 8px",
+        "--chat-bubble-font": "12.5px",
+      };
+    if (density === "comfortable")
+      return {
+        "--chat-avatar-slot": "60px",
+        "--chat-bubble-pad": "10px 14px",
+        "--chat-bubble-font": "15px",
+      };
+    return {
+      "--chat-avatar-slot": "56px",
+      "--chat-bubble-pad": "8px 12px",
+      "--chat-bubble-font": "14px",
+    };
+  }, [density]);
+  const densitySpacingClass =
+    density === "compact"
+      ? "space-y-0.5 p-2 sm:p-3"
+      : density === "comfortable"
+      ? "space-y-3 p-3 sm:p-5 md:p-7"
+      : "space-y-2 md:space-y-2.5 p-3 sm:p-4 md:p-6";
+
+  // Older-history pagination + scroll anchor state
+  const [olderPages, setOlderPages] = useState<ChatMsg[][]>([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [unseenCount, setUnseenCount] = useState(0);
+  const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset pagination when switching rooms
+  useEffect(() => {
+    setOlderPages([]);
+    setHasMoreOlder(true);
+    setLoadingOlder(false);
+    setIsAtBottom(true);
+    setUnseenCount(0);
+  }, [activeRoomId]);
 
   // Load wallpaper preference once
   useEffect(() => {
@@ -184,9 +247,33 @@ function TeamChatPage() {
   const messagesQ = useQuery({
     queryKey: ["chat-messages", activeRoomId],
     queryFn: () =>
-      activeRoomId ? fetchMessages({ data: { room_id: activeRoomId, limit: 100 } }) : Promise.resolve({ messages: [] }),
+      activeRoomId ? fetchMessages({ data: { room_id: activeRoomId, limit: 50 } }) : Promise.resolve({ messages: [] }),
     enabled: !!activeRoomId,
   });
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeRoomId || loadingOlder || !hasMoreOlder) return;
+    const firstPageMsgs: ChatMsg[] = messagesQ.data?.messages ?? [];
+    const oldestKnown = (olderPages[0]?.[0] ?? firstPageMsgs[0]);
+    if (!oldestKnown?.created_at) return;
+    setLoadingOlder(true);
+    if (scrollRef.current) preserveScrollRef.current = { prevHeight: scrollRef.current.scrollHeight };
+    try {
+      const r: any = await fetchMessages({
+        data: { room_id: activeRoomId, limit: 50, before_created_at: oldestKnown.created_at },
+      });
+      const page: ChatMsg[] = r?.messages ?? [];
+      if (page.length === 0) { setHasMoreOlder(false); }
+      else {
+        setOlderPages((prev) => [page, ...prev]);
+        if (page.length < 50) setHasMoreOlder(false);
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to load older");
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeRoomId, loadingOlder, hasMoreOlder, olderPages, messagesQ.data?.messages, fetchMessages]);
 
   const membersQ = useQuery({
     queryKey: ["company-members"],
@@ -334,12 +421,47 @@ function TeamChatPage() {
     }
   }, [activeRoomId, markRead, qc]);
 
-  // Auto-scroll on new messages
+  // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
+  const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    if (scrollRef.current) {
+    const count = messagesQ.data?.messages?.length ?? 0;
+    const delta = Math.max(0, count - prevMsgCountRef.current);
+    prevMsgCountRef.current = count;
+    if (!scrollRef.current) return;
+    if (isAtBottom) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setUnseenCount(0);
+    } else if (delta > 0) {
+      setUnseenCount((c) => c + delta);
     }
-  }, [messagesQ.data?.messages?.length, typingUserIds.length]);
+  }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom]);
+
+  // Preserve scroll position after prepending older messages
+  useLayoutEffect(() => {
+    if (!scrollRef.current || !preserveScrollRef.current) return;
+    const el = scrollRef.current;
+    const diff = el.scrollHeight - preserveScrollRef.current.prevHeight;
+    if (diff > 0) el.scrollTop += diff;
+    preserveScrollRef.current = null;
+  }, [olderPages]);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    setUnseenCount(0);
+  }, []);
+
+  const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 60;
+    setIsAtBottom(atBottom);
+    if (atBottom) setUnseenCount(0);
+    if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
+      loadOlderMessages();
+    }
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
@@ -455,7 +577,13 @@ function TeamChatPage() {
     }
   }, [deleteMsg, qc, activeRoomId, rtl]);
 
-  const serverMessages: ChatMsg[] = messagesQ.data?.messages ?? [];
+  const serverMessages: ChatMsg[] = useMemo(() => {
+    const first = messagesQ.data?.messages ?? [];
+    if (olderPages.length === 0) return first;
+    const flatOlder: ChatMsg[] = [];
+    for (const p of olderPages) flatOlder.push(...p);
+    return [...flatOlder, ...first];
+  }, [messagesQ.data?.messages, olderPages]);
   const messages: ChatMsg[] = useMemo(() => {
     if (pendingMessages.length === 0) return serverMessages;
     const recentServerBodies = new Set(
@@ -758,6 +886,36 @@ function TeamChatPage() {
                   <Search className="h-5 w-5" />
                 </Button>
 
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-10 w-10 rounded-full shrink-0"
+                      title={rtl ? "كثافة العرض" : "Message density"}
+                      aria-label="Message density"
+                    >
+                      <Rows3 className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuLabel>{rtl ? "كثافة الرسائل" : "Message density"}</DropdownMenuLabel>
+                    {(["comfortable", "cozy", "compact"] as const).map((d) => (
+                      <DropdownMenuItem
+                        key={d}
+                        onClick={() => applyDensity(d)}
+                        className={cn("flex items-center justify-between", density === d && "bg-accent")}
+                      >
+                        <span className="capitalize">
+                          {d === "comfortable" ? (rtl ? "مريح" : "Comfortable")
+                            : d === "cozy" ? (rtl ? "عادي" : "Cozy")
+                            : (rtl ? "مضغوط" : "Compact")}
+                        </span>
+                        {density === d && <span className="text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <WallpaperPicker
                   value={activeWallpaper}
                   customUrl={activeCustomUrl}
@@ -818,14 +976,38 @@ function TeamChatPage() {
                 </div>
               )}
 
+              <div className="relative flex-1 min-h-0">
               <div
                 ref={scrollRef}
+                onScroll={onScroll}
                 className={cn(
-                  "flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-2 md:space-y-2.5",
+                  "absolute inset-0 overflow-y-auto",
+                  densitySpacingClass,
                   wallpaperClass
                 )}
-                style={wallpaperStyle}
+                style={{ ...wallpaperStyle, ...densityVars } as React.CSSProperties}
               >
+                {/* Top sentinel: load older */}
+                <div ref={topSentinelRef} className="flex justify-center py-2">
+                  {loadingOlder ? (
+                    <span className="inline-flex items-center gap-2 text-[11px] text-white/80 bg-black/40 backdrop-blur rounded-full px-3 py-1 border border-white/10">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {rtl ? "تحميل الرسائل الأقدم..." : "Loading older messages..."}
+                    </span>
+                  ) : hasMoreOlder && messages.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={loadOlderMessages}
+                      className="text-[11px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur rounded-full px-3 py-1 border border-white/10 transition"
+                    >
+                      {rtl ? "تحميل الأقدم" : "Load older"}
+                    </button>
+                  ) : messages.length > 0 ? (
+                    <span className="text-[10px] text-white/40">
+                      {rtl ? "— بداية المحادثة —" : "— start of conversation —"}
+                    </span>
+                  ) : null}
+                </div>
                 <AnimatePresence initial={false}>
                   {messages.map((m, i) => {
                     const prev = messages[i - 1];
@@ -891,6 +1073,24 @@ function TeamChatPage() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {!isAtBottom && (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="absolute bottom-4 end-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/70 hover:bg-black text-white border border-[color:var(--brand-gold,#d4af37)]/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.7)] px-3 py-2 backdrop-blur-md transition"
+                  aria-label={rtl ? "الرجوع لأحدث رسالة" : "Jump to latest"}
+                  title={rtl ? "الرجوع لأحدث رسالة" : "Jump to latest"}
+                >
+                  <ArrowDownToLine className="h-4 w-4" />
+                  {unseenCount > 0 && (
+                    <span className="text-[11px] font-bold tabular-nums bg-[color:var(--brand-gold,#d4af37)] text-black rounded-full min-w-[18px] px-1 text-center">
+                      {unseenCount > 99 ? "99+" : unseenCount}
+                    </span>
+                  )}
+                </button>
+              )}
               </div>
 
               <Composer

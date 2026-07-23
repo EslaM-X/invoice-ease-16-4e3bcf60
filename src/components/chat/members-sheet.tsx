@@ -21,6 +21,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useRoomPresence } from "@/lib/use-chat-presence";
 import { describeAvatarChoice } from "@/lib/avatar-url";
+import {
+  bumpAvatarBust, useAvatarBust, useDevicePixelRatio,
+  detectImageSupport, probeDeliveredFormat, type ImageSupport,
+} from "@/lib/avatar-bust";
 import { toast } from "sonner";
 
 type MemberRow = {
@@ -58,11 +62,11 @@ export function MembersSheet({
   const [editName, setEditName] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [bustKey, setBustKey] = useState<number>(0);
+  const bustKey = useAvatarBust();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const refreshAvatars = () => {
-    setBustKey(Date.now());
+    bumpAvatarBust();
     toast.success(rtl ? "تم إعادة تحميل الصور بجودة عالية" : "Reloaded avatars in HD");
   };
 
@@ -409,6 +413,7 @@ function DiagnosticsPanel({
   onRefresh: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const dpr = useDevicePixelRatio();
   const info = describeAvatarChoice(avatarUrl, cssSize);
   const busted = info.transformed
     ? (() => {
@@ -419,6 +424,39 @@ function DiagnosticsPanel({
         } catch { return info.transformed; }
       })()
     : null;
+
+  const [support, setSupport] = useState<ImageSupport | null>(null);
+  const [delivered, setDelivered] = useState<{ contentType: string | null; contentLength: number | null } | null>(null);
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    detectImageSupport().then(setSupport).catch(() => {});
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !busted) { setDelivered(null); return; }
+    let cancelled = false;
+    probeDeliveredFormat(busted).then((r) => { if (!cancelled) setDelivered(r); });
+    return () => { cancelled = true; };
+  }, [open, busted]);
+
+  useEffect(() => {
+    if (!open || !busted) { setNatural(null); return; }
+    const img = new Image();
+    img.onload = () => setNatural({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => setNatural(null);
+    img.src = busted;
+  }, [open, busted]);
+
+  const deliveredFmt = delivered?.contentType ?? null;
+  const isAvif = deliveredFmt?.includes("avif");
+  const isWebp = deliveredFmt?.includes("webp");
+  const fallback = support?.avif && !isAvif && !isWebp && deliveredFmt && !deliveredFmt.includes("avif") && !deliveredFmt.includes("webp");
+  const dimsOk = natural && info.transformedWidth
+    ? Math.abs(natural.w - info.transformedWidth) < 8
+    : null;
+
   return (
     <div className="mx-4 mt-2 mb-8 rounded-2xl border border-white/10 bg-black/40">
       <button
@@ -441,14 +479,60 @@ function DiagnosticsPanel({
               </span>
             </div>
           )}
+          {fallback && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-amber-200">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                {rtl
+                  ? `المتصفح يدعم AVIF لكن تم تسليم ${deliveredFmt}. تحقق من رأس Accept.`
+                  : `Browser supports AVIF but server delivered ${deliveredFmt}. Check Accept header.`}
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-1.5">
-            <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{info.dpr}x</span></div>
+            <div><span className="text-white/50">DPR: </span><span className="tabular-nums text-white">{dpr}x</span></div>
             <div><span className="text-white/50">CSS: </span><span className="tabular-nums text-white">{info.cssSize}px</span></div>
             <div><span className="text-white/50">{rtl ? "المطلوب:" : "Ideal:"} </span><span className="tabular-nums text-white">{info.idealPx}px</span></div>
             <div><span className="text-white/50">{rtl ? "المختار:" : "Chosen:"} </span><span className="tabular-nums text-white">{info.chosenPx}px</span></div>
             <div><span className="text-white/50">{rtl ? "الجودة:" : "Quality:"} </span><span className="tabular-nums text-white">{info.quality ?? "—"}</span></div>
             <div><span className="text-white/50">Bust: </span><span className="tabular-nums text-white">{bustKey || "—"}</span></div>
           </div>
+
+          <div className="rounded-md border border-white/10 bg-black/40 p-2 space-y-1">
+            <div className="text-white/50 text-[10px] uppercase tracking-wider">
+              {rtl ? "دعم المتصفح للتنسيقات" : "Browser format support"}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <FormatChip label="AVIF" on={!!support?.avif} />
+              <FormatChip label="WebP" on={!!support?.webp} />
+              <span className="text-white/50">
+                {rtl ? "المُسلَّم فعليًا:" : "Delivered:"}{" "}
+                <span className="text-white">{deliveredFmt ?? "—"}</span>
+                {delivered?.contentLength ? <span className="text-white/50"> · {(delivered.contentLength / 1024).toFixed(1)} KB</span> : null}
+              </span>
+              {isAvif && <span className="text-emerald-300 text-[10px]">AVIF ✓</span>}
+              {isWebp && !isAvif && <span className="text-emerald-300 text-[10px]">WebP ✓</span>}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-white/10 bg-black/40 p-2 space-y-1">
+            <div className="text-white/50 text-[10px] uppercase tracking-wider">
+              {rtl ? "الأبعاد الفعلية" : "Actual dimensions"}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>
+                <span className="text-white/50">{rtl ? "المتوقع:" : "Expected:"} </span>
+                <span className="tabular-nums text-white">{info.transformedWidth ?? "—"}×{info.transformedHeight ?? "—"}</span>
+              </span>
+              <span>
+                <span className="text-white/50">{rtl ? "الفعلي:" : "Natural:"} </span>
+                <span className="tabular-nums text-white">{natural ? `${natural.w}×${natural.h}` : "…"}</span>
+              </span>
+              {dimsOk === true && <span className="text-emerald-300 text-[10px]">{rtl ? "مطابق ✓" : "Match ✓"}</span>}
+              {dimsOk === false && <span className="text-amber-300 text-[10px]">{rtl ? "أقل من المتوقع ⚠️" : "Below expected ⚠️"}</span>}
+            </div>
+          </div>
+
           <div className="rounded-md border border-white/10 bg-black/40 p-2 space-y-1">
             <div className="text-white/50 text-[10px] uppercase tracking-wider">
               {rtl ? "مقارنة الأصلي ↔ HD" : "Original ↔ HD"}
@@ -463,10 +547,11 @@ function DiagnosticsPanel({
             </div>
             <div className="text-white/40 text-[10px]">
               {rtl
-                ? "المتصفح يستقبل AVIF/WebP تلقائيًا من Supabase عبر رأس Accept."
-                : "Browser receives AVIF/WebP automatically from Supabase via the Accept header."}
+                ? "التحديث تلقائي عند تغيّر DPR (Zoom/تبديل شاشة)."
+                : "Auto-refreshes when DPR changes (zoom / display switch)."}
             </div>
           </div>
+
           <div className="flex items-center justify-between pt-1 border-t border-white/10">
             <span className="text-white/50">
               {rtl ? "كاش قديم؟ اضغط تحديث." : "Stale cache? Force reload."}
@@ -484,6 +569,20 @@ function DiagnosticsPanel({
         </div>
       )}
     </div>
+  );
+}
+
+function FormatChip({ label, on }: { label: string; on: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold tracking-wider ${
+        on
+          ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+          : "border-white/15 bg-white/5 text-white/50"
+      }`}
+    >
+      {label} {on ? "✓" : "×"}
+    </span>
   );
 }
 

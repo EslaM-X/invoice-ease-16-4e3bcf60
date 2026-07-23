@@ -392,6 +392,38 @@ export const setChatWallpaper = createServerFn({ method: "POST" })
     return { ok: true, wallpaper: current };
   });
 
+// Chat message density preference (comfortable | cozy | compact)
+export const getChatDensity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("user_ui_preferences")
+      .select("chat_density")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const raw = (data as any)?.chat_density ?? "cozy";
+    const density = ["comfortable", "cozy", "compact"].includes(raw) ? raw : "cozy";
+    return { density };
+  });
+
+export const setChatDensity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ density: z.enum(["comfortable", "cozy", "compact"]) }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("user_ui_preferences")
+      .upsert(
+        { user_id: userId, chat_density: data.density } as any,
+        { onConflict: "user_id" }
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true, density: data.density };
+  });
+
 
 // Update current user's chat display profile (job title + color).
 export const updateChatProfile = createServerFn({ method: "POST" })
