@@ -30,6 +30,7 @@ import { useRoomContext, useTracks } from "@livekit/components-react";
 import { Track, RoomEvent, type RemoteParticipant } from "livekit-client";
 import {
   MousePointer2,
+  MousePointerClick,
   Pencil,
   Highlighter,
   ArrowUpRight,
@@ -47,6 +48,12 @@ import {
   StickyNote,
   Users,
   Lock,
+  BringToFront,
+  SendToBack,
+  ArrowUp,
+  ArrowDown,
+  Edit3,
+  X as XIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -56,7 +63,7 @@ import { cn } from "@/lib/utils";
 /* -------------------------------------------------------------- */
 
 type Tool =
-  | "off" | "laser"
+  | "off" | "select" | "laser"
   | "pen" | "highlighter" | "arrow"
   | "rect" | "ellipse" | "ring" | "line"
   | "text" | "sticky"
@@ -126,7 +133,9 @@ type LaserMsg = { t: "laser"; owner: string; x: number; y: number; color: string
 type UndoMsg = { t: "undo"; owner: string };
 type ClearMsg = { t: "clear"; owner?: string /* undefined = clear all */ };
 type PermMsg = { t: "perm"; mode: "presenter" | "all"; by: string };
-type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg;
+type DeleteMsg = { t: "delete"; id: string; by: string };
+type OrderMsg = { t: "order"; order: string[]; by: string };
+type Msg = StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg | DeleteMsg | OrderMsg;
 
 
 type Stroke = Omit<StrokeMsg, "t" | "done">;
@@ -227,6 +236,35 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   const rafRef = useRef<number | null>(null);
   const dirtyRef = useRef(true);
 
+  // Selection state (for the "select" tool)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [, setRevision] = useState(0);
+  const bumpUI = useCallback(() => setRevision((r) => (r + 1) | 0), []);
+  const selDragRef = useRef<
+    | null
+    | {
+        mode: "move" | "resize";
+        handle?: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+        startClient: { x: number; y: number };
+        origBounds: { x1: number; y1: number; x2: number; y2: number };
+        origItem: AnyItem;
+        overlayW: number;
+        overlayH: number;
+      }
+  >(null);
+
+  const [overlaySize, setOverlaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useEffect(() => {
+    const box = overlayRef.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setOverlaySize({ w: box.clientWidth, h: box.clientHeight });
+    });
+    ro.observe(box);
+    setOverlaySize({ w: box.clientWidth, h: box.clientHeight });
+    return () => ro.disconnect();
+  }, []);
+
   /* --------------- broadcast helpers --------------- */
   const publish = useCallback(
     async (msg: Msg, reliable: boolean) => {
@@ -290,6 +328,15 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       }
     } else if (m.t === "perm") {
       setPermMode(m.mode);
+    } else if (m.t === "delete") {
+      itemsRef.current.delete(m.id);
+      const i = orderRef.current.indexOf(m.id);
+      if (i >= 0) orderRef.current.splice(i, 1);
+    } else if (m.t === "order") {
+      const existing = new Set(itemsRef.current.keys());
+      const next = m.order.filter((id) => existing.has(id));
+      for (const id of orderRef.current) if (!next.includes(id) && existing.has(id)) next.push(id);
+      orderRef.current = next;
     }
   }, []);
 
@@ -318,14 +365,15 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         const m = JSON.parse(dec.decode(payload)) as Msg;
         applyMessage(m);
         dirtyRef.current = true;
-        if (m.t === "stroke" || m.t === "shape" || m.t === "text" || m.t === "undo" || m.t === "clear") {
+        if (m.t === "stroke" || m.t === "shape" || m.t === "text" || m.t === "undo" || m.t === "clear" || m.t === "delete" || m.t === "order") {
           scheduleSave();
+          bumpUI();
         }
       } catch { /* noop */ }
     };
     room.on(RoomEvent.DataReceived, onData);
     return () => { room.off(RoomEvent.DataReceived, onData); };
-  }, [room, applyMessage, scheduleSave]);
+  }, [room, applyMessage, scheduleSave, bumpUI]);
 
   /* --------- restore saved session on new share start --------- */
   const shareCount = shares.length;
@@ -487,8 +535,224 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     dirtyRef.current = true;
   };
 
+  /* --------------- selection: helpers --------------- */
+
+  const commitItem = useCallback(
+    (it: AnyItem, alsoBroadcast = true) => {
+      itemsRef.current.set(it.id, it);
+      if (alsoBroadcast) {
+        const msg = itemToMsg(it);
+        if (msg) void publish(msg, true);
+      }
+      scheduleSave();
+      dirtyRef.current = true;
+      bumpUI();
+    },
+    [publish, scheduleSave, bumpUI],
+  );
+
+  const deleteItem = useCallback(
+    (id: string) => {
+      itemsRef.current.delete(id);
+      const i = orderRef.current.indexOf(id);
+      if (i >= 0) orderRef.current.splice(i, 1);
+      void publish({ t: "delete", id, by: localIdentity }, true);
+      scheduleSave();
+      dirtyRef.current = true;
+      setSelectedId((cur) => (cur === id ? null : cur));
+      bumpUI();
+    },
+    [publish, scheduleSave, localIdentity, bumpUI],
+  );
+
+  const setOrder = useCallback(
+    (nextOrder: string[]) => {
+      orderRef.current = nextOrder;
+      void publish({ t: "order", order: [...nextOrder], by: localIdentity }, true);
+      scheduleSave();
+      dirtyRef.current = true;
+      bumpUI();
+    },
+    [publish, scheduleSave, localIdentity, bumpUI],
+  );
+
+  const bringToFront = useCallback(
+    (id: string) => {
+      const o = orderRef.current.filter((x) => x !== id);
+      o.push(id);
+      setOrder(o);
+    },
+    [setOrder],
+  );
+  const sendToBack = useCallback(
+    (id: string) => {
+      const o = orderRef.current.filter((x) => x !== id);
+      o.unshift(id);
+      setOrder(o);
+    },
+    [setOrder],
+  );
+  const forwardOne = useCallback(
+    (id: string) => {
+      const o = [...orderRef.current];
+      const i = o.indexOf(id);
+      if (i >= 0 && i < o.length - 1) {
+        [o[i], o[i + 1]] = [o[i + 1], o[i]];
+        setOrder(o);
+      }
+    },
+    [setOrder],
+  );
+  const backwardOne = useCallback(
+    (id: string) => {
+      const o = [...orderRef.current];
+      const i = o.indexOf(id);
+      if (i > 0) {
+        [o[i], o[i - 1]] = [o[i - 1], o[i]];
+        setOrder(o);
+      }
+    },
+    [setOrder],
+  );
+
+  const editSelectedText = useCallback(() => {
+    const id = selectedId;
+    if (!id) return;
+    const it = itemsRef.current.get(id);
+    if (!it || it.kind !== "text") return;
+    // eslint-disable-next-line no-alert
+    const v = window.prompt(rtl ? "تعديل النص" : "Edit text", it.content);
+    if (v == null) return;
+    const trimmed = v.trim();
+    if (!trimmed) return;
+    commitItem({ ...it, content: trimmed });
+  }, [selectedId, rtl, commitItem]);
+
+  const hitTest = (nx: number, ny: number, w: number, h: number): string | null => {
+    // Iterate top-most first (last in order)
+    for (let i = orderRef.current.length - 1; i >= 0; i--) {
+      const id = orderRef.current[i];
+      const it = itemsRef.current.get(id);
+      if (!it) continue;
+      const b = itemPixelBounds(it, w, h);
+      const pad = 8;
+      const px = nx * w, py = ny * h;
+      if (px >= b.x1 - pad && px <= b.x2 + pad && py >= b.y1 - pad && py <= b.y2 + pad) {
+        return id;
+      }
+    }
+    return null;
+  };
+
+  /* --------------- selection: window drag handlers --------------- */
+  useEffect(() => {
+    const onMove = (ev: PointerEvent) => {
+      const d = selDragRef.current;
+      if (!d) return;
+      ev.preventDefault();
+      const dxPx = ev.clientX - d.startClient.x;
+      const dyPx = ev.clientY - d.startClient.y;
+      const dx = dxPx / d.overlayW;
+      const dy = dyPx / d.overlayH;
+
+      if (d.mode === "move") {
+        const it = translateItem(d.origItem, dx, dy);
+        itemsRef.current.set(it.id, it);
+        dirtyRef.current = true;
+        bumpUI();
+        return;
+      }
+      // resize
+      const oldBpx = itemPixelBounds(d.origItem, d.overlayW, d.overlayH);
+      const anchorStart = handleAnchorPx(d.handle!, oldBpx);
+      const newHandlePt = { x: anchorStart.x + dxPx, y: anchorStart.y + dyPx };
+      const keepAspect = !ev.shiftKey && d.origItem.kind !== "text";
+      const newBpx = computeNewBoundsPx(oldBpx, d.handle!, newHandlePt, keepAspect);
+      const newB = {
+        x1: newBpx.x1 / d.overlayW, y1: newBpx.y1 / d.overlayH,
+        x2: newBpx.x2 / d.overlayW, y2: newBpx.y2 / d.overlayH,
+      };
+      const oldBnorm = {
+        x1: oldBpx.x1 / d.overlayW, y1: oldBpx.y1 / d.overlayH,
+        x2: oldBpx.x2 / d.overlayW, y2: oldBpx.y2 / d.overlayH,
+      };
+      const it = transformItem(d.origItem, oldBnorm, newB);
+      itemsRef.current.set(it.id, it);
+      dirtyRef.current = true;
+      bumpUI();
+    };
+    const onUp = () => {
+      const d = selDragRef.current;
+      if (!d) return;
+      selDragRef.current = null;
+      const cur = itemsRef.current.get(d.origItem.id);
+      if (cur) {
+        const msg = itemToMsg(cur);
+        if (msg) void publish(msg, true);
+        scheduleSave();
+      }
+    };
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [publish, scheduleSave, bumpUI]);
+
+  const beginResize = (
+    handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w",
+    e: React.PointerEvent,
+  ) => {
+    if (!selectedId) return;
+    const it = itemsRef.current.get(selectedId);
+    if (!it) return;
+    const box = overlayRef.current;
+    if (!box) return;
+    const w = box.clientWidth, h = box.clientHeight;
+    selDragRef.current = {
+      mode: "resize",
+      handle,
+      startClient: { x: e.clientX, y: e.clientY },
+      origBounds: {
+        x1: 0, y1: 0, x2: 0, y2: 0, // unused; recomputed each move
+      },
+      origItem: it,
+      overlayW: w,
+      overlayH: h,
+    };
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (tool === "off") return;
+    if (tool === "select") {
+      if (!canDraw) return;
+      const box = overlayRef.current;
+      if (!box) return;
+      const w = box.clientWidth, h = box.clientHeight;
+      const p = toNorm(e);
+      const id = hitTest(p[0], p[1], w, h);
+      if (!id) { setSelectedId(null); return; }
+      const it = itemsRef.current.get(id);
+      if (!it) return;
+      setSelectedId(id);
+      selDragRef.current = {
+        mode: "move",
+        startClient: { x: e.clientX, y: e.clientY },
+        origBounds: { x1: 0, y1: 0, x2: 0, y2: 0 },
+        origItem: it,
+        overlayW: w,
+        overlayH: h,
+      };
+      e.preventDefault();
+      return;
+    }
     if (!canDraw) return;
 
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -537,7 +801,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (tool === "off") return;
+    if (tool === "off" || tool === "select") return;
     const p = toNorm(e);
 
     if (tool === "laser") {
@@ -587,7 +851,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   };
 
   const onPointerUp = (_e: React.PointerEvent) => {
-    if (tool === "off") return;
+    if (tool === "off" || tool === "select") return;
 
     const sh = activeShapeRef.current as (Shape & { kindShape: ShapeMsg["kind"] }) | null;
     if (sh) {
@@ -662,6 +926,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const k = e.key.toLowerCase();
       let handled = true;
       if (k === "a") setCollapsed((v) => !v);
+      else if (k === "v") { setTool("select"); }
       else if (k === "1") setTool("laser");
       else if (k === "2") setTool("pen");
       else if (k === "3") setTool("highlighter");
@@ -675,13 +940,25 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       else if (k === "e") setTool("eraser");
       else if (k === "z") undo();
       else if (k === "x") clearAll();
-      else if (e.key === "Escape") setTool("off");
+      else if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        deleteItem(selectedId);
+      }
+      else if (e.key === "Enter" && selectedId) {
+        editSelectedText();
+      }
+      else if (e.key === "]" && selectedId) {
+        if (e.shiftKey) bringToFront(selectedId); else forwardOne(selectedId);
+      }
+      else if (e.key === "[" && selectedId) {
+        if (e.shiftKey) sendToBack(selectedId); else backwardOne(selectedId);
+      }
+      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); }
       else handled = false;
       if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isAnyoneSharing, undo, clearAll]);
+  }, [isAnyoneSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
 
   if (!isAnyoneSharing) return null;
 
@@ -695,7 +972,11 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         className={cn(
           "absolute left-0 right-0 top-0 z-30",
           "bottom-32",
-          interactive ? "cursor-crosshair pointer-events-auto" : "pointer-events-none",
+          interactive
+            ? (tool === "select"
+                ? "cursor-default pointer-events-auto"
+                : "cursor-crosshair pointer-events-auto")
+            : "pointer-events-none",
         )}
         style={{ touchAction: interactive ? "none" : undefined, userSelect: interactive ? "none" : undefined }}
         onPointerDown={onPointerDown}
@@ -724,6 +1005,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
           </div>
         ) : null}
 
+        <SelectionOverlay
+          tool={tool}
+          selectedId={selectedId}
+          itemsRef={itemsRef}
+          overlayW={overlaySize.w}
+          overlayH={overlaySize.h}
+          beginResize={beginResize}
+        />
       </div>
 
       {/* Floating toolbar (wraps on small screens, stays inside stage) */}
@@ -747,6 +1036,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
         {!collapsed ? (
           <>
+            <Sep />
+            <ToolButton
+              label={rtl ? "تحديد وتحرير (V)" : "Select & edit (V)"}
+              active={tool === "select"}
+              onClick={() => setTool(tool === "select" ? "off" : "select")}
+            >
+              <MousePointerClick className="size-4" />
+            </ToolButton>
             <Sep />
             <ToolButton label={rtl ? "مؤشر ليزر (1)" : "Laser (1)"} active={tool === "laser"}
               onClick={() => setTool(tool === "laser" ? "off" : "laser")}>
@@ -905,6 +1202,81 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
           </>
         ) : null}
       </div>
+
+      {/* Selection actions bar — appears when an item is selected */}
+      {selectedId && tool === "select" ? (
+        <div
+          className={cn(
+            "absolute z-40 flex items-center gap-1 rounded-2xl border border-amber-400/40 bg-black/80 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
+            rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
+            "bottom-24 sm:bottom-28",
+          )}
+          role="toolbar"
+          aria-label={rtl ? "إجراءات العنصر المحدَّد" : "Selection actions"}
+        >
+          {(() => {
+            const it = itemsRef.current.get(selectedId);
+            const isText = it?.kind === "text";
+            return (
+              <>
+                {isText ? (
+                  <ToolButton
+                    label={rtl ? "تعديل النص (Enter)" : "Edit text (Enter)"}
+                    onClick={editSelectedText}
+                    active={false}
+                  >
+                    <Edit3 className="size-4" />
+                  </ToolButton>
+                ) : null}
+                <ToolButton
+                  label={rtl ? "إلى الأمام (])" : "Forward (])"}
+                  onClick={() => forwardOne(selectedId)}
+                  active={false}
+                >
+                  <ArrowUp className="size-4" />
+                </ToolButton>
+                <ToolButton
+                  label={rtl ? "إلى الخلف ([)" : "Backward ([)"}
+                  onClick={() => backwardOne(selectedId)}
+                  active={false}
+                >
+                  <ArrowDown className="size-4" />
+                </ToolButton>
+                <ToolButton
+                  label={rtl ? "إلى المقدمة (Shift+])" : "Bring to front (Shift+])"}
+                  onClick={() => bringToFront(selectedId)}
+                  active={false}
+                >
+                  <BringToFront className="size-4" />
+                </ToolButton>
+                <ToolButton
+                  label={rtl ? "إلى الخلفية (Shift+[)" : "Send to back (Shift+[)"}
+                  onClick={() => sendToBack(selectedId)}
+                  active={false}
+                >
+                  <SendToBack className="size-4" />
+                </ToolButton>
+                <Sep />
+                <ToolButton
+                  label={rtl ? "حذف (Delete)" : "Delete"}
+                  onClick={() => deleteItem(selectedId)}
+                  active={false}
+                  danger
+                >
+                  <Trash2 className="size-4" />
+                </ToolButton>
+                <ToolButton
+                  label={rtl ? "إلغاء التحديد (Esc)" : "Deselect (Esc)"}
+                  onClick={() => setSelectedId(null)}
+                  active={false}
+                >
+                  <XIcon className="size-4" />
+                </ToolButton>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -1134,4 +1506,140 @@ function withAlpha(c: string, a: number) {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
   }
   return c;
+}
+
+/* -------------------------------------------------------------- */
+/* Selection geometry helpers                                     */
+/* -------------------------------------------------------------- */
+
+type Bounds = { x1: number; y1: number; x2: number; y2: number };
+type HandleKey = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+function strokeShapeBounds(it: AnyItem): Bounds {
+  if (it.kind === "stroke") {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const [x, y] of it.pts) {
+      if (x < x1) x1 = x;
+      if (y < y1) y1 = y;
+      if (x > x2) x2 = x;
+      if (y > y2) y2 = y;
+    }
+    if (!isFinite(x1)) return { x1: 0, y1: 0, x2: 0, y2: 0 };
+    return { x1, y1, x2, y2 };
+  }
+  if (it.kind === "shape") {
+    return {
+      x1: Math.min(it.x1, it.x2),
+      y1: Math.min(it.y1, it.y2),
+      x2: Math.max(it.x1, it.x2),
+      y2: Math.max(it.y1, it.y2),
+    };
+  }
+  return { x1: it.x, y1: it.y, x2: it.x + it.maxW, y2: it.y + 0.1 };
+}
+
+function itemPixelBounds(it: AnyItem, w: number, h: number): Bounds {
+  if (it.kind === "text") {
+    const isSticky = it.kindText === "sticky";
+    const px = isSticky ? STICKY_PX[it.size] : TEXT_PX[it.size];
+    const maxWpx = Math.max(80, it.maxW * w);
+    const charsPerLine = Math.max(4, Math.floor(maxWpx / (px * 0.55)));
+    const paragraphs = it.content.split(/\n/);
+    let lines = 0;
+    for (const p of paragraphs) lines += Math.max(1, Math.ceil((p.length || 1) / charsPerLine));
+    const lineH = Math.round(px * 1.25);
+    const padX = isSticky ? 12 : 6;
+    const padY = isSticky ? 10 : 4;
+    const bwPx = Math.min(maxWpx, maxWpx) + padX * 2;
+    const bhPx = lines * lineH + padY * 2;
+    return { x1: it.x * w, y1: it.y * h, x2: it.x * w + bwPx, y2: it.y * h + bhPx };
+  }
+  const b = strokeShapeBounds(it);
+  return { x1: b.x1 * w, y1: b.y1 * h, x2: b.x2 * w, y2: b.y2 * h };
+}
+
+function translateItem(it: AnyItem, dx: number, dy: number): AnyItem {
+  if (it.kind === "stroke") {
+    return { ...it, pts: it.pts.map(([x, y]) => [x + dx, y + dy] as [number, number]) };
+  }
+  if (it.kind === "shape") {
+    return { ...it, x1: it.x1 + dx, y1: it.y1 + dy, x2: it.x2 + dx, y2: it.y2 + dy };
+  }
+  return { ...it, x: it.x + dx, y: it.y + dy };
+}
+
+function transformItem(orig: AnyItem, oldB: Bounds, newB: Bounds): AnyItem {
+  const ow = oldB.x2 - oldB.x1 || 1e-6;
+  const oh = oldB.y2 - oldB.y1 || 1e-6;
+  const sx = (newB.x2 - newB.x1) / ow;
+  const sy = (newB.y2 - newB.y1) / oh;
+  const mapX = (x: number) => newB.x1 + (x - oldB.x1) * sx;
+  const mapY = (y: number) => newB.y1 + (y - oldB.y1) * sy;
+  if (orig.kind === "stroke") {
+    return { ...orig, pts: orig.pts.map(([x, y]) => [mapX(x), mapY(y)] as [number, number]) };
+  }
+  if (orig.kind === "shape") {
+    return { ...orig, x1: mapX(orig.x1), y1: mapY(orig.y1), x2: mapX(orig.x2), y2: mapY(orig.y2) };
+  }
+  return {
+    ...orig,
+    x: newB.x1,
+    y: newB.y1,
+    maxW: Math.max(0.04, newB.x2 - newB.x1),
+  };
+}
+
+function handleAnchorPx(h: HandleKey, b: Bounds): { x: number; y: number } {
+  const cx = (b.x1 + b.x2) / 2;
+  const cy = (b.y1 + b.y2) / 2;
+  switch (h) {
+    case "nw": return { x: b.x1, y: b.y1 };
+    case "n":  return { x: cx,   y: b.y1 };
+    case "ne": return { x: b.x2, y: b.y1 };
+    case "e":  return { x: b.x2, y: cy   };
+    case "se": return { x: b.x2, y: b.y2 };
+    case "s":  return { x: cx,   y: b.y2 };
+    case "sw": return { x: b.x1, y: b.y2 };
+    case "w":  return { x: b.x1, y: cy   };
+  }
+}
+
+function computeNewBoundsPx(
+  oldB: Bounds,
+  handle: HandleKey,
+  pt: { x: number; y: number },
+  keepAspect: boolean,
+): Bounds {
+  let { x1, y1, x2, y2 } = oldB;
+  if (handle.includes("w")) x1 = pt.x;
+  if (handle.includes("e")) x2 = pt.x;
+  if (handle.includes("n")) y1 = pt.y;
+  if (handle.includes("s")) y2 = pt.y;
+  // Keep positive size (no auto-flip, clamp instead)
+  const MIN = 8;
+  if (x2 - x1 < MIN) {
+    if (handle.includes("w")) x1 = x2 - MIN;
+    else x2 = x1 + MIN;
+  }
+  if (y2 - y1 < MIN) {
+    if (handle.includes("n")) y1 = y2 - MIN;
+    else y2 = y1 + MIN;
+  }
+  if (keepAspect && handle.length === 2) {
+    const aspect = (oldB.x2 - oldB.x1) / (oldB.y2 - oldB.y1 || 1e-6);
+    const nw = x2 - x1;
+    const nh = y2 - y1;
+    let targetW = nw, targetH = nh;
+    if (nw / nh > aspect) {
+      // width dominates -> grow height to match
+      targetH = nw / aspect;
+    } else {
+      targetW = nh * aspect;
+    }
+    if (handle === "nw") { x1 = x2 - targetW; y1 = y2 - targetH; }
+    if (handle === "ne") { x2 = x1 + targetW; y1 = y2 - targetH; }
+    if (handle === "se") { x2 = x1 + targetW; y2 = y1 + targetH; }
+    if (handle === "sw") { x1 = x2 - targetW; y2 = y1 + targetH; }
+  }
+  return { x1, y1, x2, y2 };
 }
