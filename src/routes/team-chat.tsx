@@ -179,12 +179,13 @@ function TeamChatPage() {
     attach();
     return () => { if (mq) mq.onchange = null; };
   }, [captureRealign]);
-  const densitySpacingClass =
+  const densityPaddingClass =
     density === "compact"
-      ? "space-y-0.5 p-2 sm:p-3"
+      ? "p-2 sm:p-3"
       : density === "comfortable"
-      ? "space-y-3 p-3 sm:p-5 md:p-7"
-      : "space-y-2 md:space-y-2.5 p-3 sm:p-4 md:p-6";
+      ? "p-3 sm:p-5 md:p-7"
+      : "p-3 sm:p-4 md:p-6";
+  const densityGapPx = density === "compact" ? 2 : density === "comfortable" ? 12 : 8;
 
   // Older-history pagination + scroll anchor state
   const [olderPages, setOlderPages] = useState<ChatMsg[][]>([]);
