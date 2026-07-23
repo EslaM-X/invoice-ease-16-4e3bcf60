@@ -1,0 +1,1 @@
+ALTER TABLE public.user_ui_preferences ADD COLUMN IF NOT EXISTS chat_density text NOT NULL DEFAULT 'cozy' CHECK (chat_density IN ('comfortable','cozy','compact'));

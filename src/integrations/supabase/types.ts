@@ -3506,6 +3506,7 @@ export type Database = {
         Row: {
           cards_hidden: Json
           cards_order: Json
+          chat_density: string
           chat_wallpaper: Json
           created_at: string
           mobile_tabs: Json
@@ -3518,6 +3519,7 @@ export type Database = {
         Insert: {
           cards_hidden?: Json
           cards_order?: Json
+          chat_density?: string
           chat_wallpaper?: Json
           created_at?: string
           mobile_tabs?: Json
@@ -3530,6 +3532,7 @@ export type Database = {
         Update: {
           cards_hidden?: Json
           cards_order?: Json
+          chat_density?: string
           chat_wallpaper?: Json
           created_at?: string
           mobile_tabs?: Json
