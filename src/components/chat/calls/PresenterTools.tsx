@@ -58,6 +58,11 @@ import {
   RotateCcw,
   Image as ImageIcon,
   Hand,
+  Copy,
+  CopyPlus,
+  Group,
+  Ungroup,
+  Magnet,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -156,15 +161,16 @@ type PtrMsg = {
   down: boolean;
 };
 type PtrGoneMsg = { t: "ptrgone"; owner: string };
+type AssignGroupMsg = { t: "assignGroup"; ids: string[]; groupId: string | null; by: string };
 type Msg =
   | StrokeMsg | ShapeMsg | TextMsg | LaserMsg | UndoMsg | ClearMsg | PermMsg
-  | DeleteMsg | OrderMsg | SnapshotMsg | PtrMsg | PtrGoneMsg;
+  | DeleteMsg | OrderMsg | SnapshotMsg | PtrMsg | PtrGoneMsg | AssignGroupMsg;
 
 
-type Stroke = Omit<StrokeMsg, "t" | "done">;
+type Stroke = Omit<StrokeMsg, "t" | "done"> & { groupId?: string };
 // Rename inner "kind" to avoid clashing with the AnyItem discriminator.
-type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"] };
-type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"] };
+type Shape = Omit<ShapeMsg, "t" | "done" | "kind"> & { kindShape: ShapeMsg["kind"]; groupId?: string };
+type TextAnn = Omit<TextMsg, "t" | "kind"> & { kindText: TextMsg["kind"]; groupId?: string };
 
 type AnyItem =
   | ({ kind: "stroke" } & Stroke)
@@ -285,7 +291,8 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   const dirtyRef = useRef(true);
 
   // Selection state (for the "select" tool)
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
   const [, setRevision] = useState(0);
   const bumpUI = useCallback(() => setRevision((r) => (r + 1) | 0), []);
   const selDragRef = useRef<
@@ -294,12 +301,39 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         mode: "move" | "resize";
         handle?: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
         startClient: { x: number; y: number };
-        origBounds: { x1: number; y1: number; x2: number; y2: number };
-        origItem: AnyItem;
+        // For "move" — original items keyed by id; for "resize" — one item
+        origItems: AnyItem[];
         overlayW: number;
         overlayH: number;
       }
   >(null);
+
+  // Snap-to-grid + smart guides
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem("lk-presenter:snap") !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("lk-presenter:snap", snapEnabled ? "1" : "0"); } catch { /* ignore */ }
+  }, [snapEnabled]);
+  const guidesRef = useRef<{ v: number[]; h: number[] }>({ v: [], h: [] });
+
+  // Clipboard for copy/paste/duplicate
+  const clipboardRef = useRef<AnyItem[]>([]);
+
+  // Coarse-pointer (mobile/tablet) detection for larger handles & long-press
+  const [isCoarse, setIsCoarse] = useState<boolean>(() => {
+    try { return typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    if (typeof matchMedia === "undefined") return;
+    const mm = matchMedia("(pointer: coarse)");
+    const on = () => setIsCoarse(mm.matches);
+    mm.addEventListener?.("change", on);
+    return () => mm.removeEventListener?.("change", on);
+  }, []);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
 
   // Remote presenter cursors (mouse pointer / finger) from anyone sharing
   const cursorsRef = useRef<
@@ -421,6 +455,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       });
     } else if (m.t === "ptrgone") {
       cursorsRef.current.delete(m.owner);
+    } else if (m.t === "assignGroup") {
+      for (const id of m.ids) {
+        const it = itemsRef.current.get(id);
+        if (!it) continue;
+        const next = m.groupId ? { ...it, groupId: m.groupId } : { ...it };
+        if (!m.groupId && "groupId" in next) delete (next as { groupId?: string }).groupId;
+        itemsRef.current.set(id, next as AnyItem);
+      }
     }
   }, []);
 
@@ -598,6 +640,18 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         const it = itemsRef.current.get(id);
         const msg = it ? itemToMsg(it) : null;
         if (msg) void publish(msg, true);
+      }
+      // Rebroadcast group memberships (grouped items only)
+      const byGroup = new Map<string, string[]>();
+      for (const [id, it] of itemsRef.current) {
+        const g = (it as { groupId?: string }).groupId;
+        if (!g) continue;
+        const arr = byGroup.get(g) ?? [];
+        arr.push(id);
+        byGroup.set(g, arr);
+      }
+      for (const [g, ids] of byGroup) {
+        void publish({ t: "assignGroup", ids, groupId: g, by: localIdentity }, true);
       }
     };
     room.on(RoomEvent.ParticipantConnected, onJoin);
@@ -844,7 +898,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       void publish({ t: "delete", id, by: localIdentity }, true);
       scheduleSave("edit", localIdentity);
       dirtyRef.current = true;
-      setSelectedId((cur) => (cur === id ? null : cur));
+      setSelectedIds((cur: string[]) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur));
       bumpUI();
     },
     [publish, scheduleSave, localIdentity, bumpUI],
@@ -935,23 +989,57 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const d = selDragRef.current;
       if (!d) return;
       ev.preventDefault();
-      const dxPx = ev.clientX - d.startClient.x;
-      const dyPx = ev.clientY - d.startClient.y;
-      const dx = dxPx / d.overlayW;
-      const dy = dyPx / d.overlayH;
+      const dxPxRaw = ev.clientX - d.startClient.x;
+      const dyPxRaw = ev.clientY - d.startClient.y;
+
+      // Compute the union bounds of the drag set (in px) at original positions
+      const origUnion = unionPixelBounds(d.origItems, d.overlayW, d.overlayH);
 
       if (d.mode === "move") {
-        const it = translateItem(d.origItem, dx, dy);
-        itemsRef.current.set(it.id, it);
+        // Snap the union by translating and matching edges/centers to grid + guides
+        let dxPx = dxPxRaw, dyPx = dyPxRaw;
+        const proposed: Bounds = {
+          x1: origUnion.x1 + dxPxRaw, y1: origUnion.y1 + dyPxRaw,
+          x2: origUnion.x2 + dxPxRaw, y2: origUnion.y2 + dyPxRaw,
+        };
+        const others = collectOtherBoundsPx(
+          itemsRef.current, d.overlayW, d.overlayH, new Set(d.origItems.map((it) => it.id)),
+        );
+        const snap = snapEnabled && !ev.altKey
+          ? computeSnap(proposed, others, d.overlayW, d.overlayH)
+          : { dx: 0, dy: 0, guidesV: [], guidesH: [] };
+        dxPx += snap.dx; dyPx += snap.dy;
+        guidesRef.current = { v: snap.guidesV, h: snap.guidesH };
+
+        const dxN = dxPx / d.overlayW;
+        const dyN = dyPx / d.overlayH;
+        for (const orig of d.origItems) {
+          const it = translateItem(orig, dxN, dyN);
+          itemsRef.current.set(it.id, it);
+        }
         dirtyRef.current = true;
         bumpUI();
         return;
       }
-      // resize
-      const oldBpx = itemPixelBounds(d.origItem, d.overlayW, d.overlayH);
+      // resize (single item only)
+      const orig = d.origItems[0];
+      if (!orig) return;
+      const oldBpx = itemPixelBounds(orig, d.overlayW, d.overlayH);
       const anchorStart = handleAnchorPx(d.handle!, oldBpx);
-      const newHandlePt = { x: anchorStart.x + dxPx, y: anchorStart.y + dyPx };
-      const keepAspect = !ev.shiftKey && d.origItem.kind !== "text";
+      let hx = anchorStart.x + dxPxRaw;
+      let hy = anchorStart.y + dyPxRaw;
+      if (snapEnabled && !ev.altKey) {
+        const others = collectOtherBoundsPx(
+          itemsRef.current, d.overlayW, d.overlayH, new Set([orig.id]),
+        );
+        const sn = snapPointToGuides({ x: hx, y: hy }, others, d.overlayW, d.overlayH);
+        hx = sn.x; hy = sn.y;
+        guidesRef.current = { v: sn.guidesV, h: sn.guidesH };
+      } else {
+        guidesRef.current = { v: [], h: [] };
+      }
+      const newHandlePt = { x: hx, y: hy };
+      const keepAspect = !ev.shiftKey && orig.kind !== "text";
       const newBpx = computeNewBoundsPx(oldBpx, d.handle!, newHandlePt, keepAspect);
       const newB = {
         x1: newBpx.x1 / d.overlayW, y1: newBpx.y1 / d.overlayH,
@@ -961,7 +1049,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         x1: oldBpx.x1 / d.overlayW, y1: oldBpx.y1 / d.overlayH,
         x2: oldBpx.x2 / d.overlayW, y2: oldBpx.y2 / d.overlayH,
       };
-      const it = transformItem(d.origItem, oldBnorm, newB);
+      const it = transformItem(orig, oldBnorm, newB);
       itemsRef.current.set(it.id, it);
       dirtyRef.current = true;
       bumpUI();
@@ -970,12 +1058,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const d = selDragRef.current;
       if (!d) return;
       selDragRef.current = null;
-      const cur = itemsRef.current.get(d.origItem.id);
-      if (cur) {
-        const msg = itemToMsg(cur);
-        if (msg) void publish(msg, true);
-        scheduleSave("edit", localIdentity);
+      guidesRef.current = { v: [], h: [] };
+      for (const orig of d.origItems) {
+        const cur = itemsRef.current.get(orig.id);
+        if (cur) {
+          const msg = itemToMsg(cur);
+          if (msg) void publish(msg, true);
+        }
       }
+      scheduleSave("edit", localIdentity);
+      bumpUI();
     };
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onUp);
@@ -985,14 +1077,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [publish, scheduleSave, bumpUI]);
+  }, [publish, scheduleSave, bumpUI, snapEnabled, localIdentity]);
 
   const beginResize = (
     handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w",
     e: React.PointerEvent,
   ) => {
-    if (!selectedId) return;
-    const it = itemsRef.current.get(selectedId);
+    if (selectedIds.length !== 1) return;
+    const it = itemsRef.current.get(selectedIds[0]);
     if (!it) return;
     const box = overlayRef.current;
     if (!box) return;
@@ -1001,10 +1093,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       mode: "resize",
       handle,
       startClient: { x: e.clientX, y: e.clientY },
-      origBounds: {
-        x1: 0, y1: 0, x2: 0, y2: 0, // unused; recomputed each move
-      },
-      origItem: it,
+      origItems: [it],
       overlayW: w,
       overlayH: h,
     };
@@ -1023,22 +1112,88 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const w = box.clientWidth, h = box.clientHeight;
       const p = toNorm(e);
       const id = hitTest(p[0], p[1], w, h);
-      if (!id) { setSelectedId(null); return; }
-      const it = itemsRef.current.get(id);
-      if (!it) return;
-      setSelectedId(id);
-      selDragRef.current = {
-        mode: "move",
-        startClient: { x: e.clientX, y: e.clientY },
-        origBounds: { x1: 0, y1: 0, x2: 0, y2: 0 },
-        origItem: it,
-        overlayW: w,
-        overlayH: h,
-      };
+      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+      if (!id) {
+        if (!additive) setSelectedIds([]);
+        return;
+      }
+      // Expand to group members
+      const hit = itemsRef.current.get(id);
+      const gid = hit && (hit as { groupId?: string }).groupId;
+      const expandedIds = gid
+        ? Array.from(itemsRef.current.entries())
+            .filter(([, v]) => (v as { groupId?: string }).groupId === gid)
+            .map(([k]) => k)
+        : [id];
+
+      let nextIds: string[];
+      if (additive) {
+        // Toggle each expanded id in the current selection
+        const cur = new Set(selectedIds);
+        const allIn = expandedIds.every((x) => cur.has(x));
+        if (allIn) for (const x of expandedIds) cur.delete(x);
+        else for (const x of expandedIds) cur.add(x);
+        nextIds = Array.from(cur);
+      } else {
+        // If clicked item already selected, keep the whole current selection (for multi-drag);
+        // otherwise replace with the expanded group.
+        nextIds = selectedIds.includes(id) ? selectedIds : expandedIds;
+      }
+      setSelectedIds(nextIds);
+
+      // Begin move drag with all selected items (post-update snapshot)
+      const draggedIds = nextIds;
+      const items: AnyItem[] = [];
+      for (const sid of draggedIds) {
+        const it = itemsRef.current.get(sid);
+        if (it) items.push(it);
+      }
+      if (items.length > 0) {
+        selDragRef.current = {
+          mode: "move",
+          startClient: { x: e.clientX, y: e.clientY },
+          origItems: items,
+          overlayW: w,
+          overlayH: h,
+        };
+      }
       e.preventDefault();
       return;
     }
     if (!canDraw) return;
+
+    // Long-press on coarse pointers to jump into select mode & pick the item under finger.
+    if (isCoarse && e.pointerType === "touch" && tool !== "laser" && tool !== "eraser") {
+      longPressFiredRef.current = false;
+      if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
+      const box = overlayRef.current;
+      const startX = e.clientX, startY = e.clientY;
+      const w0 = box?.clientWidth ?? 0, h0 = box?.clientHeight ?? 0;
+      const pn = toNorm(e);
+      longPressTimerRef.current = window.setTimeout(() => {
+        longPressFiredRef.current = true;
+        const id = hitTest(pn[0], pn[1], w0, h0);
+        setTool("select");
+        if (id) {
+          const hit = itemsRef.current.get(id);
+          const gid = hit && (hit as { groupId?: string }).groupId;
+          const expanded = gid
+            ? Array.from(itemsRef.current.entries())
+                .filter(([, v]) => (v as { groupId?: string }).groupId === gid)
+                .map(([k]) => k)
+            : [id];
+          setSelectedIds(expanded);
+        } else {
+          setSelectedIds([]);
+        }
+        // Cancel any active draw
+        activeStrokeRef.current = null;
+        activeShapeRef.current = null;
+        // Give quick haptic feedback if available
+        try { (navigator as { vibrate?: (p: number) => void }).vibrate?.(15); } catch { /* ignore */ }
+        void startX; void startY;
+      }, 500);
+    }
 
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toNorm(e);
@@ -1085,7 +1240,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     }
   };
 
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
+    if (longPressTimerRef.current) cancelLongPress();
+    if (longPressFiredRef.current) return;
     if (tool === "off" || tool === "select") return;
     const p = toNorm(e);
 
@@ -1136,6 +1300,8 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
   };
 
   const onPointerUp = (_e: React.PointerEvent) => {
+    cancelLongPress();
+    if (longPressFiredRef.current) { longPressFiredRef.current = false; return; }
     if (tool === "off" || tool === "select") return;
 
     const sh = activeShapeRef.current as (Shape & { kindShape: ShapeMsg["kind"] }) | null;
@@ -1200,6 +1366,114 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     void publish({ t: "perm", mode: next, by: localIdentity }, true);
   }, [isLocalSharing, permMode, publish, localIdentity]);
 
+  /* --------------- multi-select / clipboard / group helpers --------------- */
+
+  const selectAll = useCallback(() => {
+    const ids = orderRef.current.filter((id) => itemsRef.current.has(id));
+    setSelectedIds(ids);
+  }, []);
+
+  const copySelection = useCallback(() => {
+    const ids = selectedIds;
+    if (ids.length === 0) return;
+    const clones: AnyItem[] = [];
+    for (const id of ids) {
+      const it = itemsRef.current.get(id);
+      if (it) clones.push(JSON.parse(JSON.stringify(it)) as AnyItem);
+    }
+    clipboardRef.current = clones;
+  }, [selectedIds]);
+
+  const pasteClipboard = useCallback(() => {
+    const src = clipboardRef.current;
+    if (!src || src.length === 0) return;
+    // Regenerate ids; preserve intra-clipboard groups by remapping group ids
+    const groupRemap = new Map<string, string>();
+    const OFFSET = 0.02; // normalized
+    const created: AnyItem[] = [];
+    for (const it of src) {
+      const newId = `${localIdentity}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+      const g = (it as { groupId?: string }).groupId;
+      let newG: string | undefined;
+      if (g) {
+        newG = groupRemap.get(g);
+        if (!newG) {
+          newG = `g:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+          groupRemap.set(g, newG);
+        }
+      }
+      const shifted = translateItem(it as AnyItem, OFFSET, OFFSET);
+      const clone: AnyItem = { ...(shifted as AnyItem), id: newId, owner: localIdentity } as AnyItem;
+      if (newG) (clone as { groupId?: string }).groupId = newG;
+      created.push(clone);
+    }
+    for (const it of created) {
+      itemsRef.current.set(it.id, it);
+      orderRef.current.push(it.id);
+      const msg = itemToMsg(it);
+      if (msg) void publish(msg, true);
+    }
+    // Broadcast group assignments after items
+    const byGroup = new Map<string, string[]>();
+    for (const it of created) {
+      const g = (it as { groupId?: string }).groupId;
+      if (!g) continue;
+      const arr = byGroup.get(g) ?? [];
+      arr.push(it.id);
+      byGroup.set(g, arr);
+    }
+    for (const [g, ids] of byGroup) {
+      void publish({ t: "assignGroup", ids, groupId: g, by: localIdentity }, true);
+    }
+    setSelectedIds(created.map((c) => c.id));
+    scheduleSave("edit", localIdentity);
+    dirtyRef.current = true;
+    bumpUI();
+  }, [publish, localIdentity, scheduleSave, bumpUI]);
+
+  const duplicateSelection = useCallback(() => {
+    // Copy → paste (uses last snapshot of selection)
+    const ids = selectedIds;
+    if (ids.length === 0) return;
+    const clones: AnyItem[] = [];
+    for (const id of ids) {
+      const it = itemsRef.current.get(id);
+      if (it) clones.push(JSON.parse(JSON.stringify(it)) as AnyItem);
+    }
+    clipboardRef.current = clones;
+    pasteClipboard();
+  }, [selectedIds, pasteClipboard]);
+
+  const groupSelection = useCallback(() => {
+    if (selectedIds.length < 2) return;
+    const g = `g:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 6)}`;
+    for (const id of selectedIds) {
+      const it = itemsRef.current.get(id);
+      if (!it) continue;
+      itemsRef.current.set(id, { ...(it as AnyItem), groupId: g } as AnyItem);
+    }
+    void publish({ t: "assignGroup", ids: [...selectedIds], groupId: g, by: localIdentity }, true);
+    scheduleSave("edit", localIdentity);
+    dirtyRef.current = true;
+    bumpUI();
+  }, [selectedIds, publish, localIdentity, scheduleSave, bumpUI]);
+
+  const ungroupSelection = useCallback(() => {
+    const ids = selectedIds.filter((id) => (itemsRef.current.get(id) as { groupId?: string } | undefined)?.groupId);
+    if (ids.length === 0) return;
+    for (const id of ids) {
+      const it = itemsRef.current.get(id);
+      if (!it) continue;
+      const clone = { ...(it as AnyItem) } as AnyItem & { groupId?: string };
+      delete clone.groupId;
+      itemsRef.current.set(id, clone as AnyItem);
+    }
+    void publish({ t: "assignGroup", ids, groupId: null, by: localIdentity }, true);
+    scheduleSave("edit", localIdentity);
+    dirtyRef.current = true;
+    bumpUI();
+  }, [selectedIds, publish, localIdentity, scheduleSave, bumpUI]);
+
 
   /* --------------- keyboard --------------- */
   useEffect(() => {
@@ -1207,8 +1481,25 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Cmd/Ctrl combos first (clipboard, group, select-all)
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === "c" && selectedIds.length > 0) { copySelection(); e.preventDefault(); return; }
+        if (k === "v" && clipboardRef.current.length > 0) { pasteClipboard(); e.preventDefault(); return; }
+        if (k === "d" && selectedIds.length > 0) { duplicateSelection(); e.preventDefault(); return; }
+        if (k === "a") { selectAll(); e.preventDefault(); return; }
+        if (k === "g") {
+          if (e.shiftKey) ungroupSelection(); else groupSelection();
+          e.preventDefault(); return;
+        }
+        return;
+      }
+      if (e.altKey) return;
+
       const k = e.key.toLowerCase();
+      const primary = selectedIds.length === 1 ? selectedIds[0] : null;
       let handled = true;
       if (k === "a") setCollapsed((v) => !v);
       else if (k === "v") { setTool("select"); }
@@ -1225,28 +1516,29 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       else if (k === "e") setTool("eraser");
       else if (k === "z") undo();
       else if (k === "x") clearAll();
-      else if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
-        deleteItem(selectedId);
+      else if (k === "s") setSnapEnabled((v) => !v);
+      else if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0) {
+        for (const id of [...selectedIds]) deleteItem(id);
       }
-      else if (e.key === "Enter" && selectedId) {
+      else if (e.key === "Enter" && primary) {
         editSelectedText();
       }
-      else if (e.key === "]" && selectedId) {
-        if (e.shiftKey) bringToFront(selectedId); else forwardOne(selectedId);
+      else if (e.key === "]" && primary) {
+        if (e.shiftKey) bringToFront(primary); else forwardOne(primary);
       }
-      else if (e.key === "[" && selectedId) {
-        if (e.shiftKey) sendToBack(selectedId); else backwardOne(selectedId);
+      else if (e.key === "[" && primary) {
+        if (e.shiftKey) sendToBack(primary); else backwardOne(primary);
       }
       else if (k === "y" && isLocalSharing) {
         setHistoryOpen((v) => !v); setPreviewOpen(false);
       }
-      else if (e.key === "Escape") { setTool("off"); setSelectedId(null); setHistoryOpen(false); setPreviewOpen(false); }
+      else if (e.key === "Escape") { setTool("off"); setSelectedIds([]); setHistoryOpen(false); setPreviewOpen(false); }
       else handled = false;
       if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isAnyoneSharing, isLocalSharing, undo, clearAll, selectedId, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne]);
+  }, [isAnyoneSharing, isLocalSharing, undo, clearAll, selectedIds, deleteItem, editSelectedText, bringToFront, forwardOne, sendToBack, backwardOne, copySelection, pasteClipboard, duplicateSelection, selectAll, groupSelection, ungroupSelection]);
 
   if (!isAnyoneSharing) return null;
 
@@ -1295,11 +1587,13 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
         <SelectionOverlay
           tool={tool}
-          selectedId={selectedId}
+          selectedIds={selectedIds}
           itemsRef={itemsRef}
           overlayW={overlaySize.w}
           overlayH={overlaySize.h}
           beginResize={beginResize}
+          isCoarse={isCoarse}
+          guides={guidesRef.current}
         />
       </div>
 
@@ -1388,6 +1682,13 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
             </ToolButton>
             <ToolButton label={rtl ? "مسح الكل (X)" : "Clear all (X)"} onClick={clearAll} active={false} danger>
               <Trash2 className="size-4" />
+            </ToolButton>
+            <ToolButton
+              label={rtl ? "التقاط للشبكة (S)" : "Snap to grid (S)"}
+              active={snapEnabled}
+              onClick={() => setSnapEnabled((v) => !v)}
+            >
+              <Magnet className="size-4" />
             </ToolButton>
 
             {isLocalSharing ? (
@@ -1506,23 +1807,30 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         ) : null}
       </div>
 
-      {/* Selection actions bar — appears when an item is selected */}
-      {selectedId && tool === "select" ? (
+      {/* Selection actions bar — appears when at least one item is selected */}
+      {selectedIds.length > 0 && tool === "select" ? (
         <div
           className={cn(
-            "absolute z-40 flex items-center gap-1 rounded-2xl border border-amber-400/40 bg-black/80 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
+            "absolute z-40 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1 rounded-2xl border border-amber-400/40 bg-black/80 p-1.5 backdrop-blur-xl shadow-2xl shadow-amber-500/10",
             rtl ? "left-2 sm:left-4" : "right-2 sm:right-4",
             "bottom-24 sm:bottom-28",
           )}
           role="toolbar"
-          aria-label={rtl ? "إجراءات العنصر المحدَّد" : "Selection actions"}
+          aria-label={rtl ? "إجراءات العناصر المحدَّدة" : "Selection actions"}
+          aria-live="polite"
         >
+          <div className="px-2 text-[11px] font-semibold text-amber-200/90 tabular-nums">
+            {selectedIds.length} {rtl ? "محدَّد" : "selected"}
+          </div>
+          <Sep />
           {(() => {
-            const it = itemsRef.current.get(selectedId);
+            const single = selectedIds.length === 1 ? selectedIds[0] : null;
+            const it = single ? itemsRef.current.get(single) : null;
             const isText = it?.kind === "text";
+            const anyGrouped = selectedIds.some((id) => (itemsRef.current.get(id) as { groupId?: string } | undefined)?.groupId);
             return (
               <>
-                {isText ? (
+                {isText && single ? (
                   <ToolButton
                     label={rtl ? "تعديل النص (Enter)" : "Edit text (Enter)"}
                     onClick={editSelectedText}
@@ -1532,37 +1840,75 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
                   </ToolButton>
                 ) : null}
                 <ToolButton
-                  label={rtl ? "إلى الأمام (])" : "Forward (])"}
-                  onClick={() => forwardOne(selectedId)}
+                  label={rtl ? "نسخ (Ctrl+C)" : "Copy (Ctrl+C)"}
+                  onClick={copySelection}
                   active={false}
                 >
-                  <ArrowUp className="size-4" />
+                  <Copy className="size-4" />
                 </ToolButton>
                 <ToolButton
-                  label={rtl ? "إلى الخلف ([)" : "Backward ([)"}
-                  onClick={() => backwardOne(selectedId)}
+                  label={rtl ? "تكرار (Ctrl+D)" : "Duplicate (Ctrl+D)"}
+                  onClick={duplicateSelection}
                   active={false}
                 >
-                  <ArrowDown className="size-4" />
-                </ToolButton>
-                <ToolButton
-                  label={rtl ? "إلى المقدمة (Shift+])" : "Bring to front (Shift+])"}
-                  onClick={() => bringToFront(selectedId)}
-                  active={false}
-                >
-                  <BringToFront className="size-4" />
-                </ToolButton>
-                <ToolButton
-                  label={rtl ? "إلى الخلفية (Shift+[)" : "Send to back (Shift+[)"}
-                  onClick={() => sendToBack(selectedId)}
-                  active={false}
-                >
-                  <SendToBack className="size-4" />
+                  <CopyPlus className="size-4" />
                 </ToolButton>
                 <Sep />
+                {selectedIds.length >= 2 ? (
+                  <ToolButton
+                    label={rtl ? "تجميع (Ctrl+G)" : "Group (Ctrl+G)"}
+                    onClick={groupSelection}
+                    active={false}
+                  >
+                    <Group className="size-4" />
+                  </ToolButton>
+                ) : null}
+                {anyGrouped ? (
+                  <ToolButton
+                    label={rtl ? "فك التجميع (Ctrl+Shift+G)" : "Ungroup (Ctrl+Shift+G)"}
+                    onClick={ungroupSelection}
+                    active={false}
+                  >
+                    <Ungroup className="size-4" />
+                  </ToolButton>
+                ) : null}
+                <Sep />
+                {single ? (
+                  <>
+                    <ToolButton
+                      label={rtl ? "إلى الأمام (])" : "Forward (])"}
+                      onClick={() => forwardOne(single)}
+                      active={false}
+                    >
+                      <ArrowUp className="size-4" />
+                    </ToolButton>
+                    <ToolButton
+                      label={rtl ? "إلى الخلف ([)" : "Backward ([)"}
+                      onClick={() => backwardOne(single)}
+                      active={false}
+                    >
+                      <ArrowDown className="size-4" />
+                    </ToolButton>
+                    <ToolButton
+                      label={rtl ? "إلى المقدمة (Shift+])" : "Bring to front (Shift+])"}
+                      onClick={() => bringToFront(single)}
+                      active={false}
+                    >
+                      <BringToFront className="size-4" />
+                    </ToolButton>
+                    <ToolButton
+                      label={rtl ? "إلى الخلفية (Shift+[)" : "Send to back (Shift+[)"}
+                      onClick={() => sendToBack(single)}
+                      active={false}
+                    >
+                      <SendToBack className="size-4" />
+                    </ToolButton>
+                    <Sep />
+                  </>
+                ) : null}
                 <ToolButton
                   label={rtl ? "حذف (Delete)" : "Delete"}
-                  onClick={() => deleteItem(selectedId)}
+                  onClick={() => { for (const id of [...selectedIds]) deleteItem(id); }}
                   active={false}
                   danger
                 >
@@ -1570,7 +1916,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
                 </ToolButton>
                 <ToolButton
                   label={rtl ? "إلغاء التحديد (Esc)" : "Deselect (Esc)"}
-                  onClick={() => setSelectedId(null)}
+                  onClick={() => setSelectedIds([])}
                   active={false}
                 >
                   <XIcon className="size-4" />
@@ -1743,73 +2089,122 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
 
 function SelectionOverlay({
   tool,
-  selectedId,
+  selectedIds,
   itemsRef,
   overlayW,
   overlayH,
   beginResize,
+  isCoarse,
+  guides,
 }: {
   tool: Tool;
-  selectedId: string | null;
+  selectedIds: string[];
   itemsRef: React.MutableRefObject<Map<string, AnyItem>>;
   overlayW: number;
   overlayH: number;
   beginResize: (h: HandleKey, e: React.PointerEvent) => void;
+  isCoarse: boolean;
+  guides: { v: number[]; h: number[] };
 }) {
-  if (tool !== "select" || !selectedId || overlayW === 0 || overlayH === 0) return null;
-  const it = itemsRef.current.get(selectedId);
-  if (!it) return null;
-  const b = itemPixelBounds(it, overlayW, overlayH);
-  const left = b.x1;
-  const top = b.y1;
-  const w = Math.max(1, b.x2 - b.x1);
-  const h = Math.max(1, b.y2 - b.y1);
+  if (tool !== "select" || selectedIds.length === 0 || overlayW === 0 || overlayH === 0) return null;
 
-  // Text items: only expose W/E and corner handles that resize width.
-  const isText = it.kind === "text";
-  const handles: HandleKey[] = isText
-    ? ["w", "e"]
-    : ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+  // Individual item outlines (always shown for selected items)
+  const outlines: React.ReactNode[] = [];
+  let unionX1 = Infinity, unionY1 = Infinity, unionX2 = -Infinity, unionY2 = -Infinity;
+  for (const id of selectedIds) {
+    const it = itemsRef.current.get(id);
+    if (!it) continue;
+    const b = itemPixelBounds(it, overlayW, overlayH);
+    if (b.x1 < unionX1) unionX1 = b.x1;
+    if (b.y1 < unionY1) unionY1 = b.y1;
+    if (b.x2 > unionX2) unionX2 = b.x2;
+    if (b.y2 > unionY2) unionY2 = b.y2;
+    outlines.push(
+      <div
+        key={`o-${id}`}
+        className="pointer-events-none absolute rounded-[4px]"
+        style={{
+          left: b.x1, top: b.y1, width: Math.max(1, b.x2 - b.x1), height: Math.max(1, b.y2 - b.y1),
+          border: "1px solid rgba(251, 191, 36, 0.75)",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.35) inset",
+        }}
+      />
+    );
+  }
+  if (!isFinite(unionX1)) return <>{outlines}</>;
 
+  // Snap guide lines
+  const guideNodes: React.ReactNode[] = [];
+  for (const x of guides.v) {
+    guideNodes.push(
+      <div key={`gv-${x}`} className="pointer-events-none absolute top-0 bottom-0" style={{ left: x - 0.5, width: 1, background: "rgba(52, 211, 153, 0.9)", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+    );
+  }
+  for (const y of guides.h) {
+    guideNodes.push(
+      <div key={`gh-${y}`} className="pointer-events-none absolute left-0 right-0" style={{ top: y - 0.5, height: 1, background: "rgba(52, 211, 153, 0.9)", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+    );
+  }
+
+  const single = selectedIds.length === 1;
+  const it = single ? itemsRef.current.get(selectedIds[0]) : null;
+
+  const left = unionX1;
+  const top = unionY1;
+  const w = Math.max(1, unionX2 - unionX1);
+  const h = Math.max(1, unionY2 - unionY1);
+
+  // Resize handles only when exactly one item is selected
+  let handles: HandleKey[] = [];
+  if (single && it) {
+    const isText = it.kind === "text";
+    handles = isText ? ["w", "e"] : ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+  }
+
+  const HSZ = isCoarse ? 22 : 16;
   const handleStyle = (hk: HandleKey): React.CSSProperties => {
-    const cx = (b.x1 + b.x2) / 2 - b.x1;
-    const cy = (b.y1 + b.y2) / 2 - b.y1;
+    const cx = w / 2;
+    const cy = h / 2;
     const map: Record<HandleKey, [number, number]> = {
       nw: [0, 0], n: [cx, 0], ne: [w, 0],
       e: [w, cy], se: [w, h],
       s: [cx, h], sw: [0, h], w: [0, cy],
     };
     const [hx, hy] = map[hk];
-    return { left: hx - 8, top: hy - 8 };
+    return { left: hx - HSZ / 2, top: hy - HSZ / 2, width: HSZ, height: HSZ };
   };
   const cursorFor: Record<HandleKey, string> = {
     nw: "nwse-resize", ne: "nesw-resize", se: "nwse-resize", sw: "nesw-resize",
     n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
   };
   return (
-    <div
-      className="pointer-events-none absolute"
-      style={{ left, top, width: w, height: h }}
-      aria-hidden
-    >
+    <>
+      {outlines}
+      {guideNodes}
       <div
-        className="absolute inset-0 rounded-[6px]"
-        style={{
-          border: "1.5px dashed rgba(251, 191, 36, 0.95)",
-          boxShadow: "0 0 0 1px rgba(0,0,0,0.5) inset, 0 0 12px rgba(251,191,36,0.35)",
-        }}
-      />
-      {handles.map((hk) => (
+        className="pointer-events-none absolute"
+        style={{ left, top, width: w, height: h }}
+        aria-hidden
+      >
         <div
-          key={hk}
-          role="button"
-          aria-label={`resize-${hk}`}
-          className="pointer-events-auto absolute size-4 rounded-[3px] border border-amber-300/90 bg-black shadow-md touch-none"
-          style={{ ...handleStyle(hk), cursor: cursorFor[hk] }}
-          onPointerDown={(e) => beginResize(hk, e)}
+          className="absolute inset-0 rounded-[6px]"
+          style={{
+            border: "1.5px dashed rgba(251, 191, 36, 0.95)",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.5) inset, 0 0 12px rgba(251,191,36,0.35)",
+          }}
         />
-      ))}
-    </div>
+        {handles.map((hk) => (
+          <div
+            key={hk}
+            role="button"
+            aria-label={`resize-${hk}`}
+            className="pointer-events-auto absolute rounded-[3px] border border-amber-300/90 bg-black shadow-md touch-none"
+            style={{ ...handleStyle(hk), cursor: cursorFor[hk] }}
+            onPointerDown={(e) => beginResize(hk, e)}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -2173,3 +2568,145 @@ function computeNewBoundsPx(
   }
   return { x1, y1, x2, y2 };
 }
+
+/* -------------------------------------------------------------- */
+/* Snap-to-grid + smart guides (pixel space)                      */
+/* -------------------------------------------------------------- */
+
+function unionPixelBounds(items: AnyItem[], w: number, h: number): Bounds {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const it of items) {
+    const b = itemPixelBounds(it, w, h);
+    if (b.x1 < x1) x1 = b.x1;
+    if (b.y1 < y1) y1 = b.y1;
+    if (b.x2 > x2) x2 = b.x2;
+    if (b.y2 > y2) y2 = b.y2;
+  }
+  if (!isFinite(x1)) return { x1: 0, y1: 0, x2: 0, y2: 0 };
+  return { x1, y1, x2, y2 };
+}
+
+function collectOtherBoundsPx(
+  items: Map<string, AnyItem>,
+  w: number,
+  h: number,
+  exclude: Set<string>,
+): Bounds[] {
+  const out: Bounds[] = [];
+  for (const [id, it] of items) {
+    if (exclude.has(id)) continue;
+    out.push(itemPixelBounds(it, w, h));
+  }
+  return out;
+}
+
+const SNAP_THRESHOLD = 8; // px
+const GRID_STEP_RATIO = 0.02; // 2% of overlay width/height
+
+function computeSnap(
+  proposed: Bounds,
+  others: Bounds[],
+  w: number,
+  h: number,
+): { dx: number; dy: number; guidesV: number[]; guidesH: number[] } {
+  const cx = (proposed.x1 + proposed.x2) / 2;
+  const cy = (proposed.y1 + proposed.y2) / 2;
+  const gridX = Math.max(4, w * GRID_STEP_RATIO);
+  const gridY = Math.max(4, h * GRID_STEP_RATIO);
+
+  const candidatesX: number[] = [];
+  const candidatesY: number[] = [];
+  for (const o of others) {
+    candidatesX.push(o.x1, o.x2, (o.x1 + o.x2) / 2);
+    candidatesY.push(o.y1, o.y2, (o.y1 + o.y2) / 2);
+  }
+  // Grid candidates for each side/center of the proposed box
+  const proposedX = [proposed.x1, cx, proposed.x2];
+  const proposedY = [proposed.y1, cy, proposed.y2];
+
+  const guidesV: number[] = [];
+  const guidesH: number[] = [];
+
+  let bestDx = 0, bestDxDist = SNAP_THRESHOLD + 1;
+  for (const px of proposedX) {
+    // Nearest grid
+    const g = Math.round(px / gridX) * gridX;
+    const gd = g - px;
+    if (Math.abs(gd) < bestDxDist) { bestDxDist = Math.abs(gd); bestDx = gd; }
+    for (const c of candidatesX) {
+      const d = c - px;
+      if (Math.abs(d) < bestDxDist) { bestDxDist = Math.abs(d); bestDx = d; }
+    }
+  }
+  if (bestDxDist > SNAP_THRESHOLD) bestDx = 0;
+
+  let bestDy = 0, bestDyDist = SNAP_THRESHOLD + 1;
+  for (const py of proposedY) {
+    const g = Math.round(py / gridY) * gridY;
+    const gd = g - py;
+    if (Math.abs(gd) < bestDyDist) { bestDyDist = Math.abs(gd); bestDy = gd; }
+    for (const c of candidatesY) {
+      const d = c - py;
+      if (Math.abs(d) < bestDyDist) { bestDyDist = Math.abs(d); bestDy = d; }
+    }
+  }
+  if (bestDyDist > SNAP_THRESHOLD) bestDy = 0;
+
+  // Build guide lines at snapped positions
+  if (bestDx !== 0) {
+    for (const px of proposedX) {
+      const snapped = px + bestDx;
+      for (const c of candidatesX) {
+        if (Math.abs(c - snapped) < 0.5) guidesV.push(c);
+      }
+    }
+  }
+  if (bestDy !== 0) {
+    for (const py of proposedY) {
+      const snapped = py + bestDy;
+      for (const c of candidatesY) {
+        if (Math.abs(c - snapped) < 0.5) guidesH.push(c);
+      }
+    }
+  }
+  return { dx: bestDx, dy: bestDy, guidesV, guidesH };
+}
+
+function snapPointToGuides(
+  pt: { x: number; y: number },
+  others: Bounds[],
+  w: number,
+  h: number,
+): { x: number; y: number; guidesV: number[]; guidesH: number[] } {
+  const gridX = Math.max(4, w * GRID_STEP_RATIO);
+  const gridY = Math.max(4, h * GRID_STEP_RATIO);
+  let bx = pt.x, by = pt.y;
+  const guidesV: number[] = [];
+  const guidesH: number[] = [];
+
+  // X candidates
+  let bestDx = SNAP_THRESHOLD + 1, chosenX = pt.x;
+  const gx = Math.round(pt.x / gridX) * gridX;
+  if (Math.abs(gx - pt.x) < bestDx) { bestDx = Math.abs(gx - pt.x); chosenX = gx; }
+  for (const o of others) {
+    for (const c of [o.x1, o.x2, (o.x1 + o.x2) / 2]) {
+      const d = Math.abs(c - pt.x);
+      if (d < bestDx) { bestDx = d; chosenX = c; }
+    }
+  }
+  if (bestDx <= SNAP_THRESHOLD) { bx = chosenX; guidesV.push(chosenX); }
+
+  let bestDy = SNAP_THRESHOLD + 1, chosenY = pt.y;
+  const gy = Math.round(pt.y / gridY) * gridY;
+  if (Math.abs(gy - pt.y) < bestDy) { bestDy = Math.abs(gy - pt.y); chosenY = gy; }
+  for (const o of others) {
+    for (const c of [o.y1, o.y2, (o.y1 + o.y2) / 2]) {
+      const d = Math.abs(c - pt.y);
+      if (d < bestDy) { bestDy = d; chosenY = c; }
+    }
+  }
+  if (bestDy <= SNAP_THRESHOLD) { by = chosenY; guidesH.push(chosenY); }
+
+  return { x: bx, y: by, guidesV, guidesH };
+}
+
