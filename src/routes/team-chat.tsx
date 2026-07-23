@@ -600,7 +600,6 @@ function TeamChatPage() {
   const membersQ = useQuery({
     queryKey: ["company-members"],
     queryFn: () => fetchMembers(),
-    enabled: newOpen,
   });
 
   const rooms = roomsQ.data?.rooms ?? [];
@@ -611,13 +610,16 @@ function TeamChatPage() {
     return rooms.filter((r: any) => (r.display_name ?? "").toLowerCase().includes(s));
   }, [rooms, searchTerm]);
 
-  // Presence for all room members
+  // Presence for all room members + all company members (so the People tab
+  // shows availability even for users you haven't chatted with yet).
   const allMemberIds = useMemo(() => {
     const set = new Set<string>();
     for (const r of rooms) for (const m of r.members ?? []) set.add(m.user_id);
+    for (const m of membersQ.data?.members ?? []) set.add(m.user_id);
     return Array.from(set);
-  }, [rooms]);
-  const { isOnline, lastSeen, typingUserIds } = useRoomPresence(allMemberIds, activeRoomId, user?.id);
+  }, [rooms, membersQ.data?.members]);
+  const { isOnline, lastSeen, statusOf, typingUserIds } = useRoomPresence(allMemberIds, activeRoomId, user?.id);
+
 
   // Heartbeat presence
   useEffect(() => {
