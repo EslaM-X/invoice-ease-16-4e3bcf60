@@ -28,6 +28,7 @@ import { IncomingCallDialog } from "@/components/chat/calls/IncomingCallDialog";
 import { useIncomingCall } from "@/components/chat/calls/useIncomingCall";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
+import { prefetchAvatars } from "@/lib/prefetch-avatars";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
@@ -623,6 +624,21 @@ function TeamChatPage() {
     return Array.from(set);
   }, [rooms, membersQ.data?.members]);
   const { isOnline, lastSeen, statusOf, typingUserIds } = useRoomPresence(allMemberIds, activeRoomId, user?.id);
+
+  // Warm the browser cache for People-tab avatars as soon as the members list
+  // resolves — before the user even opens the tab or reshuffles the sort. This
+  // makes filter / sort changes feel instant because the images are already
+  // decoded and pinned in the HTTP cache.
+  useEffect(() => {
+    const members = membersQ.data?.members ?? [];
+    if (members.length === 0) return;
+    const urls = members
+      .filter((m: any) => m.user_id !== user?.id)
+      .map((m: any) => m.avatar_url as string | null);
+    // 40px matches the People-list avatar size; DPR scaling is handled inside.
+    prefetchAvatars(urls, 40);
+  }, [membersQ.data?.members, user?.id]);
+
 
 
   // Heartbeat presence
