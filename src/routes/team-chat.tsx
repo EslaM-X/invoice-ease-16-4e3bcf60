@@ -28,6 +28,7 @@ import { IncomingCallDialog } from "@/components/chat/calls/IncomingCallDialog";
 import { useIncomingCall } from "@/components/chat/calls/useIncomingCall";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
+import { prefetchAvatars } from "@/lib/prefetch-avatars";
 import { supabase } from "@/integrations/supabase/client";
 import { uniqueRealtimeTopic } from "@/lib/realtime";
 import {
