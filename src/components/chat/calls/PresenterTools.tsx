@@ -972,23 +972,57 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const d = selDragRef.current;
       if (!d) return;
       ev.preventDefault();
-      const dxPx = ev.clientX - d.startClient.x;
-      const dyPx = ev.clientY - d.startClient.y;
-      const dx = dxPx / d.overlayW;
-      const dy = dyPx / d.overlayH;
+      const dxPxRaw = ev.clientX - d.startClient.x;
+      const dyPxRaw = ev.clientY - d.startClient.y;
+
+      // Compute the union bounds of the drag set (in px) at original positions
+      const origUnion = unionPixelBounds(d.origItems, d.overlayW, d.overlayH);
 
       if (d.mode === "move") {
-        const it = translateItem(d.origItem, dx, dy);
-        itemsRef.current.set(it.id, it);
+        // Snap the union by translating and matching edges/centers to grid + guides
+        let dxPx = dxPxRaw, dyPx = dyPxRaw;
+        const proposed: Bounds = {
+          x1: origUnion.x1 + dxPxRaw, y1: origUnion.y1 + dyPxRaw,
+          x2: origUnion.x2 + dxPxRaw, y2: origUnion.y2 + dyPxRaw,
+        };
+        const others = collectOtherBoundsPx(
+          itemsRef.current, d.overlayW, d.overlayH, new Set(d.origItems.map((it) => it.id)),
+        );
+        const snap = snapEnabled && !ev.altKey
+          ? computeSnap(proposed, others, d.overlayW, d.overlayH)
+          : { dx: 0, dy: 0, guidesV: [], guidesH: [] };
+        dxPx += snap.dx; dyPx += snap.dy;
+        guidesRef.current = { v: snap.guidesV, h: snap.guidesH };
+
+        const dxN = dxPx / d.overlayW;
+        const dyN = dyPx / d.overlayH;
+        for (const orig of d.origItems) {
+          const it = translateItem(orig, dxN, dyN);
+          itemsRef.current.set(it.id, it);
+        }
         dirtyRef.current = true;
         bumpUI();
         return;
       }
-      // resize
-      const oldBpx = itemPixelBounds(d.origItem, d.overlayW, d.overlayH);
+      // resize (single item only)
+      const orig = d.origItems[0];
+      if (!orig) return;
+      const oldBpx = itemPixelBounds(orig, d.overlayW, d.overlayH);
       const anchorStart = handleAnchorPx(d.handle!, oldBpx);
-      const newHandlePt = { x: anchorStart.x + dxPx, y: anchorStart.y + dyPx };
-      const keepAspect = !ev.shiftKey && d.origItem.kind !== "text";
+      let hx = anchorStart.x + dxPxRaw;
+      let hy = anchorStart.y + dyPxRaw;
+      if (snapEnabled && !ev.altKey) {
+        const others = collectOtherBoundsPx(
+          itemsRef.current, d.overlayW, d.overlayH, new Set([orig.id]),
+        );
+        const sn = snapPointToGuides({ x: hx, y: hy }, others, d.overlayW, d.overlayH);
+        hx = sn.x; hy = sn.y;
+        guidesRef.current = { v: sn.guidesV, h: sn.guidesH };
+      } else {
+        guidesRef.current = { v: [], h: [] };
+      }
+      const newHandlePt = { x: hx, y: hy };
+      const keepAspect = !ev.shiftKey && orig.kind !== "text";
       const newBpx = computeNewBoundsPx(oldBpx, d.handle!, newHandlePt, keepAspect);
       const newB = {
         x1: newBpx.x1 / d.overlayW, y1: newBpx.y1 / d.overlayH,
@@ -998,7 +1032,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
         x1: oldBpx.x1 / d.overlayW, y1: oldBpx.y1 / d.overlayH,
         x2: oldBpx.x2 / d.overlayW, y2: oldBpx.y2 / d.overlayH,
       };
-      const it = transformItem(d.origItem, oldBnorm, newB);
+      const it = transformItem(orig, oldBnorm, newB);
       itemsRef.current.set(it.id, it);
       dirtyRef.current = true;
       bumpUI();
@@ -1007,12 +1041,16 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       const d = selDragRef.current;
       if (!d) return;
       selDragRef.current = null;
-      const cur = itemsRef.current.get(d.origItem.id);
-      if (cur) {
-        const msg = itemToMsg(cur);
-        if (msg) void publish(msg, true);
-        scheduleSave("edit", localIdentity);
+      guidesRef.current = { v: [], h: [] };
+      for (const orig of d.origItems) {
+        const cur = itemsRef.current.get(orig.id);
+        if (cur) {
+          const msg = itemToMsg(cur);
+          if (msg) void publish(msg, true);
+        }
       }
+      scheduleSave("edit", localIdentity);
+      bumpUI();
     };
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onUp);
@@ -1022,14 +1060,14 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [publish, scheduleSave, bumpUI]);
+  }, [publish, scheduleSave, bumpUI, snapEnabled, localIdentity]);
 
   const beginResize = (
     handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w",
     e: React.PointerEvent,
   ) => {
-    if (!selectedId) return;
-    const it = itemsRef.current.get(selectedId);
+    if (selectedIds.length !== 1) return;
+    const it = itemsRef.current.get(selectedIds[0]);
     if (!it) return;
     const box = overlayRef.current;
     if (!box) return;
@@ -1038,10 +1076,7 @@ export function PresenterTools({ rtl }: { rtl: boolean }) {
       mode: "resize",
       handle,
       startClient: { x: e.clientX, y: e.clientY },
-      origBounds: {
-        x1: 0, y1: 0, x2: 0, y2: 0, // unused; recomputed each move
-      },
-      origItem: it,
+      origItems: [it],
       overlayW: w,
       overlayH: h,
     };
