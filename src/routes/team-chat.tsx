@@ -1298,10 +1298,27 @@ function TeamChatPage() {
     markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
   }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
+  const memberById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const x of activeRoom?.members ?? []) m.set(x.user_id, x);
+    return m;
+  }, [activeRoom]);
+
+  const readersByMsgId = useMemo(() => {
+    const out = new Map<string, Array<{ id: string; name: string; avatar?: string | null }>>();
+    for (const m of serverMessages) {
+      const ids = (m.read_by_user_ids ?? []).filter((id) => id !== user?.id && id !== m.sender_id);
+      if (ids.length === 0) continue;
+      out.set(m.id, ids.map((id) => {
+        const mem = memberById.get(id);
+        return { id, name: mem?.display_name ?? mem?.email ?? "?", avatar: mem?.avatar_url ?? null };
+      }));
+    }
+    return out;
+  }, [serverMessages, memberById, user?.id]);
+
   const typers = useMemo<Typer[]>(() => {
     if (!activeRoom) return [];
-    const memberById = new Map<string, any>();
-    for (const m of activeRoom.members ?? []) memberById.set(m.user_id, m);
     return typingUserIds
       .filter((id: string) => id !== user?.id)
       .map((id: string): Typer => {
@@ -1312,7 +1329,7 @@ function TeamChatPage() {
           avatarUrl: m?.avatar_url ?? null,
         };
       });
-  }, [activeRoom, typingUserIds, user?.id]);
+  }, [activeRoom, typingUserIds, user?.id, memberById]);
 
   const wallpaperClass = activeWallpaper.type === "preset"
     ? WALLPAPER_STYLES[activeWallpaper.preset as WallpaperPreset] ?? WALLPAPER_STYLES.noir
