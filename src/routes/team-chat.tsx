@@ -2026,6 +2026,7 @@ function TeamChatPage() {
                           isGroup={activeRoom.type === "group"}
                           isRead={true}
                           highlightQuery={inChatSearchOpen ? inChatQuery.trim() : ""}
+                          currentUserId={user?.id ?? null}
                           onReply={setReplyTo}
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
@@ -2126,7 +2127,16 @@ function TeamChatPage() {
                 onSendText={onSendText}
                 onSendVoice={onSendVoice}
                 onSendImage={onSendImage}
+                members={(activeRoom.members ?? []).map((m: any) => ({
+                  user_id: m.user_id,
+                  display_name: m.display_name,
+                  email: m.email,
+                  avatar_url: m.avatar_url,
+                  is_me: m.user_id === user?.id,
+                }))}
+                isGroup={activeRoom.type === "group"}
               />
+
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6 text-center gap-3">
