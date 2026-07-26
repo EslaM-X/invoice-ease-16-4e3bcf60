@@ -831,6 +831,31 @@ function TeamChatPage() {
     }
   }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom, prefersReducedMotion]);
 
+  // Ensure that when a user opens a room, the view lands at the newest
+  // (last-read) message instead of the very top. Runs once per room switch,
+  // and only when there is no explicit saved scroll target to restore.
+  const initialBottomDoneRef = useRef<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!activeRoomId) return;
+    if (initialBottomDoneRef.current[activeRoomId]) return;
+    if (pendingRestoreRef.current != null) {
+      // A saved target exists; the restore effect will handle placement.
+      initialBottomDoneRef.current[activeRoomId] = true;
+      return;
+    }
+    const list = messagesQ.data?.messages ?? [];
+    if (list.length === 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // Multiple passes: rows and images may grow the list after first paint.
+    const jump = () => { const e = scrollRef.current; if (e) e.scrollTop = e.scrollHeight; };
+    requestAnimationFrame(() => { requestAnimationFrame(() => { jump(); }); });
+    const t1 = window.setTimeout(jump, 120);
+    const t2 = window.setTimeout(jump, 400);
+    initialBottomDoneRef.current[activeRoomId] = true;
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [activeRoomId, messagesQ.data?.messages?.length]);
+
   // Restore saved scroll position after messages first render for this room
   useLayoutEffect(() => {
     if (!activeRoomId) return;
