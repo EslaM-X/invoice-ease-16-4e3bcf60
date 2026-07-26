@@ -71,21 +71,52 @@ export function PwaVersionGuard() {
           });
         });
 
-        // Check for updates frequently
+        const checkForUpdate = (reason: string) => {
+          void reg.update().catch((error) =>
+            logPwaEvent("warn", "sw_update_check_failed", { reason, error: String(error) }),
+          );
+        };
+
+        // Fast polling — every 30s while the tab is visible.
         intervalId = setInterval(() => {
-          void reg.update().catch((error) => logPwaEvent("warn", "sw_periodic_update_failed", String(error)));
-        }, 1000 * 60 * 5);
-        
+          if (document.visibilityState === "visible") checkForUpdate("interval");
+        }, 1000 * 30);
+
+        // Instant check whenever the user returns to the app (unlocking phone,
+        // switching tabs, coming back online). This is what actually delivers
+        // deploys "live" on mobile.
+        onVisibility = () => {
+          if (document.visibilityState === "visible") checkForUpdate("visibility");
+        };
+        onFocus = () => checkForUpdate("focus");
+        onOnline = () => checkForUpdate("online");
+        onPageShow = (e: PageTransitionEvent) => {
+          if (e.persisted) checkForUpdate("pageshow-bfcache");
+        };
+        document.addEventListener("visibilitychange", onVisibility);
+        window.addEventListener("focus", onFocus);
+        window.addEventListener("online", onOnline);
+        window.addEventListener("pageshow", onPageShow);
+
       } catch (error) {
         logPwaEvent("error", "sw_bootstrap_failed", String(error));
       }
     };
+
+    let onVisibility: (() => void) | null = null;
+    let onFocus: (() => void) | null = null;
+    let onOnline: (() => void) | null = null;
+    let onPageShow: ((e: PageTransitionEvent) => void) | null = null;
 
     void run();
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       if (intervalId) clearInterval(intervalId);
+      if (onVisibility) document.removeEventListener("visibilitychange", onVisibility);
+      if (onFocus) window.removeEventListener("focus", onFocus);
+      if (onOnline) window.removeEventListener("online", onOnline);
+      if (onPageShow) window.removeEventListener("pageshow", onPageShow);
     };
   }, []);
 
