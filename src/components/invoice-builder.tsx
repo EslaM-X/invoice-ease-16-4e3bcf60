@@ -891,12 +891,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
           handleRpcError(error?.message ?? "");
           return;
         }
-        if (delivered) {
-          await supabase
-            .from("invoices")
-            .update({ delivery_status: "delivered" } as any)
-            .eq("id", invoiceIdRet as string);
-        }
         if (subject.trim()) {
           await supabase
             .from("invoices")
