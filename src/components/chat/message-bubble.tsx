@@ -285,13 +285,40 @@ export function MessageBubble({
           )}
 
           <div className={cn(
-            "flex items-center gap-1 mt-1 text-[10px]",
+            "flex items-center gap-1.5 mt-1 text-[10px]",
             mine ? "justify-end opacity-90" : "justify-end opacity-60"
           )}>
             <span>{time}</span>
+            {mine && !msg.__pending && readers && readers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setInfoOpen(true)}
+                title={rtl ? `شافها: ${readers.map(r => r.name).join("، ")}` : `Seen by ${readers.map(r => r.name).join(", ")}`}
+                aria-label={rtl ? `شافها ${readers.length}` : `Seen by ${readers.length}`}
+                className="inline-flex items-center gap-1 rounded-full px-1 py-0.5 hover:bg-white/10 transition"
+              >
+                <span className="flex -space-x-1.5 rtl:space-x-reverse">
+                  {readers.slice(0, 3).map((r) => (
+                    <span
+                      key={r.id}
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full ring-1 ring-[color:var(--brand-gold,#d4af37)]/70 bg-black/70 text-[8px] font-bold text-white overflow-hidden"
+                    >
+                      {r.avatar
+                        ? <img src={r.avatar} alt="" className="h-full w-full object-cover" />
+                        : (r.name?.charAt(0)?.toUpperCase() ?? "?")}
+                    </span>
+                  ))}
+                </span>
+                {readers.length > 3 && (
+                  <span className="text-[9px] font-bold tabular-nums text-[color:var(--brand-gold,#d4af37)]">+{readers.length - 3}</span>
+                )}
+              </button>
+            )}
             {mine && !msg.__pending && (
               (msg.read_by_count ?? 0) > 0
-                ? <CheckCheck className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" aria-label={`Seen by ${msg.read_by_count}`} />
+                ? <button type="button" onClick={() => setInfoOpen(true)} className="rounded-full p-0.5 hover:bg-white/10" aria-label={rtl ? "معلومات الرسالة" : "Message info"}>
+                    <CheckCheck className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" />
+                  </button>
                 : <Check className="h-3.5 w-3.5" aria-label="Sent" />
             )}
           </div>
