@@ -699,8 +699,11 @@ function TeamChatPage() {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_message_reads", filter: `room_id=eq.${activeRoomId}` },
-        () => qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] })
+        { event: "*", schema: "public", table: "chat_message_reads", filter: `room_id=eq.${activeRoomId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+          qc.invalidateQueries({ queryKey: ["chat-msg-info"] });
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -1298,10 +1301,27 @@ function TeamChatPage() {
     markReadsFn({ data: { room_id: activeRoomId, message_ids: unreadIds } }).catch(() => {});
   }, [serverMessages, activeRoomId, user?.id, markReadsFn]);
 
+  const memberById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const x of activeRoom?.members ?? []) m.set(x.user_id, x);
+    return m;
+  }, [activeRoom]);
+
+  const readersByMsgId = useMemo(() => {
+    const out = new Map<string, Array<{ id: string; name: string; avatar?: string | null }>>();
+    for (const m of serverMessages) {
+      const ids = (m.read_by_user_ids ?? []).filter((id) => id !== user?.id && id !== m.sender_id);
+      if (ids.length === 0) continue;
+      out.set(m.id, ids.map((id) => {
+        const mem = memberById.get(id);
+        return { id, name: mem?.display_name ?? mem?.email ?? "?", avatar: mem?.avatar_url ?? null };
+      }));
+    }
+    return out;
+  }, [serverMessages, memberById, user?.id]);
+
   const typers = useMemo<Typer[]>(() => {
     if (!activeRoom) return [];
-    const memberById = new Map<string, any>();
-    for (const m of activeRoom.members ?? []) memberById.set(m.user_id, m);
     return typingUserIds
       .filter((id: string) => id !== user?.id)
       .map((id: string): Typer => {
@@ -1312,7 +1332,7 @@ function TeamChatPage() {
           avatarUrl: m?.avatar_url ?? null,
         };
       });
-  }, [activeRoom, typingUserIds, user?.id]);
+  }, [activeRoom, typingUserIds, user?.id, memberById]);
 
   const wallpaperClass = activeWallpaper.type === "preset"
     ? WALLPAPER_STYLES[activeWallpaper.preset as WallpaperPreset] ?? WALLPAPER_STYLES.noir
@@ -2137,6 +2157,7 @@ function TeamChatPage() {
                           onReply={setReplyTo}
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
+                          readers={readersByMsgId.get(m.id)}
                         />
                         </motion.div>
                       </div>
@@ -2203,18 +2224,31 @@ function TeamChatPage() {
               )}
 
               {showJumpToUnread && firstUnreadId && (
-                <button
-                  type="button"
-                  onClick={jumpToLastRead}
-                  className="absolute bottom-20 end-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black border border-black/20 shadow-[0_10px_30px_-10px_rgba(212,175,55,0.6)] px-3 py-2 backdrop-blur-md transition hover:brightness-110"
-                  aria-label={rtl ? "الرجوع لآخر قراءة" : "Jump to last read"}
-                  title={rtl ? "الرجوع لآخر رسالة تم عرضها" : "Jump to last message you viewed"}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                  <span className="text-[11px] font-bold">
-                    {rtl ? "آخر قراءة" : "Last read"}
-                  </span>
-                </button>
+                <div className="absolute bottom-20 end-4 z-10 flex items-center gap-2">
+                  {messagesQ.data?.room_last_read_at && (
+                    <span
+                      className="rounded-full bg-black/70 text-white border border-[color:var(--brand-gold,#d4af37)]/40 shadow-md px-2.5 py-1 backdrop-blur-md text-[10px] font-semibold tabular-nums"
+                      title={rtl ? "آخر مرة قرأت" : "Last time you read"}
+                    >
+                      {rtl ? "آخر قراءة " : "Last read "}
+                      {new Date(messagesQ.data.room_last_read_at).toLocaleString(rtl ? "ar-EG" : undefined, {
+                        hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
+                      })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={jumpToLastRead}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black border border-black/20 shadow-[0_10px_30px_-10px_rgba(212,175,55,0.6)] px-3 py-2 backdrop-blur-md transition hover:brightness-110"
+                    aria-label={rtl ? "الرجوع لآخر قراءة" : "Jump to last read"}
+                    title={rtl ? "الرجوع لآخر رسالة تم عرضها" : "Jump to last message you viewed"}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                    <span className="text-[11px] font-bold">
+                      {rtl ? "آخر قراءة" : "Last read"}
+                    </span>
+                  </button>
+                </div>
               )}
 
               {!isAtBottom && (

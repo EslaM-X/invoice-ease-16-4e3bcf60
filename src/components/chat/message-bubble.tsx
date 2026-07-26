@@ -72,7 +72,7 @@ export function MessageBubble({
   msg, mine, showAvatar, showName, rtl, voiceUrl, attachmentUrls, isGroup, isRead,
   highlightQuery = "",
   currentUserId = null,
-  onReply, onDelete, onToggleReaction,
+  onReply, onDelete, onToggleReaction, readers,
 }: {
   msg: ChatMsg;
   mine: boolean;
@@ -88,6 +88,7 @@ export function MessageBubble({
   onReply: (m: ChatMsg) => void;
   onDelete: (m: ChatMsg) => void;
   onToggleReaction: (m: ChatMsg, emoji: string) => void;
+  readers?: Array<{ id: string; name: string; avatar?: string | null }>;
 }) {
   const displayName = msg.sender_display_name ?? "?";
   const time = new Date(msg.created_at).toLocaleTimeString(rtl ? "ar-EG" : undefined, {
@@ -250,6 +251,11 @@ export function MessageBubble({
                     className="block relative overflow-hidden rounded-lg bg-black/30"
                     style={{ width: 240, height: 180, contain: "strict" }}
                   >
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.05)_8%,rgba(212,175,55,0.14)_18%,rgba(255,255,255,0.05)_33%)] bg-[length:200%_100%] motion-safe:animate-[chatShimmer_1.4s_linear_infinite] pointer-events-none"
+                      data-img-skel
+                    />
                     <img
                       src={src}
                       alt={a.name ?? ""}
@@ -257,8 +263,17 @@ export function MessageBubble({
                       height={180}
                       loading="lazy"
                       decoding="async"
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"
                       style={{ contentVisibility: "auto" }}
+                      onLoad={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.opacity = "1";
+                        const skel = (e.currentTarget.parentElement?.querySelector("[data-img-skel]") as HTMLElement | null);
+                        if (skel) skel.style.display = "none";
+                      }}
+                      onError={(e) => {
+                        const skel = (e.currentTarget.parentElement?.querySelector("[data-img-skel]") as HTMLElement | null);
+                        if (skel) skel.style.opacity = "0.4";
+                      }}
                     />
                   </a>
                 );
@@ -270,13 +285,40 @@ export function MessageBubble({
           )}
 
           <div className={cn(
-            "flex items-center gap-1 mt-1 text-[10px]",
+            "flex items-center gap-1.5 mt-1 text-[10px]",
             mine ? "justify-end opacity-90" : "justify-end opacity-60"
           )}>
             <span>{time}</span>
+            {mine && !msg.__pending && readers && readers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setInfoOpen(true)}
+                title={rtl ? `شافها: ${readers.map(r => r.name).join("، ")}` : `Seen by ${readers.map(r => r.name).join(", ")}`}
+                aria-label={rtl ? `شافها ${readers.length}` : `Seen by ${readers.length}`}
+                className="inline-flex items-center gap-1 rounded-full px-1 py-0.5 hover:bg-white/10 transition"
+              >
+                <span className="flex -space-x-1.5 rtl:space-x-reverse">
+                  {readers.slice(0, 3).map((r) => (
+                    <span
+                      key={r.id}
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full ring-1 ring-[color:var(--brand-gold,#d4af37)]/70 bg-black/70 text-[8px] font-bold text-white overflow-hidden"
+                    >
+                      {r.avatar
+                        ? <img src={r.avatar} alt="" className="h-full w-full object-cover" />
+                        : (r.name?.charAt(0)?.toUpperCase() ?? "?")}
+                    </span>
+                  ))}
+                </span>
+                {readers.length > 3 && (
+                  <span className="text-[9px] font-bold tabular-nums text-[color:var(--brand-gold,#d4af37)]">+{readers.length - 3}</span>
+                )}
+              </button>
+            )}
             {mine && !msg.__pending && (
               (msg.read_by_count ?? 0) > 0
-                ? <CheckCheck className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" aria-label={`Seen by ${msg.read_by_count}`} />
+                ? <button type="button" onClick={() => setInfoOpen(true)} className="rounded-full p-0.5 hover:bg-white/10" aria-label={rtl ? "معلومات الرسالة" : "Message info"}>
+                    <CheckCheck className="h-3.5 w-3.5 text-[color:var(--brand-gold,#d4af37)]" />
+                  </button>
                 : <Check className="h-3.5 w-3.5" aria-label="Sent" />
             )}
           </div>
