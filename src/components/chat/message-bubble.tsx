@@ -238,9 +238,28 @@ export function MessageBubble({
             <div className="grid gap-1.5">
               {msg.attachments.map((a, i) => {
                 const src = attachmentUrls?.[a.url] ?? a.url;
+                // Reserve a fixed-size slot so row height never changes as the
+                // image loads. This prevents virtualizer height jumps and
+                // scroll-position drift when opening the chat.
                 return (
-                  <a key={i} href={src} target="_blank" rel="noreferrer" className="block">
-                    <img src={src} alt={a.name ?? ""} className="max-w-[280px] max-h-[280px] rounded-lg object-cover" loading="lazy" />
+                  <a
+                    key={i}
+                    href={src}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block relative overflow-hidden rounded-lg bg-black/30"
+                    style={{ width: 240, height: 180, contain: "strict" }}
+                  >
+                    <img
+                      src={src}
+                      alt={a.name ?? ""}
+                      width={240}
+                      height={180}
+                      loading="lazy"
+                      decoding="async"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      style={{ contentVisibility: "auto" }}
+                    />
                   </a>
                 );
               })}
