@@ -48,13 +48,8 @@ export function DeliveryStatusControl({
     return "__none__";
   }, [assigneeId, assigneeLabel]);
 
-  const saveStatus = async (_next: Status) => {
-    toast.info(
-      isAr
-        ? "حالة التسليم تتحدث تلقائياً حسب محاضر الاستلام"
-        : "Delivery status updates automatically from delivery receipts",
-    );
-  };
+  void onMarkDelivered; // status is auto-derived from delivery receipts now
+
 
 
   const saveAssignee = async (key: string, freeText?: string) => {
