@@ -102,3 +102,100 @@ export function playSoundPreset(preset: SoundPreset, customUrl?: string | null) 
     // ignore audio errors (autoplay restrictions etc.)
   }
 }
+
+/**
+ * Play an iPhone-style ring loop (inspired by "Opening / Reflection" —
+ * gentle marimba-like bells). Returns a stop function.
+ *
+ * Synthesized entirely with WebAudio (no audio assets, no licensed samples).
+ * The pattern loops every ~3.6s and gracefully stops on demand.
+ */
+export function playIphoneRingLoop(): () => void {
+  if (typeof window === "undefined") return () => {};
+  let stopped = false;
+  let ctx: AudioContext | null = null;
+  let master: GainNode | null = null;
+  let interval: number | null = null;
+
+  const ensureCtx = () => {
+    if (ctx) return ctx;
+    try {
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      if (!Ctx) return null;
+      ctx = new Ctx();
+      master = ctx.createGain();
+      master.gain.value = 0.32;
+      master.connect(ctx.destination);
+      return ctx;
+    } catch { return null; }
+  };
+
+  // A "bell" — FM-ish stack: fundamental + partial + short attack chirp.
+  const bell = (freq: number, offset: number, dur: number, gain = 1) => {
+    const c = ctx!;
+    const t0 = c.currentTime + offset;
+    const partials: Array<[number, number]> = [
+      [freq, 0.5 * gain],
+      [freq * 2.01, 0.28 * gain],
+      [freq * 3.02, 0.13 * gain],
+      [freq * 4.7, 0.08 * gain],
+    ];
+    for (const [f, amp] of partials) {
+      const osc = c.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(amp, t0 + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g).connect(master!);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    }
+  };
+
+  // Melodic phrase reminiscent of the iPhone "Opening" arpeggio.
+  // Notes (Hz): E5 G5 B5 E6 D6 B5 · E5 G5 B5 E6 — ascending, then a soft resolve.
+  const phrase = () => {
+    if (stopped || !ctx) return;
+    const notes = [
+      { f: 659.25, t: 0.00, d: 0.42, g: 0.9 }, // E5
+      { f: 783.99, t: 0.16, d: 0.42, g: 0.9 }, // G5
+      { f: 987.77, t: 0.32, d: 0.44, g: 0.95 }, // B5
+      { f: 1318.5, t: 0.48, d: 0.60, g: 1.0 }, // E6
+      { f: 1174.7, t: 0.90, d: 0.42, g: 0.85 }, // D6
+      { f: 987.77, t: 1.06, d: 0.55, g: 0.85 }, // B5
+      // second bar — softer
+      { f: 659.25, t: 1.75, d: 0.36, g: 0.75 }, // E5
+      { f: 987.77, t: 1.92, d: 0.36, g: 0.75 }, // B5
+      { f: 1318.5, t: 2.10, d: 0.70, g: 0.90 }, // E6 (resolve)
+    ];
+    for (const n of notes) bell(n.f, n.t, n.d, n.g);
+  };
+
+  const start = () => {
+    const c = ensureCtx();
+    if (!c) return;
+    // Some browsers start the context suspended until a gesture.
+    if ((c as any).state === "suspended") { try { void c.resume(); } catch {} }
+    phrase();
+    interval = window.setInterval(phrase, 3600);
+  };
+
+  start();
+
+  return () => {
+    stopped = true;
+    if (interval) window.clearInterval(interval);
+    interval = null;
+    try {
+      if (master && ctx) {
+        const t = ctx.currentTime;
+        master.gain.cancelScheduledValues(t);
+        master.gain.setValueAtTime(master.gain.value, t);
+        master.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      }
+      setTimeout(() => { try { ctx?.close(); } catch {} }, 300);
+    } catch { /* ignore */ }
+  };
+}

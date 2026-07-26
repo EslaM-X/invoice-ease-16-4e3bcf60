@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { useI18n } from "@/lib/i18n";
+import { playIphoneRingLoop } from "@/lib/push";
 
 export type IncomingCall = {
   call_id: string;
@@ -25,34 +26,23 @@ export function IncomingCallDialog({ call, onAccept, onDecline }: Props) {
   const { lang } = useI18n();
   const rtl = lang === "ar";
 
-  // Ring tone (short repeating beep)
+  // iPhone-style ring loop + gentle vibration cadence.
   useEffect(() => {
     if (!call) return;
-    let ctx: AudioContext | null = null;
-    let stopped = false;
-    const ring = () => {
-      if (stopped) return;
-      try {
-        ctx ||= new (window.AudioContext || (window as any).webkitAudioContext)();
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.frequency.value = 520;
-        o.type = "sine";
-        g.gain.value = 0.08;
-        o.connect(g).connect(ctx.destination);
-        o.start();
-        setTimeout(() => { o.stop(); }, 380);
-      } catch {}
-    };
-    const iv = window.setInterval(ring, 1400);
-    ring();
+    const stopRing = playIphoneRingLoop();
+    let vibrateIv: number | null = null;
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      const buzz = () => { try { (navigator as any).vibrate?.([300, 200, 300, 1200]); } catch {} };
+      buzz();
+      vibrateIv = window.setInterval(buzz, 2000);
+    }
     // Auto-miss after 30s
     const to = window.setTimeout(() => onDecline(), 30_000);
     return () => {
-      stopped = true;
-      clearInterval(iv);
+      stopRing();
+      if (vibrateIv) window.clearInterval(vibrateIv);
       clearTimeout(to);
-      try { ctx?.close(); } catch {}
+      try { (navigator as any).vibrate?.(0); } catch {}
     };
   }, [call, onDecline]);
 
