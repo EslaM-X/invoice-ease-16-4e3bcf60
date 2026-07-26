@@ -980,14 +980,16 @@ function TeamChatPage() {
     qc.invalidateQueries({ queryKey: ["chat-rooms"] });
   }, [activeRoomId, sendMessage, qc]);
 
-  const onSendImage = useCallback(async (path: string, name: string, mime: string, size: number, replyId: string | null) => {
+  const onSendImage = useCallback(async (path: string, name: string, mime: string, size: number, replyId: string | null, caption?: string | null) => {
     if (!activeRoomId) return;
+    const body = (caption ?? "").trim();
     await sendMessage({
       data: {
         room_id: activeRoomId,
         message_type: "image",
         attachments: [{ url: path, name, mime, size }],
         reply_to_id: replyId ?? undefined,
+        ...(body ? { body } : {}),
       },
     });
     qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
