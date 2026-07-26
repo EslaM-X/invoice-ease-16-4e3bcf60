@@ -63,10 +63,7 @@ export function DeliveryStatusControl({
     if (key === COMPANY_LABEL_KEY) patch.delivery_assignee_label = "Company account";
     else if (key === "__custom__") patch.delivery_assignee_label = (freeText ?? customLabel).trim() || null;
     else if (key !== "__none__") patch.delivery_assignee_id = key;
-    // If we're picking an assignee while pending, promote status to in_transit
-    if (s === "pending" && (patch.delivery_assignee_id || patch.delivery_assignee_label)) {
-      patch.delivery_status = "in_transit";
-    }
+
     const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
     setSaving(false);
     if (error) return toast.error(error.message);
