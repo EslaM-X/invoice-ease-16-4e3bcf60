@@ -200,7 +200,16 @@ export const listChatMessages = createServerFn({ method: "GET" })
       .parse(d)
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    // Snapshot the caller's last_read_at BEFORE anything else so the client
+    // can scroll to the first unread message on room open.
+    const { data: memberRow } = await supabase
+      .from("chat_room_members")
+      .select("last_read_at")
+      .eq("room_id", data.room_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    const roomLastReadAt: string | null = (memberRow as any)?.last_read_at ?? null;
     let q = supabase
       .from("chat_messages")
       .select("*")
