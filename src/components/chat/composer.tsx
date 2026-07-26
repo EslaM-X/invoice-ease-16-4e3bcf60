@@ -190,10 +190,12 @@ export function Composer({
           .from("chat-attachments")
           .upload(path, pending.file, { contentType: pending.file.type, upsert: false });
         if (error) throw error;
-        await onSendImage(path, pending.file.name, pending.file.type, pending.file.size, replyId);
+        const caption = body ? serializeMentions(body) : null;
+        await onSendImage(path, pending.file.name, pending.file.type, pending.file.size, replyId, caption);
         URL.revokeObjectURL(pending.previewUrl);
         setPending(null);
         setText("");
+        pendingMentionsRef.current.clear();
         onClearReply();
       } catch (err: any) {
         toast.error(err?.message ?? "Upload failed");
