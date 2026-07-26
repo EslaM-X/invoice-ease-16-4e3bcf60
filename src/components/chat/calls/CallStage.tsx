@@ -1328,7 +1328,7 @@ function ParticipantRow({ p, rtl }: { p: Participant; rtl: boolean }) {
   );
 }
 
-function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
+function ParticipantCountBadge({ rtl, callId }: { rtl: boolean; callId?: string }) {
   const participants = useParticipants(); // reactive to join/leave for everyone
   const count = participants.length;
   const [open, setOpen] = useState(false);
@@ -1458,6 +1458,7 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
               <ParticipantRow key={p.identity} p={p} rtl={rtl} />
             ))}
           </ul>
+          {callId && <LiveInvitesRoster callId={callId} rtl={rtl} />}
         </SheetContent>
       </Sheet>
     </>
@@ -2415,7 +2416,7 @@ function ShareDiagnosticsMount({
       <ShareDiagnosticsDialog rtl={rtl} open={diagOpen} onOpenChange={setDiagOpen} state={monitor} />
 
       <NetworkQualityBadge rtl={rtl} />
-      <ParticipantCountBadge rtl={rtl} />
+      <ParticipantCountBadge rtl={rtl} callId={callId} />
       <LocalMediaStatusBadge rtl={rtl} />
       <MediaStateAnnouncer rtl={rtl} />
       <PinRestorer />
