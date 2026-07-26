@@ -1762,6 +1762,8 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_assignee_id: string | null
+          delivery_assignee_label: string | null
           delivery_days: number | null
           delivery_status: string
           discount: number
@@ -1805,6 +1807,8 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivery_assignee_id?: string | null
+          delivery_assignee_label?: string | null
           delivery_days?: number | null
           delivery_status?: string
           discount?: number
@@ -1848,6 +1852,8 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivery_assignee_id?: string | null
+          delivery_assignee_label?: string | null
           delivery_days?: number | null
           delivery_status?: string
           discount?: number
@@ -1883,6 +1889,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_delivery_assignee_id_fkey"
+            columns: ["delivery_assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -4314,6 +4327,8 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_assignee_id: string | null
+          delivery_assignee_label: string | null
           delivery_days: number | null
           delivery_status: string
           discount: number
@@ -4912,6 +4927,8 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivery_assignee_id: string | null
+          delivery_assignee_label: string | null
           delivery_days: number | null
           delivery_status: string
           discount: number

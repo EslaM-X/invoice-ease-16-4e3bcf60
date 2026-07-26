@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus, CheckCircle2 } from "lucide-react";
+import { Printer, ArrowLeft, Languages, Pencil, Ban, Eye, ClipboardCheck, Plus } from "lucide-react";
+import { DeliveryStatusControl } from "@/components/delivery-status-control";
 import { deliveryStatusLabel, deliveryStatusColor } from "@/lib/delivery-receipts";
 import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
 import type { Settings } from "@/lib/data";
@@ -150,6 +151,16 @@ function InvoiceView() {
       if (document.title !== target) document.title = target;
     }, 50);
 
+    // On mobile browsers the print engine renders at the CURRENT viewport
+    // width, so a mobile screen produces a squeezed / overlapping PDF.
+    // Temporarily swap the viewport meta to a desktop A4 width (794px @ 96dpi)
+    // so Chrome/Safari lay out the invoice as if we were on desktop.
+    const viewportEl = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
+    const originalViewport = viewportEl?.getAttribute("content") ?? null;
+    if (viewportEl) {
+      viewportEl.setAttribute("content", "width=794, initial-scale=1");
+    }
+
     let restored = false;
     const restore = () => {
       if (restored) return;
@@ -157,14 +168,19 @@ function InvoiceView() {
       observer.disconnect();
       window.clearInterval(interval);
       window.removeEventListener("afterprint", restore);
+      if (viewportEl && originalViewport !== null) {
+        viewportEl.setAttribute("content", originalViewport);
+      }
       // Small delay so the browser's "save" finishes capturing the title
       setTimeout(() => { document.title = original; }, 1000);
     };
     window.addEventListener("afterprint", restore);
     setTimeout(restore, 120_000); // safety net
 
-    setTimeout(() => window.print(), 100);
+    // Give the browser a beat to re-layout at the new viewport width
+    setTimeout(() => window.print(), 250);
   };
+
 
   return (
     <div className="space-y-6">
@@ -243,24 +259,13 @@ function InvoiceView() {
               {(() => {
                 const totalNum = Number(inv.total);
                 const paidNum = Number(inv.paid_amount ?? 0);
-                const isDelivered = inv.delivery_status === "delivered";
                 return (
-                  <>
-                    <Button
-                      variant={isDelivered ? "default" : "outline"}
-                      className={`gap-2 rounded-full ${isDelivered ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"}`}
-                      onClick={() => toggleDelivered(!isDelivered)}
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isDelivered ? (isAr ? "مُسلَّمة" : "Delivered") : (isAr ? "تعليم تسليم" : "Mark delivered")}
-                    </Button>
-                    <PaymentsManager
-                      invoiceId={id}
-                      invoiceTotal={totalNum}
-                      paidAmount={paidNum}
-                      onChange={load}
-                    />
-                  </>
+                  <PaymentsManager
+                    invoiceId={id}
+                    invoiceTotal={totalNum}
+                    paidAmount={paidNum}
+                    onChange={load}
+                  />
                 );
               })()}
               <AlertDialog>
@@ -530,6 +535,16 @@ function InvoiceView() {
           </div>
         </div>
       )}
+
+      <DeliveryStatusControl
+        invoiceId={id}
+        status={inv.delivery_status}
+        assigneeId={inv.delivery_assignee_id ?? null}
+        assigneeLabel={inv.delivery_assignee_label ?? null}
+        isVoided={isVoided}
+        onChanged={load}
+        onMarkDelivered={() => toggleDelivered(true)}
+      />
 
       <div className="mx-auto max-w-3xl no-print">
         <div className="rounded-2xl border bg-card p-4 sm:p-5">

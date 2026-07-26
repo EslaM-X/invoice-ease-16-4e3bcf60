@@ -110,7 +110,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
   // Paid amount: "auto" = always 50% of total. "custom" = user-entered EGP amount.
   const [paidMode, setPaidMode] = useState<"auto" | "custom">("auto");
   const [paidCustom, setPaidCustom] = useState<number>(initial?.paid_amount ?? 0);
-  const [delivered, setDelivered] = useState<boolean>(initial?.delivery_status === "delivered");
+  // Delivery status is controlled from the invoice detail page (never auto-set here).
   const [isDraft, setIsDraft] = useState<boolean>(
     mode === "edit" ? initial?.status === "draft" : !!defaultDraft,
   );
@@ -836,12 +836,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         // Best-effort delete of the draft (no stock to restore)
         await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
         await supabase.from("invoices").delete().eq("id", invoiceId);
-        if (delivered) {
-          await supabase
-            .from("invoices")
-            .update({ delivery_status: "delivered" } as any)
-            .eq("id", newId as string);
-        }
         // Save subject (not part of RPC signature).
         await supabase
           .from("invoices")
@@ -873,7 +867,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         await supabase
           .from("invoices")
           .update({
-            delivery_status: delivered ? "delivered" : "pending",
             subject: subject.trim() || null,
             delivery_days: deliveryDays,
             tax_enabled: taxEnabled,
@@ -897,12 +890,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         if (error || !invoiceIdRet) {
           handleRpcError(error?.message ?? "");
           return;
-        }
-        if (delivered) {
-          await supabase
-            .from("invoices")
-            .update({ delivery_status: "delivered" } as any)
-            .eq("id", invoiceIdRet as string);
         }
         if (subject.trim()) {
           await supabase
@@ -1535,18 +1522,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 )}
               </div>
 
-              {/* Delivered toggle */}
-              <label className="mt-2 flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
-                <span className="text-sm font-medium">
-                  {lang === "ar" ? "تم التسليم بالكامل" : "Marked as delivered"}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={delivered}
-                  onChange={(e) => setDelivered(e.target.checked)}
-                  className="h-4 w-4 accent-emerald-600"
-                />
-              </label>
+              {/* Delivery status is controlled from the invoice detail page */}
+              <p className="mt-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "حالة التسليم تُدار من صفحة الفاتورة بعد الحفظ (قيد الانتظار / في الطريق / تم التسليم)."
+                  : "Delivery status is managed from the invoice page after saving (Pending / In Transit / Delivered)."}
+              </p>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">
               {t("save_invoice")}
