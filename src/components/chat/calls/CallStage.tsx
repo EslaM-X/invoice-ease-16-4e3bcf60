@@ -2537,4 +2537,31 @@ function ShareDiagnosticsMount({
   );
 }
 
+/**
+ * Compact control strip shown when the call is in mini/floating mode.
+ * Keeps just mic + camera + share + leave so it fits in a 320px window.
+ */
+function MiniControlStrip({ rtl }: { rtl: boolean }) {
+  return (
+    <div
+      className="absolute bottom-0 inset-x-0 z-10 flex items-center justify-center gap-1 px-2 py-1.5 bg-gradient-to-t from-black/95 to-black/40"
+      role="toolbar"
+      aria-label={rtl ? "أدوات مصغرة" : "Mini controls"}
+    >
+      <ControlBar
+        variation="minimal"
+        controls={{
+          microphone: true,
+          camera: true,
+          screenShare: true,
+          chat: false,
+          leave: true,
+          settings: false,
+        }}
+      />
+    </div>
+  );
+}
+
+
 
