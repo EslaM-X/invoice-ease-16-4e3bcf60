@@ -9,7 +9,7 @@ import { Truck, Package, CheckCircle2, User as UserIcon, Info, Lock, Unlock } fr
 import { toast } from "sonner";
 
 const OVERRIDE_ALLOWED_USER_IDS = new Set<string>([
-  "45f5f827-561f-4a81-bc60-4dd2aba38e10", // f.hesham@steinheim-eg.com
+  "a9f9356d-51fe-4872-84e5-255ff2ffdda4", // e.hesham@steinheim-eg.com
 ]);
 
 type Profile = { id: string; user_id: string; display_name: string | null; email: string | null };
