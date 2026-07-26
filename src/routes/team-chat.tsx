@@ -114,7 +114,7 @@ function TeamChatPage() {
   const setDensityFn = useServerFn(setChatDensity);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     const rid = new URLSearchParams(window.location.search).get("room");
     if (rid) setActiveRoomId(rid);
