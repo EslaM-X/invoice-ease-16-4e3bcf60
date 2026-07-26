@@ -110,35 +110,65 @@ export function DeliveryStatusControl({
 
   const statusPillClass = (val: Status) => {
     const active = s === val || (val === "in_transit" && s === "partial");
-    const base = "flex-1 gap-1.5 rounded-full cursor-default";
-    if (!active) return `${base} border bg-background opacity-60`;
+    const interactive = canOverride && !isVoided;
+    const base = `flex-1 gap-1.5 rounded-full ${interactive ? "cursor-pointer" : "cursor-default"}`;
+    if (!active) return `${base} border bg-background ${interactive ? "hover:bg-muted" : "opacity-60"}`;
     if (val === "pending") return `${base} bg-slate-600 text-white`;
     if (val === "in_transit") return `${base} bg-amber-600 text-white`;
     return `${base} bg-emerald-600 text-white`;
   };
 
+  const renderPill = (val: Status, Icon: typeof Package, label: string) => (
+    <Button
+      size="sm"
+      variant="ghost"
+      disabled={!canOverride || isVoided || saving}
+      className={statusPillClass(val)}
+      tabIndex={canOverride ? 0 : -1}
+      onClick={canOverride ? () => setManualStatus(val) : undefined}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </Button>
+  );
+
   return (
     <div className="mx-auto max-w-3xl no-print">
       <div className="rounded-2xl border bg-card p-4 sm:p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <Truck className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">{isAr ? "حالة التسليم" : "Delivery status"}</h3>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">{isAr ? "حالة التسليم" : "Delivery status"}</h3>
+          </div>
+          {canOverride && override && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-500/30 dark:text-amber-300">
+              <Lock className="h-3 w-3" />
+              {isAr ? "تحكم يدوي" : "Manual"}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" disabled className={statusPillClass("pending")} tabIndex={-1}>
-            <Package className="h-3.5 w-3.5" />
-            {isAr ? "قيد الانتظار" : "Pending"}
-          </Button>
-          <Button size="sm" variant="ghost" disabled className={statusPillClass("in_transit")} tabIndex={-1}>
-            <Truck className="h-3.5 w-3.5" />
-            {isAr ? "في الطريق" : "In Transit"}
-          </Button>
-          <Button size="sm" variant="ghost" disabled className={statusPillClass("delivered")} tabIndex={-1}>
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {isAr ? "تم التسليم" : "Delivered"}
-          </Button>
+          {renderPill("pending", Package, isAr ? "قيد الانتظار" : "Pending")}
+          {renderPill("in_transit", Truck, isAr ? "في الطريق" : "In Transit")}
+          {renderPill("delivered", CheckCircle2, isAr ? "تم التسليم" : "Delivered")}
         </div>
+
+        {canOverride && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-500/5 p-2.5 text-[11px] ring-1 ring-amber-500/20">
+            <span className="text-muted-foreground">
+              {isAr
+                ? "لك صلاحية تعديل حالة التسليم يدوياً لأي فاتورة. التعديل بيوقف الحساب التلقائي على الفاتورة دي بس."
+                : "You can manually change delivery status on any invoice. Doing so locks auto-recompute for that invoice only."}
+            </span>
+            {override && (
+              <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" disabled={saving} onClick={clearOverride}>
+                <Unlock className="h-3 w-3" />
+                {isAr ? "رجّع للتلقائي" : "Revert to auto"}
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/40 p-2.5 text-[11px] text-muted-foreground">
           <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
@@ -148,6 +178,7 @@ export function DeliveryStatusControl({
               : "Delivery status updates automatically from the linked delivery receipts. When the total delivered quantity covers all invoice items it turns to Delivered."}
           </span>
         </div>
+
 
         {(s === "in_transit" || s === "partial" || assigneeId || assigneeLabel) && (
           <div className="mt-4 space-y-2 rounded-xl border border-dashed bg-muted/30 p-3">
