@@ -879,7 +879,18 @@ function TeamChatPage() {
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       const atBottom = distanceFromBottom < 60;
       setIsAtBottom(atBottom);
-      if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
+      if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); setShowJumpToUnread(false); }
+      // Show the "jump to last read" pill only when the anchor row has scrolled
+      // above the viewport top (i.e. the user actively scrolled down past it).
+      if (firstUnreadId) {
+        const anchorEl = document.getElementById(`msg-${firstUnreadId}`);
+        if (anchorEl) {
+          const anchorTop = anchorEl.getBoundingClientRect().top - el.getBoundingClientRect().top;
+          setShowJumpToUnread(anchorTop < -40 && !atBottom);
+        }
+      } else {
+        setShowJumpToUnread(false);
+      }
       if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder && Date.now() >= suppressLoadOlderUntilRef.current) {
         loadOlderMessages();
       }
