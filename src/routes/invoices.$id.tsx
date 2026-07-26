@@ -543,7 +543,6 @@ function InvoiceView() {
         assigneeLabel={inv.delivery_assignee_label ?? null}
         isVoided={isVoided}
         onChanged={load}
-        onMarkDelivered={() => toggleDelivered(true)}
       />
 
       <div className="mx-auto max-w-3xl no-print">
