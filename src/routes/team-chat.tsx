@@ -446,6 +446,9 @@ function TeamChatPage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
   const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  // Shown when the user has scrolled below their last-read anchor, letting
+  // them snap back instantly to the first unread message.
+  const [showJumpToUnread, setShowJumpToUnread] = useState(false);
   const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const initialAnchorDoneRef = useRef<Record<string, boolean>>({});
