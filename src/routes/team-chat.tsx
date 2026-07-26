@@ -550,7 +550,9 @@ function TeamChatPage() {
   const messagesQ = useQuery({
     queryKey: ["chat-messages", activeRoomId],
     queryFn: () =>
-      activeRoomId ? fetchMessages({ data: { room_id: activeRoomId, limit: 50 } }) : Promise.resolve({ messages: [] }),
+      activeRoomId
+        ? fetchMessages({ data: { room_id: activeRoomId, limit: 50 } })
+        : Promise.resolve({ messages: [] as any[], room_last_read_at: null as string | null }),
     enabled: !!activeRoomId,
   });
 
@@ -744,11 +746,15 @@ function TeamChatPage() {
   }, [qc, user?.id, activeRoomId, rtl, roomsQ.data?.rooms]);
 
   useEffect(() => {
-    if (activeRoomId) {
+    if (!activeRoomId) return;
+    // Delay so listChatMessages can snapshot last_read_at first — the initial
+    // "scroll to first unread" anchor depends on the pre-open value.
+    const t = window.setTimeout(() => {
       markRead({ data: { room_id: activeRoomId } }).then(() =>
         qc.invalidateQueries({ queryKey: ["chat-rooms"] })
-      );
-    }
+      ).catch(() => {});
+    }, 2500);
+    return () => window.clearTimeout(t);
   }, [activeRoomId, markRead, qc]);
 
   // Load the remote scroll map once per session and merge remote > local when
@@ -831,30 +837,9 @@ function TeamChatPage() {
     }
   }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom, prefersReducedMotion]);
 
-  // Ensure that when a user opens a room, the view lands at the newest
-  // (last-read) message instead of the very top. Runs once per room switch,
-  // and only when there is no explicit saved scroll target to restore.
-  const initialBottomDoneRef = useRef<Record<string, boolean>>({});
-  useEffect(() => {
-    if (!activeRoomId) return;
-    if (initialBottomDoneRef.current[activeRoomId]) return;
-    if (pendingRestoreRef.current != null) {
-      // A saved target exists; the restore effect will handle placement.
-      initialBottomDoneRef.current[activeRoomId] = true;
-      return;
-    }
-    const list = messagesQ.data?.messages ?? [];
-    if (list.length === 0) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    // Multiple passes: rows and images may grow the list after first paint.
-    const jump = () => { const e = scrollRef.current; if (e) e.scrollTop = e.scrollHeight; };
-    requestAnimationFrame(() => { requestAnimationFrame(() => { jump(); }); });
-    const t1 = window.setTimeout(jump, 120);
-    const t2 = window.setTimeout(jump, 400);
-    initialBottomDoneRef.current[activeRoomId] = true;
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
-  }, [activeRoomId, messagesQ.data?.messages?.length]);
+  // One-shot per-room "open" anchor: computed below (after rowVirtualizer)
+  // once messages and the virtualizer are wired up.
+  const initialAnchorDoneRef = useRef<Record<string, boolean>>({});
 
   // Restore saved scroll position after messages first render for this room
   useLayoutEffect(() => {
@@ -1147,6 +1132,67 @@ function TeamChatPage() {
       el.removeEventListener("scroll", onScrollRaf);
     };
   }, [rows, messages, rtl, rowVirtualizer, activeRoomId]);
+
+  // When a room opens, land on the first unread message (or bottom if fully
+  // read). Uses the server-snapshotted last_read_at so it isn't affected by
+  // the markRoomRead call that fires on open.
+  useEffect(() => {
+    if (!activeRoomId) return;
+    if (initialAnchorDoneRef.current[activeRoomId]) return;
+    // Respect an explicit saved scroll target — the restore effect handles it.
+    if (pendingRestoreRef.current != null) {
+      initialAnchorDoneRef.current[activeRoomId] = true;
+      return;
+    }
+    if (messages.length === 0 || rows.length === 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const lastReadAt = messagesQ.data?.room_last_read_at ?? null;
+    let firstUnreadMsgIdx = -1;
+    if (lastReadAt) {
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        // Only count messages authored by others — the user's own messages
+        // shouldn't be treated as "unread".
+        if (m.sender_id !== user?.id && m.created_at > lastReadAt) {
+          firstUnreadMsgIdx = i;
+          break;
+        }
+      }
+    }
+
+    const scrollBottom = () => {
+      const e = scrollRef.current;
+      if (e) e.scrollTop = e.scrollHeight;
+    };
+    const scrollToRow = (rowIdx: number) => {
+      try {
+        rowVirtualizer.scrollToIndex(rowIdx, { align: "start" });
+      } catch {
+        // Fallback: bottom
+        scrollBottom();
+      }
+    };
+
+    const go = () => {
+      if (firstUnreadMsgIdx >= 0) {
+        const targetMsgId = messages[firstUnreadMsgIdx].id;
+        const rowIdx = rowIndexByMsgId.get(targetMsgId);
+        if (typeof rowIdx === "number") scrollToRow(rowIdx);
+        else scrollBottom();
+      } else {
+        scrollBottom();
+      }
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(go));
+    const t1 = window.setTimeout(go, 140);
+    const t2 = window.setTimeout(go, 420);
+    initialAnchorDoneRef.current[activeRoomId] = true;
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [activeRoomId, messages, rows.length, messagesQ.data?.room_last_read_at, rowIndexByMsgId, rowVirtualizer, user?.id]);
+
 
   // In-chat search: rich results (id, index, snippet, ts)
   const searchResults = useMemo(() => {
