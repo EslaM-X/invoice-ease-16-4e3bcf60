@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, Fragment, type ReactNode } from "react";
+import { renderMentionBody } from "@/lib/mentions";
 import { motion } from "framer-motion";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ function highlightText(text: string, q: string): ReactNode {
 export function MessageBubble({
   msg, mine, showAvatar, showName, rtl, voiceUrl, attachmentUrls, isGroup, isRead,
   highlightQuery = "",
+  currentUserId = null,
   onReply, onDelete, onToggleReaction,
 }: {
   msg: ChatMsg;
@@ -82,6 +84,7 @@ export function MessageBubble({
   isGroup: boolean;
   isRead: boolean;
   highlightQuery?: string;
+  currentUserId?: string | null;
   onReply: (m: ChatMsg) => void;
   onDelete: (m: ChatMsg) => void;
   onToggleReaction: (m: ChatMsg, emoji: string) => void;
@@ -120,7 +123,30 @@ export function MessageBubble({
     }
   };
 
-  const bodyNode = msg.body ? highlightText(msg.body, highlightQuery) : null;
+  const bodyNode: ReactNode = msg.body
+    ? (
+      <>
+        {renderMentionBody(
+          msg.body,
+          currentUserId,
+          (text, key) => <Fragment key={key}>{highlightText(text, highlightQuery)}</Fragment>,
+          ({ name, isSelf, key }) => (
+            <span
+              key={key}
+              className={cn(
+                "inline-flex items-center rounded-md px-1.5 py-0.5 mx-0.5 text-[0.92em] font-semibold align-baseline",
+                isSelf
+                  ? "bg-[color:var(--brand-gold,#d4af37)]/25 text-[color:var(--brand-gold,#d4af37)] ring-1 ring-[color:var(--brand-gold,#d4af37)]/40"
+                  : "bg-[color:var(--brand-gold,#d4af37)]/10 text-[color:var(--brand-gold,#d4af37)]"
+              )}
+            >
+              @{name}
+            </span>
+          ),
+        )}
+      </>
+    )
+    : null;
 
   return (
     <motion.div

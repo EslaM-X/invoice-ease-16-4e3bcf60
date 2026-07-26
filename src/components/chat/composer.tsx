@@ -1,12 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send, X, Image as ImageIcon } from "lucide-react";
+import { Paperclip, Send, X, Image as ImageIcon, AtSign, Users } from "lucide-react";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { VoiceRecorder } from "@/components/chat/voice-recorder";
+import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ChatMsg } from "./message-bubble";
+
+export type MentionMember = {
+  user_id: string;
+  display_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  is_me?: boolean;
+};
 
 type Pending = { file: File; previewUrl: string };
 
@@ -20,6 +29,8 @@ export function Composer({
   onSendText,
   onSendVoice,
   onSendImage,
+  members = [],
+  isGroup = false,
 }: {
   rtl: boolean;
   disabled?: boolean;
@@ -30,11 +41,18 @@ export function Composer({
   onSendText: (body: string, replyToId: string | null) => Promise<void>;
   onSendVoice: (blob: Blob, seconds: number) => Promise<void>;
   onSendImage: (path: string, name: string, mime: string, size: number, replyToId: string | null) => Promise<void>;
+  members?: MentionMember[];
+  isGroup?: boolean;
 }) {
   const [text, setText] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [uploading, setUploading] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
+  // Mention picker state
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -57,6 +75,83 @@ export function Composer({
     onTypingChange(true);
     if (typingTimer.current) window.clearTimeout(typingTimer.current);
     typingTimer.current = window.setTimeout(() => onTypingChange(false), 3500);
+  };
+
+  // Detect an active `@word` immediately before the caret.
+  const detectMention = (value: string, caret: number) => {
+    // Look backwards from caret for an @ that starts a word.
+    let i = caret - 1;
+    while (i >= 0) {
+      const ch = value[i];
+      if (ch === "@") {
+        const prev = i > 0 ? value[i - 1] : " ";
+        if (i === 0 || /\s/.test(prev)) {
+          const q = value.slice(i + 1, caret);
+          // Stop at whitespace inside query
+          if (/\s/.test(q)) return null;
+          if (q.length > 30) return null;
+          return { start: i, query: q };
+        }
+        return null;
+      }
+      if (/\s/.test(ch)) return null;
+      i--;
+    }
+    return null;
+  };
+
+  const filteredMembers = useMemo(() => {
+    const q = mentionQuery.trim().toLowerCase();
+    const base = members
+      .filter((m) => !m.is_me)
+      .filter((m) => {
+        if (!q) return true;
+        const name = (m.display_name ?? m.email ?? "").toLowerCase();
+        return name.includes(q);
+      })
+      .slice(0, 6);
+    const specials: MentionMember[] = [];
+    if (isGroup) {
+      const matchAll = !q || "all".includes(q) || "everyone".includes(q) || "الكل".includes(mentionQuery);
+      if (matchAll) specials.push({ user_id: "all", display_name: "everyone" });
+    }
+    return [...specials, ...base];
+  }, [members, mentionQuery, isGroup]);
+
+  const insertMention = (m: MentionMember) => {
+    const ta = taRef.current;
+    if (!ta || mentionStart === null) return;
+    const caret = ta.selectionStart ?? text.length;
+    const name = m.user_id === "all" ? "everyone" : (m.display_name ?? m.email ?? "user");
+    const token = `@[${name}](${m.user_id}) `;
+    const next = text.slice(0, mentionStart) + token + text.slice(caret);
+    setText(next);
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionStart(null);
+    setMentionIndex(0);
+    // Restore caret after inserted token
+    requestAnimationFrame(() => {
+      const pos = mentionStart + token.length;
+      ta.focus();
+      try { ta.setSelectionRange(pos, pos); } catch {}
+    });
+  };
+
+  const onTextChange = (value: string, caret: number) => {
+    setText(value);
+    triggerTyping();
+    const det = detectMention(value, caret);
+    if (det) {
+      setMentionOpen(true);
+      setMentionQuery(det.query);
+      setMentionStart(det.start);
+      setMentionIndex(0);
+    } else if (mentionOpen) {
+      setMentionOpen(false);
+      setMentionQuery("");
+      setMentionStart(null);
+    }
   };
 
   const handleSend = async () => {
@@ -96,12 +191,56 @@ export function Composer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionOpen && filteredMembers.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % filteredMembers.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((i) => (i - 1 + filteredMembers.length) % filteredMembers.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(filteredMembers[mentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionOpen(false);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     } else if (e.key === "Escape" && replyTo) {
       onClearReply();
     }
+  };
+
+  const insertAtCursor = (s: string) => {
+    const ta = taRef.current;
+    if (!ta) { setText((p) => p + s); return; }
+    const start = ta.selectionStart ?? text.length;
+    const end = ta.selectionEnd ?? start;
+    const next = text.slice(0, start) + s + text.slice(end);
+    setText(next);
+    requestAnimationFrame(() => {
+      const pos = start + s.length;
+      ta.focus();
+      try { ta.setSelectionRange(pos, pos); } catch {}
+      // If user typed '@', open picker
+      const det = detectMention(next, pos);
+      if (det) {
+        setMentionOpen(true);
+        setMentionQuery(det.query);
+        setMentionStart(det.start);
+        setMentionIndex(0);
+      }
+    });
   };
 
   const onPickFile = (f: File | null | undefined) => {
@@ -118,7 +257,51 @@ export function Composer({
   };
 
   return (
-    <div className="border-t bg-card/80 backdrop-blur-xl">
+    <div className="border-t bg-card/80 backdrop-blur-xl relative">
+      {mentionOpen && filteredMembers.length > 0 && (
+        <div
+          className="absolute left-2 right-2 md:left-6 md:right-6 lg:left-10 lg:right-10 bottom-full mb-1 z-30 rounded-2xl border border-[color:var(--brand-gold,#d4af37)]/25 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto"
+          dir={rtl ? "rtl" : "ltr"}
+        >
+          <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/5 flex items-center gap-1.5">
+            <AtSign className="h-3 w-3" />
+            {rtl ? "منشن عضو" : "Mention someone"}
+          </div>
+          {filteredMembers.map((m, i) => {
+            const isAll = m.user_id === "all";
+            const name = isAll ? (rtl ? "الكل" : "everyone") : (m.display_name ?? m.email ?? "user");
+            const sub = isAll ? (rtl ? "إشعار جميع الأعضاء" : "Notify all members") : (m.email ?? "");
+            return (
+              <button
+                key={m.user_id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); insertMention(m); }}
+                onMouseEnter={() => setMentionIndex(i)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-[color:var(--brand-gold,#d4af37)]/10 transition",
+                  i === mentionIndex && "bg-[color:var(--brand-gold,#d4af37)]/15"
+                )}
+              >
+                {isAll ? (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[color:var(--brand-gold,#d4af37)] to-amber-600 flex items-center justify-center text-black">
+                    <Users className="h-4 w-4" />
+                  </div>
+                ) : (
+                  <LuxuryAvatar url={m.avatar_url ?? null} name={name} size={32} ring="gold" showSkeleton={false} />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate flex items-center gap-1.5">
+                    <span className="text-[color:var(--brand-gold,#d4af37)]">@</span>
+                    <span className="truncate">{name}</span>
+                  </div>
+                  {sub && <div className="text-[11px] text-muted-foreground truncate">{sub}</div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {replyTo && (
         <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/40 text-xs">
           <div className="w-1 self-stretch bg-primary rounded-full" />
@@ -175,13 +358,19 @@ export function Composer({
             >
               <ImageIcon className="h-5 w-5" />
             </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 rounded-full text-muted-foreground hover:text-[color:var(--brand-gold,#d4af37)] shrink-0"
+              onClick={() => insertAtCursor("@")}
+              disabled={disabled}
+              aria-label={rtl ? "منشن" : "Mention"}
+            >
+              <AtSign className="h-5 w-5" />
+            </Button>
             <EmojiPicker
               quickBar
-              onPick={(e) => {
-                setText((prev) => prev + e);
-                taRef.current?.focus();
-                triggerTyping();
-              }}
+              onPick={(e) => { insertAtCursor(e); triggerTyping(); }}
             />
           </>
         )}
@@ -200,12 +389,24 @@ export function Composer({
               rows={1}
               value={text}
               disabled={disabled || uploading}
-              onChange={(e) => { setText(e.target.value); triggerTyping(); }}
+              onChange={(e) => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+              onKeyUp={(e) => {
+                const t = e.currentTarget;
+                const det = detectMention(t.value, t.selectionStart ?? t.value.length);
+                if (det) {
+                  if (!mentionOpen) setMentionOpen(true);
+                  setMentionQuery(det.query);
+                  setMentionStart(det.start);
+                } else if (mentionOpen) {
+                  setMentionOpen(false);
+                }
+              }}
               onKeyDown={onKeyDown}
-              placeholder={rtl ? "اكتب رسالة..." : "Type a message..."}
+              placeholder={rtl ? "اكتب رسالة... (اكتب @ لعمل منشن)" : "Type a message... (@ to mention)"}
               className="flex-1 min-w-0 resize-none bg-muted/40 rounded-2xl px-4 py-2.5 md:px-5 md:py-3.5 md:text-[15px] md:min-h-[52px] text-sm leading-relaxed outline-none focus:ring-2 focus:ring-primary/40 transition placeholder:text-muted-foreground/60 max-h-[140px] md:max-h-[220px]"
               dir={rtl ? "rtl" : "ltr"}
             />
+
             {text.trim() || pending ? (
               <Button
                 size="icon"
