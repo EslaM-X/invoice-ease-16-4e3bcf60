@@ -124,7 +124,7 @@ function TeamChatPage() {
   // Mobile browser back-button: while a room is open on a phone, register a
   // history entry so the hardware/gesture Back returns to the room list
   // instead of leaving the chat page.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     if (!activeRoomId) return;
     const isMobile = window.matchMedia?.("(max-width: 767px)")?.matches;
@@ -231,7 +231,7 @@ function TeamChatPage() {
   // Density (comfortable | cozy | compact)
   type Density = "comfortable" | "cozy" | "compact";
   const [density, setDensityState] = useState<Density>("cozy");
-  useEffect(() => {
+  useLayoutEffect(() => {
     getDensityFn().then((r: any) => {
       const d = r?.density;
       if (d === "comfortable" || d === "cozy" || d === "compact") setDensityState(d);
@@ -448,15 +448,22 @@ function TeamChatPage() {
   const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
   const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
+  const initialAnchorDoneRef = useRef<Record<string, boolean>>({});
+  const suppressLoadOlderUntilRef = useRef(0);
 
   // Reset pagination when switching rooms
   useEffect(() => {
     setOlderPages([]);
     setHasMoreOlder(true);
     setLoadingOlder(false);
-    setIsAtBottom(true);
+    setIsAtBottom(false);
     setUnseenCount(0);
     setFirstUnreadId(null);
+    if (activeRoomId) {
+      initialAnchorDoneRef.current[activeRoomId] = false;
+      pendingRestoreRef.current = null;
+      suppressLoadOlderUntilRef.current = Date.now() + 900;
+    }
   }, [activeRoomId]);
 
   // Load wallpaper preference once
@@ -746,16 +753,15 @@ function TeamChatPage() {
   }, [qc, user?.id, activeRoomId, rtl, roomsQ.data?.rooms]);
 
   useEffect(() => {
-    if (!activeRoomId) return;
-    // Delay so listChatMessages can snapshot last_read_at first — the initial
-    // "scroll to first unread" anchor depends on the pre-open value.
+    const visibleMessageCount = messagesQ.data?.messages?.length ?? 0;
+    if (!activeRoomId || !isAtBottom || visibleMessageCount === 0) return;
     const t = window.setTimeout(() => {
       markRead({ data: { room_id: activeRoomId } }).then(() =>
         qc.invalidateQueries({ queryKey: ["chat-rooms"] })
       ).catch(() => {});
-    }, 2500);
+    }, 650);
     return () => window.clearTimeout(t);
-  }, [activeRoomId, markRead, qc]);
+  }, [activeRoomId, isAtBottom, messagesQ.data?.messages?.length, markRead, qc]);
 
   // Load the remote scroll map once per session and merge remote > local when
   // the remote timestamp is newer (cross-device sync).
@@ -787,20 +793,10 @@ function TeamChatPage() {
 
   // Plan a scroll restore whenever we switch rooms (once per room per session)
   useEffect(() => {
-    if (!activeRoomId || !user?.id) { pendingRestoreRef.current = null; return; }
-    if (didRestoreRef.current[activeRoomId]) { pendingRestoreRef.current = null; return; }
-    let target: number | null = null;
-    try {
-      const raw = localStorage.getItem(scrollStorageKey(activeRoomId));
-      const n = raw != null ? Number(raw) : NaN;
-      if (Number.isFinite(n) && n > 0) target = n;
-    } catch {}
-    // Fall back to remote map if we have no local value yet
-    if (target == null) {
-      const remote = remoteScrollRef.current?.[activeRoomId];
-      if (remote && Number.isFinite(remote.top) && remote.top > 0) target = Math.round(remote.top);
-    }
-    pendingRestoreRef.current = target;
+    // Room entry is anchored by each account's last-read timestamp. Persisted
+    // pixel scroll is kept only as a warm cache while the user stays in-room,
+    // because stale top offsets were reopening conversations at the beginning.
+    pendingRestoreRef.current = null;
   }, [activeRoomId, user?.id, scrollStorageKey]);
 
   // Auto-scroll only when user is at the bottom; otherwise increment unseen counter
@@ -813,6 +809,7 @@ function TeamChatPage() {
     if (!scrollRef.current) return;
     // Do NOT auto-scroll to bottom while a saved position is waiting to be restored.
     if (pendingRestoreRef.current != null) return;
+    if (activeRoomId && !initialAnchorDoneRef.current[activeRoomId]) return;
     if (isAtBottom) {
       const reduce = prefersReducedMotion();
       // Use two frames so the virtualizer measures the new row before we scroll.
@@ -836,10 +833,6 @@ function TeamChatPage() {
       });
     }
   }, [messagesQ.data?.messages?.length, typingUserIds.length, isAtBottom, prefersReducedMotion]);
-
-  // One-shot per-room "open" anchor: computed below (after rowVirtualizer)
-  // once messages and the virtualizer are wired up.
-  const initialAnchorDoneRef = useRef<Record<string, boolean>>({});
 
   // Restore saved scroll position after messages first render for this room
   useLayoutEffect(() => {
@@ -884,7 +877,7 @@ function TeamChatPage() {
       const atBottom = distanceFromBottom < 60;
       setIsAtBottom(atBottom);
       if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
-      if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder) {
+      if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder && Date.now() >= suppressLoadOlderUntilRef.current) {
         loadOlderMessages();
       }
       // Persist scroll position per-room: instant to localStorage, debounced to Supabase.
@@ -1136,7 +1129,7 @@ function TeamChatPage() {
   // When a room opens, land on the first unread message (or bottom if fully
   // read). Uses the server-snapshotted last_read_at so it isn't affected by
   // the markRoomRead call that fires on open.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!activeRoomId) return;
     if (initialAnchorDoneRef.current[activeRoomId]) return;
     // Respect an explicit saved scroll target — the restore effect handles it.
@@ -1164,11 +1157,17 @@ function TeamChatPage() {
 
     const scrollBottom = () => {
       const e = scrollRef.current;
-      if (e) e.scrollTop = e.scrollHeight;
+      if (!e) return;
+      try {
+        if (rows.length > 0) rowVirtualizer.scrollToIndex(rows.length - 1, { align: "end" });
+      } catch {}
+      e.scrollTop = e.scrollHeight;
+      setIsAtBottom(true);
     };
     const scrollToRow = (rowIdx: number) => {
       try {
         rowVirtualizer.scrollToIndex(rowIdx, { align: "start" });
+        setIsAtBottom(false);
       } catch {
         // Fallback: bottom
         scrollBottom();
@@ -1179,18 +1178,25 @@ function TeamChatPage() {
       if (firstUnreadMsgIdx >= 0) {
         const targetMsgId = messages[firstUnreadMsgIdx].id;
         const rowIdx = rowIndexByMsgId.get(targetMsgId);
+        setFirstUnreadId(targetMsgId);
         if (typeof rowIdx === "number") scrollToRow(rowIdx);
         else scrollBottom();
       } else {
+        setFirstUnreadId(null);
         scrollBottom();
       }
     };
 
-    requestAnimationFrame(() => requestAnimationFrame(go));
-    const t1 = window.setTimeout(go, 140);
-    const t2 = window.setTimeout(go, 420);
+    go();
+    requestAnimationFrame(go);
+    const t1 = window.setTimeout(go, 90);
+    const t2 = window.setTimeout(go, 260);
+    const t3 = window.setTimeout(() => {
+      go();
+      suppressLoadOlderUntilRef.current = 0;
+    }, 620);
     initialAnchorDoneRef.current[activeRoomId] = true;
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); };
   }, [activeRoomId, messages, rows.length, messagesQ.data?.room_last_read_at, rowIndexByMsgId, rowVirtualizer, user?.id]);
 
 

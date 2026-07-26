@@ -210,95 +210,145 @@ export const listChatMessages = createServerFn({ method: "GET" })
       .eq("user_id", userId)
       .maybeSingle();
     const roomLastReadAt: string | null = (memberRow as any)?.last_read_at ?? null;
+    const pageLimit = data.limit ?? 50;
+    let anchorCreatedAt: string | null = null;
+
+    const enrichChatMessages = async (msgs: any[]) => {
+      const senderIds = Array.from(new Set(msgs.map((m: any) => m.sender_id)));
+      const { data: profiles } = senderIds.length
+        ? await supabase
+            .from("profiles")
+            .select("user_id, display_name, avatar_url, job_title, job_title_color, hide_job_title")
+            .in("user_id", senderIds)
+        : { data: [] as any[] };
+      const pMap = new Map<string, any>((profiles ?? []).map((p: any) => [p.user_id, p]));
+
+      const msgIds = msgs.map((m: any) => m.id);
+      const { data: reactions } = msgIds.length
+        ? await supabase
+            .from("chat_reactions")
+            .select("message_id, user_id, emoji")
+            .in("message_id", msgIds)
+        : { data: [] as any[] };
+      const rMap = new Map<string, Array<{ emoji: string; user_id: string }>>();
+      for (const r of reactions ?? []) {
+        const arr = rMap.get(r.message_id) ?? [];
+        arr.push({ emoji: r.emoji, user_id: r.user_id });
+        rMap.set(r.message_id, arr);
+      }
+
+      const replyIds = Array.from(
+        new Set(msgs.map((m: any) => m.reply_to_id).filter(Boolean))
+      ) as string[];
+      const { data: replyRows } = replyIds.length
+        ? await supabase
+            .from("chat_messages")
+            .select("id, sender_id, body, message_type, voice_note_url")
+            .in("id", replyIds)
+        : { data: [] as any[] };
+      const replyMap = new Map<string, any>((replyRows ?? []).map((r: any) => [r.id, r]));
+
+      const { data: readRows } = msgIds.length
+        ? await supabase
+            .from("chat_message_reads")
+            .select("message_id, user_id")
+            .in("message_id", msgIds)
+        : { data: [] as any[] };
+      const readMap = new Map<string, string[]>();
+      for (const r of readRows ?? []) {
+        const arr = readMap.get(r.message_id) ?? [];
+        arr.push(r.user_id);
+        readMap.set(r.message_id, arr);
+      }
+
+      const enriched = msgs.map((m: any) => {
+        const p = pMap.get(m.sender_id);
+        const reply = m.reply_to_id ? replyMap.get(m.reply_to_id) : null;
+        const replySender = reply ? pMap.get(reply.sender_id) : null;
+        const readers = (readMap.get(m.id) ?? []).filter((uid) => uid !== m.sender_id);
+        return {
+          ...m,
+          sender_display_name: p?.display_name ?? m.sender_email ?? "Member",
+          sender_avatar_url: p?.avatar_url ?? null,
+          sender_job_title: p?.hide_job_title ? null : (p?.job_title ?? null),
+          sender_job_title_color: p?.job_title_color ?? null,
+          reactions: rMap.get(m.id) ?? [],
+          read_by_user_ids: readers,
+          read_by_count: readers.length,
+          reply_to: reply
+            ? {
+                id: reply.id,
+                body: reply.body,
+                message_type: reply.message_type,
+                voice_note_url: reply.voice_note_url,
+                sender_display_name: replySender?.display_name ?? "Member",
+              }
+            : null,
+        };
+      });
+      return { messages: enriched, room_last_read_at: roomLastReadAt };
+    };
+
+    // On the initial open, prefer a page that actually contains the first
+    // unread message for this user. If the unread span is larger than the page,
+    // start from the first unread; otherwise the normal latest-page query will
+    // contain the unread anchor and preserve recent context.
+    if (!data.before_created_at && roomLastReadAt) {
+      const { count: unreadCount } = await supabase
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", data.room_id)
+        .is("deleted_at", null)
+        .neq("sender_id", userId)
+        .gt("created_at", roomLastReadAt);
+      const { count: afterReadCount } = await supabase
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", data.room_id)
+        .is("deleted_at", null)
+        .gt("created_at", roomLastReadAt);
+
+      if ((unreadCount ?? 0) > 0 && (afterReadCount ?? 0) > pageLimit) {
+        const { data: firstUnread } = await supabase
+          .from("chat_messages")
+          .select("created_at")
+          .eq("room_id", data.room_id)
+          .is("deleted_at", null)
+          .neq("sender_id", userId)
+          .gt("created_at", roomLastReadAt)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        anchorCreatedAt = (firstUnread as any)?.created_at ?? null;
+      }
+    }
+
+    if (anchorCreatedAt) {
+      const { data: anchoredMsgs, error: anchorErr } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("room_id", data.room_id)
+        .is("deleted_at", null)
+        .gte("created_at", anchorCreatedAt)
+        .order("created_at", { ascending: true })
+        .limit(pageLimit);
+      if (anchorErr) throw new Error(anchorErr.message);
+      return enrichChatMessages(anchoredMsgs ?? []);
+    }
+
     let q = supabase
       .from("chat_messages")
       .select("*")
       .eq("room_id", data.room_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(data.limit ?? 50);
+      .limit(pageLimit);
     if (data.before_created_at) q = q.lt("created_at", data.before_created_at);
     const { data: msgsDesc, error } = await q;
     if (error) throw new Error(error.message);
     const msgs = (msgsDesc ?? []).slice().reverse();
 
-    // Hydrate sender profile
-    const senderIds = Array.from(new Set(msgs.map((m: any) => m.sender_id)));
-    const { data: profiles } = senderIds.length
-      ? await supabase
-          .from("profiles")
-          .select("user_id, display_name, avatar_url, job_title, job_title_color, hide_job_title")
-          .in("user_id", senderIds)
-      : { data: [] as any[] };
-    const pMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
-
-    // Hydrate reactions
-    const msgIds = msgs.map((m: any) => m.id);
-    const { data: reactions } = msgIds.length
-      ? await supabase
-          .from("chat_reactions")
-          .select("message_id, user_id, emoji")
-          .in("message_id", msgIds)
-      : { data: [] as any[] };
-    const rMap = new Map<string, Array<{ emoji: string; user_id: string }>>();
-    for (const r of reactions ?? []) {
-      const arr = rMap.get(r.message_id) ?? [];
-      arr.push({ emoji: r.emoji, user_id: r.user_id });
-      rMap.set(r.message_id, arr);
-    }
-
-    // Hydrate reply-to snapshots
-    const replyIds = Array.from(
-      new Set(msgs.map((m: any) => m.reply_to_id).filter(Boolean))
-    ) as string[];
-    const { data: replyRows } = replyIds.length
-      ? await supabase
-          .from("chat_messages")
-          .select("id, sender_id, body, message_type, voice_note_url")
-          .in("id", replyIds)
-      : { data: [] as any[] };
-    const replyMap = new Map((replyRows ?? []).map((r: any) => [r.id, r]));
-
-    // Hydrate read receipts
-    const { data: readRows } = msgIds.length
-      ? await supabase
-          .from("chat_message_reads")
-          .select("message_id, user_id")
-          .in("message_id", msgIds)
-      : { data: [] as any[] };
-    const readMap = new Map<string, string[]>();
-    for (const r of readRows ?? []) {
-      const arr = readMap.get(r.message_id) ?? [];
-      arr.push(r.user_id);
-      readMap.set(r.message_id, arr);
-    }
-
-    const enriched = msgs.map((m: any) => {
-      const p = pMap.get(m.sender_id);
-      const reply = m.reply_to_id ? replyMap.get(m.reply_to_id) : null;
-      const replySender = reply ? pMap.get(reply.sender_id) : null;
-      const readers = (readMap.get(m.id) ?? []).filter((uid) => uid !== m.sender_id);
-      return {
-        ...m,
-        sender_display_name: p?.display_name ?? m.sender_email ?? "Member",
-        sender_avatar_url: p?.avatar_url ?? null,
-        sender_job_title: p?.hide_job_title ? null : (p?.job_title ?? null),
-        sender_job_title_color: p?.job_title_color ?? null,
-        reactions: rMap.get(m.id) ?? [],
-        read_by_user_ids: readers,
-        read_by_count: readers.length,
-        reply_to: reply
-          ? {
-              id: reply.id,
-              body: reply.body,
-              message_type: reply.message_type,
-              voice_note_url: reply.voice_note_url,
-              sender_display_name: replySender?.display_name ?? "Member",
-            }
-          : null,
-      };
-    });
-    return { messages: enriched, room_last_read_at: roomLastReadAt };
+    return enrichChatMessages(msgs);
   });
 
 // Mark a batch of messages as read for the current user
