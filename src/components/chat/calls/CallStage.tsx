@@ -2373,7 +2373,17 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
             options={roomOptions}
             data-lk-theme="default"
             style={{ height: "100%", background: "black", position: "relative" }}
-            onDisconnected={() => {
+            onDisconnected={(reason) => {
+              // Only forget the saved mini-window layout when the user
+              // intentionally leaves — network drops / server kicks should
+              // preserve it so a reload restores the same spot & size.
+              if (
+                reason === DisconnectReason.CLIENT_INITIATED ||
+                reason === DisconnectReason.USER_REJECTED ||
+                reason === DisconnectReason.USER_UNAVAILABLE
+              ) {
+                clearSavedMiniRect();
+              }
               onLeave();
               onClose();
             }}
