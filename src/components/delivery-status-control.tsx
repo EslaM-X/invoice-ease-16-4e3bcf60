@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Truck, Package, CheckCircle2, User as UserIcon, Info } from "lucide-react";
+import { Truck, Package, CheckCircle2, User as UserIcon, Info, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
+
+const OVERRIDE_ALLOWED_USER_IDS = new Set<string>([
+  "45f5f827-561f-4a81-bc60-4dd2aba38e10", // f.hesham@steinheim-eg.com
+]);
 
 type Profile = { id: string; user_id: string; display_name: string | null; email: string | null };
 type Status = "pending" | "in_transit" | "partial" | "delivered";
