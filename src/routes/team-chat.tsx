@@ -1108,6 +1108,20 @@ function TeamChatPage() {
     scrollMargin: 48, // space for top "Load older" sentinel
   });
 
+  const jumpToLastRead = useCallback(() => {
+    if (!firstUnreadId) return;
+    const rowIdx = rowIndexByMsgId.get(firstUnreadId);
+    if (rowIdx == null) return;
+    try {
+      rowVirtualizer.scrollToIndex(rowIdx, { align: "start" });
+      setShowJumpToUnread(false);
+    } catch (err) {
+      console.error("[team-chat] jumpToLastRead failed", err);
+    }
+  }, [firstUnreadId, rowIndexByMsgId, rowVirtualizer]);
+
+
+
   // Sticky day chip: reflect the day of the top-most visible message row.
   const [stickyDayLabel, setStickyDayLabel] = useState<string>("");
   useEffect(() => {
