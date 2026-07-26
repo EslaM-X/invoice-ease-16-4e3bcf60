@@ -68,10 +68,10 @@ export function LiveInvitesRoster({ callId, rtl }: Props) {
   const rows = q.data?.participants ?? [];
   if (!rows.length) return null;
 
-  const counts = rows.reduce<Record<string, number>>((acc, r: any) => {
-    acc[r.join_status] = (acc[r.join_status] ?? 0) + 1;
-    return acc;
-  }, {});
+  const counts: Record<string, number> = {};
+  for (const r of rows as any[]) {
+    counts[r.join_status] = (counts[r.join_status] ?? 0) + 1;
+  }
 
   return (
     <section className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -108,7 +108,7 @@ export function LiveInvitesRoster({ callId, rtl }: Props) {
             >
               <div className="relative shrink-0">
                 <LuxuryAvatar
-                  src={p.profile?.avatar_url ?? null}
+                  url={p.profile?.avatar_url ?? null}
                   name={name}
                   size={40}
                 />
