@@ -36,6 +36,7 @@ import {
   type Participant,
 } from "livekit-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { LiveInvitesRoster } from "./LiveInvitesRoster";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -97,6 +98,7 @@ type Props = {
   token: string;
   video: boolean;
   onLeave: () => void;
+  callId?: string;
 };
 
 /* ------------------------------------------------------------------ */
@@ -1326,7 +1328,7 @@ function ParticipantRow({ p, rtl }: { p: Participant; rtl: boolean }) {
   );
 }
 
-function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
+function ParticipantCountBadge({ rtl, callId }: { rtl: boolean; callId?: string }) {
   const participants = useParticipants(); // reactive to join/leave for everyone
   const count = participants.length;
   const [open, setOpen] = useState(false);
@@ -1456,6 +1458,7 @@ function ParticipantCountBadge({ rtl }: { rtl: boolean }) {
               <ParticipantRow key={p.identity} p={p} rtl={rtl} />
             ))}
           </ul>
+          {callId && <LiveInvitesRoster callId={callId} rtl={rtl} />}
         </SheetContent>
       </Sheet>
     </>
@@ -2201,7 +2204,7 @@ function buildRoomOptions(profile: CapProfile): RoomOptions {
 
 /* ------------------------------------------------------------------ */
 
-export function CallStage({ open, onClose, url, token, video, onLeave }: Props) {
+export function CallStage({ open, onClose, url, token, video, onLeave, callId }: Props) {
   const { lang } = useI18n();
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
@@ -2357,6 +2360,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
               setFocusLock={setFocusLock}
               callPerf={callPerf}
               setCallPerf={setCallPerf}
+              callId={callId}
             />
           </LiveKitRoom>
         ) : null}
@@ -2370,7 +2374,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
  * diagnostics dialog and auto-fallback controller inside the LiveKitRoom.
  */
 function ShareDiagnosticsMount({
-  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf,
+  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf, callId,
 }: {
   rtl: boolean;
   autoSpeaker: boolean;
@@ -2379,6 +2383,7 @@ function ShareDiagnosticsMount({
   setFocusLock: (v: boolean) => void;
   callPerf: CallPerfPref;
   setCallPerf: (v: CallPerfPref) => void;
+  callId?: string;
 }) {
   const ctrlRef = useRef<ShareController | null>(null);
   const surfaceRef = useRef<Surface>(
@@ -2413,7 +2418,7 @@ function ShareDiagnosticsMount({
       <ShareDiagnosticsDialog rtl={rtl} open={diagOpen} onOpenChange={setDiagOpen} state={monitor} />
 
       <NetworkQualityBadge rtl={rtl} />
-      <ParticipantCountBadge rtl={rtl} />
+      <ParticipantCountBadge rtl={rtl} callId={callId} />
       <LocalMediaStatusBadge rtl={rtl} />
       <MediaStateAnnouncer rtl={rtl} />
       <PinRestorer />

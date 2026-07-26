@@ -3,6 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   cancelCallImpl,
   declineCallImpl,
+  getCallInvitesLiveImpl,
+  getTeamCallReachabilityImpl,
   joinCallImpl,
   leaveCallImpl,
   listMyCallHistoryImpl,
@@ -72,3 +74,17 @@ export const listMyCallHistory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { limit?: number } | undefined) => d ?? {})
   .handler(listMyCallHistoryImpl);
+
+/** Live invite roster for a specific active/ended call — for the ringing panel. */
+export const getCallInvitesLive = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { call_id: string }) => {
+    if (!d?.call_id) throw new Error("call_id مطلوب");
+    return d;
+  })
+  .handler(getCallInvitesLiveImpl);
+
+/** Company-wide team reachability snapshot for the Team Call Status page. */
+export const getTeamCallReachability = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(getTeamCallReachabilityImpl);
