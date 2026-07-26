@@ -13,7 +13,9 @@ export type ParsedPart =
   | { type: "text"; value: string }
   | { type: "mention"; name: string; target: string /* uuid | "all" */ };
 
-const MENTION_RE = /@\[([^\]]{1,80})\]\(([a-zA-Z0-9-]{1,64})\)/g;
+// Accept any non-paren target so malformed/legacy tokens still render as @Name
+// instead of leaking raw `@[Name](id)` text into the bubble.
+const MENTION_RE = /@\[([^\]]{1,80})\]\(([^)\s]{1,80})\)/g;
 
 export function parseMentionBody(body: string): ParsedPart[] {
   const out: ParsedPart[] = [];
