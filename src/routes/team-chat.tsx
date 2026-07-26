@@ -1129,6 +1129,67 @@ function TeamChatPage() {
     };
   }, [rows, messages, rtl, rowVirtualizer, activeRoomId]);
 
+  // When a room opens, land on the first unread message (or bottom if fully
+  // read). Uses the server-snapshotted last_read_at so it isn't affected by
+  // the markRoomRead call that fires on open.
+  useEffect(() => {
+    if (!activeRoomId) return;
+    if (initialAnchorDoneRef.current[activeRoomId]) return;
+    // Respect an explicit saved scroll target — the restore effect handles it.
+    if (pendingRestoreRef.current != null) {
+      initialAnchorDoneRef.current[activeRoomId] = true;
+      return;
+    }
+    if (messages.length === 0 || rows.length === 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const lastReadAt = messagesQ.data?.room_last_read_at ?? null;
+    let firstUnreadMsgIdx = -1;
+    if (lastReadAt) {
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        // Only count messages authored by others — the user's own messages
+        // shouldn't be treated as "unread".
+        if (m.sender_id !== user?.id && m.created_at > lastReadAt) {
+          firstUnreadMsgIdx = i;
+          break;
+        }
+      }
+    }
+
+    const scrollBottom = () => {
+      const e = scrollRef.current;
+      if (e) e.scrollTop = e.scrollHeight;
+    };
+    const scrollToRow = (rowIdx: number) => {
+      try {
+        rowVirtualizer.scrollToIndex(rowIdx, { align: "start" });
+      } catch {
+        // Fallback: bottom
+        scrollBottom();
+      }
+    };
+
+    const go = () => {
+      if (firstUnreadMsgIdx >= 0) {
+        const targetMsgId = messages[firstUnreadMsgIdx].id;
+        const rowIdx = rowIndexByMsgId.get(targetMsgId);
+        if (typeof rowIdx === "number") scrollToRow(rowIdx);
+        else scrollBottom();
+      } else {
+        scrollBottom();
+      }
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(go));
+    const t1 = window.setTimeout(go, 140);
+    const t2 = window.setTimeout(go, 420);
+    initialAnchorDoneRef.current[activeRoomId] = true;
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [activeRoomId, messages, rows.length, messagesQ.data?.room_last_read_at, rowIndexByMsgId, rowVirtualizer, user?.id]);
+
+
   // In-chat search: rich results (id, index, snippet, ts)
   const searchResults = useMemo(() => {
     const q = inChatQuery.trim().toLowerCase();
