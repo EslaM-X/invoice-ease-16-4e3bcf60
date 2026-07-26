@@ -528,12 +528,20 @@ function InvoicesList() {
                                 ) : (() => {
                                   const p = delivProgress[i.id];
                                   if (p && p.total > 0 && p.delivered > 0 && p.delivered < p.total) {
+                                    const remaining = p.total - p.delivered;
                                     return (
                                       <span
                                         className="rounded-full border border-orange-500/40 bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-700 dark:text-orange-400"
                                         title={`${p.delivered} / ${p.total}`}
                                       >
-                                        {lang === "ar" ? `تسليم جزئي ${p.delivered}/${p.total}` : `Partial ${p.delivered}/${p.total}`}
+                                        {lang === "ar" ? `تسليم جزئي ${p.delivered}/${p.total} — باقي ${remaining}` : `Partial ${p.delivered}/${p.total} — ${remaining} left`}
+                                      </span>
+                                    );
+                                  }
+                                  if (p && p.total > 0 && p.delivered === 0) {
+                                    return (
+                                      <span className="rounded-full border border-slate-500/40 bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300">
+                                        {lang === "ar" ? `قيد الانتظار — باقي ${p.total}` : `Pending — ${p.total} left`}
                                       </span>
                                     );
                                   }
