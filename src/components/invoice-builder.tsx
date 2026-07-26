@@ -867,7 +867,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         await supabase
           .from("invoices")
           .update({
-            delivery_status: delivered ? "delivered" : "pending",
             subject: subject.trim() || null,
             delivery_days: deliveryDays,
             tax_enabled: taxEnabled,
