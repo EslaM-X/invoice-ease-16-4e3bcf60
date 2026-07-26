@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   MessageSquare, X, Minus, GripHorizontal, ExternalLink,
   BellOff, Bell, Layers, Maximize2,
