@@ -446,6 +446,9 @@ function TeamChatPage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
   const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  // Shown when the user has scrolled below their last-read anchor, letting
+  // them snap back instantly to the first unread message.
+  const [showJumpToUnread, setShowJumpToUnread] = useState(false);
   const preserveScrollRef = useRef<{ prevHeight: number } | null>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const initialAnchorDoneRef = useRef<Record<string, boolean>>({});
@@ -876,7 +879,18 @@ function TeamChatPage() {
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       const atBottom = distanceFromBottom < 60;
       setIsAtBottom(atBottom);
-      if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); }
+      if (atBottom) { setUnseenCount(0); setFirstUnreadId(null); setShowJumpToUnread(false); }
+      // Show the "jump to last read" pill only when the anchor row has scrolled
+      // above the viewport top (i.e. the user actively scrolled down past it).
+      if (firstUnreadId) {
+        const anchorEl = document.getElementById(`msg-${firstUnreadId}`);
+        if (anchorEl) {
+          const anchorTop = anchorEl.getBoundingClientRect().top - el.getBoundingClientRect().top;
+          setShowJumpToUnread(anchorTop < -40 && !atBottom);
+        }
+      } else {
+        setShowJumpToUnread(false);
+      }
       if (el.scrollTop < 120 && hasMoreOlder && !loadingOlder && Date.now() >= suppressLoadOlderUntilRef.current) {
         loadOlderMessages();
       }
@@ -902,7 +916,7 @@ function TeamChatPage() {
       console.error("[team-chat] scroll handler failed", err);
       toast.error(rtl ? "تعذّر متابعة موضع التمرير" : "Chat scroll tracking failed");
     }
-  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey, scrollTsKey, setRoomScrollFn]);
+  }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey, scrollTsKey, setRoomScrollFn, firstUnreadId]);
 
   // Sign voice + attachment URLs
   useEffect(() => {
@@ -1093,6 +1107,20 @@ function TeamChatPage() {
     getItemKey: (i) => rows[i]?.key ?? i,
     scrollMargin: 48, // space for top "Load older" sentinel
   });
+
+  const jumpToLastRead = useCallback(() => {
+    if (!firstUnreadId) return;
+    const rowIdx = rowIndexByMsgId.get(firstUnreadId);
+    if (rowIdx == null) return;
+    try {
+      rowVirtualizer.scrollToIndex(rowIdx, { align: "start" });
+      setShowJumpToUnread(false);
+    } catch (err) {
+      console.error("[team-chat] jumpToLastRead failed", err);
+    }
+  }, [firstUnreadId, rowIndexByMsgId, rowVirtualizer]);
+
+
 
   // Sticky day chip: reflect the day of the top-most visible message row.
   const [stickyDayLabel, setStickyDayLabel] = useState<string>("");
@@ -2171,6 +2199,21 @@ function TeamChatPage() {
                   aria-label={rtl ? "إعادة تهيئة التخطيط" : "Reset layout"}
                 >
                   {rtl ? "إعادة تهيئة التخطيط" : "Reset layout"}
+                </button>
+              )}
+
+              {showJumpToUnread && firstUnreadId && (
+                <button
+                  type="button"
+                  onClick={jumpToLastRead}
+                  className="absolute bottom-20 end-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black border border-black/20 shadow-[0_10px_30px_-10px_rgba(212,175,55,0.6)] px-3 py-2 backdrop-blur-md transition hover:brightness-110"
+                  aria-label={rtl ? "الرجوع لآخر قراءة" : "Jump to last read"}
+                  title={rtl ? "الرجوع لآخر رسالة تم عرضها" : "Jump to last message you viewed"}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                  <span className="text-[11px] font-bold">
+                    {rtl ? "آخر قراءة" : "Last read"}
+                  </span>
                 </button>
               )}
 
