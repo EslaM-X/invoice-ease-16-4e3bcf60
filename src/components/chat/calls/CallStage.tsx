@@ -2373,7 +2373,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
  * diagnostics dialog and auto-fallback controller inside the LiveKitRoom.
  */
 function ShareDiagnosticsMount({
-  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf,
+  rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf, callId,
 }: {
   rtl: boolean;
   autoSpeaker: boolean;
@@ -2382,6 +2382,7 @@ function ShareDiagnosticsMount({
   setFocusLock: (v: boolean) => void;
   callPerf: CallPerfPref;
   setCallPerf: (v: CallPerfPref) => void;
+  callId?: string;
 }) {
   const ctrlRef = useRef<ShareController | null>(null);
   const surfaceRef = useRef<Surface>(
