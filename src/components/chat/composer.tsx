@@ -1,12 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send, X, Image as ImageIcon } from "lucide-react";
+import { Paperclip, Send, X, Image as ImageIcon, AtSign, Users } from "lucide-react";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { VoiceRecorder } from "@/components/chat/voice-recorder";
+import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ChatMsg } from "./message-bubble";
+
+export type MentionMember = {
+  user_id: string;
+  display_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  is_me?: boolean;
+};
 
 type Pending = { file: File; previewUrl: string };
 
