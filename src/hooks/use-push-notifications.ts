@@ -8,6 +8,7 @@ import {
   type SoundPreset,
   type VibrationPreset,
 } from "@/lib/push";
+import { getDeviceId, getDeviceLabel, writeLocalPush, clearLocalPush } from "@/lib/device-id";
 
 export type NotifPrefs = {
   push_enabled: boolean;
@@ -90,7 +91,10 @@ export function usePushNotifications() {
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== "granted") return false;
+      if (perm !== "granted") {
+        clearLocalPush();
+        return false;
+      }
 
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
@@ -101,6 +105,8 @@ export function usePushNotifications() {
         });
       }
       const json: any = sub.toJSON();
+      const deviceId = getDeviceId();
+      const deviceLabel = getDeviceLabel();
       await supabase.from("push_subscriptions").upsert(
         {
           user_id: user.id,
@@ -108,10 +114,16 @@ export function usePushNotifications() {
           p256dh: json.keys.p256dh,
           auth: json.keys.auth,
           user_agent: navigator.userAgent,
+          device_label: deviceLabel,
           last_used_at: new Date().toISOString(),
         },
         { onConflict: "endpoint" },
       );
+      writeLocalPush({
+        enabled_at: new Date().toISOString(),
+        endpoint: json.endpoint,
+        device_id: deviceId,
+      });
       await savePrefs({ push_enabled: true });
       setSubscribed(true);
       return true;
