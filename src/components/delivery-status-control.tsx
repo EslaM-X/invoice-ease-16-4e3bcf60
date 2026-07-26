@@ -48,20 +48,14 @@ export function DeliveryStatusControl({
     return "__none__";
   }, [assigneeId, assigneeLabel]);
 
-  const saveStatus = async (next: Status) => {
-    if (next === "delivered") { onMarkDelivered(); return; }
-    setSaving(true);
-    const patch: any = { delivery_status: next };
-    if (next === "pending") {
-      patch.delivery_assignee_id = null;
-      patch.delivery_assignee_label = null;
-    }
-    const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success(isAr ? "تم حفظ حالة التسليم" : "Delivery status saved");
-    onChanged();
+  const saveStatus = async (_next: Status) => {
+    toast.info(
+      isAr
+        ? "حالة التسليم تتحدث تلقائياً حسب محاضر الاستلام"
+        : "Delivery status updates automatically from delivery receipts",
+    );
   };
+
 
   const saveAssignee = async (key: string, freeText?: string) => {
     setSaving(true);
