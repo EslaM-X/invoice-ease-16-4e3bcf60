@@ -4865,10 +4865,6 @@ export type Database = {
         Returns: undefined
       }
       recalculate_po_receipt_state: { Args: { p_po_id: string }; Returns: Json }
-      recompute_invoice_delivery_status: {
-        Args: { _invoice_id: string }
-        Returns: undefined
-      }
       recompute_missing_shortages: { Args: never; Returns: number }
       record_historical_po_receipt: {
         Args: {

@@ -48,9 +48,20 @@ export function DeliveryStatusControl({
     return "__none__";
   }, [assigneeId, assigneeLabel]);
 
-  void onMarkDelivered; // status is auto-derived from delivery receipts now
-
-
+  const saveStatus = async (next: Status) => {
+    if (next === "delivered") { onMarkDelivered(); return; }
+    setSaving(true);
+    const patch: any = { delivery_status: next };
+    if (next === "pending") {
+      patch.delivery_assignee_id = null;
+      patch.delivery_assignee_label = null;
+    }
+    const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(isAr ? "تم حفظ حالة التسليم" : "Delivery status saved");
+    onChanged();
+  };
 
   const saveAssignee = async (key: string, freeText?: string) => {
     setSaving(true);
@@ -58,7 +69,10 @@ export function DeliveryStatusControl({
     if (key === COMPANY_LABEL_KEY) patch.delivery_assignee_label = "Company account";
     else if (key === "__custom__") patch.delivery_assignee_label = (freeText ?? customLabel).trim() || null;
     else if (key !== "__none__") patch.delivery_assignee_id = key;
-
+    // If we're picking an assignee while pending, promote status to in_transit
+    if (s === "pending" && (patch.delivery_assignee_id || patch.delivery_assignee_label)) {
+      patch.delivery_status = "in_transit";
+    }
     const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -80,26 +94,22 @@ export function DeliveryStatusControl({
         <div className="mb-3 flex items-center gap-2">
           <Truck className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">{isAr ? "حالة التسليم" : "Delivery status"}</h3>
-          <span className="ms-auto text-[10px] font-medium text-muted-foreground">
-            {isAr ? "تلقائي من محاضر الاستلام" : "Auto from receipts"}
-          </span>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <div className={statusPillClass("pending") + " pointer-events-none flex items-center justify-center px-3 py-1.5 text-xs font-medium"}>
+          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("pending")} onClick={() => saveStatus("pending")}>
             <Package className="h-3.5 w-3.5" />
             {isAr ? "قيد الانتظار" : "Pending"}
-          </div>
-          <div className={statusPillClass("in_transit") + " pointer-events-none flex items-center justify-center px-3 py-1.5 text-xs font-medium"}>
+          </Button>
+          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("in_transit")} onClick={() => saveStatus("in_transit")}>
             <Truck className="h-3.5 w-3.5" />
             {isAr ? "في الطريق" : "In Transit"}
-          </div>
-          <div className={statusPillClass("delivered") + " pointer-events-none flex items-center justify-center px-3 py-1.5 text-xs font-medium"}>
+          </Button>
+          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("delivered")} onClick={() => saveStatus("delivered")}>
             <CheckCircle2 className="h-3.5 w-3.5" />
             {isAr ? "تم التسليم" : "Delivered"}
-          </div>
+          </Button>
         </div>
-
 
         {(s === "in_transit" || s === "partial" || assigneeId || assigneeLabel) && (
           <div className="mt-4 space-y-2 rounded-xl border border-dashed bg-muted/30 p-3">
