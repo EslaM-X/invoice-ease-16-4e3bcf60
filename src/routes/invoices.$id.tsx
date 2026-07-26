@@ -243,24 +243,13 @@ function InvoiceView() {
               {(() => {
                 const totalNum = Number(inv.total);
                 const paidNum = Number(inv.paid_amount ?? 0);
-                const isDelivered = inv.delivery_status === "delivered";
                 return (
-                  <>
-                    <Button
-                      variant={isDelivered ? "default" : "outline"}
-                      className={`gap-2 rounded-full ${isDelivered ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"}`}
-                      onClick={() => toggleDelivered(!isDelivered)}
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isDelivered ? (isAr ? "مُسلَّمة" : "Delivered") : (isAr ? "تعليم تسليم" : "Mark delivered")}
-                    </Button>
-                    <PaymentsManager
-                      invoiceId={id}
-                      invoiceTotal={totalNum}
-                      paidAmount={paidNum}
-                      onChange={load}
-                    />
-                  </>
+                  <PaymentsManager
+                    invoiceId={id}
+                    invoiceTotal={totalNum}
+                    paidAmount={paidNum}
+                    onChange={load}
+                  />
                 );
               })()}
               <AlertDialog>
