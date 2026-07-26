@@ -2482,48 +2482,57 @@ function ShareDiagnosticsMount({
       <CameraFailureRetry rtl={rtl} />
       <QualityInsights rtl={rtl} shareState={monitor} onSwitchLite={() => setCallPerf("lite")} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
-      <PresenterTools rtl={rtl} />
+      {shellMode === "full" && <PresenterTools rtl={rtl} />}
       <RoomAudioRenderer />
-      <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
-      <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
-      <KeyboardShortcuts
-        rtl={rtl}
-        autoSpeaker={autoSpeaker}
-        setAutoSpeaker={setAutoSpeaker}
-        focusLock={focusLock}
-        setFocusLock={setFocusLock}
-      />
-
-      <div
-        className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
-        role="toolbar"
-        aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
-      >
-        <div className="mx-auto mb-2 flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4">
-          <CallPerfSelector rtl={rtl} value={callPerf} onChange={setCallPerf} />
-          <ScreenShareWithPreview
+      {shellMode === "full" && (
+        <>
+          <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
+          <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
+          <KeyboardShortcuts
             rtl={rtl}
-            bindController={(c) => { ctrlRef.current = c; }}
+            autoSpeaker={autoSpeaker}
+            setAutoSpeaker={setAutoSpeaker}
+            focusLock={focusLock}
+            setFocusLock={setFocusLock}
           />
-          <DiagnosticsLaunchButton
-            rtl={rtl}
-            onClick={() => setDiagOpen(true)}
-            quality={monitor.quality}
-            isSharing={monitor.isSharing}
+        </>
+      )}
+
+      {shellMode === "full" ? (
+        <div
+          className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
+          role="toolbar"
+          aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
+        >
+          <div className="mx-auto mb-2 flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4">
+            <CallPerfSelector rtl={rtl} value={callPerf} onChange={setCallPerf} />
+            <ScreenShareWithPreview
+              rtl={rtl}
+              bindController={(c) => { ctrlRef.current = c; }}
+            />
+            <DiagnosticsLaunchButton
+              rtl={rtl}
+              onClick={() => setDiagOpen(true)}
+              quality={monitor.quality}
+              isSharing={monitor.isSharing}
+            />
+            <MinimizeCallButton rtl={rtl} onClick={onMinimize} />
+          </div>
+          <ControlBar
+            variation="verbose"
+            controls={{
+              microphone: true,
+              camera: true,
+              screenShare: false,
+              chat: false,
+              leave: true,
+              settings: true,
+            }}
           />
         </div>
-        <ControlBar
-          variation="verbose"
-          controls={{
-            microphone: true,
-            camera: true,
-            screenShare: false,
-            chat: false,
-            leave: true,
-            settings: true,
-          }}
-        />
-      </div>
+      ) : (
+        <MiniControlStrip rtl={rtl} />
+      )}
     </LayoutContextProvider>
   );
 }
