@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   MessageSquare, X, Minus, GripHorizontal, ExternalLink,
   BellOff, Bell, Layers, Maximize2,
@@ -44,6 +44,7 @@ export default function ChatPopupNotifier() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const location = useLocation();
+  const navigate = useNavigate();
   const onChatPage = location.pathname.startsWith("/team-chat");
 
   // Per-user preference keys
@@ -283,15 +284,11 @@ export default function ChatPopupNotifier() {
     const latest = queue[queue.length - 1];
     if (!latest) return;
     setQueue((q) => q.filter((x) => x.room_id !== latest.room_id));
-    if (typeof window !== "undefined") {
-      window.location.href = `/team-chat?room=${encodeURIComponent(latest.room_id)}`;
-    }
-  }, [queue]);
+    navigate({ to: "/team-chat", search: { room: latest.room_id } as any }).catch(() => {});
+  }, [queue, navigate]);
   const openRoom = (roomId: string) => {
     setQueue((q) => q.filter((x) => x.room_id !== roomId));
-    if (typeof window !== "undefined") {
-      window.location.href = `/team-chat?room=${encodeURIComponent(roomId)}`;
-    }
+    navigate({ to: "/team-chat", search: { room: roomId } as any }).catch(() => {});
   };
 
   // ---- Keyboard shortcuts ----

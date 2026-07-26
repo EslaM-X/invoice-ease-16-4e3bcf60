@@ -17,6 +17,8 @@ import {
   usePinnedTracks,
   useMaybeTrackRefContext,
   useMaybeLayoutContext,
+  LayoutContextProvider,
+  useCreateLayoutContext,
 } from "@livekit/components-react";
 import {
   Track,
@@ -2385,8 +2387,10 @@ function ShareDiagnosticsMount({
     onRestart: () => { ctrlRef.current?.openPicker(); },
   });
 
+  const layoutContext = useCreateLayoutContext();
+
   return (
-    <>
+    <LayoutContextProvider value={layoutContext}>
       <PerfEffectsGuard pref={callPerf} />
       <ShareQualityBadge rtl={rtl} state={monitor} onOpenDiagnostics={() => setDiagOpen(true)} />
       <ShareDiagnosticsDialog rtl={rtl} open={diagOpen} onOpenChange={setDiagOpen} state={monitor} />
@@ -2445,7 +2449,7 @@ function ShareDiagnosticsMount({
           }}
         />
       </div>
-    </>
+    </LayoutContextProvider>
   );
 }
 

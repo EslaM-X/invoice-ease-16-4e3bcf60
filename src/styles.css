@@ -1072,23 +1072,31 @@ html, body {
     max-width: 190mm !important;
     margin-left: auto !important;
     margin-right: auto !important;
+    font-size: 10pt !important;
   }
-  /* Neutralize mobile-first stacking utilities inside the invoice */
-  .print-area .invoice-page,
-  .print-area .invoice-page * {
-    /* keep flex/grid rows horizontal on the printed page */
+  /* Keep the invoice's original desktop layout — do NOT flip flex-col to row
+     (that was collapsing header address/date blocks onto each other). */
+  .print-area table {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
   }
-  .print-area .flex-col { flex-direction: row !important; }
-  .print-area header.flex-col,
-  .print-area .invoice-page > .flex-col { flex-direction: column !important; }
-  .print-area .grid-cols-1 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .print-area table { width: 100% !important; table-layout: auto !important; }
   .print-area td, .print-area th {
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
     white-space: normal !important;
+    padding: 4px 6px !important;
+    vertical-align: top !important;
+    font-size: 9.5pt !important;
+    line-height: 1.35 !important;
   }
   .print-area .invoice-logo { max-width: 100% !important; }
+  /* Money/number cells stay on one line so digits don't stack vertically. */
+  .print-area .ltr-nums, .print-area .tabular-nums {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+  }
 }
 
 
