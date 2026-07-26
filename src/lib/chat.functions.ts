@@ -655,14 +655,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             type: "chat_mention",
             title: `${senderName} mentioned you`,
             body: preview,
-            data: {
+            meta: {
               room_id: data.room_id,
               message_id: (msg as any).id,
               sender_id: userId,
               all: hasAll,
             } as any,
           }));
-          await supabase.from("notifications").insert(rows);
+          await supabase.from("notifications").insert(rows as any);
         }
       }
     } catch {
