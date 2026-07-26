@@ -14,9 +14,9 @@ export function getDeviceId(): string {
       id =
         (crypto as any)?.randomUUID?.() ??
         `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-      localStorage.setItem(KEY_DEVICE, id);
+      localStorage.setItem(KEY_DEVICE, id!);
     }
-    return id;
+    return id!;
   } catch {
     return "unknown";
   }
