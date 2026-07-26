@@ -1078,7 +1078,7 @@ html, body {
      (that was collapsing header address/date blocks onto each other). */
   .print-area table {
     width: 100% !important;
-    table-layout: fixed !important;
+    table-layout: auto !important;
     border-collapse: collapse !important;
   }
   .print-area td, .print-area th {
