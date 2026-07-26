@@ -36,6 +36,7 @@ import {
   type Participant,
 } from "livekit-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { FloatingCallShell, MinimizeCallButton, type CallShellMode } from "./FloatingCallShell";
 import { LiveInvitesRoster } from "./LiveInvitesRoster";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -2325,12 +2326,20 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
 
   const ready = open && !!url && !!token && !probing;
 
+  const [shellMode, setShellMode] = useState<CallShellMode>("full");
+  useEffect(() => { if (!open) setShellMode("full"); }, [open]);
+
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="h-[100dvh] w-full p-0 border-0 bg-black text-white"
+    <FloatingCallShell
+      open={open}
+      mode={shellMode}
+      onModeChange={setShellMode}
+      rtl={rtl}
+    >
+      <div
+        className="relative h-full w-full bg-black text-white"
         dir={rtl ? "rtl" : "ltr"}
+        data-call-mode={shellMode}
       >
         {/* aria-live for screen readers — preflight status */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -2339,7 +2348,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
 
         {open && probing ? (
           <div
-            className="flex h-[100dvh] w-full flex-col items-center justify-center gap-4 bg-black text-white"
+            className="flex h-full w-full flex-col items-center justify-center gap-4 bg-black text-white"
             role="status"
             aria-live="polite"
           >
@@ -2362,7 +2371,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
             audio
             options={roomOptions}
             data-lk-theme="default"
-            style={{ height: "100dvh", background: "black", position: "relative" }}
+            style={{ height: "100%", background: "black", position: "relative" }}
             onDisconnected={() => {
               onLeave();
               onClose();
@@ -2400,11 +2409,13 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
               callPerf={callPerf}
               setCallPerf={setCallPerf}
               callId={callId}
+              shellMode={shellMode}
+              onMinimize={() => setShellMode("mini")}
             />
           </LiveKitRoom>
         ) : null}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </FloatingCallShell>
   );
 }
 
