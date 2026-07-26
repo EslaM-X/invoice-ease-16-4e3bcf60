@@ -2451,7 +2451,7 @@ function ShareDiagnosticsMount({
           }}
         />
       </div>
-    </>
+    </LayoutContextProvider>
   );
 }
 
