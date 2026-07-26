@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { logPwaEvent } from "@/lib/pwa-diagnostics";
 import { shouldDisablePwaFeatures } from "@/lib/pwa-runtime";
+import {
+  fetchLatestVersion,
+  recordActivation,
+  recordCurrentVersion,
+} from "@/lib/pwa-version";
 
 const SW_PATH = "/sw.js";
 
@@ -29,11 +34,22 @@ export function PwaVersionGuard() {
       window.location.reload();
     };
 
+    const onSwMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; version?: string } | undefined;
+      if (!data) return;
+      if (data.type === "SW_ACTIVATED" && data.version) {
+        recordActivation(data.version);
+      } else if (data.type === "PONG" && data.version) {
+        recordCurrentVersion(data.version);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onSwMessage);
+
     const run = async () => {
       try {
         const registrations = await navigator.serviceWorker.getRegistrations();
         logPwaEvent("info", "sw_registrations_found", { count: registrations.length, inIframe, isPreviewHost });
-        
+
         // Cleanup foreign/old workers
         for (const reg of registrations) {
           const scriptUrl = reg.active?.scriptURL ?? reg.waiting?.scriptURL ?? reg.installing?.scriptURL ?? "";
@@ -51,18 +67,26 @@ export function PwaVersionGuard() {
 
         navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
-        // Register the canonical SW
-        const reg = await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
+        // Register the canonical SW — updateViaCache:"none" forces the browser
+        // to bypass its HTTP cache when checking /sw.js, so reg.update() always
+        // hits the network and picks up new deploys immediately.
+        const reg = await navigator.serviceWorker.register(SW_PATH, { scope: "/", updateViaCache: "none" });
         logPwaEvent("info", "sw_register_ok", { scope: reg.scope });
-        await reg.update().catch((error) => {
-          logPwaEvent("warn", "sw_update_check_failed", String(error));
-        });
-        
+
+        // Ask the active worker for its version right away.
+        navigator.serviceWorker.controller?.postMessage({ type: "PING" });
+
+        await Promise.all([
+          reg.update().catch((error) => logPwaEvent("warn", "sw_update_check_failed", String(error))),
+          fetchLatestVersion(),
+        ]);
+
         // Auto-skip-waiting when an update is found
         reg.addEventListener("updatefound", () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
           logPwaEvent("info", "sw_update_found");
+          void fetchLatestVersion();
           newWorker.addEventListener("statechange", () => {
             if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
               logPwaEvent("info", "sw_update_available_skipping_waiting");
@@ -75,6 +99,7 @@ export function PwaVersionGuard() {
           void reg.update().catch((error) =>
             logPwaEvent("warn", "sw_update_check_failed", { reason, error: String(error) }),
           );
+          void fetchLatestVersion();
         };
 
         // Fast polling — every 30s while the tab is visible.
@@ -112,6 +137,7 @@ export function PwaVersionGuard() {
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      navigator.serviceWorker.removeEventListener("message", onSwMessage);
       if (intervalId) clearInterval(intervalId);
       if (onVisibility) document.removeEventListener("visibilitychange", onVisibility);
       if (onFocus) window.removeEventListener("focus", onFocus);

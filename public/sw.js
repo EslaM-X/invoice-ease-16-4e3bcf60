@@ -9,7 +9,7 @@
 // Intentionally minimal: no offline DB writes here. The app's IndexedDB
 // outbox layer (src/lib/db.ts) handles write queueing in the page context.
 
-const SW_VERSION = "v3-2026-07-26-live-updates";
+const SW_VERSION = "v4-2026-07-26-weak-net-timeout";
 const HTML_CACHE = `html-${SW_VERSION}`;
 const ASSET_CACHE = `assets-${SW_VERSION}`;
 const ALL_CACHES = [HTML_CACHE, ASSET_CACHE];
@@ -67,43 +67,81 @@ self.addEventListener("fetch", (event) => {
   if (/\/(rest|auth|realtime|storage|functions)\/v1\//.test(url.pathname)) return;
   if (url.pathname.startsWith("/api/")) return;
 
+  // ────────── HTML navigations: NetworkFirst with 3s timeout ──────────
+  // On strong networks we always serve the freshest HTML (deploys land
+  // immediately). On weak/flaky networks we fall back to the cached shell
+  // after 3 seconds instead of leaving the user staring at a blank tab,
+  // and keep the network request in flight to refresh the cache in the
+  // background so the next navigation is already fresh.
   if (isHtmlNavigation(request)) {
     event.respondWith(
       (async () => {
-        try {
-          const fresh = await fetch(request);
-          const cache = await caches.open(HTML_CACHE);
-          if (fresh.ok) await cache.put(request, fresh.clone());
-          return fresh;
-        } catch {
-          const cached = await caches.match(request, { cacheName: HTML_CACHE });
-          if (cached) return cached;
-          // Fallback to root document if available
-          const fallback = await caches.match("/", { cacheName: HTML_CACHE });
-          if (fallback) return fallback;
-          return new Response(
-            "<!doctype html><html><body><h1>غير متصل بالإنترنت</h1><p>افتح التطبيق مرة بعد الاتصال لتفعيل وضع الـ offline.</p></body></html>",
-            { status: 503, headers: { "content-type": "text/html; charset=utf-8" } }
-          );
+        const cache = await caches.open(HTML_CACHE);
+        const networkPromise = fetch(request, { cache: "no-store" }).then((res) => {
+          if (res.ok) cache.put(request, res.clone()).catch(() => {});
+          return res;
+        });
+
+        const cached = await cache.match(request);
+        // Root fallback so deep links work offline even if that URL was never cached.
+        const fallback = cached || (await caches.match("/", { cacheName: HTML_CACHE }));
+
+        if (!fallback) {
+          // Nothing cached — we MUST wait for the network. No timeout here or
+          // the user gets a broken shell on first visit.
+          try {
+            return await networkPromise;
+          } catch {
+            return new Response(
+              "<!doctype html><html><body><h1>غير متصل بالإنترنت</h1><p>افتح التطبيق مرة بعد الاتصال لتفعيل وضع الـ offline.</p></body></html>",
+              { status: 503, headers: { "content-type": "text/html; charset=utf-8" } },
+            );
+          }
         }
-      })()
+
+        // Race the network against a 3s budget; cached HTML wins the race
+        // only if the network is slow.
+        return await new Promise((resolve) => {
+          let settled = false;
+          const timeout = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            resolve(fallback);
+          }, 3000);
+          networkPromise
+            .then((res) => {
+              clearTimeout(timeout);
+              if (settled) return;
+              settled = true;
+              resolve(res);
+            })
+            .catch(() => {
+              clearTimeout(timeout);
+              if (settled) return;
+              settled = true;
+              resolve(fallback);
+            });
+        });
+      })(),
     );
     return;
   }
 
   if (isStaticAsset(url)) {
+    // Vite emits filename hashes for built assets, so cached copies are safe
+    // to serve immediately while a background fetch refreshes the entry.
     event.respondWith(
       (async () => {
         const cache = await caches.open(ASSET_CACHE);
         const cached = await cache.match(request);
         const networkPromise = fetch(request)
           .then((res) => {
-            if (res && res.ok) cache.put(request, res.clone());
+            if (res && res.ok) cache.put(request, res.clone()).catch(() => {});
             return res;
           })
           .catch(() => cached);
         return cached || networkPromise;
-      })()
+      })(),
     );
   }
 });
