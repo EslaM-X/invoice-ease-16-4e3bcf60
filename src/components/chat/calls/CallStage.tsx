@@ -845,17 +845,44 @@ function ScreenShareWithPreview({
       try { await localParticipant?.setScreenShareEnabled(false); } catch { /* ignore */ }
       return;
     }
+    if (busy) return; // debounce double-clicks / React double-invoke
     setBusy(true);
     try {
       const enc = resolveScreenEncoding(res, fps, perfMode);
-      const videoConstraint = {
-        displaySurface: surface,
+
+      // Browser detection — the getDisplayMedia option surface is not portable.
+      // Chromium accepts every hint; Firefox rejects unknown keys silently or
+      // throws; Safari only supports the minimal video-only form.
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const isFirefox = /Firefox\//i.test(ua);
+      const isSafari  = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+      const isChromium = !isFirefox && !isSafari;
+
+      const videoConstraint: MediaTrackConstraints = {
         frameRate: { ideal: enc.frameRate, max: enc.frameRate },
-      } as unknown as MediaTrackConstraints;
+      };
+      if (isChromium) {
+        (videoConstraint as any).displaySurface = surface;
+      }
+
+      // Extra Chromium-only display-media options that block the "hall of
+      // mirrors" recursion at the source and let the user switch sources
+      // without re-prompting.
+      const extraDisplayOptions: Record<string, unknown> = {};
+      if (isChromium) {
+        extraDisplayOptions.selfBrowserSurface = "exclude";
+        extraDisplayOptions.surfaceSwitching = "include";
+        extraDisplayOptions.preferCurrentTab = false;
+      }
+
+      // System audio only works reliably on Chromium; Firefox partially, Safari never.
+      const wantAudio = sysAudio && !isSafari;
+
       const created = await createLocalScreenTracks({
-        audio: sysAudio,
+        audio: wantAudio,
         resolution: { width: enc.width, height: enc.height, frameRate: enc.frameRate },
         video: videoConstraint as any,
+        ...(extraDisplayOptions as any),
       } as any);
       const vTrack = created.find((t) => t.kind === Track.Kind.Video);
       const aTrack = created.find((t) => t.kind === Track.Kind.Audio);
@@ -871,13 +898,20 @@ function ScreenShareWithPreview({
       setSourceInfo({ name, surface: surfaceLabel, hasAudio: !!aTrack });
       setTracks(created);
     } catch (e: any) {
-      if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
+      const name = e?.name ?? "";
+      if (name === "NotAllowedError" || name === "AbortError") {
+        // user cancelled — silent
+      } else if (name === "NotReadableError") {
+        toast.error(rtl ? "المصدر مشغول من تطبيق آخر. أغلقه وحاول مرة ثانية." : "Source is busy in another app. Close it and try again.");
+      } else if (name === "NotSupportedError" || name === "TypeError") {
+        toast.error(rtl ? "متصفحك لا يدعم مشاركة الشاشة بهذه الخيارات." : "Your browser does not support screen sharing with these options.");
+      } else {
         toast.error(rtl ? `تعذّر بدء المشاركة: ${e?.message ?? ""}` : `Could not start share: ${e?.message ?? ""}`);
       }
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl, surface, sysAudio, res, fps, perfMode]);
+  }, [isSharing, busy, localParticipant, rtl, surface, sysAudio, res, fps, perfMode]);
 
   // Expose imperative controller for auto-fallback.
   useEffect(() => {
