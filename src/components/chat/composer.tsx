@@ -77,6 +77,83 @@ export function Composer({
     typingTimer.current = window.setTimeout(() => onTypingChange(false), 3500);
   };
 
+  // Detect an active `@word` immediately before the caret.
+  const detectMention = (value: string, caret: number) => {
+    // Look backwards from caret for an @ that starts a word.
+    let i = caret - 1;
+    while (i >= 0) {
+      const ch = value[i];
+      if (ch === "@") {
+        const prev = i > 0 ? value[i - 1] : " ";
+        if (i === 0 || /\s/.test(prev)) {
+          const q = value.slice(i + 1, caret);
+          // Stop at whitespace inside query
+          if (/\s/.test(q)) return null;
+          if (q.length > 30) return null;
+          return { start: i, query: q };
+        }
+        return null;
+      }
+      if (/\s/.test(ch)) return null;
+      i--;
+    }
+    return null;
+  };
+
+  const filteredMembers = useMemo(() => {
+    const q = mentionQuery.trim().toLowerCase();
+    const base = members
+      .filter((m) => !m.is_me)
+      .filter((m) => {
+        if (!q) return true;
+        const name = (m.display_name ?? m.email ?? "").toLowerCase();
+        return name.includes(q);
+      })
+      .slice(0, 6);
+    const specials: MentionMember[] = [];
+    if (isGroup) {
+      const matchAll = !q || "all".includes(q) || "everyone".includes(q) || "الكل".includes(mentionQuery);
+      if (matchAll) specials.push({ user_id: "all", display_name: "everyone" });
+    }
+    return [...specials, ...base];
+  }, [members, mentionQuery, isGroup]);
+
+  const insertMention = (m: MentionMember) => {
+    const ta = taRef.current;
+    if (!ta || mentionStart === null) return;
+    const caret = ta.selectionStart ?? text.length;
+    const name = m.user_id === "all" ? "everyone" : (m.display_name ?? m.email ?? "user");
+    const token = `@[${name}](${m.user_id}) `;
+    const next = text.slice(0, mentionStart) + token + text.slice(caret);
+    setText(next);
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionStart(null);
+    setMentionIndex(0);
+    // Restore caret after inserted token
+    requestAnimationFrame(() => {
+      const pos = mentionStart + token.length;
+      ta.focus();
+      try { ta.setSelectionRange(pos, pos); } catch {}
+    });
+  };
+
+  const onTextChange = (value: string, caret: number) => {
+    setText(value);
+    triggerTyping();
+    const det = detectMention(value, caret);
+    if (det) {
+      setMentionOpen(true);
+      setMentionQuery(det.query);
+      setMentionStart(det.start);
+      setMentionIndex(0);
+    } else if (mentionOpen) {
+      setMentionOpen(false);
+      setMentionQuery("");
+      setMentionStart(null);
+    }
+  };
+
   const handleSend = async () => {
     const body = text.trim();
     const replyId = replyTo?.id ?? null;
@@ -114,12 +191,56 @@ export function Composer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionOpen && filteredMembers.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % filteredMembers.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((i) => (i - 1 + filteredMembers.length) % filteredMembers.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(filteredMembers[mentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionOpen(false);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     } else if (e.key === "Escape" && replyTo) {
       onClearReply();
     }
+  };
+
+  const insertAtCursor = (s: string) => {
+    const ta = taRef.current;
+    if (!ta) { setText((p) => p + s); return; }
+    const start = ta.selectionStart ?? text.length;
+    const end = ta.selectionEnd ?? start;
+    const next = text.slice(0, start) + s + text.slice(end);
+    setText(next);
+    requestAnimationFrame(() => {
+      const pos = start + s.length;
+      ta.focus();
+      try { ta.setSelectionRange(pos, pos); } catch {}
+      // If user typed '@', open picker
+      const det = detectMention(next, pos);
+      if (det) {
+        setMentionOpen(true);
+        setMentionQuery(det.query);
+        setMentionStart(det.start);
+        setMentionIndex(0);
+      }
+    });
   };
 
   const onPickFile = (f: File | null | undefined) => {
