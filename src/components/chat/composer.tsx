@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ChatMsg } from "./message-bubble";
+import { serializeComposerMentions, sanitizePastedMentions } from "@/lib/mentions";
 
 export type MentionMember = {
   user_id: string;
@@ -145,22 +146,8 @@ export function Composer({
   };
 
   /** Convert visible `@Name` occurrences back to the `@[Name](uid) ` token. */
-  const serializeMentions = (raw: string): string => {
-    if (pendingMentionsRef.current.size === 0) return raw;
-    // Replace longest names first so "Ali" doesn't shadow "Ali Ahmed".
-    const entries = [...pendingMentionsRef.current.entries()].sort(
-      (a, b) => b[0].length - a[0].length,
-    );
-    let out = raw;
-    for (const [name, uid] of entries) {
-      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      // Match `@Name` when followed by end-of-string, whitespace, or punctuation
-      // — but NOT when it's already inside an existing `@[Name](...)` token.
-      const re = new RegExp(`(?<!\\[)@${escaped}(?![\\p{L}\\p{N}_])`, "gu");
-      out = out.replace(re, `@[${name}](${uid})`);
-    }
-    return out;
-  };
+  const serializeMentions = (raw: string): string =>
+    serializeComposerMentions(raw, pendingMentionsRef.current);
 
   const onTextChange = (value: string, caret: number) => {
     setText(value);
@@ -422,12 +409,13 @@ export function Composer({
                 // Sanitize any raw storage tokens (`@[Name](uid)`) pasted from
                 // copied messages so the composer only ever shows clean `@Name`.
                 const raw = e.clipboardData.getData("text");
-                if (!raw || !/@\[[^\]]+\]\([^)\s]+\)/.test(raw)) return;
+                const sanitized = sanitizePastedMentions(raw);
+                if (!sanitized) return;
                 e.preventDefault();
-                const cleaned = raw.replace(/@\[([^\]]{1,80})\]\(([^)\s]{1,80})\)/g, (_all, name, uid) => {
+                for (const [name, uid] of sanitized.pairs) {
                   pendingMentionsRef.current.set(name, uid);
-                  return `@${name}`;
-                });
+                }
+                const cleaned = sanitized.cleaned;
                 const ta = taRef.current;
                 if (!ta) { setText((p) => p + cleaned); return; }
                 const start = ta.selectionStart ?? text.length;
