@@ -60,3 +60,46 @@ export function renderMentionBody(
     return renderMention({ name: p.name, target: p.target, isSelf, key: `m-${i}` });
   });
 }
+
+/**
+ * Convert visible `@Name` occurrences in a composer draft back to the
+ * storage token `@[Name](uid)`. Pure so it's easy to unit-test with the
+ * many edge-cases (RTL, punctuation, multiple mentions, existing tokens).
+ *
+ * - Longest names are replaced first so "Ali" doesn't shadow "Ali Ahmed".
+ * - Skips `@Name` occurrences that are already inside a `@[Name](...)` token.
+ * - Only matches when the next char is not a letter/number/underscore, so
+ *   free-form text after the mention is preserved verbatim.
+ */
+export function serializeComposerMentions(
+  raw: string,
+  pending: ReadonlyMap<string, string>,
+): string {
+  if (pending.size === 0) return raw;
+  const entries = [...pending.entries()].sort((a, b) => b[0].length - a[0].length);
+  let out = raw;
+  for (const [name, uid] of entries) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?<!\\[)@${escaped}(?![\\p{L}\\p{N}_])`, "gu");
+    out = out.replace(re, `@[${name}](${uid})`);
+  }
+  return out;
+}
+
+/**
+ * Detect raw storage tokens (`@[Name](uid)`) inside pasted clipboard text
+ * and rewrite them to visible `@Name`, capturing each name→uid so the
+ * message can be re-serialized on send. Returns null when the payload has
+ * no tokens and the paste should be handled by the browser as usual.
+ */
+export function sanitizePastedMentions(
+  raw: string,
+): { cleaned: string; pairs: Array<[string, string]> } | null {
+  if (!raw || !/@\[[^\]]+\]\([^)\s]+\)/.test(raw)) return null;
+  const pairs: Array<[string, string]> = [];
+  const cleaned = raw.replace(/@\[([^\]]{1,80})\]\(([^)\s]{1,80})\)/g, (_all, name, uid) => {
+    pairs.push([name, uid]);
+    return `@${name}`;
+  });
+  return { cleaned, pairs };
+}
