@@ -521,6 +521,16 @@ function InvoiceView() {
         </div>
       )}
 
+      <DeliveryStatusControl
+        invoiceId={id}
+        status={inv.delivery_status}
+        assigneeId={inv.delivery_assignee_id ?? null}
+        assigneeLabel={inv.delivery_assignee_label ?? null}
+        isVoided={isVoided}
+        onChanged={load}
+        onMarkDelivered={() => toggleDelivered(true)}
+      />
+
       <div className="mx-auto max-w-3xl no-print">
         <div className="rounded-2xl border bg-card p-4 sm:p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
