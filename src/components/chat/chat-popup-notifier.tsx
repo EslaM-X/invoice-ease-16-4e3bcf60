@@ -284,15 +284,11 @@ export default function ChatPopupNotifier() {
     const latest = queue[queue.length - 1];
     if (!latest) return;
     setQueue((q) => q.filter((x) => x.room_id !== latest.room_id));
-    if (typeof window !== "undefined") {
-      window.location.href = `/team-chat?room=${encodeURIComponent(latest.room_id)}`;
-    }
-  }, [queue]);
+    navigate({ to: "/team-chat", search: { room: latest.room_id } as any }).catch(() => {});
+  }, [queue, navigate]);
   const openRoom = (roomId: string) => {
     setQueue((q) => q.filter((x) => x.room_id !== roomId));
-    if (typeof window !== "undefined") {
-      window.location.href = `/team-chat?room=${encodeURIComponent(roomId)}`;
-    }
+    navigate({ to: "/team-chat", search: { room: roomId } as any }).catch(() => {});
   };
 
   // ---- Keyboard shortcuts ----
