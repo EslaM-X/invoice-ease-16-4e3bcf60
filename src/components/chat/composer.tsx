@@ -257,7 +257,51 @@ export function Composer({
   };
 
   return (
-    <div className="border-t bg-card/80 backdrop-blur-xl">
+    <div className="border-t bg-card/80 backdrop-blur-xl relative">
+      {mentionOpen && filteredMembers.length > 0 && (
+        <div
+          className="absolute left-2 right-2 md:left-6 md:right-6 lg:left-10 lg:right-10 bottom-full mb-1 z-30 rounded-2xl border border-[color:var(--brand-gold,#d4af37)]/25 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto"
+          dir={rtl ? "rtl" : "ltr"}
+        >
+          <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/5 flex items-center gap-1.5">
+            <AtSign className="h-3 w-3" />
+            {rtl ? "منشن عضو" : "Mention someone"}
+          </div>
+          {filteredMembers.map((m, i) => {
+            const isAll = m.user_id === "all";
+            const name = isAll ? (rtl ? "الكل" : "everyone") : (m.display_name ?? m.email ?? "user");
+            const sub = isAll ? (rtl ? "إشعار جميع الأعضاء" : "Notify all members") : (m.email ?? "");
+            return (
+              <button
+                key={m.user_id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); insertMention(m); }}
+                onMouseEnter={() => setMentionIndex(i)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-[color:var(--brand-gold,#d4af37)]/10 transition",
+                  i === mentionIndex && "bg-[color:var(--brand-gold,#d4af37)]/15"
+                )}
+              >
+                {isAll ? (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[color:var(--brand-gold,#d4af37)] to-amber-600 flex items-center justify-center text-black">
+                    <Users className="h-4 w-4" />
+                  </div>
+                ) : (
+                  <LuxuryAvatar url={m.avatar_url ?? null} name={name} size={32} ring="gold" showSkeleton={false} />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate flex items-center gap-1.5">
+                    <span className="text-[color:var(--brand-gold,#d4af37)]">@</span>
+                    <span className="truncate">{name}</span>
+                  </div>
+                  {sub && <div className="text-[11px] text-muted-foreground truncate">{sub}</div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {replyTo && (
         <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/40 text-xs">
           <div className="w-1 self-stretch bg-primary rounded-full" />
