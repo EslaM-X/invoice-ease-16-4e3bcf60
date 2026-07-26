@@ -152,7 +152,8 @@ function Dashboard() {
     // and over-counted "closed" / under-counted "partial". The DB trigger already
     // handles partial/delivered accurately.
     let closed = 0, partial = 0, open = 0;
-    (invs ?? []).forEach((i: any) => {
+    const countingRows = (allInvs ?? invs ?? []) as any[];
+    countingRows.forEach((i: any) => {
       const total = Number(i.total ?? 0);
       const paid = Number(i.paid_amount ?? 0);
       const fullyPaid = total > 0 && paid >= total - 0.001;
@@ -165,7 +166,7 @@ function Dashboard() {
 
     const nextStats = {
       sales,
-      invoices: invs?.length ?? 0,
+      invoices: countingRows.length,
       closed,
       partial,
       open,
