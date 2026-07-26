@@ -2425,6 +2425,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
  */
 function ShareDiagnosticsMount({
   rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf, callId,
+  shellMode, onMinimize,
 }: {
   rtl: boolean;
   autoSpeaker: boolean;
@@ -2434,6 +2435,8 @@ function ShareDiagnosticsMount({
   callPerf: CallPerfPref;
   setCallPerf: (v: CallPerfPref) => void;
   callId?: string;
+  shellMode: CallShellMode;
+  onMinimize: () => void;
 }) {
   const ctrlRef = useRef<ShareController | null>(null);
   const surfaceRef = useRef<Surface>(
