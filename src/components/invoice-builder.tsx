@@ -836,12 +836,6 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         // Best-effort delete of the draft (no stock to restore)
         await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
         await supabase.from("invoices").delete().eq("id", invoiceId);
-        if (delivered) {
-          await supabase
-            .from("invoices")
-            .update({ delivery_status: "delivered" } as any)
-            .eq("id", newId as string);
-        }
         // Save subject (not part of RPC signature).
         await supabase
           .from("invoices")
