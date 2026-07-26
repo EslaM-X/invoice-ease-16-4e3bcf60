@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { logPwaEvent } from "@/lib/pwa-diagnostics";
 import { shouldDisablePwaFeatures } from "@/lib/pwa-runtime";
+import {
+  fetchLatestVersion,
+  recordActivation,
+  recordCurrentVersion,
+} from "@/lib/pwa-version";
 
 const SW_PATH = "/sw.js";
 
