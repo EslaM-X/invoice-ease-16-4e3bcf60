@@ -488,3 +488,118 @@ function formatDur(sec: number) {
   const s = sec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+/**
+ * Live invite roster for a single call.
+ * Returns every invited/participating user along with their profile,
+ * join_status, joined_at/left_at/leave_reason, current presence, and
+ * last_seen_at, so the caller can render "still ringing / joined / cancelled".
+ */
+export async function getCallInvitesLiveImpl({ data, context }: any) {
+  const { supabase, userId } = context;
+  const { data: call, error } = await supabase
+    .from("chat_calls")
+    .select("id, room_id, mode, status, initiator_id, started_at, ended_at")
+    .eq("id", data.call_id)
+    .single();
+  if (error || !call) throw new Error("المكالمة غير موجودة");
+  await assertRoomMember(supabase, userId, call.room_id);
+
+  const { data: parts } = await supabase
+    .from("chat_call_participants")
+    .select("user_id, join_status, joined_at, left_at, leave_reason, created_at, updated_at")
+    .eq("call_id", call.id)
+    .order("created_at", { ascending: true });
+
+  const uids = Array.from(new Set<string>([
+    call.initiator_id,
+    ...((parts ?? []).map((p: any) => p.user_id)),
+  ]));
+
+  const [{ data: profs }, { data: pres }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("user_id, display_name, email, avatar_url, job_title")
+      .in("user_id", uids),
+    supabase
+      .from("chat_presence")
+      .select("user_id, status, last_seen_at")
+      .in("user_id", uids),
+  ]);
+
+  const profileByUid = new Map<string, any>((profs ?? []).map((p: any) => [p.user_id, p]));
+  const presenceByUid = new Map<string, any>((pres ?? []).map((p: any) => [p.user_id, p]));
+
+  return {
+    call,
+    initiator: profileByUid.get(call.initiator_id) ?? null,
+    participants: (parts ?? []).map((p: any) => ({
+      ...p,
+      profile: profileByUid.get(p.user_id) ?? null,
+      presence: presenceByUid.get(p.user_id) ?? { status: "offline", last_seen_at: null },
+      is_initiator: p.user_id === call.initiator_id,
+    })),
+  };
+}
+
+/**
+ * Company-wide "team reachability" snapshot for the Call Status page.
+ * For every company member returns: presence, last_seen_at, last message they
+ * read (max chat_message_reads.read_at), and the most recent call invite they
+ * received with its final join_status.
+ */
+export async function getTeamCallReachabilityImpl({ context }: any) {
+  const { supabase } = context;
+
+  const { data: members } = await supabase
+    .from("company_members")
+    .select("user_id");
+  const uids = Array.from(new Set<string>((members ?? []).map((m: any) => m.user_id)));
+  if (!uids.length) return { members: [] };
+
+  const [{ data: profs }, { data: pres }, { data: reads }, { data: parts }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("user_id, display_name, email, avatar_url, job_title")
+      .in("user_id", uids),
+    supabase
+      .from("chat_presence")
+      .select("user_id, status, last_seen_at")
+      .in("user_id", uids),
+    supabase
+      .from("chat_message_reads")
+      .select("user_id, read_at")
+      .in("user_id", uids)
+      .order("read_at", { ascending: false })
+      .limit(uids.length * 6),
+    supabase
+      .from("chat_call_participants")
+      .select("user_id, call_id, join_status, joined_at, left_at, created_at")
+      .in("user_id", uids)
+      .order("created_at", { ascending: false })
+      .limit(uids.length * 4),
+  ]);
+
+  const lastReadByUid = new Map<string, string>();
+  for (const r of reads ?? []) {
+    if (!lastReadByUid.has(r.user_id)) lastReadByUid.set(r.user_id, r.read_at);
+  }
+  const lastInviteByUid = new Map<string, any>();
+  for (const p of parts ?? []) {
+    if (!lastInviteByUid.has(p.user_id)) lastInviteByUid.set(p.user_id, p);
+  }
+  const profileByUid = new Map<string, any>((profs ?? []).map((p: any) => [p.user_id, p]));
+  const presenceByUid = new Map<string, any>((pres ?? []).map((p: any) => [p.user_id, p]));
+
+  return {
+    members: uids.map((uid) => ({
+      user_id: uid,
+      profile: profileByUid.get(uid) ?? null,
+      presence: presenceByUid.get(uid) ?? { status: "offline", last_seen_at: null },
+      last_message_at: lastReadByUid.get(uid) ?? null,
+      last_invite: lastInviteByUid.get(uid) ?? null,
+    })),
+  };
+}
+
+}
