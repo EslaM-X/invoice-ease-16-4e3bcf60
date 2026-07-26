@@ -72,7 +72,7 @@ export function MessageBubble({
   msg, mine, showAvatar, showName, rtl, voiceUrl, attachmentUrls, isGroup, isRead,
   highlightQuery = "",
   currentUserId = null,
-  onReply, onDelete, onToggleReaction,
+  onReply, onDelete, onToggleReaction, readers,
 }: {
   msg: ChatMsg;
   mine: boolean;
@@ -88,6 +88,7 @@ export function MessageBubble({
   onReply: (m: ChatMsg) => void;
   onDelete: (m: ChatMsg) => void;
   onToggleReaction: (m: ChatMsg, emoji: string) => void;
+  readers?: Array<{ id: string; name: string; avatar?: string | null }>;
 }) {
   const displayName = msg.sender_display_name ?? "?";
   const time = new Date(msg.created_at).toLocaleTimeString(rtl ? "ar-EG" : undefined, {
