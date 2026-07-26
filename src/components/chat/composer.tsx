@@ -40,7 +40,7 @@ export function Composer({
   onTypingChange: (typing: boolean) => void;
   onSendText: (body: string, replyToId: string | null) => Promise<void>;
   onSendVoice: (blob: Blob, seconds: number) => Promise<void>;
-  onSendImage: (path: string, name: string, mime: string, size: number, replyToId: string | null) => Promise<void>;
+  onSendImage: (path: string, name: string, mime: string, size: number, replyToId: string | null, caption?: string | null) => Promise<void>;
   members?: MentionMember[];
   isGroup?: boolean;
 }) {
