@@ -358,13 +358,19 @@ export function Composer({
             >
               <ImageIcon className="h-5 w-5" />
             </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 rounded-full text-muted-foreground hover:text-[color:var(--brand-gold,#d4af37)] shrink-0"
+              onClick={() => insertAtCursor("@")}
+              disabled={disabled}
+              aria-label={rtl ? "منشن" : "Mention"}
+            >
+              <AtSign className="h-5 w-5" />
+            </Button>
             <EmojiPicker
               quickBar
-              onPick={(e) => {
-                setText((prev) => prev + e);
-                taRef.current?.focus();
-                triggerTyping();
-              }}
+              onPick={(e) => { insertAtCursor(e); triggerTyping(); }}
             />
           </>
         )}
@@ -383,12 +389,24 @@ export function Composer({
               rows={1}
               value={text}
               disabled={disabled || uploading}
-              onChange={(e) => { setText(e.target.value); triggerTyping(); }}
+              onChange={(e) => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+              onKeyUp={(e) => {
+                const t = e.currentTarget;
+                const det = detectMention(t.value, t.selectionStart ?? t.value.length);
+                if (det) {
+                  if (!mentionOpen) setMentionOpen(true);
+                  setMentionQuery(det.query);
+                  setMentionStart(det.start);
+                } else if (mentionOpen) {
+                  setMentionOpen(false);
+                }
+              }}
               onKeyDown={onKeyDown}
-              placeholder={rtl ? "اكتب رسالة..." : "Type a message..."}
+              placeholder={rtl ? "اكتب رسالة... (اكتب @ لعمل منشن)" : "Type a message... (@ to mention)"}
               className="flex-1 min-w-0 resize-none bg-muted/40 rounded-2xl px-4 py-2.5 md:px-5 md:py-3.5 md:text-[15px] md:min-h-[52px] text-sm leading-relaxed outline-none focus:ring-2 focus:ring-primary/40 transition placeholder:text-muted-foreground/60 max-h-[140px] md:max-h-[220px]"
               dir={rtl ? "rtl" : "ltr"}
             />
+
             {text.trim() || pending ? (
               <Button
                 size="icon"
