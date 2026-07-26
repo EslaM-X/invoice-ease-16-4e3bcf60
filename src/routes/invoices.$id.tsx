@@ -151,6 +151,16 @@ function InvoiceView() {
       if (document.title !== target) document.title = target;
     }, 50);
 
+    // On mobile browsers the print engine renders at the CURRENT viewport
+    // width, so a mobile screen produces a squeezed / overlapping PDF.
+    // Temporarily swap the viewport meta to a desktop A4 width (794px @ 96dpi)
+    // so Chrome/Safari lay out the invoice as if we were on desktop.
+    const viewportEl = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
+    const originalViewport = viewportEl?.getAttribute("content") ?? null;
+    if (viewportEl) {
+      viewportEl.setAttribute("content", "width=794, initial-scale=1");
+    }
+
     let restored = false;
     const restore = () => {
       if (restored) return;
@@ -158,14 +168,19 @@ function InvoiceView() {
       observer.disconnect();
       window.clearInterval(interval);
       window.removeEventListener("afterprint", restore);
+      if (viewportEl && originalViewport !== null) {
+        viewportEl.setAttribute("content", originalViewport);
+      }
       // Small delay so the browser's "save" finishes capturing the title
       setTimeout(() => { document.title = original; }, 1000);
     };
     window.addEventListener("afterprint", restore);
     setTimeout(restore, 120_000); // safety net
 
-    setTimeout(() => window.print(), 100);
+    // Give the browser a beat to re-layout at the new viewport width
+    setTimeout(() => window.print(), 250);
   };
+
 
   return (
     <div className="space-y-6">
