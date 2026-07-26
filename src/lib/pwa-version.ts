@@ -2,6 +2,14 @@
 // the latest version detected on the server, and when we last checked.
 // Powers the diagnostics panel in Settings.
 
+/**
+ * Bump this on every meaningful release. It is appended to <link rel="icon">
+ * / apple-touch-icon URLs in __root.tsx so returning devices don't keep
+ * showing a stale favicon after a deploy, and it is exposed in Settings →
+ * Diagnostics as the app-shell build tag.
+ */
+export const PWA_ASSET_VERSION = "v3-2026-07-26-live-updates";
+
 const STORAGE_KEY = "pwa_version_state_v1";
 
 export interface PwaVersionState {
