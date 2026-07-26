@@ -2207,6 +2207,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();
   const [focusLock, setFocusLock, setFocusLockTransient] = useFocusLock();
   const [callPerf, setCallPerf] = useCallPerf();
+  const fatalErrorHandledRef = useRef(false);
 
   // Preflight — run once per call-open. If pref is "auto" the probe result
   // drives room options; otherwise we still measure so we can announce it.
@@ -2272,6 +2273,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
 
   useEffect(() => {
     if (!open) return;
+    fatalErrorHandledRef.current = false;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -2329,7 +2331,22 @@ export function CallStage({ open, onClose, url, token, video, onLeave }: Props) 
               );
             }}
             onError={(e) => {
-              toast.error(rtl ? `خطأ في المكالمة: ${e.message}` : `Call error: ${e.message}`);
+              const message = e?.message ?? "";
+              const isInvalidToken = /invalid\s+token|unauthorized|401/i.test(message);
+              if (isInvalidToken) {
+                if (fatalErrorHandledRef.current) return;
+                fatalErrorHandledRef.current = true;
+                toast.error(
+                  rtl
+                    ? "تعذّر فتح المكالمة بسبب إعدادات LiveKit غير متطابقة. تم إيقاف المحاولة لمنع تكرار الخطأ."
+                    : "Could not open the call because LiveKit settings do not match. Stopped retrying to avoid repeated errors.",
+                  { id: "call-invalid-token", duration: 7000 }
+                );
+                onLeave();
+                onClose();
+                return;
+              }
+              toast.error(rtl ? `خطأ في المكالمة: ${message}` : `Call error: ${message}`);
             }}
           >
             <ShareDiagnosticsMount
