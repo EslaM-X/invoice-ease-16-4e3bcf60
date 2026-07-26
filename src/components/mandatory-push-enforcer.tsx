@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { getDeviceId, readLocalPush, clearLocalPush } from "@/lib/device-id";
+import { readLocalPush, clearLocalPush } from "@/lib/device-id";
 
 /**
  * Mandatory push enforcement — per-device memory:
