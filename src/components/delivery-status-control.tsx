@@ -30,9 +30,12 @@ export function DeliveryStatusControl({
   invoiceId, status, assigneeId, assigneeLabel, isVoided, onChanged,
 }: Props) {
   const { lang } = useI18n();
+  const { user } = useAuth();
   const isAr = lang === "ar";
+  const canOverride = !!user && OVERRIDE_ALLOWED_USER_IDS.has(user.id);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [saving, setSaving] = useState(false);
+  const [override, setOverride] = useState<boolean>(false);
   const [customLabel, setCustomLabel] = useState(assigneeLabel && !assigneeId && assigneeLabel !== "Company account" ? assigneeLabel : "");
 
   const s: Status = (status as Status) ?? "pending";
@@ -44,6 +47,44 @@ export function DeliveryStatusControl({
     });
     return () => { alive = false; };
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    supabase.from("invoices").select("delivery_status_override").eq("id", invoiceId).maybeSingle().then(({ data }) => {
+      if (alive) setOverride(Boolean((data as any)?.delivery_status_override));
+    });
+  }, [invoiceId, status]);
+
+  const setManualStatus = async (val: Status) => {
+    if (!canOverride) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("invoices")
+      .update({ delivery_status: val, delivery_status_override: true } as any)
+      .eq("id", invoiceId);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setOverride(true);
+    toast.success(isAr ? "تم تحديث حالة التسليم يدوياً" : "Delivery status set manually");
+    onChanged();
+  };
+
+  const clearOverride = async () => {
+    if (!canOverride) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("invoices")
+      .update({ delivery_status_override: false } as any)
+      .eq("id", invoiceId);
+    if (!error) {
+      await supabase.rpc("recompute_invoice_delivery_status" as any, { _invoice_id: invoiceId } as any);
+    }
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setOverride(false);
+    toast.success(isAr ? "رجعت الحالة للحساب التلقائي" : "Reverted to auto");
+    onChanged();
+  };
 
   const currentAssigneeKey = useMemo(() => {
     if (assigneeId) return assigneeId;
