@@ -699,8 +699,11 @@ function TeamChatPage() {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_message_reads", filter: `room_id=eq.${activeRoomId}` },
-        () => qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] })
+        { event: "*", schema: "public", table: "chat_message_reads", filter: `room_id=eq.${activeRoomId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["chat-messages", activeRoomId] });
+          qc.invalidateQueries({ queryKey: ["chat-msg-info"] });
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
