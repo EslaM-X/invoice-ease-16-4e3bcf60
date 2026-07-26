@@ -2387,8 +2387,6 @@ function ShareDiagnosticsMount({
     onRestart: () => { ctrlRef.current?.openPicker(); },
   });
 
-  return (
-    <>
   const layoutContext = useCreateLayoutContext();
 
   return (
