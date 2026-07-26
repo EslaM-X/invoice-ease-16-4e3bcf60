@@ -29,6 +29,8 @@ export function Composer({
   onSendText,
   onSendVoice,
   onSendImage,
+  members = [],
+  isGroup = false,
 }: {
   rtl: boolean;
   disabled?: boolean;
@@ -39,11 +41,18 @@ export function Composer({
   onSendText: (body: string, replyToId: string | null) => Promise<void>;
   onSendVoice: (blob: Blob, seconds: number) => Promise<void>;
   onSendImage: (path: string, name: string, mime: string, size: number, replyToId: string | null) => Promise<void>;
+  members?: MentionMember[];
+  isGroup?: boolean;
 }) {
   const [text, setText] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [uploading, setUploading] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
+  // Mention picker state
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
