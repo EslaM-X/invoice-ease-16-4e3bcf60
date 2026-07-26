@@ -30,6 +30,20 @@ export function MandatoryPushEnforcer() {
   // the user enables push in this same session.
   const [locallyEnabled, setLocallyEnabled] = useState<boolean>(!!localRecord);
 
+  const markBrowserReturnedFromSettings = () => {
+    try {
+      sessionStorage.setItem("mandatory_push_returned_from_settings_v1", "1");
+    } catch { /* ignore */ }
+  };
+
+  const canRetryAfterSettings = () => {
+    try {
+      return sessionStorage.getItem("mandatory_push_returned_from_settings_v1") === "1";
+    } catch {
+      return false;
+    }
+  };
+
   // 1) Force push_enabled=true in DB — idempotent, once per session per user.
   useEffect(() => {
     if (!user || forcedRef.current) return;
@@ -69,6 +83,20 @@ export function MandatoryPushEnforcer() {
     void enablePush().catch(() => { /* silent */ });
   }, [user, supported, permission, subscribed, locallyEnabled, enablePush]);
 
+  // If the user changed site settings and came back, retry once after reload.
+  // This covers browsers where `Notification.permission` updates to granted,
+  // but the Push subscription has not been recreated yet.
+  useEffect(() => {
+    if (!user || !supported) return;
+    if (permission !== "granted") return;
+    if (subscribed || attemptedRef.current) return;
+    if (!locallyEnabled && !canRetryAfterSettings()) return;
+    attemptedRef.current = true;
+    void enablePush().then((ok) => {
+      if (ok) setLocallyEnabled(true);
+    }).catch(() => { /* silent */ });
+  }, [user, supported, permission, subscribed, locallyEnabled, enablePush]);
+
   // 4) If permission was revoked or reset, forget the local flag so the
   //    next attempt reprompts explicitly.
   useEffect(() => {
@@ -83,6 +111,18 @@ export function MandatoryPushEnforcer() {
   const handleEnable = async () => {
     const ok = await enablePush();
     if (ok) setLocallyEnabled(true);
+  };
+
+  const handleReloadAfterSettings = async () => {
+    markBrowserReturnedFromSettings();
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const ok = await enablePush();
+      if (ok) {
+        setLocallyEnabled(true);
+        return;
+      }
+    }
+    window.location.reload();
   };
 
   // ---- Visibility rules --------------------------------------------------
@@ -128,8 +168,10 @@ export function MandatoryPushEnforcer() {
               size="sm"
               variant="secondary"
               className="bg-black text-amber-100 hover:bg-black/80"
-              onClick={() => window.location.reload()}
+              onClick={() => void handleReloadAfterSettings()}
+              disabled={loading}
             >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               أعدت التفعيل — إعادة تحميل
             </Button>
           ) : (

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { shouldDisablePwaFeatures } from "@/lib/pwa-runtime";
 import {
   VAPID_PUBLIC_KEY,
   urlBase64ToUint8Array,
@@ -35,11 +36,31 @@ export function usePushNotifications() {
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const readPermission = useCallback((): NotificationPermission => {
+    return typeof Notification !== "undefined" ? Notification.permission : "default";
+  }, []);
+
   const supported =
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
-    "Notification" in window;
+    "Notification" in window &&
+    !shouldDisablePwaFeatures();
+
+  const refreshSubscription = useCallback(async () => {
+    setPermission(readPermission());
+    if (!supported) {
+      setSubscribed(false);
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager.getSubscription();
+      setSubscribed(Boolean(sub));
+    } catch {
+      setSubscribed(false);
+    }
+  }, [readPermission, supported]);
 
   // Load prefs + current sub state
   useEffect(() => {
@@ -52,13 +73,42 @@ export function usePushNotifications() {
         .maybeSingle();
       if (data) setPrefs({ ...DEFAULTS, ...(data as Partial<NotifPrefs>) });
 
-      if (supported) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        const sub = await reg?.pushManager.getSubscription();
-        setSubscribed(!!sub);
-      }
+      await refreshSubscription();
     })();
-  }, [user, supported]);
+  }, [user, refreshSubscription]);
+
+  // Keep permission state fresh when the user changes browser/site settings
+  // then returns to the app. Without this, the mandatory banner can continue
+  // showing the old "denied" state until a full hard reload.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    let permissionStatus: PermissionStatus | null = null;
+    let disposed = false;
+    const refresh = () => { void refreshSubscription(); };
+
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+
+    if (navigator.permissions?.query) {
+      void navigator.permissions
+        .query({ name: "notifications" as PermissionName })
+        .then((status) => {
+          if (disposed) return;
+          permissionStatus = status;
+          status.onchange = refresh;
+        })
+        .catch(() => { /* browser does not expose notification permission status */ });
+    }
+
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      if (permissionStatus) permissionStatus.onchange = null;
+    };
+  }, [refreshSubscription]);
 
   // SW -> client messages: play sound on push
   useEffect(() => {
@@ -89,14 +139,21 @@ export function usePushNotifications() {
     if (!user || !supported) return false;
     setLoading(true);
     try {
-      const perm = await Notification.requestPermission();
+      const currentPermission = readPermission();
+      const perm = currentPermission === "default"
+        ? await Notification.requestPermission()
+        : currentPermission;
       setPermission(perm);
       if (perm !== "granted") {
         clearLocalPush();
         return false;
       }
 
-      const reg = await navigator.serviceWorker.ready;
+      let reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        reg = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+      }
+      reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         sub = await reg.pushManager.subscribe({
@@ -105,6 +162,9 @@ export function usePushNotifications() {
         });
       }
       const json: any = sub.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+        return false;
+      }
       const deviceId = getDeviceId();
       const deviceLabel = getDeviceLabel();
       await supabase.from("push_subscriptions").upsert(
@@ -127,10 +187,13 @@ export function usePushNotifications() {
       await savePrefs({ push_enabled: true });
       setSubscribed(true);
       return true;
+    } catch {
+      await refreshSubscription();
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [user, supported, savePrefs]);
+  }, [user, supported, readPermission, savePrefs, refreshSubscription]);
 
   const disablePush = useCallback(async () => {
     // Disabled by policy — push notifications are mandatory for all users.
@@ -170,5 +233,6 @@ export function usePushNotifications() {
     enablePush,
     disablePush,
     testNotification,
+    refreshSubscription,
   };
 }
