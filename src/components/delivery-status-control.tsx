@@ -85,22 +85,26 @@ export function DeliveryStatusControl({
         <div className="mb-3 flex items-center gap-2">
           <Truck className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">{isAr ? "حالة التسليم" : "Delivery status"}</h3>
+          <span className="ms-auto text-[10px] font-medium text-muted-foreground">
+            {isAr ? "تلقائي من محاضر الاستلام" : "Auto from receipts"}
+          </span>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("pending")} onClick={() => saveStatus("pending")}>
+          <div className={statusPillClass("pending") + " pointer-events-none flex items-center justify-center px-3 py-1.5 text-xs font-medium"}>
             <Package className="h-3.5 w-3.5" />
             {isAr ? "قيد الانتظار" : "Pending"}
-          </Button>
-          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("in_transit")} onClick={() => saveStatus("in_transit")}>
+          </div>
+          <div className={statusPillClass("in_transit") + " pointer-events-none flex items-center justify-center px-3 py-1.5 text-xs font-medium"}>
             <Truck className="h-3.5 w-3.5" />
             {isAr ? "في الطريق" : "In Transit"}
-          </Button>
-          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("delivered")} onClick={() => saveStatus("delivered")}>
+          </div>
+          <div className={statusPillClass("delivered") + " pointer-events-none flex items-center justify-center px-3 py-1.5 text-xs font-medium"}>
             <CheckCircle2 className="h-3.5 w-3.5" />
             {isAr ? "تم التسليم" : "Delivered"}
-          </Button>
+          </div>
         </div>
+
 
         {(s === "in_transit" || s === "partial" || assigneeId || assigneeLabel) && (
           <div className="mt-4 space-y-2 rounded-xl border border-dashed bg-muted/30 p-3">
