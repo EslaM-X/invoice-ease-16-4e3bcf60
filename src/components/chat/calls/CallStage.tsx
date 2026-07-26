@@ -34,9 +34,10 @@ import {
   type LocalTrackPublication,
   type TrackPublication,
   type Participant,
+  DisconnectReason,
 } from "livekit-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { FloatingCallShell, MinimizeCallButton, type CallShellMode } from "./FloatingCallShell";
+import { FloatingCallShell, MinimizeCallButton, clearSavedMiniRect, type CallShellMode } from "./FloatingCallShell";
 import { LiveInvitesRoster } from "./LiveInvitesRoster";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
