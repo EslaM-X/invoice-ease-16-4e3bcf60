@@ -45,6 +45,15 @@ function writeRect(r: Rect) {
   try { localStorage.setItem(LS_MINI, JSON.stringify(r)); } catch { /* ignore */ }
 }
 
+/**
+ * Clear the persisted mini-window rect. Call this only when the user
+ * intentionally leaves the call so the next call starts fresh; automatic
+ * reloads while a call is in progress should keep the saved layout.
+ */
+export function clearSavedMiniRect() {
+  try { localStorage.removeItem(LS_MINI); } catch { /* ignore */ }
+}
+
 function clampRect(r: Rect): Rect {
   if (typeof window === "undefined") return r;
   const vw = window.innerWidth, vh = window.innerHeight;
