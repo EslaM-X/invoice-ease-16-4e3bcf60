@@ -95,12 +95,17 @@ function Dashboard() {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     try {
-    const [{ data: invs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
+    const [{ data: invs }, { data: allInvs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
         .not("status", "in", "(voided,draft)")
         .order("created_at", { ascending: false })
         .limit(200),
+      // Full set (minimal fields) for accurate open/partial/closed counts across ALL invoices,
+      // not just the most recent 200.
+      supabase.from("invoices")
+        .select("total, paid_amount, delivery_status")
+        .not("status", "in", "(voided,draft)"),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       cachedListFetch(
         "dashboard:product-stock-v2",
