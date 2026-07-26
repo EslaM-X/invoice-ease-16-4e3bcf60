@@ -9,7 +9,7 @@
 // Intentionally minimal: no offline DB writes here. The app's IndexedDB
 // outbox layer (src/lib/db.ts) handles write queueing in the page context.
 
-const SW_VERSION = "v4-2026-07-26-weak-net-timeout";
+const SW_VERSION = "v5-2026-07-26-global-call-ring";
 const HTML_CACHE = `html-${SW_VERSION}`;
 const ASSET_CACHE = `assets-${SW_VERSION}`;
 const ALL_CACHES = [HTML_CACHE, ASSET_CACHE];
@@ -152,6 +152,7 @@ const VIBRATION_PATTERNS = {
   short: [80],
   long: [600],
   pulse: [120, 80, 120, 80, 120, 80, 400],
+  call: [450, 140, 450, 140, 900, 220, 450, 140, 450],
   off: [],
 };
 
@@ -164,6 +165,7 @@ self.addEventListener("push", (event) => {
   const vibrate = VIBRATION_PATTERNS[vibrationKey] ?? VIBRATION_PATTERNS.default;
   const iconUrl = data.icon || new URL("/icon-512.png", self.location.origin).toString();
   const badgeUrl = data.badge || new URL("/icon-192.png", self.location.origin).toString();
+  const isIncomingCall = data.type === "incoming_call" || data.meta?.kind === "incoming_call";
 
   const options = {
     body: data.body || "",
@@ -178,15 +180,22 @@ self.addEventListener("push", (event) => {
     timestamp: Date.now(),
     dir: "rtl",
     lang: "ar",
-    actions: [
-      { action: "open", title: "فتح" },
-      { action: "dismiss", title: "إغلاق" },
-    ],
+    actions: isIncomingCall
+      ? [
+        { action: "answer", title: "رد" },
+        { action: "dismiss", title: "رفض" },
+      ]
+      : [
+        { action: "open", title: "فتح" },
+        { action: "dismiss", title: "إغلاق" },
+      ],
     data: {
       url: data.url || "/",
       sound: data.sound || "default",
       customUrl: data.customUrl || null,
       id: data.id,
+      type: data.type,
+      callId: data.meta?.call_id || null,
     },
   };
 
@@ -209,8 +218,12 @@ self.addEventListener("notificationclick", (event) => {
     for (const client of allClients) {
       const cu = new URL(client.url);
       if (cu.origin === self.location.origin) {
-        client.focus();
-        client.postMessage({ type: "NAVIGATE", url });
+        if ("navigate" in client) {
+          await client.navigate(url);
+        } else {
+          client.postMessage({ type: "NAVIGATE", url });
+        }
+        await client.focus();
         return;
       }
     }

@@ -150,7 +150,7 @@ export async function startCallImpl({ data, context }: any) {
 
   const { data: room, error: roomErr } = await supabase
     .from("chat_rooms")
-    .select("id, type")
+    .select("id, type, name")
     .eq("id", data.room_id)
     .maybeSingle();
   if (roomErr || !room) throw new Error("الغرفة غير موجودة");
@@ -215,6 +215,37 @@ export async function startCallImpl({ data, context }: any) {
   if (rows.length) {
     const { error } = await supabase.from("chat_call_participants").insert(rows);
     if (error) throw new Error("تعذّر دعوة أعضاء الغرفة للمكالمة");
+  }
+
+  const inviteeIds = (members ?? [])
+    .map((m: any) => String(m.user_id || ""))
+    .filter((id: string) => id && id !== userId);
+  if (inviteeIds.length) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const caller = await participantProfile(supabase, userId);
+      const callTitle = data.mode === "video" ? "📹 مكالمة فيديو واردة" : "📞 مكالمة صوت واردة";
+      const roomName = typeof room.name === "string" && room.name.trim() ? room.name.trim() : null;
+      await (supabaseAdmin as any).from("notifications").insert(
+        inviteeIds.map((user_id: string) => ({
+          user_id,
+          type: "incoming_call",
+          title: callTitle,
+          body: roomName ? `${caller.name} · ${roomName}` : caller.name,
+          link: `/team-chat?room=${data.room_id}&call=${created.id}`,
+          meta: {
+            kind: "incoming_call",
+            call_id: created.id,
+            room_id: data.room_id,
+            mode: data.mode,
+            initiator_id: userId,
+            room_name: roomName,
+          },
+        }))
+      );
+    } catch (error) {
+      console.error("[calls] failed to dispatch incoming call notifications", error);
+    }
   }
 
   await supabase.from("chat_messages").insert({

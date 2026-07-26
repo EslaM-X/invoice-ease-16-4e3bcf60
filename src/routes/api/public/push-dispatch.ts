@@ -10,6 +10,7 @@ const TYPE_LABEL: Record<string, string> = {
   invoice_created: "🧾 فاتورة جديدة",
   invoice_updated: "✏️ تحديث فاتورة",
   call_logged: "📞 مكالمة جديدة",
+  incoming_call: "📞 مكالمة واردة",
   low_stock: "⚠️ مخزون منخفض",
   shipment_in_transit: "🚚 شحنة في الطريق",
   shipment_arrived: "📦 وصلت الشحنة",
@@ -86,6 +87,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
           );
 
           const titlePrefix = TYPE_LABEL[notif.type] ?? "🔔";
+          const isIncomingCall = notif.type === "incoming_call";
           const expired: string[] = [];
 
           await Promise.all(
@@ -93,13 +95,14 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
               const p = prefsMap.get(s.user_id) ?? {};
               const payload = JSON.stringify({
                 id: notif.id,
+                type: notif.type,
                 title: notif.title || titlePrefix,
                 body: notif.body ?? "",
                 url: notif.link || "/",
-                tag: notif.id,
-                sound: p.sound || "default",
+                tag: isIncomingCall ? `call-${notif.meta?.call_id ?? notif.id}` : notif.id,
+                sound: isIncomingCall ? "alert" : (p.sound || "default"),
                 customUrl: p.custom_sound_url || null,
-                vibration: p.vibration || "default",
+                vibration: isIncomingCall ? "call" : (p.vibration || "default"),
                 icon: "https://admin.steinheim-eg.com/icon-512.png",
                 badge: "https://admin.steinheim-eg.com/icon-192.png",
                 meta: notif.meta ?? null,
@@ -109,7 +112,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
                 await webpush.sendNotification(
                   { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
                   payload,
-                  { TTL: 60 * 60 * 24, urgency: "high", headers: { Urgency: "high" } },
+                  { TTL: isIncomingCall ? 45 : 60 * 60 * 24, urgency: "high", headers: { Urgency: "high" } },
                 );
               } catch (err: any) {
                 if (err?.statusCode === 404 || err?.statusCode === 410) expired.push(s.id);
@@ -122,7 +125,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
           }
 
           // ───── Also email each recipient via transactional send route ─────
-          try {
+          if (!isIncomingCall) try {
             const { data: emailUsers } = await (supabaseAdmin as any).auth.admin.listUsers({ perPage: 200 });
             const emailById = new Map<string, string>();
             (emailUsers?.users ?? []).forEach((u: any) => { if (u?.email) emailById.set(u.id, u.email); });

@@ -22,10 +22,8 @@ import {
   Bell, BellOff, X, ArrowUp, ArrowDown, Users2, Rows3, ArrowDownToLine, Loader2,
   Maximize2, Minimize2, PanelLeftOpen, StretchHorizontal, Phone, Video, History,
 } from "lucide-react";
-import { startCall, joinCall, declineCall, leaveCall } from "@/lib/calls.functions";
+import { startCall, leaveCall } from "@/lib/calls.functions";
 import { CallStage } from "@/components/chat/calls/CallStage";
-import { IncomingCallDialog } from "@/components/chat/calls/IncomingCallDialog";
-import { useIncomingCall } from "@/components/chat/calls/useIncomingCall";
 import { MembersSheet } from "@/components/chat/members-sheet";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { prefetchAvatars } from "@/lib/prefetch-avatars";
@@ -142,15 +140,12 @@ function TeamChatPage() {
 
   // ============ Voice / Video Calls ============
   const startCallFn = useServerFn(startCall);
-  const joinCallFn = useServerFn(joinCall);
-  const declineCallFn = useServerFn(declineCall);
   const leaveCallFn = useServerFn(leaveCall);
   const [activeCall, setActiveCall] = useState<
     | { call_id: string; url: string; token: string; video: boolean }
     | null
   >(null);
   const [callStarting, setCallStarting] = useState<null | "audio" | "video">(null);
-  const { incoming, dismiss: dismissIncoming } = useIncomingCall(user?.id, activeCall?.call_id ?? null);
 
   const handleStartCall = useCallback(
     async (mode: "audio" | "video") => {
@@ -168,25 +163,6 @@ function TeamChatPage() {
     },
     [activeRoomId, activeCall, callStarting, startCallFn]
   );
-
-  const handleAcceptIncoming = useCallback(async () => {
-    if (!incoming) return;
-    const c = incoming;
-    dismissIncoming();
-    try {
-      const r = await joinCallFn({ data: { call_id: c.call_id } });
-      setActiveCall({ call_id: c.call_id, url: r.url, token: r.token, video: c.mode === "video" });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to join call");
-    }
-  }, [incoming, dismissIncoming, joinCallFn]);
-
-  const handleDeclineIncoming = useCallback(async () => {
-    if (!incoming) return;
-    const c = incoming;
-    dismissIncoming();
-    try { await declineCallFn({ data: { call_id: c.call_id } }); } catch {}
-  }, [incoming, dismissIncoming, declineCallFn]);
 
   const handleLeaveCall = useCallback(async () => {
     if (!activeCall) return;
@@ -2180,11 +2156,6 @@ function TeamChatPage() {
         rtl={rtl}
       />
 
-      <IncomingCallDialog
-        call={incoming}
-        onAccept={handleAcceptIncoming}
-        onDecline={handleDeclineIncoming}
-      />
       {activeCall && (
         <CallStage
           open={!!activeCall}
