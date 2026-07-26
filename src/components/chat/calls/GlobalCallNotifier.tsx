@@ -68,6 +68,7 @@ export function GlobalCallNotifier() {
           token={activeCall.token}
           video={activeCall.video}
           onLeave={handleLeave}
+          callId={activeCall.call_id}
         />
       )}
     </>

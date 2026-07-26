@@ -97,6 +97,7 @@ type Props = {
   token: string;
   video: boolean;
   onLeave: () => void;
+  callId?: string;
 };
 
 /* ------------------------------------------------------------------ */
@@ -2201,7 +2202,7 @@ function buildRoomOptions(profile: CapProfile): RoomOptions {
 
 /* ------------------------------------------------------------------ */
 
-export function CallStage({ open, onClose, url, token, video, onLeave }: Props) {
+export function CallStage({ open, onClose, url, token, video, onLeave, callId }: Props) {
   const { lang } = useI18n();
   const rtl = lang === "ar";
   const [autoSpeaker, setAutoSpeaker] = useAutoSpeaker();

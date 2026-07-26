@@ -2164,6 +2164,7 @@ function TeamChatPage() {
           token={activeCall.token}
           video={activeCall.video}
           onLeave={handleLeaveCall}
+          callId={activeCall.call_id}
         />
       )}
     </AppShell>
