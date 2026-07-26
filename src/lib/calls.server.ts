@@ -601,5 +601,3 @@ export async function getTeamCallReachabilityImpl({ context }: any) {
     })),
   };
 }
-
-}
