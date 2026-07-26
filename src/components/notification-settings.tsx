@@ -99,33 +99,24 @@ export function NotificationSettings() {
           <p className="text-sm text-muted-foreground mt-1">
             استقبل تحديثات الشحنات، المخزون والفواتير على هاتفك حتى لو التطبيق مغلق.
           </p>
+          <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+            🔒 الإشعارات إلزامية على كل الأجهزة ولا يمكن إيقافها — فقط النغمة والاهتزاز قابلان للتخصيص.
+          </p>
         </div>
         {subscribed && permission === "granted" ? (
-          <Button variant="outline" size="sm" onClick={disablePush} disabled={loading} className="gap-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellOff className="h-4 w-4" />}
-            إيقاف
-          </Button>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <Bell className="h-3.5 w-3.5" /> مفعّل
+          </span>
         ) : (
           <Button size="sm" onClick={async () => {
             const ok = await enablePush();
             if (ok) toast.success("تم تفعيل الإشعارات على هذا الجهاز");
-            else toast.error("لم يتم منح الإذن");
+            else toast.error("لم يتم منح الإذن — التفعيل مطلوب");
           }} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
-            تفعيل
+            تفعيل الآن
           </Button>
         )}
-      </div>
-
-      <div className="flex items-center justify-between rounded-xl border bg-muted/30 p-3">
-        <div>
-          <Label className="text-sm">تشغيل الإشعارات</Label>
-          <p className="text-xs text-muted-foreground">إيقاف مؤقت دون إلغاء الاشتراك</p>
-        </div>
-        <Switch
-          checked={prefs.push_enabled}
-          onCheckedChange={(v) => savePrefs({ push_enabled: v })}
-        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
