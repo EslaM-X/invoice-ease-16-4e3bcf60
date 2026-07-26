@@ -1522,18 +1522,12 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                 )}
               </div>
 
-              {/* Delivered toggle */}
-              <label className="mt-2 flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
-                <span className="text-sm font-medium">
-                  {lang === "ar" ? "تم التسليم بالكامل" : "Marked as delivered"}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={delivered}
-                  onChange={(e) => setDelivered(e.target.checked)}
-                  className="h-4 w-4 accent-emerald-600"
-                />
-              </label>
+              {/* Delivery status is controlled from the invoice detail page */}
+              <p className="mt-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "حالة التسليم تُدار من صفحة الفاتورة بعد الحفظ (قيد الانتظار / في الطريق / تم التسليم)."
+                  : "Delivery status is managed from the invoice page after saving (Pending / In Transit / Delivered)."}
+              </p>
             </div>
             <Button onClick={save} disabled={saving} className="mt-4 w-full shadow-glow">
               {t("save_invoice")}
