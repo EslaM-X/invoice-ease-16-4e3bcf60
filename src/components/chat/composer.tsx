@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ChatMsg } from "./message-bubble";
+import { serializeComposerMentions, sanitizePastedMentions } from "@/lib/mentions";
 
 export type MentionMember = {
   user_id: string;
