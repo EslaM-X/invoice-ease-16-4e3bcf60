@@ -1,28 +1,41 @@
-## المشكلة
-حاليًا كل صورة مرفقة تُعرض داخل صندوق ثابت 240×180 بخلفية سوداء (`bg-black/30`) مع `object-cover`. لو الصورة مختلفة النسبة، بيظهر letterbox أسود، ولو أصغر بتتمدّد بالقص. الفقاعة نفسها بتاخد عرض الصندوق الثابت.
-
 ## الهدف
-الفقاعة والصورة تاخد الحجم الطبيعي للصورة بدون أي فراغات/شرائط سوداء، مع الحفاظ على استقرار الـ scroll (بدون قفزات).
+حالة تسليم الفاتورة (`invoices.delivery_status`) تُحسب **تلقائياً** من محاضر الاستلام المرتبطة بيها، مش من زر يدوي. لما مجموع الكميات المُسلَّمة عبر كل المحاضر (غير الـ draft وغير المؤرشفة) = مجموع كميات بنود الفاتورة → `delivered`. لو أقل > 0 → `in_transit` (جزئي). لو صفر → `pending`.
 
-## التغييرات في `src/components/chat/message-bubble.tsx`
-1. إزالة الحجم الثابت 240×180 والخلفية `bg-black/30` والقيد `contain: strict`.
-2. الحاوية الجديدة للصورة:
-   - `max-width` مرن (مثلاً 320px على الديسكتوب، 260px على الموبايل) و `width: auto`.
-   - قبل التحميل: تُعرض بـ `aspect-ratio: 4/3` افتراضية عليها الـ shimmer الذهبي (بدون خلفية سوداء) لحجز مكان معقول.
-   - بعد `onLoad`: نستبدل الـ aspect-ratio بالنسبة الطبيعية من `naturalWidth/naturalHeight` عبر CSS variable، ونحوّل `<img>` لـ `object-contain` بدون قص، والفقاعة تنكمش/تتمدد للحجم الحقيقي.
-3. `<img>` يبقى `loading="lazy"` و `decoding="async"`، مع fade-in ناعم.
-4. حماية من قفزات الـ virtualizer:
-   - نستخدم `ResizeObserver` مركزي موجود بالفعل (dynamic measurement) — بعد `onLoad` نستدعي إعادة القياس. لو مش موجود، نضيف `requestAnimationFrame` بعد التحميل لإخبار الـ virtualizer.
-   - نحافظ على placeholder بنفس النسبة المتوقعة قدر الإمكان (4:3) عشان القفزة تكون أقل ما يمكن؛ وبما إن الرسالة الجديدة بتظهر في الأسفل، ما فيش تأثير على قراءة رسائل سابقة.
-5. الفقاعة (bubble) نفسها: نتأكد إن الـ padding والـ max-width بتاعتها تسمح للصورة تحدد عرض الفقاعة (`w-fit` / إزالة أي `min-width` أكبر من الصورة).
+لا يُطبَّق على: الفواتير المؤرشفة/الملغاة/المقفولة، ولا على الفواتير القديمة اللي حالتها دلوقتي `delivered` من غير محاضر (نسيبها زي ما هي).
 
-## خارج نطاق التعديل
-- منطق الرفع والـ attachments.
-- Read receipts، mentions، virtualizer scroll anchoring.
-- باقي أنواع الرسائل (نص/صوت/رد).
+## الخطوات
 
-## قبول
-- صورة عمودية طويلة → فقاعة عمودية بدون شرائط سوداء.
-- صورة مربعة صغيرة → فقاعة صغيرة بنفس الحجم بدون تمدد.
-- Skeleton ذهبي فقط أثناء التحميل بدون خلفية سوداء.
-- ما فيش قفزة scroll ملحوظة عند فتح الشات أو وصول صور جديدة.
+1. **Migration — دالة إعادة الحساب + Trigger**
+   - `public.recompute_invoice_delivery_status(_invoice_id uuid)`:
+     - Skip لو الفاتورة `status IN ('voided','archived')` أو `archived_at IS NOT NULL`.
+     - يحسب `needed = SUM(invoice_items.quantity)`.
+     - يحسب `delivered = SUM(delivery_receipt_items.quantity)` من محاضر بحالة `signed` أو `out_for_delivery` فقط (يستبعد `draft` و `archived_at IS NOT NULL`).
+     - `delivered >= needed AND needed > 0` → `'delivered'` ويُثبّت `delivery_assignee_*` لو موجودة.
+     - `delivered > 0` → `'in_transit'`.
+     - غير كده → `'pending'` (وينضّف الـ assignee).
+     - يعمل `UPDATE` بس لو الحالة اتغيّرت فعلاً.
+   - Triggers `AFTER INSERT/UPDATE/DELETE` على:
+     - `delivery_receipt_items` (يستدعي للـ `invoice_id` عن طريق join مع `delivery_receipts`).
+     - `delivery_receipts` (لما `status` أو `archived_at` يتغيّر).
+   - `SECURITY DEFINER`, `SET search_path=public`.
+   - Backfill: `SELECT recompute_invoice_delivery_status(id) FROM invoices WHERE status NOT IN ('voided','archived') AND archived_at IS NULL AND EXISTS (SELECT 1 FROM delivery_receipts dr WHERE dr.invoice_id = invoices.id);` — بيحدّث بس الفواتير اللي عندها محاضر (يحمي الفواتير القديمة اللي متسلّمة يدوياً من غير محاضر).
+
+2. **Frontend — `src/components/delivery-status-control.tsx`**
+   - إزالة الأزرار الثلاثة (Pending/In Transit/Delivered) وأي `saveStatus` يدوي.
+   - الكارت يبقى **قراءة فقط** لحالة التسليم + شارة توضيحية "الحالة تُحسب تلقائياً من محاضر الاستلام" مع رابط لصفحة إنشاء/عرض المحاضر.
+   - يفضل قسم "المسؤول عن التسليم" (Assignee) شغّال زي ما هو — دا مش جزء من الحساب الأوتوماتيكي.
+   - `onMarkDelivered` prop تتشال من الاستدعاء في `src/routes/invoices.$id.tsx`.
+
+3. **`src/routes/invoices.$id.tsx`**
+   - إزالة أي كود يعمل `update({ delivery_status: 'delivered' })` يدوي من زر التسليم (السطر 71 و 102).
+   - الاعتماد على Realtime على جدول `invoices` (موجود) لإظهار الحالة الجديدة بعد أي تغيير في المحاضر.
+
+## نطاق ما لن يتأثر
+- الفواتير المؤرشفة أو `voided` — الـ trigger بيخرج بدري.
+- الفواتير القديمة اللي `delivered` بدون محاضر — الـ Backfill بيتجاهلها.
+- منطق المحاضر نفسها، النواقص، التسعير، الأرصدة، الأوامر.
+
+## Technical notes
+- الـ trigger يستدعي `recompute_invoice_delivery_status` مرة واحدة لكل `invoice_id` متأثر (يستخدم `NEW.receipt_id` → `dr.invoice_id` أو `OLD` عند الحذف).
+- يستخدم `PERFORM` مش `SELECT` عشان يتجنب unused-result.
+- يتأكد أن الـ `UPDATE` على `invoices` ما يعملش recursion (شرط `IS DISTINCT FROM`).

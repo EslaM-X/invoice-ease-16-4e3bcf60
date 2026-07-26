@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Truck, Package, CheckCircle2, User as UserIcon } from "lucide-react";
+import { Truck, Package, CheckCircle2, User as UserIcon, Info } from "lucide-react";
 import { toast } from "sonner";
 
 type Profile = { id: string; user_id: string; display_name: string | null; email: string | null };
@@ -17,13 +17,12 @@ type Props = {
   assigneeLabel: string | null;
   isVoided: boolean;
   onChanged: () => void;
-  onMarkDelivered: () => void; // uses shortage guard from parent
 };
 
 const COMPANY_LABEL_KEY = "__company__";
 
 export function DeliveryStatusControl({
-  invoiceId, status, assigneeId, assigneeLabel, isVoided, onChanged, onMarkDelivered,
+  invoiceId, status, assigneeId, assigneeLabel, isVoided, onChanged,
 }: Props) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
@@ -48,31 +47,15 @@ export function DeliveryStatusControl({
     return "__none__";
   }, [assigneeId, assigneeLabel]);
 
-  const saveStatus = async (next: Status) => {
-    if (next === "delivered") { onMarkDelivered(); return; }
-    setSaving(true);
-    const patch: any = { delivery_status: next };
-    if (next === "pending") {
-      patch.delivery_assignee_id = null;
-      patch.delivery_assignee_label = null;
-    }
-    const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success(isAr ? "تم حفظ حالة التسليم" : "Delivery status saved");
-    onChanged();
-  };
-
   const saveAssignee = async (key: string, freeText?: string) => {
     setSaving(true);
-    let patch: any = { delivery_assignee_id: null, delivery_assignee_label: null };
+    const patch: { delivery_assignee_id: string | null; delivery_assignee_label: string | null } = {
+      delivery_assignee_id: null,
+      delivery_assignee_label: null,
+    };
     if (key === COMPANY_LABEL_KEY) patch.delivery_assignee_label = "Company account";
     else if (key === "__custom__") patch.delivery_assignee_label = (freeText ?? customLabel).trim() || null;
     else if (key !== "__none__") patch.delivery_assignee_id = key;
-    // If we're picking an assignee while pending, promote status to in_transit
-    if (s === "pending" && (patch.delivery_assignee_id || patch.delivery_assignee_label)) {
-      patch.delivery_status = "in_transit";
-    }
     const { error } = await supabase.from("invoices").update(patch).eq("id", invoiceId);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -81,11 +64,11 @@ export function DeliveryStatusControl({
 
   const statusPillClass = (val: Status) => {
     const active = s === val || (val === "in_transit" && s === "partial");
-    const base = "flex-1 gap-1.5 rounded-full transition";
-    if (!active) return `${base} border bg-background hover:bg-muted`;
-    if (val === "pending") return `${base} bg-slate-600 text-white hover:bg-slate-700`;
-    if (val === "in_transit") return `${base} bg-amber-600 text-white hover:bg-amber-700`;
-    return `${base} bg-emerald-600 text-white hover:bg-emerald-700`;
+    const base = "flex-1 gap-1.5 rounded-full cursor-default";
+    if (!active) return `${base} border bg-background opacity-60`;
+    if (val === "pending") return `${base} bg-slate-600 text-white`;
+    if (val === "in_transit") return `${base} bg-amber-600 text-white`;
+    return `${base} bg-emerald-600 text-white`;
   };
 
   return (
@@ -97,18 +80,27 @@ export function DeliveryStatusControl({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("pending")} onClick={() => saveStatus("pending")}>
+          <Button size="sm" variant="ghost" disabled className={statusPillClass("pending")} tabIndex={-1}>
             <Package className="h-3.5 w-3.5" />
             {isAr ? "قيد الانتظار" : "Pending"}
           </Button>
-          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("in_transit")} onClick={() => saveStatus("in_transit")}>
+          <Button size="sm" variant="ghost" disabled className={statusPillClass("in_transit")} tabIndex={-1}>
             <Truck className="h-3.5 w-3.5" />
             {isAr ? "في الطريق" : "In Transit"}
           </Button>
-          <Button size="sm" variant="ghost" disabled={isVoided || saving} className={statusPillClass("delivered")} onClick={() => saveStatus("delivered")}>
+          <Button size="sm" variant="ghost" disabled className={statusPillClass("delivered")} tabIndex={-1}>
             <CheckCircle2 className="h-3.5 w-3.5" />
             {isAr ? "تم التسليم" : "Delivered"}
           </Button>
+        </div>
+
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/40 p-2.5 text-[11px] text-muted-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
+          <span>
+            {isAr
+              ? "تُحدَّث حالة التسليم تلقائياً من محاضر الاستلام المرتبطة بالفاتورة. لما مجموع الكميات المُسلَّمة في المحاضر يغطي كل بنود الفاتورة تتحول لـ «تم التسليم» تلقائياً."
+              : "Delivery status updates automatically from the linked delivery receipts. When the total delivered quantity covers all invoice items it turns to Delivered."}
+          </span>
         </div>
 
         {(s === "in_transit" || s === "partial" || assigneeId || assigneeLabel) && (
