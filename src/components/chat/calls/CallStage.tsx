@@ -36,6 +36,7 @@ import {
   type Participant,
 } from "livekit-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { FloatingCallShell, MinimizeCallButton, type CallShellMode } from "./FloatingCallShell";
 import { LiveInvitesRoster } from "./LiveInvitesRoster";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -845,17 +846,44 @@ function ScreenShareWithPreview({
       try { await localParticipant?.setScreenShareEnabled(false); } catch { /* ignore */ }
       return;
     }
+    if (busy) return; // debounce double-clicks / React double-invoke
     setBusy(true);
     try {
       const enc = resolveScreenEncoding(res, fps, perfMode);
-      const videoConstraint = {
-        displaySurface: surface,
+
+      // Browser detection — the getDisplayMedia option surface is not portable.
+      // Chromium accepts every hint; Firefox rejects unknown keys silently or
+      // throws; Safari only supports the minimal video-only form.
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const isFirefox = /Firefox\//i.test(ua);
+      const isSafari  = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+      const isChromium = !isFirefox && !isSafari;
+
+      const videoConstraint: MediaTrackConstraints = {
         frameRate: { ideal: enc.frameRate, max: enc.frameRate },
-      } as unknown as MediaTrackConstraints;
+      };
+      if (isChromium) {
+        (videoConstraint as any).displaySurface = surface;
+      }
+
+      // Extra Chromium-only display-media options that block the "hall of
+      // mirrors" recursion at the source and let the user switch sources
+      // without re-prompting.
+      const extraDisplayOptions: Record<string, unknown> = {};
+      if (isChromium) {
+        extraDisplayOptions.selfBrowserSurface = "exclude";
+        extraDisplayOptions.surfaceSwitching = "include";
+        extraDisplayOptions.preferCurrentTab = false;
+      }
+
+      // System audio only works reliably on Chromium; Firefox partially, Safari never.
+      const wantAudio = sysAudio && !isSafari;
+
       const created = await createLocalScreenTracks({
-        audio: sysAudio,
+        audio: wantAudio,
         resolution: { width: enc.width, height: enc.height, frameRate: enc.frameRate },
         video: videoConstraint as any,
+        ...(extraDisplayOptions as any),
       } as any);
       const vTrack = created.find((t) => t.kind === Track.Kind.Video);
       const aTrack = created.find((t) => t.kind === Track.Kind.Audio);
@@ -871,13 +899,20 @@ function ScreenShareWithPreview({
       setSourceInfo({ name, surface: surfaceLabel, hasAudio: !!aTrack });
       setTracks(created);
     } catch (e: any) {
-      if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
+      const name = e?.name ?? "";
+      if (name === "NotAllowedError" || name === "AbortError") {
+        // user cancelled — silent
+      } else if (name === "NotReadableError") {
+        toast.error(rtl ? "المصدر مشغول من تطبيق آخر. أغلقه وحاول مرة ثانية." : "Source is busy in another app. Close it and try again.");
+      } else if (name === "NotSupportedError" || name === "TypeError") {
+        toast.error(rtl ? "متصفحك لا يدعم مشاركة الشاشة بهذه الخيارات." : "Your browser does not support screen sharing with these options.");
+      } else {
         toast.error(rtl ? `تعذّر بدء المشاركة: ${e?.message ?? ""}` : `Could not start share: ${e?.message ?? ""}`);
       }
     } finally {
       setBusy(false);
     }
-  }, [isSharing, localParticipant, rtl, surface, sysAudio, res, fps, perfMode]);
+  }, [isSharing, busy, localParticipant, rtl, surface, sysAudio, res, fps, perfMode]);
 
   // Expose imperative controller for auto-fallback.
   useEffect(() => {
@@ -2291,12 +2326,20 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
 
   const ready = open && !!url && !!token && !probing;
 
+  const [shellMode, setShellMode] = useState<CallShellMode>("full");
+  useEffect(() => { if (!open) setShellMode("full"); }, [open]);
+
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="h-[100dvh] w-full p-0 border-0 bg-black text-white"
+    <FloatingCallShell
+      open={open}
+      mode={shellMode}
+      onModeChange={setShellMode}
+      rtl={rtl}
+    >
+      <div
+        className="relative h-full w-full bg-black text-white"
         dir={rtl ? "rtl" : "ltr"}
+        data-call-mode={shellMode}
       >
         {/* aria-live for screen readers — preflight status */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -2305,7 +2348,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
 
         {open && probing ? (
           <div
-            className="flex h-[100dvh] w-full flex-col items-center justify-center gap-4 bg-black text-white"
+            className="flex h-full w-full flex-col items-center justify-center gap-4 bg-black text-white"
             role="status"
             aria-live="polite"
           >
@@ -2328,7 +2371,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
             audio
             options={roomOptions}
             data-lk-theme="default"
-            style={{ height: "100dvh", background: "black", position: "relative" }}
+            style={{ height: "100%", background: "black", position: "relative" }}
             onDisconnected={() => {
               onLeave();
               onClose();
@@ -2366,11 +2409,13 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
               callPerf={callPerf}
               setCallPerf={setCallPerf}
               callId={callId}
+              shellMode={shellMode}
+              onMinimize={() => setShellMode("mini")}
             />
           </LiveKitRoom>
         ) : null}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </FloatingCallShell>
   );
 }
 
@@ -2380,6 +2425,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
  */
 function ShareDiagnosticsMount({
   rtl, autoSpeaker, setAutoSpeaker, focusLock, setFocusLock, callPerf, setCallPerf, callId,
+  shellMode, onMinimize,
 }: {
   rtl: boolean;
   autoSpeaker: boolean;
@@ -2389,6 +2435,8 @@ function ShareDiagnosticsMount({
   callPerf: CallPerfPref;
   setCallPerf: (v: CallPerfPref) => void;
   callId?: string;
+  shellMode: CallShellMode;
+  onMinimize: () => void;
 }) {
   const ctrlRef = useRef<ShareController | null>(null);
   const surfaceRef = useRef<Surface>(
@@ -2434,50 +2482,86 @@ function ShareDiagnosticsMount({
       <CameraFailureRetry rtl={rtl} />
       <QualityInsights rtl={rtl} shareState={monitor} onSwitchLite={() => setCallPerf("lite")} />
       <Stage autoSpeaker={autoSpeaker} focusLock={focusLock} />
-      <PresenterTools rtl={rtl} />
+      {shellMode === "full" && <PresenterTools rtl={rtl} />}
       <RoomAudioRenderer />
-      <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
-      <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
-      <KeyboardShortcuts
-        rtl={rtl}
-        autoSpeaker={autoSpeaker}
-        setAutoSpeaker={setAutoSpeaker}
-        focusLock={focusLock}
-        setFocusLock={setFocusLock}
-      />
-
-      <div
-        className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
-        role="toolbar"
-        aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
-      >
-        <div className="mx-auto mb-2 flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4">
-          <CallPerfSelector rtl={rtl} value={callPerf} onChange={setCallPerf} />
-          <ScreenShareWithPreview
+      {shellMode === "full" && (
+        <>
+          <AutoSpeakerToggle rtl={rtl} on={autoSpeaker} setOn={setAutoSpeaker} />
+          <FocusLockToggle rtl={rtl} on={focusLock} setOn={setFocusLock} disabled={!autoSpeaker} />
+          <KeyboardShortcuts
             rtl={rtl}
-            bindController={(c) => { ctrlRef.current = c; }}
+            autoSpeaker={autoSpeaker}
+            setAutoSpeaker={setAutoSpeaker}
+            focusLock={focusLock}
+            setFocusLock={setFocusLock}
           />
-          <DiagnosticsLaunchButton
-            rtl={rtl}
-            onClick={() => setDiagOpen(true)}
-            quality={monitor.quality}
-            isSharing={monitor.isSharing}
+        </>
+      )}
+
+      {shellMode === "full" ? (
+        <div
+          className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-3"
+          role="toolbar"
+          aria-label={rtl ? "أدوات التحكم في المكالمة" : "Call controls"}
+        >
+          <div className="mx-auto mb-2 flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4">
+            <CallPerfSelector rtl={rtl} value={callPerf} onChange={setCallPerf} />
+            <ScreenShareWithPreview
+              rtl={rtl}
+              bindController={(c) => { ctrlRef.current = c; }}
+            />
+            <DiagnosticsLaunchButton
+              rtl={rtl}
+              onClick={() => setDiagOpen(true)}
+              quality={monitor.quality}
+              isSharing={monitor.isSharing}
+            />
+            <MinimizeCallButton rtl={rtl} onClick={onMinimize} />
+          </div>
+          <ControlBar
+            variation="verbose"
+            controls={{
+              microphone: true,
+              camera: true,
+              screenShare: false,
+              chat: false,
+              leave: true,
+              settings: true,
+            }}
           />
         </div>
-        <ControlBar
-          variation="verbose"
-          controls={{
-            microphone: true,
-            camera: true,
-            screenShare: false,
-            chat: false,
-            leave: true,
-            settings: true,
-          }}
-        />
-      </div>
+      ) : (
+        <MiniControlStrip rtl={rtl} />
+      )}
     </LayoutContextProvider>
   );
 }
+
+/**
+ * Compact control strip shown when the call is in mini/floating mode.
+ * Keeps just mic + camera + share + leave so it fits in a 320px window.
+ */
+function MiniControlStrip({ rtl }: { rtl: boolean }) {
+  return (
+    <div
+      className="absolute bottom-0 inset-x-0 z-10 flex items-center justify-center gap-1 px-2 py-1.5 bg-gradient-to-t from-black/95 to-black/40"
+      role="toolbar"
+      aria-label={rtl ? "أدوات مصغرة" : "Mini controls"}
+    >
+      <ControlBar
+        variation="minimal"
+        controls={{
+          microphone: true,
+          camera: true,
+          screenShare: true,
+          chat: false,
+          leave: true,
+          settings: false,
+        }}
+      />
+    </div>
+  );
+}
+
 
 
