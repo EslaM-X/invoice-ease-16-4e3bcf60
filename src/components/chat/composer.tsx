@@ -118,24 +118,48 @@ export function Composer({
     return [...specials, ...base];
   }, [members, mentionQuery, isGroup]);
 
+  // Track the user_id backing each `@Name` visible in the composer, so we can
+  // serialize the message back to the storage token `@[Name](uid)` on send.
+  // If the same display name maps to multiple selections, the latest wins.
+  const pendingMentionsRef = useRef<Map<string, string>>(new Map());
+
   const insertMention = (m: MentionMember) => {
     const ta = taRef.current;
     if (!ta || mentionStart === null) return;
     const caret = ta.selectionStart ?? text.length;
     const name = m.user_id === "all" ? "everyone" : (m.display_name ?? m.email ?? "user");
-    const token = `@[${name}](${m.user_id}) `;
-    const next = text.slice(0, mentionStart) + token + text.slice(caret);
+    // Visible token: just `@Name ` — no ids or brackets shown in the input.
+    const visible = `@${name} `;
+    pendingMentionsRef.current.set(name, m.user_id);
+    const next = text.slice(0, mentionStart) + visible + text.slice(caret);
     setText(next);
     setMentionOpen(false);
     setMentionQuery("");
     setMentionStart(null);
     setMentionIndex(0);
-    // Restore caret after inserted token
     requestAnimationFrame(() => {
-      const pos = mentionStart + token.length;
+      const pos = mentionStart + visible.length;
       ta.focus();
       try { ta.setSelectionRange(pos, pos); } catch {}
     });
+  };
+
+  /** Convert visible `@Name` occurrences back to the `@[Name](uid) ` token. */
+  const serializeMentions = (raw: string): string => {
+    if (pendingMentionsRef.current.size === 0) return raw;
+    // Replace longest names first so "Ali" doesn't shadow "Ali Ahmed".
+    const entries = [...pendingMentionsRef.current.entries()].sort(
+      (a, b) => b[0].length - a[0].length,
+    );
+    let out = raw;
+    for (const [name, uid] of entries) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Match `@Name` when followed by end-of-string, whitespace, or punctuation
+      // — but NOT when it's already inside an existing `@[Name](...)` token.
+      const re = new RegExp(`(?<!\\[)@${escaped}(?![\\p{L}\\p{N}_])`, "gu");
+      out = out.replace(re, `@[${name}](${uid})`);
+    }
+    return out;
   };
 
   const onTextChange = (value: string, caret: number) => {
