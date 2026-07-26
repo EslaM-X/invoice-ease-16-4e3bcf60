@@ -74,7 +74,8 @@ export function usePushNotifications() {
   const savePrefs = useCallback(
     async (next: Partial<NotifPrefs>) => {
       if (!user) return;
-      const merged = { ...prefs, ...next };
+      // Push notifications are mandatory — force-enable regardless of caller input.
+      const merged = { ...prefs, ...next, push_enabled: true };
       setPrefs(merged);
       await supabase
         .from("user_notification_preferences")
@@ -120,21 +121,9 @@ export function usePushNotifications() {
   }, [user, supported, savePrefs]);
 
   const disablePush = useCallback(async () => {
-    if (!user || !supported) return;
-    setLoading(true);
-    try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const sub = await reg?.pushManager.getSubscription();
-      if (sub) {
-        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        await sub.unsubscribe();
-      }
-      await savePrefs({ push_enabled: false });
-      setSubscribed(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, supported, savePrefs]);
+    // Disabled by policy — push notifications are mandatory for all users.
+    return;
+  }, []);
 
   const testNotification = useCallback(
     (title = "إشعار تجريبي", body = "هذا اختبار للنغمة والاهتزاز الذي اخترته") => {

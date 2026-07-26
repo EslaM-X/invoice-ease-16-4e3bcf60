@@ -17,6 +17,7 @@ import { ApprovalGate } from "@/components/approval-gate";
 import { LuxurySplash } from "@/components/luxury-splash";
 import { GlobalPresenceHeartbeat } from "@/components/global-presence-heartbeat";
 import { GlobalCallNotifier } from "@/components/chat/calls/GlobalCallNotifier";
+import { MandatoryPushEnforcer } from "@/components/mandatory-push-enforcer";
 import { PWA_ASSET_VERSION } from "@/lib/pwa-version";
 import appCss from "../styles.css?url";
 
@@ -145,6 +146,7 @@ function RootComponent() {
             <ApprovalGate>
               <GlobalPresenceHeartbeat />
               <GlobalCallNotifier />
+              <MandatoryPushEnforcer />
               <Outlet />
             </ApprovalGate>
             <InstallPrompt />
