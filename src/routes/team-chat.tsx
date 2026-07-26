@@ -2154,6 +2154,7 @@ function TeamChatPage() {
                           onReply={setReplyTo}
                           onDelete={onDelete}
                           onToggleReaction={onToggleReaction}
+                          readers={readersByMsgId.get(m.id)}
                         />
                         </motion.div>
                       </div>
