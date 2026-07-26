@@ -72,7 +72,7 @@ function InvoicesList() {
       if (to) query = query.lte("created_at", to + "T23:59:59");
       const { data } = await query;
       return data ?? [];
-    });
+    }, { forceRefresh: true });
     setList(data);
     setLoading(false);
     const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
