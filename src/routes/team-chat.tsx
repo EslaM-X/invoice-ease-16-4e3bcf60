@@ -114,7 +114,7 @@ function TeamChatPage() {
   const setDensityFn = useServerFn(setChatDensity);
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const rid = new URLSearchParams(window.location.search).get("room");
     if (rid) setActiveRoomId(rid);
@@ -1129,7 +1129,7 @@ function TeamChatPage() {
   // When a room opens, land on the first unread message (or bottom if fully
   // read). Uses the server-snapshotted last_read_at so it isn't affected by
   // the markRoomRead call that fires on open.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!activeRoomId) return;
     if (initialAnchorDoneRef.current[activeRoomId]) return;
     // Respect an explicit saved scroll target — the restore effect handles it.
