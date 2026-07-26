@@ -239,35 +239,44 @@ export function MessageBubble({
             <div className="grid gap-1.5">
               {msg.attachments.map((a, i) => {
                 const src = attachmentUrls?.[a.url] ?? a.url;
-                // Reserve a fixed-size slot so row height never changes as the
-                // image loads. This prevents virtualizer height jumps and
-                // scroll-position drift when opening the chat.
                 return (
                   <a
                     key={i}
                     href={src}
                     target="_blank"
                     rel="noreferrer"
-                    className="block relative overflow-hidden rounded-lg bg-black/30"
-                    style={{ width: 240, height: 180, contain: "strict" }}
+                    className="block relative overflow-hidden rounded-lg w-fit max-w-full"
+                    style={{
+                      // Reserve space with a default 4/3 ratio until natural size is known.
+                      aspectRatio: "var(--img-ar, 4 / 3)",
+                      width: "var(--img-w, auto)",
+                      maxWidth: "min(320px, 100%)",
+                    } as React.CSSProperties}
                   >
                     <div
                       aria-hidden
-                      className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.05)_8%,rgba(212,175,55,0.14)_18%,rgba(255,255,255,0.05)_33%)] bg-[length:200%_100%] motion-safe:animate-[chatShimmer_1.4s_linear_infinite] pointer-events-none"
+                      className="absolute inset-0 rounded-lg bg-[linear-gradient(110deg,rgba(255,255,255,0.05)_8%,rgba(212,175,55,0.14)_18%,rgba(255,255,255,0.05)_33%)] bg-[length:200%_100%] motion-safe:animate-[chatShimmer_1.4s_linear_infinite] pointer-events-none"
                       data-img-skel
                     />
                     <img
                       src={src}
                       alt={a.name ?? ""}
-                      width={240}
-                      height={180}
                       loading="lazy"
                       decoding="async"
-                      className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"
-                      style={{ contentVisibility: "auto" }}
+                      className="block w-full h-full object-contain opacity-0 transition-opacity duration-300"
                       onLoad={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.opacity = "1";
-                        const skel = (e.currentTarget.parentElement?.querySelector("[data-img-skel]") as HTMLElement | null);
+                        const img = e.currentTarget as HTMLImageElement;
+                        const parent = img.parentElement as HTMLElement | null;
+                        const nw = img.naturalWidth || 4;
+                        const nh = img.naturalHeight || 3;
+                        if (parent) {
+                          parent.style.setProperty("--img-ar", `${nw} / ${nh}`);
+                          // Cap width at 320; height follows aspect-ratio.
+                          const w = Math.min(320, nw);
+                          parent.style.setProperty("--img-w", `${w}px`);
+                        }
+                        img.style.opacity = "1";
+                        const skel = parent?.querySelector("[data-img-skel]") as HTMLElement | null;
                         if (skel) skel.style.display = "none";
                       }}
                       onError={(e) => {
@@ -280,6 +289,7 @@ export function MessageBubble({
               })}
               {msg.body && <TwemojiBody className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</TwemojiBody>}
             </div>
+
           ) : (
             <TwemojiBody className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</TwemojiBody>
           )}
