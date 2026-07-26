@@ -137,6 +137,7 @@ export function PwaVersionGuard() {
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      navigator.serviceWorker.removeEventListener("message", onSwMessage);
       if (intervalId) clearInterval(intervalId);
       if (onVisibility) document.removeEventListener("visibilitychange", onVisibility);
       if (onFocus) window.removeEventListener("focus", onFocus);
