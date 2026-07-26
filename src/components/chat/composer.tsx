@@ -409,12 +409,13 @@ export function Composer({
                 // Sanitize any raw storage tokens (`@[Name](uid)`) pasted from
                 // copied messages so the composer only ever shows clean `@Name`.
                 const raw = e.clipboardData.getData("text");
-                if (!raw || !/@\[[^\]]+\]\([^)\s]+\)/.test(raw)) return;
+                const sanitized = sanitizePastedMentions(raw);
+                if (!sanitized) return;
                 e.preventDefault();
-                const cleaned = raw.replace(/@\[([^\]]{1,80})\]\(([^)\s]{1,80})\)/g, (_all, name, uid) => {
+                for (const [name, uid] of sanitized.pairs) {
                   pendingMentionsRef.current.set(name, uid);
-                  return `@${name}`;
-                });
+                }
+                const cleaned = sanitized.cleaned;
                 const ta = taRef.current;
                 if (!ta) { setText((p) => p + cleaned); return; }
                 const start = ta.selectionStart ?? text.length;
