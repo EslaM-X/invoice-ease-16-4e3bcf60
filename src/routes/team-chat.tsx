@@ -746,11 +746,15 @@ function TeamChatPage() {
   }, [qc, user?.id, activeRoomId, rtl, roomsQ.data?.rooms]);
 
   useEffect(() => {
-    if (activeRoomId) {
+    if (!activeRoomId) return;
+    // Delay so listChatMessages can snapshot last_read_at first — the initial
+    // "scroll to first unread" anchor depends on the pre-open value.
+    const t = window.setTimeout(() => {
       markRead({ data: { room_id: activeRoomId } }).then(() =>
         qc.invalidateQueries({ queryKey: ["chat-rooms"] })
-      );
-    }
+      ).catch(() => {});
+    }, 2500);
+    return () => window.clearTimeout(t);
   }, [activeRoomId, markRead, qc]);
 
   // Load the remote scroll map once per session and merge remote > local when
