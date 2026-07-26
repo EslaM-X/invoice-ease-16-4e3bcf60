@@ -712,6 +712,7 @@ function SystemNotesHistoryInline({ invoiceId }: { invoiceId: string }) {
 
 function DeliveryReceiptsForInvoice({ invoiceId }: { invoiceId: string }) {
   const { lang } = useI18n();
+  const { user } = useAuth();
   const isAr = lang === "ar";
   const [list, setList] = useState<any[]>([]);
   const load = async () => {
@@ -729,24 +730,50 @@ function DeliveryReceiptsForInvoice({ invoiceId }: { invoiceId: string }) {
   if (list.length === 0) {
     return <div className="text-xs text-muted-foreground">{isAr ? "لا يوجد محاضر بعد" : "No receipts yet"}</div>;
   }
+  const statusMeta = (status: string, isMine: boolean): { label: string; cls: string } => {
+    // Only show the "Draft" chip to the receipt's creator — everyone else sees
+    // the effective status (signed / delivered) so it never looks unsigned.
+    if (status === "draft" && !isMine) {
+      return {
+        label: isAr ? "قيد الإصدار" : "In progress",
+        cls: "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-400",
+      };
+    }
+    switch (status) {
+      case "signed":
+        return { label: isAr ? "موقّع" : "Signed", cls: "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+      case "paid":
+        return { label: isAr ? "مدفوع" : "Paid", cls: "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+      case "out_for_delivery":
+        return { label: isAr ? "خرج للتسليم" : "Out for delivery", cls: "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-400" };
+      case "returned":
+        return { label: isAr ? "مرتجع" : "Returned", cls: "border-orange-500/30 bg-orange-500/15 text-orange-700 dark:text-orange-400" };
+      case "cancelled":
+        return { label: isAr ? "ملغي" : "Cancelled", cls: "border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-400" };
+      case "draft":
+        return { label: isAr ? "مسودة" : "Draft", cls: "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400" };
+      default:
+        return { label: status, cls: "border-muted-foreground/30 bg-muted/40 text-muted-foreground" };
+    }
+  };
   return (
     <div className="space-y-2">
-      {list.map((r) => (
-        <Link key={r.id} to="/delivery-receipts/$id" params={{ id: r.id }}
-          className="flex items-center justify-between gap-3 rounded-lg border bg-background/40 p-2.5 hover:bg-muted/50">
-          <div>
-            <div className="font-mono text-sm font-medium">{r.receipt_number}</div>
-            <div className="text-[11px] text-muted-foreground">{r.delivered_to_name || "—"} · {fmtDateTime(r.delivered_at, lang)}</div>
-          </div>
-          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-            r.status === "signed"
-              ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-              : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
-          }`}>
-            {r.status === "signed" ? (isAr ? "موقّع" : "Signed") : (isAr ? "مسودة" : "Draft")}
-          </span>
-        </Link>
-      ))}
+      {list.map((r) => {
+        const isMine = !!user?.id && r.created_by === user.id;
+        const meta = statusMeta(r.status, isMine);
+        return (
+          <Link key={r.id} to="/delivery-receipts/$id" params={{ id: r.id }}
+            className="flex items-center justify-between gap-3 rounded-lg border bg-background/40 p-2.5 hover:bg-muted/50">
+            <div>
+              <div className="font-mono text-sm font-medium">{r.receipt_number}</div>
+              <div className="text-[11px] text-muted-foreground">{r.delivered_to_name || "—"} · {fmtDateTime(r.delivered_at, lang)}</div>
+            </div>
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${meta.cls}`}>
+              {meta.label}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
