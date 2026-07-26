@@ -427,7 +427,12 @@ function Stage({ autoSpeaker, focusLock }: { autoSpeaker: boolean; focusLock: bo
       ] }
   );
 
-  const screenShareTracks = tracks.filter((t) => t.source === Track.Source.ScreenShare);
+  // Hide the local participant's OWN screen-share preview to prevent the
+  // "hall of mirrors" recursion when the user shares the browser tab that
+  // contains the call itself. Remote participants still see the share fine.
+  const screenShareTracks = tracks.filter(
+    (t) => t.source === Track.Source.ScreenShare && !t.participant.isLocal,
+  );
   const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
 
   // Speaker-based ordering — active speakers first, then last-spoke recency, then join order.
