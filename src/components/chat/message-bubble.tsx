@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, Fragment, type ReactNode } from "react";
+import { renderMentionBody } from "@/lib/mentions";
 import { motion } from "framer-motion";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { Button } from "@/components/ui/button";
