@@ -44,6 +44,7 @@ export default function ChatPopupNotifier() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const location = useLocation();
+  const navigate = useNavigate();
   const onChatPage = location.pathname.startsWith("/team-chat");
 
   // Per-user preference keys
