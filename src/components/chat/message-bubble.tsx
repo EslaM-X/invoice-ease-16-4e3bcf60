@@ -251,6 +251,11 @@ export function MessageBubble({
                     className="block relative overflow-hidden rounded-lg bg-black/30"
                     style={{ width: 240, height: 180, contain: "strict" }}
                   >
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.05)_8%,rgba(212,175,55,0.14)_18%,rgba(255,255,255,0.05)_33%)] bg-[length:200%_100%] motion-safe:animate-[chatShimmer_1.4s_linear_infinite] pointer-events-none"
+                      data-img-skel
+                    />
                     <img
                       src={src}
                       alt={a.name ?? ""}
@@ -258,8 +263,17 @@ export function MessageBubble({
                       height={180}
                       loading="lazy"
                       decoding="async"
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"
                       style={{ contentVisibility: "auto" }}
+                      onLoad={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.opacity = "1";
+                        const skel = (e.currentTarget.parentElement?.querySelector("[data-img-skel]") as HTMLElement | null);
+                        if (skel) skel.style.display = "none";
+                      }}
+                      onError={(e) => {
+                        const skel = (e.currentTarget.parentElement?.querySelector("[data-img-skel]") as HTMLElement | null);
+                        if (skel) skel.style.opacity = "0.4";
+                      }}
                     />
                   </a>
                 );
