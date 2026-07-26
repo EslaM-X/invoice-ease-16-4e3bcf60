@@ -2224,18 +2224,31 @@ function TeamChatPage() {
               )}
 
               {showJumpToUnread && firstUnreadId && (
-                <button
-                  type="button"
-                  onClick={jumpToLastRead}
-                  className="absolute bottom-20 end-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black border border-black/20 shadow-[0_10px_30px_-10px_rgba(212,175,55,0.6)] px-3 py-2 backdrop-blur-md transition hover:brightness-110"
-                  aria-label={rtl ? "الرجوع لآخر قراءة" : "Jump to last read"}
-                  title={rtl ? "الرجوع لآخر رسالة تم عرضها" : "Jump to last message you viewed"}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                  <span className="text-[11px] font-bold">
-                    {rtl ? "آخر قراءة" : "Last read"}
-                  </span>
-                </button>
+                <div className="absolute bottom-20 end-4 z-10 flex items-center gap-2">
+                  {messagesQ.data?.room_last_read_at && (
+                    <span
+                      className="rounded-full bg-black/70 text-white border border-[color:var(--brand-gold,#d4af37)]/40 shadow-md px-2.5 py-1 backdrop-blur-md text-[10px] font-semibold tabular-nums"
+                      title={rtl ? "آخر مرة قرأت" : "Last time you read"}
+                    >
+                      {rtl ? "آخر قراءة " : "Last read "}
+                      {new Date(messagesQ.data.room_last_read_at).toLocaleString(rtl ? "ar-EG" : undefined, {
+                        hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
+                      })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={jumpToLastRead}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--brand-gold,#d4af37)] text-black border border-black/20 shadow-[0_10px_30px_-10px_rgba(212,175,55,0.6)] px-3 py-2 backdrop-blur-md transition hover:brightness-110"
+                    aria-label={rtl ? "الرجوع لآخر قراءة" : "Jump to last read"}
+                    title={rtl ? "الرجوع لآخر رسالة تم عرضها" : "Jump to last message you viewed"}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                    <span className="text-[11px] font-bold">
+                      {rtl ? "آخر قراءة" : "Last read"}
+                    </span>
+                  </button>
+                </div>
               )}
 
               {!isAtBottom && (
