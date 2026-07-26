@@ -918,18 +918,6 @@ function TeamChatPage() {
     }
   }, [hasMoreOlder, loadingOlder, loadOlderMessages, rtl, activeRoomId, user?.id, scrollStorageKey, scrollTsKey, setRoomScrollFn, firstUnreadId]);
 
-  const jumpToLastRead = useCallback(() => {
-    if (!firstUnreadId) return;
-    const rowIdx = rowIndexByMsgId.get(firstUnreadId);
-    if (rowIdx == null) return;
-    try {
-      rowVirtualizer.scrollToIndex(rowIdx, { align: "start" });
-      setShowJumpToUnread(false);
-    } catch (err) {
-      console.error("[team-chat] jumpToLastRead failed", err);
-    }
-  }, [firstUnreadId, rowIndexByMsgId, rowVirtualizer]);
-
   // Sign voice + attachment URLs
   useEffect(() => {
     const msgs = messagesQ.data?.messages ?? [];
