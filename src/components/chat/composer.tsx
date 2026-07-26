@@ -203,11 +203,13 @@ export function Composer({
       return;
     }
     if (!body) return;
+    const serialized = serializeMentions(body);
     setText("");
+    pendingMentionsRef.current.clear();
     onClearReply();
     onTypingChange(false);
     try {
-      await onSendText(body, replyId);
+      await onSendText(serialized, replyId);
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
       setText(body);
