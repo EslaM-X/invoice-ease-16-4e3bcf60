@@ -151,6 +151,9 @@ function Dashboard() {
     // of legacy DR rows had invoice_item_id NULL which under-counted deliveries
     // and over-counted "closed" / under-counted "partial". The DB trigger already
     // handles partial/delivered accurately.
+    // "Open" = anything not fully closed (paid + delivered) — matches the invoices
+    // page's "hide closed" filter. Partial-delivery invoices are still open, and
+    // are ALSO surfaced in their own KPI (partial) for visibility.
     let closed = 0, partial = 0, open = 0;
     const countingRows = (allInvs ?? invs ?? []) as any[];
     countingRows.forEach((i: any) => {
@@ -160,8 +163,10 @@ function Dashboard() {
       const isFullyDelivered = i.delivery_status === "delivered";
       const isPartial = i.delivery_status === "partial";
       if (fullyPaid && isFullyDelivered) closed++;
-      else if (isPartial) partial++;
-      else open++;
+      else {
+        open++;
+        if (isPartial) partial++;
+      }
     });
 
     const nextStats = {
