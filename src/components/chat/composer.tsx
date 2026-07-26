@@ -418,6 +418,27 @@ export function Composer({
               value={text}
               disabled={disabled || uploading}
               onChange={(e) => onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+              onPaste={(e) => {
+                // Sanitize any raw storage tokens (`@[Name](uid)`) pasted from
+                // copied messages so the composer only ever shows clean `@Name`.
+                const raw = e.clipboardData.getData("text");
+                if (!raw || !/@\[[^\]]+\]\([^)\s]+\)/.test(raw)) return;
+                e.preventDefault();
+                const cleaned = raw.replace(/@\[([^\]]{1,80})\]\(([^)\s]{1,80})\)/g, (_all, name, uid) => {
+                  pendingMentionsRef.current.set(name, uid);
+                  return `@${name}`;
+                });
+                const ta = taRef.current;
+                if (!ta) { setText((p) => p + cleaned); return; }
+                const start = ta.selectionStart ?? text.length;
+                const end = ta.selectionEnd ?? start;
+                const next = text.slice(0, start) + cleaned + text.slice(end);
+                setText(next);
+                requestAnimationFrame(() => {
+                  const pos = start + cleaned.length;
+                  try { ta.setSelectionRange(pos, pos); } catch {}
+                });
+              }}
               onKeyUp={(e) => {
                 const t = e.currentTarget;
                 const det = detectMention(t.value, t.selectionStart ?? t.value.length);
