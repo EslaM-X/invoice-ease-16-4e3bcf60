@@ -298,7 +298,7 @@ export const listChatMessages = createServerFn({ method: "GET" })
           : null,
       };
     });
-    return { messages: enriched };
+    return { messages: enriched, room_last_read_at: roomLastReadAt };
   });
 
 // Mark a batch of messages as read for the current user
