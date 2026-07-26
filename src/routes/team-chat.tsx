@@ -550,7 +550,9 @@ function TeamChatPage() {
   const messagesQ = useQuery({
     queryKey: ["chat-messages", activeRoomId],
     queryFn: () =>
-      activeRoomId ? fetchMessages({ data: { room_id: activeRoomId, limit: 50 } }) : Promise.resolve({ messages: [] }),
+      activeRoomId
+        ? fetchMessages({ data: { room_id: activeRoomId, limit: 50 } })
+        : Promise.resolve({ messages: [] as any[], room_last_read_at: null as string | null }),
     enabled: !!activeRoomId,
   });
 
