@@ -1062,8 +1062,35 @@ html, body {
   .ltr-nums { direction: ltr !important; unicode-bidi: embed; }
   .print-only, .print-only * { visibility: visible !important; }
   .print-only { display: block !important; }
+
+  /* Force A4 desktop layout on mobile so Save as PDF / Print looks identical
+     to the desktop version and never squeezes columns into each other. */
   @page { margin: 10mm; size: A4; }
+  .print-area {
+    width: 190mm !important;
+    min-width: 190mm !important;
+    max-width: 190mm !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  /* Neutralize mobile-first stacking utilities inside the invoice */
+  .print-area .invoice-page,
+  .print-area .invoice-page * {
+    /* keep flex/grid rows horizontal on the printed page */
+  }
+  .print-area .flex-col { flex-direction: row !important; }
+  .print-area header.flex-col,
+  .print-area .invoice-page > .flex-col { flex-direction: column !important; }
+  .print-area .grid-cols-1 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .print-area table { width: 100% !important; table-layout: auto !important; }
+  .print-area td, .print-area th {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal !important;
+  }
+  .print-area .invoice-logo { max-width: 100% !important; }
 }
+
 
 
 /* ============================================================
