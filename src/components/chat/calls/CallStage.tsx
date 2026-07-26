@@ -2389,6 +2389,10 @@ function ShareDiagnosticsMount({
 
   return (
     <>
+  const layoutContext = useCreateLayoutContext();
+
+  return (
+    <LayoutContextProvider value={layoutContext}>
       <PerfEffectsGuard pref={callPerf} />
       <ShareQualityBadge rtl={rtl} state={monitor} onOpenDiagnostics={() => setDiagOpen(true)} />
       <ShareDiagnosticsDialog rtl={rtl} open={diagOpen} onOpenChange={setDiagOpen} state={monitor} />
