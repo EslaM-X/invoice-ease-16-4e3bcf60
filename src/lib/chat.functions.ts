@@ -619,6 +619,56 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
+
+    // ---- Mentions → notifications ------------------------------------------
+    // Parse @[Name](uuid|all) tokens from the body. For `all`, target every
+    // room member (except the sender). Fire-and-forget: never fail the send.
+    try {
+      const body = data.body ?? "";
+      if (body && body.includes("@[")) {
+        const re = /@\[([^\]]{1,80})\]\(([a-zA-Z0-9-]{1,64})\)/g;
+        const targets = new Set<string>();
+        let hasAll = false;
+        for (const m of body.matchAll(re)) {
+          if (m[2] === "all") hasAll = true;
+          else if (m[2] !== userId) targets.add(m[2]);
+        }
+        if (hasAll) {
+          const { data: mem } = await supabase
+            .from("chat_room_members")
+            .select("user_id")
+            .eq("room_id", data.room_id);
+          for (const r of mem ?? []) {
+            if ((r as any).user_id && (r as any).user_id !== userId) targets.add((r as any).user_id);
+          }
+        }
+        if (targets.size > 0) {
+          const senderName =
+            ((claims as any)?.user_metadata?.display_name as string | undefined) ||
+            ((claims as any)?.email as string | undefined) ||
+            "Someone";
+          const preview = body
+            .replace(re, (_a, name) => `@${name}`)
+            .slice(0, 140);
+          const rows = [...targets].map((uid) => ({
+            user_id: uid,
+            type: "chat_mention",
+            title: `${senderName} mentioned you`,
+            body: preview,
+            data: {
+              room_id: data.room_id,
+              message_id: (msg as any).id,
+              sender_id: userId,
+              all: hasAll,
+            } as any,
+          }));
+          await supabase.from("notifications").insert(rows);
+        }
+      }
+    } catch {
+      // Notification dispatch failures must not block the message write.
+    }
+
     return { message: msg };
   });
 
