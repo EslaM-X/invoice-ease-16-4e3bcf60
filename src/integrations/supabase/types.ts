@@ -1766,6 +1766,7 @@ export type Database = {
           delivery_assignee_label: string | null
           delivery_days: number | null
           delivery_status: string
+          delivery_status_override: boolean
           discount: number
           distributor_commission_amount: number
           distributor_id: string | null
@@ -1811,6 +1812,7 @@ export type Database = {
           delivery_assignee_label?: string | null
           delivery_days?: number | null
           delivery_status?: string
+          delivery_status_override?: boolean
           discount?: number
           distributor_commission_amount?: number
           distributor_id?: string | null
@@ -1856,6 +1858,7 @@ export type Database = {
           delivery_assignee_label?: string | null
           delivery_days?: number | null
           delivery_status?: string
+          delivery_status_override?: boolean
           discount?: number
           distributor_commission_amount?: number
           distributor_id?: string | null
@@ -4331,6 +4334,7 @@ export type Database = {
           delivery_assignee_label: string | null
           delivery_days: number | null
           delivery_status: string
+          delivery_status_override: boolean
           discount: number
           distributor_commission_amount: number
           distributor_id: string | null
@@ -4935,6 +4939,7 @@ export type Database = {
           delivery_assignee_label: string | null
           delivery_days: number | null
           delivery_status: string
+          delivery_status_override: boolean
           discount: number
           distributor_commission_amount: number
           distributor_id: string | null
