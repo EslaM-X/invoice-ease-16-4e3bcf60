@@ -2360,6 +2360,7 @@ export function CallStage({ open, onClose, url, token, video, onLeave, callId }:
               setFocusLock={setFocusLock}
               callPerf={callPerf}
               setCallPerf={setCallPerf}
+              callId={callId}
             />
           </LiveKitRoom>
         ) : null}
