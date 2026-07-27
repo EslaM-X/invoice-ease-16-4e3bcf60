@@ -591,6 +591,7 @@ const en: Dict = {
   documents_group: "Invoices & Documents",
   invoices_archive: "Invoices archive",
   delivery_receipts_archive: "Delivery receipts archive",
+  delivery_audit: "Delivery Audit",
   fulfillment_decisions: "Fulfillment decisions",
   fulfillment_audit: "Fulfillment audit",
   call_center_group: "Call Center",
