@@ -39,13 +39,13 @@ describe("renderLinkifiedText", () => {
     const nodes = renderLinkifiedText(
       "See https://steinheim-eg.vercel.app/en for details",
       "k",
-      (t, key) => ({ t, key }),
-      ({ href, label, key }) => ({ href, label, key }),
+      (t, key) => `${key}:${t}`,
+      ({ href, label, key }) => `${key}:${href}|${label}`,
     );
     expect(nodes).toEqual([
-      { t: "See ", key: "k-t-0" },
-      { href: "https://steinheim-eg.vercel.app/en", label: "https://steinheim-eg.vercel.app/en", key: "k-l-1" },
-      { t: " for details", key: "k-t-2" },
+      "k-t-0:See ",
+      "k-l-1:https://steinheim-eg.vercel.app/en|https://steinheim-eg.vercel.app/en",
+      "k-t-2: for details",
     ]);
   });
 });
