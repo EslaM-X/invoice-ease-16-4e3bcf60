@@ -1,5 +1,6 @@
 import { useRef, useState, Fragment, type ReactNode } from "react";
 import { renderMentionBody } from "@/lib/mentions";
+import { renderLinkifiedText } from "@/lib/chat-links";
 import { motion } from "framer-motion";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { Button } from "@/components/ui/button";
@@ -124,13 +125,41 @@ export function MessageBubble({
     }
   };
 
+  const renderTextWithLinks = (text: string, key: string) => (
+    <Fragment key={key}>
+      {renderLinkifiedText(
+        text,
+        key,
+        (t, k) => <Fragment key={k}>{highlightText(t, highlightQuery)}</Fragment>,
+        ({ href, label, key: lk }) => (
+          <a
+            key={lk}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "inline-block max-w-full truncate align-baseline underline underline-offset-2 hover:opacity-80 transition",
+              mine
+                ? "text-white/95 decoration-white/60"
+                : "text-primary decoration-primary/60"
+            )}
+            title={href}
+          >
+            {label}
+          </a>
+        ),
+      )}
+    </Fragment>
+  );
+
   const bodyNode: ReactNode = msg.body
     ? (
       <>
         {renderMentionBody(
           msg.body,
           currentUserId,
-          (text, key) => <Fragment key={key}>{highlightText(text, highlightQuery)}</Fragment>,
+          renderTextWithLinks,
           ({ name, isSelf, key }) => (
             <span
               key={key}
