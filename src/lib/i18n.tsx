@@ -270,6 +270,7 @@ const ar: Dict = {
   documents_group: "الفواتير والمستندات",
   invoices_archive: "أرشيف الفواتير",
   delivery_receipts_archive: "أرشيف محاضر الاستلام",
+  delivery_audit: "تدقيق محاضر الاستلام",
   fulfillment_decisions: "قرارات الإقفال",
   fulfillment_audit: "سجل الإقفال",
   partial_delivery: "تسليم جزئي",
