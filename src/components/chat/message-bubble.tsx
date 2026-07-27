@@ -1,5 +1,6 @@
 import { useRef, useState, Fragment, type ReactNode } from "react";
 import { renderMentionBody } from "@/lib/mentions";
+import { renderLinkifiedText } from "@/lib/chat-links";
 import { motion } from "framer-motion";
 import { LuxuryAvatar } from "@/components/chat/luxury-avatar";
 import { Button } from "@/components/ui/button";
