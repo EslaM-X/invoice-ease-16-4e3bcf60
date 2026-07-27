@@ -82,6 +82,13 @@ export function MandatoryPushEnforcer() {
   const platform = useMemo(() => detectPlatform(), []);
   const localRecord = useMemo(() => readLocalPush(), []);
   const [locallyEnabled, setLocallyEnabled] = useState<boolean>(!!localRecord);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try { return sessionStorage.getItem("mandatory_push_dismissed_v1") === "1"; } catch { return false; }
+  });
+  const handleDismiss = () => {
+    try { sessionStorage.setItem("mandatory_push_dismissed_v1", "1"); } catch {}
+    setDismissed(true);
+  };
 
   const markBrowserReturnedFromSettings = () => {
     try { sessionStorage.setItem("mandatory_push_returned_from_settings_v1", "1"); } catch {}
