@@ -68,6 +68,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "invoices_archive", to: "/invoices/archive", labelAr: "أرشيف الفواتير", labelEn: "Invoice Archive", group: "documents_group" },
   { key: "delivery_receipts", to: "/delivery-receipts", labelAr: "محاضر الاستلام", labelEn: "Delivery Receipts", group: "documents_group" },
   { key: "delivery_receipts_archive", to: "/delivery-receipts/archive", labelAr: "أرشيف المحاضر", labelEn: "DR Archive", group: "documents_group" },
+  { key: "delivery_audit", to: "/delivery-audit", labelAr: "تدقيق محاضر الاستلام", labelEn: "Delivery Audit", group: "documents_group" },
   { key: "fulfillment", to: "/fulfillment", labelAr: "التوريدات", labelEn: "Fulfillment", group: "documents_group" },
   { key: "fulfillment_decisions", to: "/fulfillment-decisions", labelAr: "قرارات التوريد", labelEn: "Fulfillment Decisions", group: "documents_group" },
   { key: "fulfillment_audit", to: "/fulfillment-audit", labelAr: "تدقيق التوريد", labelEn: "Fulfillment Audit", group: "documents_group" },
