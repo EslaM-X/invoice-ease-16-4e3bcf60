@@ -82,6 +82,13 @@ export function MandatoryPushEnforcer() {
   const platform = useMemo(() => detectPlatform(), []);
   const localRecord = useMemo(() => readLocalPush(), []);
   const [locallyEnabled, setLocallyEnabled] = useState<boolean>(!!localRecord);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try { return sessionStorage.getItem("mandatory_push_dismissed_v1") === "1"; } catch { return false; }
+  });
+  const handleDismiss = () => {
+    try { sessionStorage.setItem("mandatory_push_dismissed_v1", "1"); } catch {}
+    setDismissed(true);
+  };
 
   const markBrowserReturnedFromSettings = () => {
     try { sessionStorage.setItem("mandatory_push_returned_from_settings_v1", "1"); } catch {}
@@ -151,6 +158,7 @@ export function MandatoryPushEnforcer() {
 
   // ---- Visibility rules --------------------------------------------------
   if (!user) return null;
+  if (dismissed) return null;
 
   // iOS Safari not-installed → PWA install banner (Push requires PWA on iOS).
   if (platform.needsPwaInstall) {
@@ -210,6 +218,10 @@ export function MandatoryPushEnforcer() {
               تفعيل الآن
             </Button>
           )}
+          <Button size="sm" variant="ghost" className="text-black hover:bg-black/10"
+            onClick={handleDismiss}>
+            إخفاء
+          </Button>
         </div>
       </div>
     </div>
