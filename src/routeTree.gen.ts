@@ -54,6 +54,7 @@ import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DistributorsRouteImport } from './routes/distributors'
 import { Route as DistributorRouteImport } from './routes/distributor'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
+import { Route as DeliveryAuditRouteImport } from './routes/delivery-audit'
 import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
@@ -321,6 +322,11 @@ const DiagnosticsRoute = DiagnosticsRouteImport.update({
   path: '/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryAuditRoute = DeliveryAuditRouteImport.update({
+  id: '/delivery-audit',
+  path: '/delivery-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DefectiveItemsRoute = DefectiveItemsRouteImport.update({
   id: '/defective-items',
   path: '/defective-items',
@@ -550,6 +556,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
+  '/delivery-audit': typeof DeliveryAuditRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
@@ -638,6 +645,7 @@ export interface FileRoutesByTo {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
+  '/delivery-audit': typeof DeliveryAuditRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
@@ -727,6 +735,7 @@ export interface FileRoutesById {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
+  '/delivery-audit': typeof DeliveryAuditRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
@@ -817,6 +826,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/defective-items'
+    | '/delivery-audit'
     | '/diagnostics'
     | '/distributor'
     | '/distributors'
@@ -905,6 +915,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/defective-items'
+    | '/delivery-audit'
     | '/diagnostics'
     | '/distributor'
     | '/distributors'
@@ -993,6 +1004,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/defective-items'
+    | '/delivery-audit'
     | '/diagnostics'
     | '/distributor'
     | '/distributors'
@@ -1082,6 +1094,7 @@ export interface RootRouteChildren {
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   DefectiveItemsRoute: typeof DefectiveItemsRoute
+  DeliveryAuditRoute: typeof DeliveryAuditRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
   DistributorRoute: typeof DistributorRoute
   DistributorsRoute: typeof DistributorsRoute
@@ -1475,6 +1488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery-audit': {
+      id: '/delivery-audit'
+      path: '/delivery-audit'
+      fullPath: '/delivery-audit'
+      preLoaderRoute: typeof DeliveryAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/defective-items': {
       id: '/defective-items'
       path: '/defective-items'
@@ -1778,6 +1798,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   DefectiveItemsRoute: DefectiveItemsRoute,
+  DeliveryAuditRoute: DeliveryAuditRoute,
   DiagnosticsRoute: DiagnosticsRoute,
   DistributorRoute: DistributorRoute,
   DistributorsRoute: DistributorsRoute,
