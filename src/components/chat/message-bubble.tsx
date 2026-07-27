@@ -324,6 +324,26 @@ export function MessageBubble({
             <TwemojiBody className="whitespace-pre-wrap leading-relaxed chat-emoji">{bodyNode}</TwemojiBody>
           )}
 
+          {msg.body && msg.message_type !== "voice" && (() => {
+            const seen = new Set<string>();
+            const urls: string[] = [];
+            for (const p of parseLinks(msg.body)) {
+              if (p.type !== "link") continue;
+              if (seen.has(p.href)) continue;
+              seen.add(p.href);
+              urls.push(p.href);
+              if (urls.length >= 2) break;
+            }
+            if (!urls.length) return null;
+            return (
+              <div className="mt-0.5 flex flex-col gap-1.5">
+                {urls.map((u) => (
+                  <LinkPreviewCard key={u} href={u} mine={mine} rtl={rtl} />
+                ))}
+              </div>
+            );
+          })()}
+
           <div className={cn(
             "flex items-center gap-1.5 mt-1 text-[10px]",
             mine ? "justify-end opacity-90" : "justify-end opacity-60"
