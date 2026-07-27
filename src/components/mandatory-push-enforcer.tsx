@@ -218,6 +218,15 @@ export function MandatoryPushEnforcer() {
               تفعيل الآن
             </Button>
           )}
+          <Button size="sm" variant="ghost" className="text-black hover:bg-black/10"
+            onClick={handleDismiss}>
+            إخفاء
+          </Button>
+              onClick={() => void handleEnable()} disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+              تفعيل الآن
+            </Button>
+          )}
         </div>
       </div>
     </div>
