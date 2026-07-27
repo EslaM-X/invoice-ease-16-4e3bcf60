@@ -158,6 +158,7 @@ export function MandatoryPushEnforcer() {
 
   // ---- Visibility rules --------------------------------------------------
   if (!user) return null;
+  if (dismissed) return null;
 
   // iOS Safari not-installed → PWA install banner (Push requires PWA on iOS).
   if (platform.needsPwaInstall) {
