@@ -1687,6 +1687,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          delivered_qty: number
           discount: number
           id: string
           invoice_id: string
@@ -1694,12 +1695,14 @@ export type Database = {
           product_id: string | null
           product_name: string
           quantity: number
+          reserved_qty: number
           serial_number: string | null
           unit_price: number
         }
         Insert: {
           color?: string | null
           created_at?: string
+          delivered_qty?: number
           discount?: number
           id?: string
           invoice_id: string
@@ -1707,12 +1710,14 @@ export type Database = {
           product_id?: string | null
           product_name: string
           quantity?: number
+          reserved_qty?: number
           serial_number?: string | null
           unit_price?: number
         }
         Update: {
           color?: string | null
           created_at?: string
+          delivered_qty?: number
           discount?: number
           id?: string
           invoice_id?: string
@@ -1720,6 +1725,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          reserved_qty?: number
           serial_number?: string | null
           unit_price?: number
         }
@@ -2499,6 +2505,7 @@ export type Database = {
       }
       products: {
         Row: {
+          available_quantity: number | null
           collection: string | null
           color: string | null
           cost_price: number
@@ -2514,6 +2521,7 @@ export type Database = {
           parent_product_id: string | null
           price: number
           qr_code: string | null
+          reserved_quantity: number
           safety_margin: number
           serial_number: string | null
           stock_quantity: number
@@ -2524,6 +2532,7 @@ export type Database = {
           weight_grams: number | null
         }
         Insert: {
+          available_quantity?: number | null
           collection?: string | null
           color?: string | null
           cost_price?: number
@@ -2539,6 +2548,7 @@ export type Database = {
           parent_product_id?: string | null
           price?: number
           qr_code?: string | null
+          reserved_quantity?: number
           safety_margin?: number
           serial_number?: string | null
           stock_quantity?: number
@@ -2549,6 +2559,7 @@ export type Database = {
           weight_grams?: number | null
         }
         Update: {
+          available_quantity?: number | null
           collection?: string | null
           color?: string | null
           cost_price?: number
@@ -2564,6 +2575,7 @@ export type Database = {
           parent_product_id?: string | null
           price?: number
           qr_code?: string | null
+          reserved_quantity?: number
           safety_margin?: number
           serial_number?: string | null
           stock_quantity?: number
