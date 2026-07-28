@@ -22,6 +22,7 @@ import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
 import { Route as DeliveryAuditRouteImport } from './routes/delivery-audit'
+import { Route as DeliveryReviewRouteImport } from './routes/delivery-review'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as DistributorRouteImport } from './routes/distributor'
 import { Route as DistributorsRouteImport } from './routes/distributors'
@@ -89,6 +90,7 @@ import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-re
 import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
+import { Route as ApiPublicHooksDeliveryAuditScanRouteImport } from './routes/api/public/hooks/delivery-audit-scan'
 import { Route as ApiPublicHooksTaskOverdueRemindersRouteImport } from './routes/api/public/hooks/task-overdue-reminders'
 import { Route as ApiPublicHooksWarrantySyncWorkerRouteImport } from './routes/api/public/hooks/warranty-sync-worker'
 import { Route as ApiPublicLivekitWebhookRouteImport } from './routes/api/public/livekit/webhook'
@@ -160,6 +162,11 @@ const DefectiveItemsRoute = DefectiveItemsRouteImport.update({
 const DeliveryAuditRoute = DeliveryAuditRouteImport.update({
   id: '/delivery-audit',
   path: '/delivery-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryReviewRoute = DeliveryReviewRouteImport.update({
+  id: '/delivery-review',
+  path: '/delivery-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DiagnosticsRoute = DiagnosticsRouteImport.update({
@@ -501,6 +508,12 @@ const ApiPublicHooksDailyBackupRoute =
     path: '/api/public/hooks/daily-backup',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDeliveryAuditScanRoute =
+  ApiPublicHooksDeliveryAuditScanRouteImport.update({
+    id: '/api/public/hooks/delivery-audit-scan',
+    path: '/api/public/hooks/delivery-audit-scan',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksTaskOverdueRemindersRoute =
   ApiPublicHooksTaskOverdueRemindersRouteImport.update({
     id: '/api/public/hooks/task-overdue-reminders',
@@ -557,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
   '/delivery-audit': typeof DeliveryAuditRoute
+  '/delivery-review': typeof DeliveryReviewRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
@@ -624,6 +638,7 @@ export interface FileRoutesByFullPath {
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
+  '/api/public/hooks/delivery-audit-scan': typeof ApiPublicHooksDeliveryAuditScanRoute
   '/api/public/hooks/task-overdue-reminders': typeof ApiPublicHooksTaskOverdueRemindersRoute
   '/api/public/hooks/warranty-sync-worker': typeof ApiPublicHooksWarrantySyncWorkerRoute
   '/api/public/livekit/webhook': typeof ApiPublicLivekitWebhookRoute
@@ -646,6 +661,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
   '/delivery-audit': typeof DeliveryAuditRoute
+  '/delivery-review': typeof DeliveryReviewRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
@@ -713,6 +729,7 @@ export interface FileRoutesByTo {
   '/invoices/$id/edit': typeof InvoicesIdEditRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
+  '/api/public/hooks/delivery-audit-scan': typeof ApiPublicHooksDeliveryAuditScanRoute
   '/api/public/hooks/task-overdue-reminders': typeof ApiPublicHooksTaskOverdueRemindersRoute
   '/api/public/hooks/warranty-sync-worker': typeof ApiPublicHooksWarrantySyncWorkerRoute
   '/api/public/livekit/webhook': typeof ApiPublicLivekitWebhookRoute
@@ -736,6 +753,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/defective-items': typeof DefectiveItemsRoute
   '/delivery-audit': typeof DeliveryAuditRoute
+  '/delivery-review': typeof DeliveryReviewRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/distributor': typeof DistributorRoute
   '/distributors': typeof DistributorsRoute
@@ -803,6 +821,7 @@ export interface FileRoutesById {
   '/invoices_/$id/edit': typeof InvoicesIdEditRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/hooks/daily-backup': typeof ApiPublicHooksDailyBackupRoute
+  '/api/public/hooks/delivery-audit-scan': typeof ApiPublicHooksDeliveryAuditScanRoute
   '/api/public/hooks/task-overdue-reminders': typeof ApiPublicHooksTaskOverdueRemindersRoute
   '/api/public/hooks/warranty-sync-worker': typeof ApiPublicHooksWarrantySyncWorkerRoute
   '/api/public/livekit/webhook': typeof ApiPublicLivekitWebhookRoute
@@ -827,6 +846,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/defective-items'
     | '/delivery-audit'
+    | '/delivery-review'
     | '/diagnostics'
     | '/distributor'
     | '/distributors'
@@ -894,6 +914,7 @@ export interface FileRouteTypes {
     | '/invoices/$id/edit'
     | '/lovable/email/suppression'
     | '/api/public/hooks/daily-backup'
+    | '/api/public/hooks/delivery-audit-scan'
     | '/api/public/hooks/task-overdue-reminders'
     | '/api/public/hooks/warranty-sync-worker'
     | '/api/public/livekit/webhook'
@@ -916,6 +937,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/defective-items'
     | '/delivery-audit'
+    | '/delivery-review'
     | '/diagnostics'
     | '/distributor'
     | '/distributors'
@@ -983,6 +1005,7 @@ export interface FileRouteTypes {
     | '/invoices/$id/edit'
     | '/lovable/email/suppression'
     | '/api/public/hooks/daily-backup'
+    | '/api/public/hooks/delivery-audit-scan'
     | '/api/public/hooks/task-overdue-reminders'
     | '/api/public/hooks/warranty-sync-worker'
     | '/api/public/livekit/webhook'
@@ -1005,6 +1028,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/defective-items'
     | '/delivery-audit'
+    | '/delivery-review'
     | '/diagnostics'
     | '/distributor'
     | '/distributors'
@@ -1072,6 +1096,7 @@ export interface FileRouteTypes {
     | '/invoices_/$id/edit'
     | '/lovable/email/suppression'
     | '/api/public/hooks/daily-backup'
+    | '/api/public/hooks/delivery-audit-scan'
     | '/api/public/hooks/task-overdue-reminders'
     | '/api/public/hooks/warranty-sync-worker'
     | '/api/public/livekit/webhook'
@@ -1095,6 +1120,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DefectiveItemsRoute: typeof DefectiveItemsRoute
   DeliveryAuditRoute: typeof DeliveryAuditRoute
+  DeliveryReviewRoute: typeof DeliveryReviewRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
   DistributorRoute: typeof DistributorRoute
   DistributorsRoute: typeof DistributorsRoute
@@ -1162,6 +1188,7 @@ export interface RootRouteChildren {
   InvoicesIdEditRoute: typeof InvoicesIdEditRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksDailyBackupRoute: typeof ApiPublicHooksDailyBackupRoute
+  ApiPublicHooksDeliveryAuditScanRoute: typeof ApiPublicHooksDeliveryAuditScanRoute
   ApiPublicHooksTaskOverdueRemindersRoute: typeof ApiPublicHooksTaskOverdueRemindersRoute
   ApiPublicHooksWarrantySyncWorkerRoute: typeof ApiPublicHooksWarrantySyncWorkerRoute
   ApiPublicLivekitWebhookRoute: typeof ApiPublicLivekitWebhookRoute
@@ -1262,6 +1289,13 @@ declare module '@tanstack/react-router' {
       path: '/delivery-audit'
       fullPath: '/delivery-audit'
       preLoaderRoute: typeof DeliveryAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-review': {
+      id: '/delivery-review'
+      path: '/delivery-review'
+      fullPath: '/delivery-review'
+      preLoaderRoute: typeof DeliveryReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/diagnostics': {
@@ -1733,6 +1767,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDailyBackupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/delivery-audit-scan': {
+      id: '/api/public/hooks/delivery-audit-scan'
+      path: '/api/public/hooks/delivery-audit-scan'
+      fullPath: '/api/public/hooks/delivery-audit-scan'
+      preLoaderRoute: typeof ApiPublicHooksDeliveryAuditScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/task-overdue-reminders': {
       id: '/api/public/hooks/task-overdue-reminders'
       path: '/api/public/hooks/task-overdue-reminders'
@@ -1799,6 +1840,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DefectiveItemsRoute: DefectiveItemsRoute,
   DeliveryAuditRoute: DeliveryAuditRoute,
+  DeliveryReviewRoute: DeliveryReviewRoute,
   DiagnosticsRoute: DiagnosticsRoute,
   DistributorRoute: DistributorRoute,
   DistributorsRoute: DistributorsRoute,
@@ -1867,6 +1909,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvoicesIdEditRoute: InvoicesIdEditRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksDailyBackupRoute: ApiPublicHooksDailyBackupRoute,
+  ApiPublicHooksDeliveryAuditScanRoute: ApiPublicHooksDeliveryAuditScanRoute,
   ApiPublicHooksTaskOverdueRemindersRoute:
     ApiPublicHooksTaskOverdueRemindersRoute,
   ApiPublicHooksWarrantySyncWorkerRoute: ApiPublicHooksWarrantySyncWorkerRoute,
