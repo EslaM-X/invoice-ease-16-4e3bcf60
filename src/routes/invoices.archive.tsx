@@ -74,7 +74,7 @@ function ArchivePage() {
           .range(0, 19999),
         supabase
           .from("invoice_items")
-          .select("id, invoice_id, product_id, product_name, quantity")
+          .select("id, invoice_id, product_id, product_name, quantity, serial_number, color")
           .in("invoice_id", paidIds)
           .range(0, 49999),
       ]);
@@ -84,7 +84,7 @@ function ArchivePage() {
       const { data: drItems } = activeReceiptIds.length
         ? await supabase
             .from("delivery_receipt_items" as any)
-            .select("receipt_id, invoice_item_id, quantity, note")
+            .select("receipt_id, invoice_item_id, product_name, serial_number, color, quantity, note")
             .in("receipt_id", activeReceiptIds)
         : { data: [] as any[] };
       const summaries = computeDeliverySummaries(

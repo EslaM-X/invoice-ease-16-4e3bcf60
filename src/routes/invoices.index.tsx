@@ -92,7 +92,7 @@ function InvoicesList() {
           .range(0, 19999),
         supabase
           .from("invoice_items")
-          .select("id, invoice_id, product_id, product_name, quantity, serial_number")
+          .select("id, invoice_id, product_id, product_name, quantity, serial_number, color")
           .in("invoice_id", ids)
           .range(0, 49999), // serial search needs every line item
       ]);
@@ -136,7 +136,7 @@ function InvoicesList() {
       if (validReceiptIds.length) {
         const { data: drItems } = await supabase
           .from("delivery_receipt_items" as any)
-          .select("receipt_id, invoice_item_id, quantity, note")
+          .select("receipt_id, invoice_item_id, product_name, serial_number, color, quantity, note")
           .in("receipt_id", validReceiptIds)
           .range(0, 49999);
         const sums = computeDeliverySummaries(

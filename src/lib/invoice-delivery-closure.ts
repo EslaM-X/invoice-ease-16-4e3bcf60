@@ -18,6 +18,7 @@ export type InvoiceDeliveryLine = {
   product_name?: string | null;
   quantity?: number | string | null;
   serial_number?: string | null;
+  color?: string | null;
 };
 
 export type DeliveryReceiptLite = {
@@ -29,6 +30,9 @@ export type DeliveryReceiptLite = {
 export type DeliveryReceiptItemLite = {
   receipt_id: string | null;
   invoice_item_id?: string | null;
+  product_name?: string | null;
+  serial_number?: string | null;
+  color?: string | null;
   quantity?: number | string | null;
   note?: string | null;
 };
@@ -85,9 +89,15 @@ export function computeDeliverySummaries(
     let complete = items.length > 0;
 
     items.forEach((item) => {
-      const itemCompleted = effectiveDeliveredQuantity(item, receiptItems, receiptById, "completed");
-      const itemActive = effectiveDeliveredQuantity(item, receiptItems, receiptById, "active");
       const itemRequired = toNumber(item.quantity);
+      const itemCompleted = Math.min(
+        itemRequired,
+        effectiveDeliveredQuantity(item, receiptItems, receiptById, "completed"),
+      );
+      const itemActive = Math.min(
+        itemRequired,
+        effectiveDeliveredQuantity(item, receiptItems, receiptById, "active"),
+      );
 
       completedByItem[item.id] = itemCompleted;
       activeByItem[item.id] = itemActive;
@@ -140,9 +150,11 @@ function effectiveDeliveredQuantity(
 ) {
   const allowedStatuses = mode === "completed" ? COMPLETED_DELIVERY_STATUSES : ACTIVE_DELIVERY_STATUSES;
   const relevantItems = receiptItems.filter((receiptItem) => {
-    if (receiptItem.invoice_item_id !== item.id || !receiptItem.receipt_id) return false;
+    if (!receiptItem.receipt_id) return false;
     const receipt = receiptById.get(receiptItem.receipt_id);
-    return Boolean(receipt?.status && allowedStatuses.has(receipt.status));
+    if (!receipt?.status || !allowedStatuses.has(receipt.status)) return false;
+    if (receiptItem.invoice_item_id === item.id) return true;
+    return !receiptItem.invoice_item_id && receipt.invoice_id === item.invoice_id && legacyReceiptItemMatchesInvoiceLine(receiptItem, item);
   });
 
   if (!isMultiPartProduct(item.product_name)) {
@@ -170,6 +182,26 @@ function effectiveDeliveredQuantity(
 function isMultiPartProduct(productName?: string | null) {
   const name = productName ?? "";
   return MULTI_PART_PRODUCT_PATTERNS.some((pattern) => pattern.test(name));
+}
+
+function legacyReceiptItemMatchesInvoiceLine(receiptItem: DeliveryReceiptItemLite, item: InvoiceDeliveryLine) {
+  if (normalizeText(receiptItem.product_name) !== normalizeText(item.product_name)) return false;
+
+  const receiptSerial = normalizeSerial(receiptItem.serial_number);
+  if (receiptSerial && receiptSerial !== normalizeSerial(item.serial_number)) return false;
+
+  const receiptColor = normalizeText(receiptItem.color);
+  if (receiptColor && receiptColor !== normalizeText(item.color)) return false;
+
+  return true;
+}
+
+function normalizeText(value?: string | null) {
+  return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeSerial(value?: string | null) {
+  return String(value ?? "").trim().replace(/[\s_\-./]+/g, "").toLowerCase();
 }
 
 function toNumber(value: number | string | null | undefined) {

@@ -41,4 +41,34 @@ describe("invoice delivery closure", () => {
     expect(isDeliverableInvoiceLine({ product_id: null, quantity: 1 })).toBe(false);
     expect(isDeliverableInvoiceLine({ product_id: "prod-1", quantity: 0 })).toBe(false);
   });
+
+  it("matches legacy signed receipt rows that were saved without invoice item ids", () => {
+    const summaries = computeDeliverySummaries(
+      [
+        {
+          id: "item-legacy",
+          invoice_id: "inv-legacy",
+          product_id: "prod-legacy",
+          product_name: "JOY SERIES BASIN MIXER",
+          serial_number: "STM-60-M500-009",
+          color: "COFFEE GOLD",
+          quantity: 2,
+        },
+      ],
+      [{ id: "dr-legacy", invoice_id: "inv-legacy", status: "paid" }],
+      [
+        {
+          receipt_id: "dr-legacy",
+          invoice_item_id: null,
+          product_name: "JOY SERIES BASIN MIXER",
+          serial_number: "STM-60-M500-009",
+          color: "COFFEE GOLD",
+          quantity: 2,
+        },
+      ],
+    );
+
+    expect(summaries["inv-legacy"]?.complete).toBe(true);
+    expect(summaries["inv-legacy"]?.completed).toBe(2);
+  });
 });
