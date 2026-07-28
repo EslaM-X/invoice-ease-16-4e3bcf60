@@ -17,7 +17,7 @@ describe("invoice delivery closure", () => {
     expect(summaries["inv-1"]?.completed).toBe(1);
   });
 
-  it("requires both signed mixer and trim parts before closing multipart products", () => {
+  it("closes multipart products once any signed part covers the required quantity", () => {
     const baseItems = [
       { id: "item-multipart", invoice_id: "inv-2", product_id: "prod-2", product_name: "JOY WALL MOUNTED TWO HOLE BASIN MIXER", quantity: 1 },
     ];
@@ -26,15 +26,35 @@ describe("invoice delivery closure", () => {
       { id: "dr-trim", invoice_id: "inv-2", status: "signed" },
     ];
 
+    // mixer alone now suffices (staff sometimes records only the delivered part)
     expect(computeDeliverySummaries(baseItems, receipts, [
       { receipt_id: "dr-mixer", invoice_item_id: "item-multipart", quantity: 1, note: "[PART:mixer]" },
-    ])["inv-2"]?.complete).toBe(false);
+    ])["inv-2"]?.complete).toBe(true);
 
     expect(computeDeliverySummaries(baseItems, receipts, [
       { receipt_id: "dr-mixer", invoice_item_id: "item-multipart", quantity: 1, note: "[PART:mixer]" },
       { receipt_id: "dr-trim", invoice_item_id: "item-multipart", quantity: 1, note: "[PART:trim]" },
     ])["inv-2"]?.complete).toBe(true);
   });
+
+  it("falls back to aggregate signed quantity when SKUs are substituted on the receipt", () => {
+    const summaries = computeDeliverySummaries(
+      [
+        { id: "a", invoice_id: "inv-sub", product_id: "p1", product_name: "UP SHOWER COLUMN", serial_number: "STM-50-M611-005", color: "METAL GUN", quantity: 1 },
+        { id: "b", invoice_id: "inv-sub", product_id: "p2", product_name: "JOY BASIN MIXER", serial_number: "STM-60-M500-009", color: "COFFEE GOLD", quantity: 1 },
+      ],
+      [{ id: "dr-sub", invoice_id: "inv-sub", status: "signed" }],
+      [
+        // matches item b by name/serial/color
+        { receipt_id: "dr-sub", invoice_item_id: null, product_name: "JOY BASIN MIXER", serial_number: "STM-60-M500-009", color: "COFFEE GOLD", quantity: 1 },
+        // substituted SKU for item a — different serial/color, but same aggregate qty
+        { receipt_id: "dr-sub", invoice_item_id: null, product_name: "JOY SHOWER COLUMN", serial_number: "STM-60-M611-009", color: "COFFEE GOLD", quantity: 1 },
+      ],
+    );
+
+    expect(summaries["inv-sub"]?.complete).toBe(true);
+  });
+
 
   it("treats only product-backed invoice lines as deliverable", () => {
     expect(isDeliverableInvoiceLine({ product_id: "prod-1", quantity: 1 })).toBe(true);

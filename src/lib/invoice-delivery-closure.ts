@@ -77,6 +77,20 @@ export function computeDeliverySummaries(
     itemsByInvoice.set(item.invoice_id, lines);
   });
 
+  // Aggregate signed / active quantities per invoice for the fallback rule below.
+  const totalsByInvoice = new Map<string, { completed: number; active: number }>();
+  receiptItems.forEach((receiptItem) => {
+    if (!receiptItem.receipt_id) return;
+    const receipt = receiptById.get(receiptItem.receipt_id);
+    if (!receipt?.invoice_id) return;
+    const qty = toNumber(receiptItem.quantity);
+    if (qty <= 0) return;
+    const bucket = totalsByInvoice.get(receipt.invoice_id) ?? { completed: 0, active: 0 };
+    if (receipt.status && ACTIVE_DELIVERY_STATUSES.has(receipt.status)) bucket.active += qty;
+    if (receipt.status && COMPLETED_DELIVERY_STATUSES.has(receipt.status)) bucket.completed += qty;
+    totalsByInvoice.set(receipt.invoice_id, bucket);
+  });
+
   const summaries: Record<string, InvoiceDeliverySummary> = {};
   itemsByInvoice.forEach((items, invoiceId) => {
     const total = items.reduce((sum, item) => sum + toNumber(item.quantity), 0);
@@ -120,6 +134,19 @@ export function computeDeliverySummaries(
       }
     });
 
+    // Aggregate fallback: if the total signed quantity across all delivery receipts
+    // for this invoice covers the total required quantity, treat as fully delivered.
+    // Handles SKU substitutions where staff shipped a replacement item with a
+    // different serial/color that would otherwise fail per-line matching.
+    const totals = totalsByInvoice.get(invoiceId);
+    const aggregateComplete = total > 0 && !!totals && totals.completed >= total;
+    if (aggregateComplete && !complete) {
+      complete = true;
+      completed = total;
+      active = Math.max(active, total);
+      incompleteItems.length = 0;
+    }
+
     summaries[invoiceId] = {
       total,
       completed,
@@ -137,6 +164,7 @@ export function computeDeliverySummaries(
 
   return summaries;
 }
+
 
 export function isDeliverableInvoiceLine(item: Pick<InvoiceDeliveryLine, "product_id" | "quantity">) {
   return Boolean(item.product_id) && toNumber(item.quantity) > 0;
@@ -176,8 +204,9 @@ function effectiveDeliveredQuantity(
     else untagged += quantity;
   });
 
-  return full + untagged + Math.min(mixer, trim);
+  return full + untagged + Math.max(mixer, trim);
 }
+
 
 function isMultiPartProduct(productName?: string | null) {
   const name = productName ?? "";
