@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRole } from "@/lib/use-role";
+import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardCheck, ClockAlert, ExternalLink, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, ClockAlert, ExternalLink, FileDown, ShieldAlert } from "lucide-react";
+import { exportMatchLogByPeriod, exportMatchLogForInvoice } from "@/lib/delivery-match-log-export";
+
 
 export const Route = createFileRoute("/delivery-review")({
   component: () => <AppShell><Page /></AppShell>,
@@ -144,6 +147,43 @@ function Page() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user]);
 
+  // Live: refresh on any invoice / delivery receipt change so the queue
+  // updates without a manual reload.
+  useBatchedRealtimeTables(
+    ["invoices", "delivery_receipts", "delivery_receipt_items"],
+    () => { load(); },
+    [user?.id],
+  );
+
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exportBusy, setExportBusy] = useState<string>("");
+
+  const exportPeriod = async () => {
+    setExportBusy("period");
+    try {
+      const n = await exportMatchLogByPeriod(exportFrom, exportTo);
+      toast.success(isAr ? `تم تصدير ${n} سجل` : `Exported ${n} rows`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setExportBusy("");
+    }
+  };
+
+  const exportRow = async (id: string, invoiceNumber: string) => {
+    setExportBusy(id);
+    try {
+      const n = await exportMatchLogForInvoice(id, invoiceNumber);
+      if (!n) toast.message(isAr ? "لا توجد سجلات لهذه الفاتورة" : "No match log rows for this invoice");
+      else toast.success(isAr ? `تم تصدير ${n} سجل` : `Exported ${n} rows`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setExportBusy("");
+    }
+  };
+
   const approve = async (id: string, invoiceNumber: string) => {
     setBusy(id);
     const { error } = await supabase.rpc("approve_invoice_delivery_manual" as any, {
@@ -200,6 +240,36 @@ function Page() {
           </Badge>
         </div>
       </div>
+
+      <Card className="border-border/60">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileDown className="h-4 w-4 text-amber-500" />
+            {isAr ? "تصدير سجل مطابقات التسليم (CSV)" : "Export delivery match log (CSV)"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">{isAr ? "من" : "From"}</label>
+            <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="w-[160px]" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">{isAr ? "إلى" : "To"}</label>
+            <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="w-[160px]" />
+          </div>
+          <Button onClick={exportPeriod} disabled={exportBusy === "period"} className="gap-2">
+            <FileDown className="h-4 w-4" />
+            {exportBusy === "period"
+              ? (isAr ? "جاري التصدير…" : "Exporting…")
+              : (isAr ? "تصدير الفترة" : "Export period")}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {isAr
+              ? "يترك التاريخين فارغين لتصدير السجل بالكامل."
+              : "Leave both dates empty to export the full log."}
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="border-border/60">
         <CardHeader className="pb-3">
@@ -263,6 +333,7 @@ function Page() {
                         <td className="p-2 tabular-nums">{fmtMoney(r.total, lang)}</td>
                         <td className="p-2 whitespace-nowrap">{fmtDate(r.created_at, lang)}</td>
                         <td className="p-2">
+                          <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -305,6 +376,16 @@ function Page() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={exportBusy === r.id}
+                              onClick={() => exportRow(r.id, r.invoice_number)}
+                              title={isAr ? "تصدير سجل المطابقة CSV" : "Export match log CSV"}
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
