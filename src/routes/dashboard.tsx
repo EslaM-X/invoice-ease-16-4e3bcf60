@@ -157,8 +157,9 @@ function Dashboard() {
       }
 
       open++;
-      const state = String(i.delivery_computed_state ?? i.delivery_status ?? "");
-      if (i.delivery_status === "partial" || state === "partial" || state === "awaiting_signature") partial++;
+      const state = String(i.delivery_computed_state ?? "");
+      if (state === "partial") partial++;
+
     });
 
     const nextStats = {
