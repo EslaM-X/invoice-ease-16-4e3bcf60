@@ -93,9 +93,21 @@ export async function fetchInvoiceItemsWithDelivered(
     .select("invoice_item_id, quantity, receipt_id")
     .in("invoice_item_id", itemIds);
 
+  const receiptIds = Array.from(new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter(Boolean)));
+  const receiptStatus = new Map<string, string>();
+  if (receiptIds.length > 0) {
+    const { data: recs } = await supabase
+      .from("delivery_receipts" as any)
+      .select("id, status")
+      .in("id", receiptIds);
+    for (const rec of (recs ?? []) as any[]) receiptStatus.set(rec.id, rec.status);
+  }
+  const activeStatuses = new Set(["draft", "out_for_delivery", "signed", "paid"]);
+
   const totals = new Map<string, number>();
   for (const r of (dris ?? []) as any[]) {
     if (excludeReceiptId && r.receipt_id === excludeReceiptId) continue;
+    if (!activeStatuses.has(receiptStatus.get(r.receipt_id) ?? "")) continue;
     totals.set(r.invoice_item_id, (totals.get(r.invoice_item_id) || 0) + (r.quantity || 0));
   }
 
@@ -187,13 +199,18 @@ export async function fetchInvoiceItemsForPrint(
     new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter((rid) => rid !== receiptId)),
   );
   const receiptCreatedAtMap = new Map<string, string>();
+  const receiptStatusMap = new Map<string, string>();
   if (otherReceiptIds.length > 0) {
     const { data: recs } = await supabase
       .from("delivery_receipts" as any)
-      .select("id, created_at")
+      .select("id, created_at, status")
       .in("id", otherReceiptIds);
-    for (const rec of (recs ?? []) as any[]) receiptCreatedAtMap.set(rec.id, rec.created_at);
+    for (const rec of (recs ?? []) as any[]) {
+      receiptCreatedAtMap.set(rec.id, rec.created_at);
+      receiptStatusMap.set(rec.id, rec.status);
+    }
   }
+  const activeStatuses = new Set(["draft", "out_for_delivery", "signed", "paid"]);
 
   const zeroParts = (): PartAggregate => ({ full: 0, mixer: 0, trim: 0 });
   const thisMap = new Map<string, { qty: number; note: string | null }>();
@@ -214,6 +231,7 @@ export async function fetchInvoiceItemsForPrint(
       thisMap.set(r.invoice_item_id, cur);
       bucketParts = partsThisMap;
     } else {
+      if (!activeStatuses.has(receiptStatusMap.get(r.receipt_id) ?? "")) continue;
       const otherCreatedAt = receiptCreatedAtMap.get(r.receipt_id);
       const isPrior = otherCreatedAt ? otherCreatedAt < receiptCreatedAt : false;
       const m = isPrior ? priorMap : laterMap;

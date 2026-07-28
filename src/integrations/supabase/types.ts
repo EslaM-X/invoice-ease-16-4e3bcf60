@@ -4571,10 +4571,19 @@ export type Database = {
         Args: { p_actor_email: string; p_force?: boolean; p_po_id: string }
         Returns: Json
       }
-      delivery_item_effective_qty: {
-        Args: { _invoice_item_id: string; _mode?: string }
-        Returns: number
-      }
+      delivery_item_effective_qty:
+        | {
+            Args: { _invoice_item_id: string; _mode?: string }
+            Returns: number
+          }
+        | {
+            Args: {
+              _exclude_receipt_id: string
+              _invoice_item_id: string
+              _mode: string
+            }
+            Returns: number
+          }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
