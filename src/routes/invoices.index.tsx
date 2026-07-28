@@ -42,6 +42,7 @@ function InvoicesList() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
+  const [archiveCount, setArchiveCount] = useState<number>(0);
   const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number; awaitingSignature: number; awaitingSignatureOnly: boolean; incomplete: Array<{ product_name: string | null; required: number; completed: number; awaitingSignature: number; notDispatched: number }> }>>({});
