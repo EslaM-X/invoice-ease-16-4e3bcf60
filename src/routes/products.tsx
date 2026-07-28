@@ -635,8 +635,16 @@ function Products() {
                       <td className="px-2 py-3 whitespace-nowrap sm:px-4">{fmtMoney(Number(p.price), "EGP", lang)}</td>
                       <td className="px-2 py-3 sm:px-4">
                         <div className="flex flex-col items-start gap-1">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`}>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${low ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"}`} title={lang === "ar" ? "المخزن الفعلي" : "on-hand stock"}>
                             {p.stock_quantity}
+                          </span>
+                          {(((p as any).reserved_quantity ?? 0) > 0) && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300" title={lang === "ar" ? "محجوز بفواتير نشطة" : "reserved by active invoices"}>
+                              🔒 {(p as any).reserved_quantity}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300" title={lang === "ar" ? "المتاح للبيع" : "available to sell"}>
+                            ✓ {Math.max(0, (p.stock_quantity ?? 0) - ((p as any).reserved_quantity ?? 0))}
                           </span>
                           {inTransit[p.id]?.qty > 0 && (
                             <span

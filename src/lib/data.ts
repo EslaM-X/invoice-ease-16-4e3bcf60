@@ -20,6 +20,8 @@ export type Product = {
   cost_price?: number;
   is_spare_part?: boolean | null;
   parent_product_id?: string | null;
+  reserved_quantity?: number | null;
+  available_quantity?: number | null;
   created_at: string; updated_at: string;
   created_by_email?: string | null; updated_by_email?: string | null;
 };

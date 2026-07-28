@@ -314,7 +314,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  /** Returns how many MORE units of this product can still be added (stock + in-transit). */
+  /** Effective on-shelf stock available for THIS invoice (subtracts reservations by other invoices). */
+  const effectiveStockFor = (p: Product): number => {
+    const baseline = initialQtyByProduct.get(p.id) ?? 0;
+    const reservedByOthers = Math.max(0, ((p as any).reserved_quantity ?? 0) - baseline);
+    return Math.max(0, (p.stock_quantity ?? 0) - reservedByOthers);
+  };
+
+  /** Returns how many MORE units of this product can still be added (available + in-transit). */
   const remainingFor = (productId: string): number => {
     const p = products.find((x) => x.id === productId);
     if (!p) return 0;
@@ -323,7 +330,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(productId) ?? 0;
     const transit = inTransitQty[productId] ?? 0;
-    return Math.max(0, (p.stock_quantity ?? 0) + transit + baseline - allocatedNow);
+    return Math.max(0, effectiveStockFor(p) + transit + baseline - allocatedNow);
   };
 
   /** Add 1 unit of a product. Never blocked — shortage is auto-tracked. */
@@ -333,7 +340,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .filter((it) => it.product_id === p.id)
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(p.id) ?? 0;
-    const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
+    const stockLeft = Math.max(0, effectiveStockFor(p) + baseline - allocatedNow);
     if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0 && remaining > 0) {
       toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
     } else if (remaining <= 0) {
@@ -774,7 +781,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         const p = products.find((x) => x.id === it.product_id);
         if (!p) continue;
         const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
-        const stockAvail = Math.max(0, (p.stock_quantity ?? 0) + baseline);
+        const stockAvail = Math.max(0, effectiveStockFor(p) + baseline);
         const transit = inTransitQty[it.product_id] ?? 0;
         if (it.quantity > stockAvail) {
           const gap = it.quantity - stockAvail;
@@ -1199,7 +1206,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                                 if (p) {
                                   const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
                                   const transit = inTransitQty[it.product_id] ?? 0;
-                                  const coverable = (p.stock_quantity ?? 0) + baseline + transit;
+                                  const coverable = effectiveStockFor(p) + baseline + transit;
                                   if (next > coverable) {
                                     const gap = next - coverable;
                                     toast.warning(
@@ -1657,6 +1664,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                               </span>
                             )}
                             <span>{t("stock")}: <span className={out ? "text-destructive font-bold" : low ? "text-warning-foreground font-bold" : ""}>{p.stock_quantity}</span></span>
+                            {((p as any).reserved_quantity ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300" title={lang === "ar" ? "محجوز بفواتير أخرى" : "reserved by other invoices"}>
+                                🔒 {lang === "ar" ? "محجوز" : "reserved"}: {(p as any).reserved_quantity}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300" title={lang === "ar" ? "المتاح للبيع" : "available to sell"}>
+                              ✓ {lang === "ar" ? "متاح" : "available"}: {effectiveStockFor(p)}
+                            </span>
                             {transit > 0 && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-300">
                                 🚚 {lang === "ar" ? "في الطريق" : "in transit"}: {transit}
