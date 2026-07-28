@@ -24,6 +24,7 @@ import { InvoiceEditsBell } from "@/components/invoice-edits-bell";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { XAssistant } from "@/components/x-assistant";
 import ChatPopupNotifier from "@/components/chat/chat-popup-notifier";
+import { ArchiveRegressionNotifier } from "@/components/archive-regression-notifier";
 import { useReminderPoller } from "@/hooks/use-reminder-poller";
 import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { useCollections } from "@/lib/use-collections";
