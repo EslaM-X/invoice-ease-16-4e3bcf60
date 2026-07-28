@@ -36,6 +36,8 @@ function EditReceipt() {
           quantity: i.quantity,
           note: i.note,
           product_name: i.product_name,
+          serial_number: i.serial_number,
+          color: i.color,
         })),
       }}
     />

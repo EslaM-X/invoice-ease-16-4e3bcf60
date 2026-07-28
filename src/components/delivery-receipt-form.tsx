@@ -12,6 +12,7 @@ import {
   createDeliveryReceipt,
   updateDeliveryReceipt,
   fetchInvoiceItemsWithDelivered,
+  resolveReceiptInvoiceItemId,
   type InvoiceItemWithDelivered,
 } from "@/lib/delivery-receipts";
 import { autoLogClosureForInvoice } from "@/lib/fulfillment-audit";
@@ -49,6 +50,8 @@ type ExistingReceipt = {
     quantity: number;
     note: string | null;
     product_name: string;
+    serial_number?: string | null;
+    color?: string | null;
   }>;
 };
 
@@ -146,25 +149,24 @@ export function DeliveryReceiptForm({
       const priorNotesMap = new Map<string, string[]>();
       const deliveredStrictMap = new Map<string, number>();
       if (itemIds.length > 0) {
-        const q = supabase
-          .from("delivery_receipt_items" as any)
-          .select("invoice_item_id, note, quantity, receipt_id")
-          .in("invoice_item_id", itemIds);
-        const { data: dris } = await q;
-        const receiptIds = Array.from(new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter(Boolean)));
+        const { data: siblingReceipts } = await supabase
+          .from("delivery_receipts" as any)
+          .select("id, status")
+          .eq("invoice_id", invoiceId);
+        const receiptIds = ((siblingReceipts ?? []) as any[]).map((r) => r.id).filter(Boolean);
+        const { data: dris } = receiptIds.length > 0
+          ? await supabase
+            .from("delivery_receipt_items" as any)
+            .select("invoice_item_id, product_name, serial_number, color, note, quantity, receipt_id")
+            .in("receipt_id", receiptIds)
+          : { data: [] } as { data: any[] };
         const activeStatuses = new Set(["draft", "out_for_delivery", "signed", "paid"]);
         const receiptStatusMap = new Map<string, string>();
-        if (receiptIds.length > 0) {
-          const { data: recs } = await supabase
-            .from("delivery_receipts" as any)
-            .select("id, status")
-            .in("id", receiptIds);
-          for (const rec of (recs ?? []) as any[]) receiptStatusMap.set(rec.id, rec.status);
-        }
+        for (const rec of (siblingReceipts ?? []) as any[]) receiptStatusMap.set(rec.id, rec.status);
         const activeDris = ((dris ?? []) as any[]).filter((r) => {
           if (receiptId && r.receipt_id === receiptId) return false;
           return activeStatuses.has(receiptStatusMap.get(r.receipt_id) ?? "");
-        });
+        }).map((r) => ({ ...r, invoice_item_id: resolveReceiptInvoiceItemId(r, items) }));
         const strictDelivered = buildEffectiveDelivered(
           items.map((i) => ({
             id: i.id,
@@ -185,6 +187,7 @@ export function DeliveryReceiptForm({
         );
         for (const [k, v] of strictDelivered) deliveredStrictMap.set(k, v);
         for (const r of activeDris) {
+          if (!r.invoice_item_id) continue;
           const arr = priorNotesMap.get(r.invoice_item_id) ?? [];
           for (let k = 0; k < (r.quantity || 0); k++) arr.push(r.note ?? "");
           priorNotesMap.set(r.invoice_item_id, arr);
@@ -197,9 +200,10 @@ export function DeliveryReceiptForm({
       const existingMap = new Map<string, { qty: number; note: string; partsQty: PartsQty }>();
       if (existing) {
         for (const it of existing.items) {
-          if (!it.invoice_item_id) continue;
+          const invoiceItemId = it.invoice_item_id ?? resolveReceiptInvoiceItemId(it, items);
+          if (!invoiceItemId) continue;
           const parsed = parsePartFromNote(it.note ?? "");
-          const cur = existingMap.get(it.invoice_item_id) ?? {
+          const cur = existingMap.get(invoiceItemId) ?? {
             qty: 0,
             note: "",
             partsQty: { full: 0, mixer: 0, trim: 0 },
@@ -207,7 +211,7 @@ export function DeliveryReceiptForm({
           cur.qty += it.quantity;
           cur.partsQty[parsed.part] += it.quantity;
           if (!cur.note && parsed.cleanNote) cur.note = parsed.cleanNote;
-          existingMap.set(it.invoice_item_id, cur);
+          existingMap.set(invoiceItemId, cur);
         }
       }
       const productIds = Array.from(new Set(items.map((i) => i.product_id).filter(Boolean) as string[]));
