@@ -13,7 +13,6 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { TableSkeleton } from "@/components/skeletons";
 import { AuthorBadge } from "@/components/author-badge";
 import { exportInvoicesToExcel, type InvoiceRow } from "@/lib/invoice-export";
-import { computeDeliverySummaries } from "@/lib/invoice-delivery-closure";
 
 export const Route = createFileRoute("/invoices/archive")({
   component: () => (
@@ -51,6 +50,7 @@ function ArchivePage() {
       .from("invoices")
       .select("*")
       .not("status", "in", "(voided,draft)")
+      .eq("delivery_computed_state", "complete")
       .order("updated_at", { ascending: false })
       .limit(1000);
     if (from) query = query.gte("created_at", from);
@@ -62,42 +62,7 @@ function ArchivePage() {
       return total > 0 && paid >= total - 0.001;
     });
 
-    let closed = fullyPaid.filter((i: any) => i.delivery_status === "delivered");
-
-    if (fullyPaid.length) {
-      const paidIds = fullyPaid.map((i: any) => i.id);
-      const [{ data: drs }, { data: invItems }] = await Promise.all([
-        supabase
-          .from("delivery_receipts" as any)
-          .select("id, invoice_id, status")
-          .in("invoice_id", paidIds)
-          .range(0, 19999),
-        supabase
-          .from("invoice_items")
-          .select("id, invoice_id, product_id, product_name, quantity, serial_number, color")
-          .in("invoice_id", paidIds)
-          .range(0, 49999),
-      ]);
-      const activeReceiptIds = ((drs ?? []) as any[])
-        .filter((receipt: any) => ["out_for_delivery", "signed", "paid"].includes(receipt.status))
-        .map((receipt: any) => receipt.id);
-      const { data: drItems } = activeReceiptIds.length
-        ? await supabase
-            .from("delivery_receipt_items" as any)
-            .select("receipt_id, invoice_item_id, product_name, serial_number, color, quantity, note")
-            .in("receipt_id", activeReceiptIds)
-        : { data: [] as any[] };
-      const summaries = computeDeliverySummaries(
-        (invItems ?? []) as any[],
-        (drs ?? []) as any[],
-        (drItems ?? []) as any[],
-      );
-
-      closed = fullyPaid.filter((i: any) => {
-        const summary = summaries[i.id];
-        return i.delivery_status === "delivered" || Boolean(summary?.complete);
-      });
-    }
+    const closed = fullyPaid;
 
     setList(closed);
 
