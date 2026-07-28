@@ -30,7 +30,7 @@ import { LazyMount } from "@/components/lazy-mount";
 import { DASHBOARD_CARDS } from "@/lib/nav-catalog";
 import { toast } from "sonner";
 
-const DASH_CACHE_KEY = "dashboard:stats:v1";
+const DASH_CACHE_KEY = "dashboard:stats:v2";
 const LEADERSHIP_TASKS_KEY = "section_leadership_tasks";
 const CLOSEABLE_INVOICES_KEY = "section_closeable_invoices";
 
@@ -97,15 +97,15 @@ function Dashboard() {
     try {
     const [{ data: invs }, { data: allInvs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
-        .select("id, total, paid_amount, delivery_status, customer_name, created_at, invoice_number, status")
-        .not("status", "in", "(voided,draft)")
+        .select("id, total, paid_amount, delivery_status, delivery_computed_state, archive_ready, customer_name, created_at, invoice_number, status")
+        .not("status", "in", "(voided,void,draft,cancelled,canceled)")
         .order("created_at", { ascending: false })
         .limit(200),
       // Full set (minimal fields) for accurate open/partial/closed counts across ALL invoices,
-      // not just the most recent 200.
+      // matching the invoices list and archive badge exactly.
       supabase.from("invoices")
-        .select("total, paid_amount, delivery_status")
-        .not("status", "in", "(voided,draft)"),
+        .select("archive_ready, delivery_status, delivery_computed_state")
+        .not("status", "in", "(voided,void,draft,cancelled,canceled)"),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       cachedListFetch(
         "dashboard:product-stock-v2",
@@ -146,27 +146,19 @@ function Dashboard() {
       })
       .reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
 
-    // Trust the persisted `delivery_status` (maintained by tg_recalc_delivery_status).
-    // Earlier we recomputed from delivery_receipt_items.invoice_item_id, but ~76%
-    // of legacy DR rows had invoice_item_id NULL which under-counted deliveries
-    // and over-counted "closed" / under-counted "partial". The DB trigger already
-    // handles partial/delivered accurately.
-    // "Open" = anything not fully closed (paid + delivered) — matches the invoices
-    // page's "hide closed" filter. Partial-delivery invoices are still open, and
-    // are ALSO surfaced in their own KPI (partial) for visibility.
+    // Dashboard KPIs use the same persisted archive flag as the invoices page
+    // and archive page, so closed/open/total counts move together in realtime.
     let closed = 0, partial = 0, open = 0;
     const countingRows = (allInvs ?? invs ?? []) as any[];
     countingRows.forEach((i: any) => {
-      const total = Number(i.total ?? 0);
-      const paid = Number(i.paid_amount ?? 0);
-      const fullyPaid = total > 0 && paid >= total - 0.001;
-      const isFullyDelivered = i.delivery_status === "delivered";
-      const isPartial = i.delivery_status === "partial";
-      if (fullyPaid && isFullyDelivered) closed++;
-      else {
-        open++;
-        if (isPartial) partial++;
+      if (i.archive_ready === true) {
+        closed++;
+        return;
       }
+
+      open++;
+      const state = String(i.delivery_computed_state ?? i.delivery_status ?? "");
+      if (i.delivery_status === "partial" || state === "partial" || state === "awaiting_signature") partial++;
     });
 
     const nextStats = {
