@@ -86,6 +86,22 @@ function InvoicesList() {
     }, { forceRefresh: true });
     setList(data);
     setLoading(false);
+
+    // Live, accurate archive count — independent of the current filter.
+    // Archived = fully paid AND delivery_computed_state = 'complete'
+    // (matches the archive route's server-side filter).
+    (async () => {
+      let cq = supabase
+        .from("invoices")
+        .select("id", { count: "exact", head: true })
+        .not("status", "in", "(voided,draft)")
+        .eq("delivery_computed_state", "complete");
+      if (from) cq = cq.gte("created_at", from);
+      if (to) cq = cq.lte("created_at", to + "T23:59:59");
+      const { count } = await cq;
+      if (typeof count === "number") setArchiveCount(count);
+    })();
+
     const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
     setSalesEvents((ev ?? []) as SalesEvent[]);
 
