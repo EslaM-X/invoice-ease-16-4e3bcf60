@@ -13,6 +13,7 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { TableSkeleton } from "@/components/skeletons";
 import { AuthorBadge } from "@/components/author-badge";
 import { exportInvoicesToExcel, type InvoiceRow } from "@/lib/invoice-export";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/invoices/archive")({
   component: () => (
@@ -43,6 +44,7 @@ function ArchivePage() {
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = async () => {
     if (!user) return;
@@ -51,7 +53,7 @@ function ArchivePage() {
       .select("*")
       .eq("archive_ready" as any, true)
       .order("updated_at", { ascending: false })
-      .limit(1000);
+      .range(0, 9999);
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", to + "T23:59:59");
     const { data } = await query;
@@ -90,6 +92,28 @@ function ArchivePage() {
       (i.customer_phone ?? "").toLowerCase().includes(s)
     );
   }, [list, q]);
+
+  useEffect(() => {
+    setSelected((prev) => {
+      const visibleIds = new Set(filtered.map((i) => i.id));
+      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filtered]);
+
+  const allSelected = filtered.length > 0 && filtered.every((i) => selected.has(i.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(filtered.map((i) => i.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const totalValue = useMemo(
     () => filtered.reduce((s, i) => s + Number(i.total ?? 0), 0),
@@ -183,6 +207,16 @@ function ArchivePage() {
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-sm">
+        <label className="inline-flex items-center gap-2 font-medium">
+          <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label={isAr ? "تحديد كل فواتير الأرشيف" : "Select all archived invoices"} />
+          <span>{isAr ? "تحديد كل الفواتير الظاهرة" : "Select all visible invoices"}</span>
+        </label>
+        <div className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+          {isAr ? `${selected.size} محددة من ${filtered.length}` : `${selected.size} selected of ${filtered.length}`}
+        </div>
+      </div>
+
       {/* List */}
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card">
         {loading ? (
@@ -196,6 +230,9 @@ function ArchivePage() {
             <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="w-10 px-3 py-3">
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label={isAr ? "تحديد الكل" : "Select all"} />
+                  </th>
                   <th className="px-4 py-3 text-start font-medium">{isAr ? "رقم الفاتورة" : "Invoice"}</th>
                   <th className="px-4 py-3 text-start font-medium">{isAr ? "العميل" : "Customer"}</th>
                   <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{isAr ? "تاريخ الإغلاق" : "Closed at"}</th>
@@ -207,6 +244,9 @@ function ArchivePage() {
               <tbody className="divide-y">
                 {filtered.map((i) => (
                   <tr key={i.id} className="hover:bg-muted/30">
+                    <td className="px-3 py-3">
+                      <Checkbox checked={selected.has(i.id)} onCheckedChange={() => toggleOne(i.id)} aria-label={isAr ? "تحديد الفاتورة" : "Select invoice"} />
+                    </td>
                     <td className="px-4 py-3 font-medium">
                       <div className="flex flex-wrap items-center gap-2">
                         {i.receipt_number != null && (
