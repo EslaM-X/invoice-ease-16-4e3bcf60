@@ -1,0 +1,6 @@
+DROP TRIGGER IF EXISTS resolve_delivery_receipt_item_invoice_item_before_write ON public.delivery_receipt_items;
+CREATE TRIGGER resolve_delivery_receipt_item_invoice_item_before_write
+BEFORE INSERT OR UPDATE OF receipt_id, invoice_item_id, product_name, serial_number, color
+ON public.delivery_receipt_items
+FOR EACH ROW
+EXECUTE FUNCTION public.resolve_delivery_receipt_item_invoice_item();
