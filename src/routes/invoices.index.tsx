@@ -144,6 +144,7 @@ function InvoicesList() {
       ids.forEach((id: string) => {
         progress[id] = {
           delivered: 0,
+          dispatched: 0,
           total: totals[id] ?? 0,
           awaitingSignature: 0,
           awaitingSignatureOnly: false,
