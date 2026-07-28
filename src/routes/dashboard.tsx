@@ -29,8 +29,10 @@ import { cachedListFetch } from "@/lib/list-cache";
 import { LazyMount } from "@/components/lazy-mount";
 import { DASHBOARD_CARDS } from "@/lib/nav-catalog";
 import { toast } from "sonner";
+import { computeDeliverySummaries } from "@/lib/invoice-delivery-closure";
 
-const DASH_CACHE_KEY = "dashboard:stats:v2";
+const DASH_CACHE_KEY = "dashboard:stats:v3";
+const DASH_CACHE_TTL_MS = 20_000;
 const LEADERSHIP_TASKS_KEY = "section_leadership_tasks";
 const CLOSEABLE_INVOICES_KEY = "section_closeable_invoices";
 
@@ -84,7 +86,8 @@ function Dashboard() {
       const raw = sessionStorage.getItem(`${DASH_CACHE_KEY}:${user.id}`);
       if (raw) {
         const cached = JSON.parse(raw);
-        if (cached?.stats) { setStats(cached.stats); setLoaded(true); }
+        const fresh = typeof cached?.ts === "number" && Date.now() - cached.ts < DASH_CACHE_TTL_MS;
+        if (fresh && cached?.stats) { setStats(cached.stats); setLoaded(true); }
         if (cached?.recent) setRecent(cached.recent);
         if (cached?.stats?.latestUsdRate) setFxInput(String(cached.stats.latestUsdRate));
       }
@@ -104,7 +107,7 @@ function Dashboard() {
       // Full set (minimal fields) for accurate open/partial/closed counts across ALL invoices,
       // matching the invoices list and archive badge exactly.
       supabase.from("invoices")
-        .select("archive_ready, delivery_status, delivery_computed_state")
+        .select("id, total, paid_amount, archive_ready, delivery_status, delivery_computed_state")
         .not("status", "in", "(voided,void,draft,cancelled,canceled)"),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       cachedListFetch(
@@ -146,19 +149,60 @@ function Dashboard() {
       })
       .reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
 
-    // Dashboard KPIs use the same persisted archive flag as the invoices page
-    // and archive page, so closed/open/total counts move together in realtime.
+    // Dashboard KPIs use the same live receipt math as the invoices page, not
+    // only the persisted state. This prevents stale delivery_computed_state rows
+    // from counting fully signed invoices as open, and avoids counting invoices
+    // that are only out for delivery as "partial" before a signature exists.
     let closed = 0, partial = 0, open = 0;
     const countingRows = (allInvs ?? invs ?? []) as any[];
+    const countingIds = countingRows.map((i: any) => i.id).filter(Boolean);
+    let deliverySummaries: Record<string, ReturnType<typeof computeDeliverySummaries>[string]> = {};
+    if (countingIds.length > 0) {
+      const [{ data: countReceiptRows }, { data: countItemRows }] = await Promise.all([
+        supabase
+          .from("delivery_receipts" as any)
+          .select("id, invoice_id, status")
+          .in("invoice_id", countingIds)
+          .range(0, 19999),
+        supabase
+          .from("invoice_items")
+          .select("id, invoice_id, product_id, product_name, quantity, serial_number, color")
+          .in("invoice_id", countingIds)
+          .range(0, 49999),
+      ]);
+      const activeReceiptIds = ((countReceiptRows as any[]) ?? [])
+        .filter((receipt: any) => ["out_for_delivery", "signed", "paid"].includes(String(receipt.status ?? "")))
+        .map((receipt: any) => receipt.id)
+        .filter(Boolean);
+      let countReceiptItemRows: any[] = [];
+      if (activeReceiptIds.length > 0) {
+        const { data } = await supabase
+          .from("delivery_receipt_items" as any)
+          .select("receipt_id, invoice_item_id, product_name, serial_number, color, quantity, note")
+          .in("receipt_id", activeReceiptIds)
+          .range(0, 49999);
+        countReceiptItemRows = (data as any[]) ?? [];
+      }
+      deliverySummaries = computeDeliverySummaries(
+        ((countItemRows as any[]) ?? []) as any[],
+        ((countReceiptRows as any[]) ?? []) as any[],
+        countReceiptItemRows,
+      );
+    }
     countingRows.forEach((i: any) => {
-      if (i.archive_ready === true) {
+      const total = Number(i.total ?? 0);
+      const paid = Number(i.paid_amount ?? 0);
+      const fullyPaid = total > 0 && paid >= total - 0.001;
+      const summary = i.id ? deliverySummaries[i.id] : undefined;
+      const receiptComplete = Boolean(summary?.complete);
+      const isClosed = i.archive_ready === true || (fullyPaid && (i.delivery_status === "delivered" || i.delivery_computed_state === "complete" || receiptComplete));
+      if (isClosed) {
         closed++;
         return;
       }
 
       open++;
-      const state = String(i.delivery_computed_state ?? "");
-      if (state === "partial") partial++;
+      if (summary && summary.total > 0 && summary.completed > 0 && summary.completed < summary.total) partial++;
 
     });
 
@@ -231,7 +275,7 @@ function Dashboard() {
   };
 
   useBatchedRealtimeTables(
-    ["invoices", "products", "customers", "defective_items", "purchase_orders"],
+    ["invoices", "invoice_items", "delivery_receipts", "delivery_receipt_items", "payments", "products", "customers", "defective_items", "purchase_orders"],
     scheduleRealtimeRefresh,
     [user?.id],
     { debounceMs: 800, maxWaitMs: 2500 },
