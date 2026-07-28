@@ -166,6 +166,7 @@ function InvoicesList() {
           const awaiting = s.incompleteItems.reduce((n, it) => n + it.awaitingSignature, 0);
           progress[invId] = {
             delivered: s.completed,
+            dispatched: s.active,
             total: s.total,
             awaitingSignature: awaiting,
             awaitingSignatureOnly: s.awaitingSignatureOnly,
