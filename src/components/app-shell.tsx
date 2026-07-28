@@ -631,6 +631,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
         <MobileTabBar onMore={() => setOpen(true)} />
         <XAssistant />
         <ChatPopupNotifier />
+        <ArchiveRegressionNotifier />
+
       </div>
     </div>
   );
