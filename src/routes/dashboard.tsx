@@ -208,7 +208,9 @@ function Dashboard() {
       });
       visibleOpenRows.forEach((i: any) => {
         const s = i.id ? summaries[i.id] : undefined;
-        if (s && s.total > 0 && s.completed > 0 && s.completed < s.total) partial++;
+        if (!s || s.total <= 0) return;
+        const shown = Math.max(s.completed, s.active);
+        if (shown > 0 && shown < s.total) partial++;
       });
     }
     const open = visibleOpenRows.length;
