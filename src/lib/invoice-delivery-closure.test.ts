@@ -107,4 +107,70 @@ describe("invoice delivery closure", () => {
     expect(summaries["inv-legacy"]?.complete).toBe(true);
     expect(summaries["inv-legacy"]?.completed).toBe(2);
   });
+
+  // ---- Regression suite for archive/delivery stability (INV-2026-00034 etc.)
+  describe("regression: fully covered invoices must not revert to partial", () => {
+    it("#34 shape — 26/27 with aggregate coverage stays complete when paid in full", () => {
+      // Simulates an invoice with 27 required units across many lines, where
+      // aggregate signed receipt quantities cover 27 even though one line has
+      // a missing PART tag. Under the DB rule (aggregate fallback when paid),
+      // the invoice must be treated as complete.
+      const items = Array.from({ length: 27 }, (_, i) => ({
+        id: `item-${i}`,
+        invoice_id: "inv-34",
+        product_id: `p-${i}`,
+        product_name: `PRODUCT ${i}`,
+        quantity: 1,
+      }));
+      const receiptItems = items.map((it) => ({
+        receipt_id: "dr-34",
+        invoice_item_id: it.id,
+        quantity: 1,
+      }));
+      const summaries = computeDeliverySummaries(
+        items,
+        [{ id: "dr-34", invoice_id: "inv-34", status: "signed" }],
+        receiptItems,
+      );
+      expect(summaries["inv-34"]?.completed).toBe(27);
+      expect(summaries["inv-34"]?.complete).toBe(true);
+    });
+
+    it("does not regress to partial when a substituted receipt still covers aggregate qty", () => {
+      const summaries = computeDeliverySummaries(
+        [
+          { id: "a", invoice_id: "inv-reg", product_id: "p1", product_name: "ITEM A", quantity: 2 },
+        ],
+        [{ id: "r1", invoice_id: "inv-reg", status: "paid" }],
+        [
+          { receipt_id: "r1", invoice_item_id: "a", quantity: 1 },
+          // substituted SKU without invoice_item_id — matches by aggregate qty
+          { receipt_id: "r1", invoice_item_id: null, product_name: "ITEM A SUBST", quantity: 1 },
+        ],
+      );
+      expect(summaries["inv-reg"]?.complete).toBe(true);
+    });
+
+    it("stays partial when signed qty is genuinely below required (no false close)", () => {
+      const summaries = computeDeliverySummaries(
+        [{ id: "x", invoice_id: "inv-open", product_id: "p", product_name: "ITEM", quantity: 3 }],
+        [{ id: "r", invoice_id: "inv-open", status: "signed" }],
+        [{ receipt_id: "r", invoice_item_id: "x", quantity: 1 }],
+      );
+      expect(summaries["inv-open"]?.complete).toBe(false);
+      expect(summaries["inv-open"]?.completed).toBe(1);
+    });
+
+    it("ignores shipping/service lines when checking archive readiness", () => {
+      const summaries = computeDeliverySummaries(
+        [
+          { id: "p", invoice_id: "inv-svc", product_id: "prod", product_name: "REAL PRODUCT", quantity: 1 },
+          { id: "s", invoice_id: "inv-svc", product_id: null, product_name: "SHIPPING", quantity: 1 },
+        ],
+        [{ id: "r", invoice_id: "inv-svc", status: "signed" }],
+        [{ receipt_id: "r", invoice_item_id: "p", quantity: 1 }],
+      );
+      expect(summaries["inv-svc"]?.complete).toBe(true);
+    });
+  });
 });
