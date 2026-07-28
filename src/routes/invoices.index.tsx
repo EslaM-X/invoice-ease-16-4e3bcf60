@@ -578,18 +578,22 @@ function InvoicesList() {
                                   </span>
                                 ) : (() => {
                                   const p = delivProgress[i.id];
-                                  if (p && p.total > 0 && p.delivered > 0 && p.delivered < p.total) {
-                                    const remaining = p.total - p.delivered;
+                                  const shown = p ? Math.max(p.delivered, p.dispatched) : 0;
+                                  if (p && p.total > 0 && shown > 0 && shown < p.total) {
+                                    const remaining = p.total - shown;
+                                    const suffix = p.delivered === 0 && p.dispatched > 0
+                                      ? (lang === "ar" ? " (في الطريق)" : " (in transit)")
+                                      : "";
                                     return (
                                       <span
                                         className="rounded-full border border-orange-500/40 bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-700 dark:text-orange-400"
-                                        title={`${p.delivered} / ${p.total}`}
+                                        title={`${shown} / ${p.total}`}
                                       >
-                                        {lang === "ar" ? `تسليم جزئي ${p.delivered}/${p.total} — باقي ${remaining}` : `Partial ${p.delivered}/${p.total} — ${remaining} left`}
+                                        {lang === "ar" ? `تسليم جزئي ${shown}/${p.total} — باقي ${remaining}${suffix}` : `Partial ${shown}/${p.total} — ${remaining} left${suffix}`}
                                       </span>
                                     );
                                   }
-                                  if (p && p.total > 0 && p.delivered === 0) {
+                                  if (p && p.total > 0 && shown === 0) {
                                     return (
                                       <span className="rounded-full border border-slate-500/40 bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300">
                                         {lang === "ar" ? `قيد الانتظار — باقي ${p.total}` : `Pending — ${p.total} left`}
