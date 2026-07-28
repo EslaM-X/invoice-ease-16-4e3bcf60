@@ -44,7 +44,7 @@ function InvoicesList() {
   const [list, setList] = useState<any[]>([]);
   const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
-  const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number }>>({});
+  const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number; awaitingSignature: number; awaitingSignatureOnly: boolean; incomplete: Array<{ product_name: string | null; required: number; completed: number; awaitingSignature: number; notDispatched: number }> }>>({});
   const [serialsByInvoice, setSerialsByInvoice] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -121,26 +121,44 @@ function InvoicesList() {
       });
       setSerialsByInvoice(serialsMap);
 
-      const deliveredByInv: Record<string, number> = {};
+      const progress: typeof delivProgress = {};
+      ids.forEach((id: string) => {
+        progress[id] = {
+          delivered: 0,
+          total: totals[id] ?? 0,
+          awaitingSignature: 0,
+          awaitingSignatureOnly: false,
+          incomplete: [],
+        };
+      });
       if (validReceiptIds.length) {
         const { data: drItems } = await supabase
           .from("delivery_receipt_items" as any)
           .select("receipt_id, invoice_item_id, quantity, note")
-          .in("receipt_id", validReceiptIds);
-        const summaries = computeDeliverySummaries(
+          .in("receipt_id", validReceiptIds)
+          .range(0, 49999);
+        const sums = computeDeliverySummaries(
           (invItems ?? []) as any[],
           (drs ?? []) as any[],
           (drItems ?? []) as any[],
         );
-        Object.entries(summaries).forEach(([invoiceId, summary]) => {
-          deliveredByInv[invoiceId] = summary.completed;
+        Object.entries(sums).forEach(([invId, s]) => {
+          const awaiting = s.incompleteItems.reduce((n, it) => n + it.awaitingSignature, 0);
+          progress[invId] = {
+            delivered: s.completed,
+            total: s.total,
+            awaitingSignature: awaiting,
+            awaitingSignatureOnly: s.awaitingSignatureOnly,
+            incomplete: s.incompleteItems.map((it) => ({
+              product_name: it.product_name,
+              required: it.required,
+              completed: it.completed,
+              awaitingSignature: it.awaitingSignature,
+              notDispatched: it.notDispatched,
+            })),
+          };
         });
       }
-
-      const progress: Record<string, { delivered: number; total: number }> = {};
-      ids.forEach((id: string) => {
-        progress[id] = { delivered: deliveredByInv[id] ?? 0, total: totals[id] ?? 0 };
-      });
       setDelivProgress(progress);
     }
   };
@@ -551,6 +569,26 @@ function InvoicesList() {
                                     );
                                   }
                                   return null;
+                                })()}
+                                {(() => {
+                                  const p = delivProgress[i.id];
+                                  if (!p || p.awaitingSignature <= 0) return null;
+                                  const tip = p.incomplete
+                                    .filter((it) => it.awaitingSignature > 0)
+                                    .map((it) => `${it.product_name ?? "—"}: ${it.awaitingSignature}`)
+                                    .join(" • ");
+                                  return (
+                                    <Link
+                                      to="/delivery-receipts"
+                                      search={{ invoice: i.invoice_number } as any}
+                                      className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-500/25 dark:text-amber-400"
+                                      title={tip}
+                                    >
+                                      {lang === "ar"
+                                        ? `بانتظار توقيع محاضر — ${p.awaitingSignature}`
+                                        : `Awaiting signature — ${p.awaitingSignature}`}
+                                    </Link>
+                                  );
                                 })()}
                                 {fullyPaid && (
                                   <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-400">

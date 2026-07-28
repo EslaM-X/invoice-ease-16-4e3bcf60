@@ -37,7 +37,23 @@ export type InvoiceDeliverySummary = {
   completed: number;
   active: number;
   completedByItem: Record<string, number>;
+  activeByItem: Record<string, number>;
+  requiredByItem: Record<string, number>;
   complete: boolean;
+  /** items where signed/paid quantity is still short of required */
+  incompleteItems: Array<{
+    id: string;
+    product_name: string | null;
+    required: number;
+    completed: number;
+    active: number;
+    /** units dispatched but still awaiting signature */
+    awaitingSignature: number;
+    /** units with no receipt yet */
+    notDispatched: number;
+  }>;
+  /** true when every remaining unit is already dispatched and only needs signature */
+  awaitingSignatureOnly: boolean;
 };
 
 export function computeDeliverySummaries(
@@ -59,6 +75,9 @@ export function computeDeliverySummaries(
   itemsByInvoice.forEach((items, invoiceId) => {
     const total = items.reduce((sum, item) => sum + toNumber(item.quantity), 0);
     const completedByItem: Record<string, number> = {};
+    const activeByItem: Record<string, number> = {};
+    const requiredByItem: Record<string, number> = {};
+    const incompleteItems: InvoiceDeliverySummary["incompleteItems"] = [];
     let completed = 0;
     let active = 0;
     let complete = items.length > 0;
@@ -69,9 +88,24 @@ export function computeDeliverySummaries(
       const itemRequired = toNumber(item.quantity);
 
       completedByItem[item.id] = itemCompleted;
+      activeByItem[item.id] = itemActive;
+      requiredByItem[item.id] = itemRequired;
       completed += itemCompleted;
       active += itemActive;
-      if (itemRequired > 0 && itemCompleted < itemRequired) complete = false;
+      if (itemRequired > 0 && itemCompleted < itemRequired) {
+        complete = false;
+        const awaitingSignature = Math.max(0, Math.min(itemActive, itemRequired) - itemCompleted);
+        const notDispatched = Math.max(0, itemRequired - Math.max(itemActive, itemCompleted));
+        incompleteItems.push({
+          id: item.id,
+          product_name: item.product_name ?? null,
+          required: itemRequired,
+          completed: itemCompleted,
+          active: itemActive,
+          awaitingSignature,
+          notDispatched,
+        });
+      }
     });
 
     summaries[invoiceId] = {
@@ -79,7 +113,13 @@ export function computeDeliverySummaries(
       completed,
       active,
       completedByItem,
+      activeByItem,
+      requiredByItem,
       complete: total > 0 && complete,
+      incompleteItems,
+      awaitingSignatureOnly:
+        total > 0 && !complete && incompleteItems.length > 0 &&
+        incompleteItems.every((it) => it.notDispatched === 0 && it.awaitingSignature > 0),
     };
   });
 
