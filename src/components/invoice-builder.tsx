@@ -1206,7 +1206,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                                 if (p) {
                                   const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
                                   const transit = inTransitQty[it.product_id] ?? 0;
-                                  const coverable = (p.stock_quantity ?? 0) + baseline + transit;
+                                  const coverable = effectiveStockFor(p) + baseline + transit;
                                   if (next > coverable) {
                                     const gap = next - coverable;
                                     toast.warning(
