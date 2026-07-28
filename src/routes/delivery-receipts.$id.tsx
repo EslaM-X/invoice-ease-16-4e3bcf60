@@ -577,3 +577,98 @@ function AuditEntry({ entry, isAr }: { entry: any; isAr: boolean }) {
     </div>
   );
 }
+
+function RemainingSummary({ rows, isAr, invoiceId }: { rows: PrintRow[]; isAr: boolean; invoiceId?: string }) {
+  const lines = rows.map((it) => {
+    const totalDelivered = it.this_qty + it.prior_qty + it.later_qty;
+    const remaining = Math.max(0, it.invoice_qty - totalDelivered);
+    return { ...it, totalDelivered, remaining };
+  });
+  const totalReq = lines.reduce((s, l) => s + l.invoice_qty, 0);
+  const totalDone = lines.reduce((s, l) => s + Math.min(l.invoice_qty, l.totalDelivered), 0);
+  const totalRem = Math.max(0, totalReq - totalDone);
+  const openLines = lines.filter((l) => l.remaining > 0);
+
+  return (
+    <div className="no-print rounded-2xl border bg-card p-5 shadow-elegant">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">{isAr ? "ملخّص التسليم عبر كل المحاضر" : "Delivery summary across all receipts"}</h3>
+          <p className="text-[11px] text-muted-foreground">
+            {isAr
+              ? "لحظي — يتجمّع من كل محاضر هذه الفاتورة (بما فيها المحضر الحالي)."
+              : "Live — aggregated from every receipt on this invoice (including this one)."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          <span className="rounded-full border border-border bg-muted px-2 py-0.5 font-semibold">
+            {isAr ? "المطلوب" : "Required"}: <span className="ltr-nums">{totalReq}</span>
+          </span>
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-400">
+            {isAr ? "مسلَّم" : "Delivered"}: <span className="ltr-nums">{totalDone}</span>
+          </span>
+          <span className={`rounded-full border px-2 py-0.5 font-semibold ${totalRem === 0 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"}`}>
+            {isAr ? "الباقي" : "Remaining"}: <span className="ltr-nums">{totalRem}</span>
+          </span>
+          {invoiceId && totalRem > 0 && (
+            <Link
+              to="/delivery-receipts/new"
+              search={{ invoiceId } as any}
+              className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 font-semibold text-primary hover:bg-primary/20"
+            >
+              {isAr ? "أنشئ محضر للباقي" : "New receipt for remaining"} →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/50 text-[11px]">
+            <tr>
+              <th className="px-2 py-1.5 text-start">{isAr ? "المنتج" : "Product"}</th>
+              <th className="px-2 py-1.5 text-center">{isAr ? "المطلوب" : "Req"}</th>
+              <th className="px-2 py-1.5 text-center">{isAr ? "هذا المحضر" : "This"}</th>
+              <th className="px-2 py-1.5 text-center">{isAr ? "محاضر أخرى" : "Other"}</th>
+              <th className="px-2 py-1.5 text-center">{isAr ? "الإجمالي" : "Total"}</th>
+              <th className="px-2 py-1.5 text-center">{isAr ? "الباقي" : "Remain"}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {lines.map((l) => {
+              const other = l.prior_qty + l.later_qty;
+              const done = l.remaining === 0;
+              return (
+                <tr key={l.invoice_item_id} className={done ? "bg-emerald-500/5" : ""}>
+                  <td className="px-2 py-1.5">
+                    <div className="font-medium">{l.product_name}</div>
+                    {(l.serial_number || l.color) && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {l.serial_number && <span className="me-2">SN: {l.serial_number}</span>}
+                        {l.color && <span>{isAr ? "اللون" : "Color"}: {l.color}</span>}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5 text-center ltr-nums">{l.invoice_qty}</td>
+                  <td className="px-2 py-1.5 text-center ltr-nums">{l.this_qty}</td>
+                  <td className="px-2 py-1.5 text-center ltr-nums">{other}</td>
+                  <td className="px-2 py-1.5 text-center ltr-nums font-semibold">{Math.min(l.invoice_qty, l.totalDelivered)}</td>
+                  <td className={`px-2 py-1.5 text-center ltr-nums font-bold ${done ? "text-emerald-600" : "text-amber-600"}`}>
+                    {l.remaining}
+                    {done && " ✓"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {openLines.length === 0 && (
+        <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-center text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+          {isAr ? "كل بنود الفاتورة تم تسليمها ✓" : "All invoice items have been delivered ✓"}
+        </div>
+      )}
+    </div>
+  );
+}
