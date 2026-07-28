@@ -41,9 +41,12 @@ function ReceiptsList() {
 
   const load = async () => {
     if (!user) return;
+    // Only show receipts that are NOT auto-archived (invoice not yet fully delivered).
+    // Trigger tg_dr_recompute_state_v2 sets archived_at when parent invoice reaches "complete".
     const { data } = await supabase
       .from("delivery_receipts" as any)
       .select("*")
+      .is("archived_at", null)
       .in("status", ["draft", "out_for_delivery", "signed"])
       .order("created_at", { ascending: false });
     const list = (data ?? []) as any[];
