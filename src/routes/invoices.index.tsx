@@ -42,6 +42,7 @@ function InvoicesList() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [list, setList] = useState<any[]>([]);
+  const [archiveCount, setArchiveCount] = useState<number>(0);
   const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
   const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number; awaitingSignature: number; awaitingSignatureOnly: boolean; incomplete: Array<{ product_name: string | null; required: number; completed: number; awaitingSignature: number; notDispatched: number }> }>>({});
@@ -85,6 +86,22 @@ function InvoicesList() {
     }, { forceRefresh: true });
     setList(data);
     setLoading(false);
+
+    // Live, accurate archive count — independent of the current filter.
+    // Archived = fully paid AND delivery_computed_state = 'complete'
+    // (matches the archive route's server-side filter).
+    (async () => {
+      let cq = supabase
+        .from("invoices")
+        .select("id", { count: "exact", head: true })
+        .not("status", "in", "(voided,draft)")
+        .eq("delivery_computed_state", "complete");
+      if (from) cq = cq.gte("created_at", from);
+      if (to) cq = cq.lte("created_at", to + "T23:59:59");
+      const { count } = await cq;
+      if (typeof count === "number") setArchiveCount(count);
+    })();
+
     const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
     setSalesEvents((ev ?? []) as SalesEvent[]);
 
@@ -190,7 +207,11 @@ function InvoicesList() {
     const fullyDeliveredByReceipts = Boolean(progress && progress.total > 0 && progress.delivered >= progress.total);
     return fullyPaid && (serverComplete || i.delivery_status === "delivered" || fullyDeliveredByReceipts);
   };
-  const closedCount = list.filter(isClosed).length;
+  // When hideClosed is off, the loaded list contains archived rows already; use
+  // that count. When it's on, the loaded list intentionally excludes them, so
+  // fall back to the server-side archiveCount fetched on load.
+  const inListClosed = list.filter(isClosed).length;
+  const closedCount = hideClosed ? archiveCount : Math.max(inListClosed, archiveCount);
   const draftCount = list.filter((i) => i.status === "draft").length;
 
   const filtered = list
