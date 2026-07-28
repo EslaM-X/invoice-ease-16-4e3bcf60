@@ -187,6 +187,10 @@ function ReceiptView() {
         }}
       />
 
+      {printRows && printRows.length > 0 && (
+        <RemainingSummary rows={printRows} isAr={isAr} invoiceId={invoice?.id} />
+      )}
+
       {showAudit && (
         <div className="no-print rounded-2xl border bg-card p-5">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
