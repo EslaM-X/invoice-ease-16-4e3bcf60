@@ -45,7 +45,7 @@ function InvoicesList() {
   const [archiveCount, setArchiveCount] = useState<number>(0);
   const [salesEvents, setSalesEvents] = useState<SalesEvent[]>([]);
   const [drCounts, setDrCounts] = useState<Record<string, number>>({});
-  const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; total: number; awaitingSignature: number; awaitingSignatureOnly: boolean; incomplete: Array<{ product_name: string | null; required: number; completed: number; awaitingSignature: number; notDispatched: number }> }>>({});
+  const [delivProgress, setDelivProgress] = useState<Record<string, { delivered: number; dispatched: number; total: number; awaitingSignature: number; awaitingSignatureOnly: boolean; incomplete: Array<{ product_name: string | null; required: number; completed: number; awaitingSignature: number; notDispatched: number }> }>>({});
   const [serialsByInvoice, setSerialsByInvoice] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
