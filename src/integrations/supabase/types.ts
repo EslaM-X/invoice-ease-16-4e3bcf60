@@ -1899,6 +1899,7 @@ export type Database = {
           shipping_address: string | null
           source: string
           status: string
+          stock_flow: string
           subject: string | null
           subtotal: number
           system_notes: string | null
@@ -1948,6 +1949,7 @@ export type Database = {
           shipping_address?: string | null
           source?: string
           status?: string
+          stock_flow?: string
           subject?: string | null
           subtotal?: number
           system_notes?: string | null
@@ -1997,6 +1999,7 @@ export type Database = {
           shipping_address?: string | null
           source?: string
           status?: string
+          stock_flow?: string
           subject?: string | null
           subtotal?: number
           system_notes?: string | null
@@ -4507,6 +4510,7 @@ export type Database = {
           shipping_address: string | null
           source: string
           status: string
+          stock_flow: string
           subject: string | null
           subtotal: number
           system_notes: string | null
@@ -5141,6 +5145,7 @@ export type Database = {
           shipping_address: string | null
           source: string
           status: string
+          stock_flow: string
           subject: string | null
           subtotal: number
           system_notes: string | null
