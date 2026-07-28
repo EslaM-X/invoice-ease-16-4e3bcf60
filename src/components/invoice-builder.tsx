@@ -314,7 +314,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  /** Returns how many MORE units of this product can still be added (stock + in-transit). */
+  /** Effective on-shelf stock available for THIS invoice (subtracts reservations by other invoices). */
+  const effectiveStockFor = (p: Product): number => {
+    const baseline = initialQtyByProduct.get(p.id) ?? 0;
+    const reservedByOthers = Math.max(0, ((p as any).reserved_quantity ?? 0) - baseline);
+    return Math.max(0, (p.stock_quantity ?? 0) - reservedByOthers);
+  };
+
+  /** Returns how many MORE units of this product can still be added (available + in-transit). */
   const remainingFor = (productId: string): number => {
     const p = products.find((x) => x.id === productId);
     if (!p) return 0;
@@ -323,7 +330,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(productId) ?? 0;
     const transit = inTransitQty[productId] ?? 0;
-    return Math.max(0, (p.stock_quantity ?? 0) + transit + baseline - allocatedNow);
+    return Math.max(0, effectiveStockFor(p) + transit + baseline - allocatedNow);
   };
 
   /** Add 1 unit of a product. Never blocked — shortage is auto-tracked. */
@@ -333,7 +340,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
       .filter((it) => it.product_id === p.id)
       .reduce((s, it) => s + (it.quantity || 0), 0);
     const baseline = initialQtyByProduct.get(p.id) ?? 0;
-    const stockLeft = Math.max(0, (p.stock_quantity ?? 0) + baseline - allocatedNow);
+    const stockLeft = Math.max(0, effectiveStockFor(p) + baseline - allocatedNow);
     if (stockLeft <= 0 && (inTransitQty[p.id] ?? 0) > 0 && remaining > 0) {
       toast.info(`${p.name} — ${lang === "ar" ? "من شحنة جاية في الطريق" : "from incoming shipment"}`);
     } else if (remaining <= 0) {
