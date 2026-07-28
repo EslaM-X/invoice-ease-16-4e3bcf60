@@ -207,7 +207,11 @@ function InvoicesList() {
     const fullyDeliveredByReceipts = Boolean(progress && progress.total > 0 && progress.delivered >= progress.total);
     return fullyPaid && (serverComplete || i.delivery_status === "delivered" || fullyDeliveredByReceipts);
   };
-  const closedCount = list.filter(isClosed).length;
+  // When hideClosed is off, the loaded list contains archived rows already; use
+  // that count. When it's on, the loaded list intentionally excludes them, so
+  // fall back to the server-side archiveCount fetched on load.
+  const inListClosed = list.filter(isClosed).length;
+  const closedCount = hideClosed ? archiveCount : Math.max(inListClosed, archiveCount);
   const draftCount = list.filter((i) => i.status === "draft").length;
 
   const filtered = list
