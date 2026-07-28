@@ -570,6 +570,26 @@ function InvoicesList() {
                                   }
                                   return null;
                                 })()}
+                                {(() => {
+                                  const p = delivProgress[i.id];
+                                  if (!p || p.awaitingSignature <= 0) return null;
+                                  const tip = p.incomplete
+                                    .filter((it) => it.awaitingSignature > 0)
+                                    .map((it) => `${it.product_name ?? "—"}: ${it.awaitingSignature}`)
+                                    .join(" • ");
+                                  return (
+                                    <Link
+                                      to="/delivery-receipts"
+                                      search={{ invoice: i.invoice_number } as any}
+                                      className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-500/25 dark:text-amber-400"
+                                      title={tip}
+                                    >
+                                      {lang === "ar"
+                                        ? `بانتظار توقيع محاضر — ${p.awaitingSignature}`
+                                        : `Awaiting signature — ${p.awaitingSignature}`}
+                                    </Link>
+                                  );
+                                })()}
                                 {fullyPaid && (
                                   <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-400">
                                     {lang === "ar" ? "مدفوعة" : "Paid"}
