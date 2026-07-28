@@ -76,6 +76,61 @@ export type InvoiceItemWithDelivered = {
   remaining: number;
 };
 
+type InvoiceLineForMatching = Pick<
+  InvoiceItemWithDelivered,
+  "id" | "product_name" | "serial_number" | "color"
+>;
+
+type ReceiptItemForMatching = {
+  invoice_item_id?: string | null;
+  product_name?: string | null;
+  serial_number?: string | null;
+  color?: string | null;
+};
+
+const normalizeReceiptText = (value?: string | null) =>
+  String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+
+const normalizeReceiptSerial = (value?: string | null) =>
+  String(value ?? "").trim().replace(/[\s_\-./]+/g, "").toLowerCase();
+
+export function legacyReceiptItemMatchesInvoiceLine(
+  receiptItem: ReceiptItemForMatching,
+  item: InvoiceLineForMatching,
+) {
+  if (normalizeReceiptText(receiptItem.product_name) !== normalizeReceiptText(item.product_name)) return false;
+
+  const receiptSerial = normalizeReceiptSerial(receiptItem.serial_number);
+  if (receiptSerial && receiptSerial !== normalizeReceiptSerial(item.serial_number)) return false;
+
+  const receiptColor = normalizeReceiptText(receiptItem.color);
+  if (receiptColor && receiptColor !== normalizeReceiptText(item.color)) return false;
+
+  return true;
+}
+
+export function resolveReceiptInvoiceItemId(
+  receiptItem: ReceiptItemForMatching,
+  invoiceItems: InvoiceLineForMatching[],
+) {
+  if (receiptItem.invoice_item_id) return receiptItem.invoice_item_id;
+
+  const matches = invoiceItems.filter((item) => legacyReceiptItemMatchesInvoiceLine(receiptItem, item));
+  if (matches.length === 1) return matches[0].id;
+
+  if (matches.length > 1) {
+    const receiptSerial = normalizeReceiptSerial(receiptItem.serial_number);
+    const receiptColor = normalizeReceiptText(receiptItem.color);
+    const exact = matches.find((item) =>
+      (!receiptSerial || receiptSerial === normalizeReceiptSerial(item.serial_number)) &&
+      (!receiptColor || receiptColor === normalizeReceiptText(item.color)),
+    );
+    if (exact) return exact.id;
+  }
+
+  return null;
+}
+
 export async function fetchInvoiceItemsWithDelivered(
   invoiceId: string,
   excludeReceiptId?: string,
@@ -85,33 +140,36 @@ export async function fetchInvoiceItemsWithDelivered(
     .select("id, product_id, product_name, serial_number, color, quantity")
     .eq("invoice_id", invoiceId);
 
-  const itemIds = (items ?? []).map((i: any) => i.id);
-  if (itemIds.length === 0) return [];
+  const invoiceItems = (items ?? []) as InvoiceItemWithDelivered[];
+  if (invoiceItems.length === 0) return [];
 
-  const { data: dris } = await supabase
-    .from("delivery_receipt_items" as any)
-    .select("invoice_item_id, quantity, receipt_id")
-    .in("invoice_item_id", itemIds);
+  const { data: siblingReceipts } = await supabase
+    .from("delivery_receipts" as any)
+    .select("id, status")
+    .eq("invoice_id", invoiceId);
 
-  const receiptIds = Array.from(new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter(Boolean)));
+  const receiptIds = ((siblingReceipts ?? []) as any[]).map((r) => r.id).filter(Boolean);
+  const { data: dris } = receiptIds.length > 0
+    ? await supabase
+      .from("delivery_receipt_items" as any)
+      .select("invoice_item_id, product_name, serial_number, color, quantity, receipt_id")
+      .in("receipt_id", receiptIds)
+    : { data: [] } as { data: any[] };
+
   const receiptStatus = new Map<string, string>();
-  if (receiptIds.length > 0) {
-    const { data: recs } = await supabase
-      .from("delivery_receipts" as any)
-      .select("id, status")
-      .in("id", receiptIds);
-    for (const rec of (recs ?? []) as any[]) receiptStatus.set(rec.id, rec.status);
-  }
+  for (const rec of (siblingReceipts ?? []) as any[]) receiptStatus.set(rec.id, rec.status);
   const activeStatuses = new Set(["draft", "out_for_delivery", "signed", "paid"]);
 
   const totals = new Map<string, number>();
   for (const r of (dris ?? []) as any[]) {
     if (excludeReceiptId && r.receipt_id === excludeReceiptId) continue;
     if (!activeStatuses.has(receiptStatus.get(r.receipt_id) ?? "")) continue;
-    totals.set(r.invoice_item_id, (totals.get(r.invoice_item_id) || 0) + (r.quantity || 0));
+    const invoiceItemId = resolveReceiptInvoiceItemId(r, invoiceItems);
+    if (!invoiceItemId) continue;
+    totals.set(invoiceItemId, (totals.get(invoiceItemId) || 0) + (r.quantity || 0));
   }
 
-  return (items ?? []).map((i: any) => {
+  return invoiceItems.map((i: any) => {
     const delivered = totals.get(i.id) || 0;
     return {
       id: i.id,
@@ -188,27 +246,31 @@ export async function fetchInvoiceItemsForPrint(
   const itemIds = (items ?? []).map((i: any) => i.id);
   if (itemIds.length === 0) return [];
 
-  // Pull all sibling delivery_receipt_items across ALL receipts of this invoice
-  const { data: dris } = await supabase
-    .from("delivery_receipt_items" as any)
-    .select("invoice_item_id, quantity, note, receipt_id")
-    .in("invoice_item_id", itemIds);
+  const invoiceItems = (items ?? []) as InvoiceLineForMatching[];
+
+  const { data: siblingReceipts } = await supabase
+    .from("delivery_receipts" as any)
+    .select("id, created_at, status")
+    .eq("invoice_id", invoiceId);
+
+  const siblingReceiptIds = ((siblingReceipts ?? []) as any[]).map((receipt) => receipt.id).filter(Boolean);
+
+  // Pull all sibling delivery_receipt_items across ALL receipts of this invoice.
+  // Older receipts may have invoice_item_id = null, so we match them back to
+  // invoice lines by product/serial/color instead of letting the print view show 0.
+  const { data: dris } = siblingReceiptIds.length > 0
+    ? await supabase
+      .from("delivery_receipt_items" as any)
+      .select("invoice_item_id, product_name, serial_number, color, quantity, note, receipt_id")
+      .in("receipt_id", siblingReceiptIds)
+    : { data: [] } as { data: any[] };
 
   // Fetch created_at for all sibling receipts to classify prior/later
-  const otherReceiptIds = Array.from(
-    new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter((rid) => rid !== receiptId)),
-  );
   const receiptCreatedAtMap = new Map<string, string>();
   const receiptStatusMap = new Map<string, string>();
-  if (otherReceiptIds.length > 0) {
-    const { data: recs } = await supabase
-      .from("delivery_receipts" as any)
-      .select("id, created_at, status")
-      .in("id", otherReceiptIds);
-    for (const rec of (recs ?? []) as any[]) {
-      receiptCreatedAtMap.set(rec.id, rec.created_at);
-      receiptStatusMap.set(rec.id, rec.status);
-    }
+  for (const rec of (siblingReceipts ?? []) as any[]) {
+    receiptCreatedAtMap.set(rec.id, rec.created_at);
+    receiptStatusMap.set(rec.id, rec.status);
   }
   const activeStatuses = new Set(["draft", "out_for_delivery", "signed", "paid"]);
 
@@ -222,26 +284,28 @@ export async function fetchInvoiceItemsForPrint(
 
   for (const r of (dris ?? []) as any[]) {
     const qty = r.quantity || 0;
+    const invoiceItemId = resolveReceiptInvoiceItemId(r, invoiceItems);
+    if (!invoiceItemId) continue;
     // Determine bucket: this / prior / later
     let bucketParts: Map<string, PartAggregate>;
     if (r.receipt_id === receiptId) {
-      const cur = thisMap.get(r.invoice_item_id) ?? { qty: 0, note: null };
+      const cur = thisMap.get(invoiceItemId) ?? { qty: 0, note: null };
       cur.qty += qty;
       if (!cur.note && r.note) cur.note = r.note;
-      thisMap.set(r.invoice_item_id, cur);
+      thisMap.set(invoiceItemId, cur);
       bucketParts = partsThisMap;
     } else {
       if (!activeStatuses.has(receiptStatusMap.get(r.receipt_id) ?? "")) continue;
       const otherCreatedAt = receiptCreatedAtMap.get(r.receipt_id);
       const isPrior = otherCreatedAt ? otherCreatedAt < receiptCreatedAt : false;
       const m = isPrior ? priorMap : laterMap;
-      m.set(r.invoice_item_id, (m.get(r.invoice_item_id) || 0) + qty);
+      m.set(invoiceItemId, (m.get(invoiceItemId) || 0) + qty);
       bucketParts = isPrior ? partsPriorMap : partsLaterMap;
     }
     const { part } = parsePartFromNote(r.note);
-    const agg = bucketParts.get(r.invoice_item_id) ?? zeroParts();
+    const agg = bucketParts.get(invoiceItemId) ?? zeroParts();
     agg[part] += qty;
-    bucketParts.set(r.invoice_item_id, agg);
+    bucketParts.set(invoiceItemId, agg);
   }
 
   return (items ?? []).map((it: any) => {
