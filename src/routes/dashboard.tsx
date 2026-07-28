@@ -31,7 +31,7 @@ import { DASHBOARD_CARDS } from "@/lib/nav-catalog";
 import { toast } from "sonner";
 import { computeDeliverySummaries } from "@/lib/invoice-delivery-closure";
 
-const DASH_CACHE_KEY = "dashboard:stats:v3";
+const DASH_CACHE_KEY = "dashboard:stats:v4";
 const DASH_CACHE_TTL_MS = 20_000;
 const LEADERSHIP_TASKS_KEY = "section_leadership_tasks";
 const CLOSEABLE_INVOICES_KEY = "section_closeable_invoices";
@@ -160,8 +160,8 @@ function Dashboard() {
     // - total   = closed + open (matches archive + open invoices lists)
     const openRows = (openInvs ?? []) as any[];
     const closed = archivedCount ?? 0;
-    const open = openRows.length;
     let partial = 0;
+    let visibleOpenRows = openRows;
     const openIds = openRows.map((i) => i.id).filter(Boolean);
     if (openIds.length > 0) {
       const [{ data: countReceiptRows }, { data: countItemRows }] = await Promise.all([
@@ -194,11 +194,24 @@ function Dashboard() {
         ((countReceiptRows as any[]) ?? []) as any[],
         countReceiptItemRows,
       );
-      openRows.forEach((i: any) => {
+      // Match the Invoices page exactly: rows that are not archived yet but are
+      // fully paid + fully delivered by live receipt evidence are hidden from
+      // the open list, so Dashboard must not count them as open or total.
+      visibleOpenRows = openRows.filter((i: any) => {
+        const total = Number(i.total ?? 0);
+        const paid = Number(i.paid_amount ?? 0);
+        const fullyPaid = total > 0 && paid >= total - 0.001;
+        const s = i.id ? summaries[i.id] : undefined;
+        const fullyDeliveredByReceipts = Boolean(s && s.total > 0 && s.completed >= s.total);
+        const serverClosed = i.delivery_computed_state === "complete" || i.delivery_status === "delivered";
+        return !(fullyPaid && (serverClosed || fullyDeliveredByReceipts));
+      });
+      visibleOpenRows.forEach((i: any) => {
         const s = i.id ? summaries[i.id] : undefined;
         if (s && s.total > 0 && s.completed > 0 && s.completed < s.total) partial++;
       });
     }
+    const open = visibleOpenRows.length;
 
     const nextStats = {
       sales,
