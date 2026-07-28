@@ -4863,6 +4863,14 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_delivery_match_serial: {
+        Args: { _value: string }
+        Returns: string
+      }
+      normalize_delivery_match_text: {
+        Args: { _value: string }
+        Returns: string
+      }
       notify_company: {
         Args: {
           p_body: string
