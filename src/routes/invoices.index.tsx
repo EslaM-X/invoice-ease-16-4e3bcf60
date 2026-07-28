@@ -18,6 +18,7 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
+import { computeDeliverySummaries } from "@/lib/invoice-delivery-closure";
 import type { SalesEvent } from "@/lib/data";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { addBusinessDays } from "@/lib/delivery-terms";
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/invoices/")({
       { name: "description", content: "Browse, search, and manage every issued invoice with statuses, payments, deliveries, and audit history in Steinheim Suite." },
       { property: "og:title", content: "Invoices — Steinheim Suite" },
       { property: "og:description", content: "Browse, search, and manage every issued invoice with statuses, payments, and audit history." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -89,7 +92,7 @@ function InvoicesList() {
           .range(0, 19999),
         supabase
           .from("invoice_items")
-          .select("invoice_id, quantity, serial_number")
+          .select("id, invoice_id, product_name, quantity, serial_number")
           .in("invoice_id", ids)
           .range(0, 49999), // serial search needs every line item
       ]);
@@ -99,11 +102,8 @@ function InvoicesList() {
       (drs ?? []).forEach((r: any) => {
         if (!r.invoice_id) return;
         counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
-        // Exclude drafts from delivered-quantity calculation
-        if (r.status !== "draft") {
-          drToInvoice[r.id] = r.invoice_id;
-          validReceiptIds.push(r.id);
-        }
+        if (r.status !== "draft") drToInvoice[r.id] = r.invoice_id;
+        if (["out_for_delivery", "signed", "paid"].includes(r.status)) validReceiptIds.push(r.id);
       });
       setDrCounts(counts);
 
@@ -125,12 +125,11 @@ function InvoicesList() {
       if (validReceiptIds.length) {
         const { data: drItems } = await supabase
           .from("delivery_receipt_items" as any)
-          .select("receipt_id, quantity")
+          .select("receipt_id, invoice_item_id, quantity, note")
           .in("receipt_id", validReceiptIds);
-        (drItems ?? []).forEach((di: any) => {
-          const invId = drToInvoice[di.receipt_id];
-          if (!invId) return;
-          deliveredByInv[invId] = (deliveredByInv[invId] ?? 0) + Number(di.quantity ?? 0);
+        const summaries = computeDeliverySummaries(invItems ?? [], drs ?? [], drItems ?? []);
+        Object.entries(summaries).forEach(([invoiceId, summary]) => {
+          deliveredByInv[invoiceId] = summary.completed;
         });
       }
 
@@ -158,7 +157,9 @@ function InvoicesList() {
     const total = Number(i.total ?? 0);
     const paid = Number(i.paid_amount ?? 0);
     const fullyPaid = total > 0 && paid >= total - 0.001;
-    return fullyPaid && i.delivery_status === "delivered";
+    const progress = delivProgress[i.id];
+    const fullyDeliveredByReceipts = Boolean(progress && progress.total > 0 && progress.delivered >= progress.total);
+    return fullyPaid && (i.delivery_status === "delivered" || fullyDeliveredByReceipts);
   };
   const closedCount = list.filter(isClosed).length;
   const draftCount = list.filter((i) => i.status === "draft").length;
