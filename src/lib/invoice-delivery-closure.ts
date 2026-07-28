@@ -79,10 +79,14 @@ export function computeDeliverySummaries(
 
   // Aggregate signed / active quantities per invoice for the fallback rule below.
   const totalsByInvoice = new Map<string, { completed: number; active: number }>();
+  const hasSplitPartMarkersByInvoice = new Map<string, boolean>();
   receiptItems.forEach((receiptItem) => {
     if (!receiptItem.receipt_id) return;
     const receipt = receiptById.get(receiptItem.receipt_id);
     if (!receipt?.invoice_id) return;
+    if (/\[PART:(mixer|trim)\]/i.test(receiptItem.note ?? "")) {
+      hasSplitPartMarkersByInvoice.set(receipt.invoice_id, true);
+    }
     const qty = toNumber(receiptItem.quantity);
     if (qty <= 0) return;
     const bucket = totalsByInvoice.get(receipt.invoice_id) ?? { completed: 0, active: 0 };
@@ -139,7 +143,7 @@ export function computeDeliverySummaries(
     // Handles SKU substitutions where staff shipped a replacement item with a
     // different serial/color that would otherwise fail per-line matching.
     const totals = totalsByInvoice.get(invoiceId);
-    const aggregateComplete = total > 0 && !!totals && totals.completed >= total;
+    const aggregateComplete = total > 0 && !hasSplitPartMarkersByInvoice.get(invoiceId) && !!totals && totals.completed >= total;
     if (aggregateComplete && !complete) {
       complete = true;
       completed = total;
