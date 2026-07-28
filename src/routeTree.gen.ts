@@ -9,372 +9,97 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WhatsappRouteImport } from './routes/whatsapp'
-import { Route as TrustRouteImport } from './routes/trust'
-import { Route as TeamChatRouteImport } from './routes/team-chat'
-import { Route as TeamCallStatusRouteImport } from './routes/team-call-status'
-import { Route as TasksRouteImport } from './routes/tasks'
-import { Route as StockShortagesRouteImport } from './routes/stock-shortages'
-import { Route as StockIntakeRouteImport } from './routes/stock-intake'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
-import { Route as SalesTodayRouteImport } from './routes/sales-today'
-import { Route as SalesRangeRouteImport } from './routes/sales-range'
-import { Route as SalesAuditRouteImport } from './routes/sales-audit'
-import { Route as SalesAnalysisRouteImport } from './routes/sales-analysis'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as QrPriceListRouteImport } from './routes/qr-price-list'
-import { Route as PurchaseOrdersRouteImport } from './routes/purchase-orders'
-import { Route as ProfitsRouteImport } from './routes/profits'
-import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
-import { Route as ProfitCostHistoryRouteImport } from './routes/profit-cost-history'
-import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator'
-import { Route as ProductsRouteImport } from './routes/products'
-import { Route as PoTrackingRouteImport } from './routes/po-tracking'
-import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
-import { Route as McpDocsRouteImport } from './routes/mcp-docs'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
-import { Route as InventoryTraceabilityRouteImport } from './routes/inventory-traceability'
-import { Route as InventoryReconcileRouteImport } from './routes/inventory-reconcile'
-import { Route as InventoryConsistencyRouteImport } from './routes/inventory-consistency'
-import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
-import { Route as InventoryRouteImport } from './routes/inventory'
-import { Route as InTransitRouteImport } from './routes/in-transit'
-import { Route as FulfillmentTestsRouteImport } from './routes/fulfillment-tests'
-import { Route as FulfillmentDecisionsRouteImport } from './routes/fulfillment-decisions'
-import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit'
-import { Route as FulfillmentRouteImport } from './routes/fulfillment'
-import { Route as FinanceAuditRouteImport } from './routes/finance-audit'
-import { Route as EngineersAnalysisRouteImport } from './routes/engineers-analysis'
-import { Route as DownloadRouteImport } from './routes/download'
-import { Route as DistributorsRouteImport } from './routes/distributors'
-import { Route as DistributorRouteImport } from './routes/distributor'
-import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
-import { Route as DeliveryAuditRouteImport } from './routes/delivery-audit'
-import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CustomersRouteImport } from './routes/customers'
-import { Route as CallHistoryRouteImport } from './routes/call-history'
-import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
-import { Route as CallCenterRouteImport } from './routes/call-center'
-import { Route as BulkReceiveRouteImport } from './routes/bulk-receive'
-import { Route as BackDeductionReportRouteImport } from './routes/back-deduction-report'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuditLogRouteImport } from './routes/audit-log'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
-import { Route as DeliveryReceiptsIndexRouteImport } from './routes/delivery-receipts.index'
-import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
-import { Route as InvoicesDraftsRouteImport } from './routes/invoices.drafts'
-import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
-import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
-import { Route as DeliveryReceiptsArchiveRouteImport } from './routes/delivery-receipts.archive'
-import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
-import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
-import { Route as AdminLeadershipViewersRouteImport } from './routes/admin_.leadership-viewers'
-import { Route as AdminAccessStudioRouteImport } from './routes/admin_.access-studio'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuditLogRouteImport } from './routes/audit-log'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BackDeductionReportRouteImport } from './routes/back-deduction-report'
+import { Route as BulkReceiveRouteImport } from './routes/bulk-receive'
+import { Route as CallCenterRouteImport } from './routes/call-center'
+import { Route as CallCenterReportsRouteImport } from './routes/call-center-reports'
+import { Route as CallHistoryRouteImport } from './routes/call-history'
+import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DefectiveItemsRouteImport } from './routes/defective-items'
+import { Route as DeliveryAuditRouteImport } from './routes/delivery-audit'
+import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
+import { Route as DistributorRouteImport } from './routes/distributor'
+import { Route as DistributorsRouteImport } from './routes/distributors'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as EngineersAnalysisRouteImport } from './routes/engineers-analysis'
+import { Route as FinanceAuditRouteImport } from './routes/finance-audit'
+import { Route as FulfillmentRouteImport } from './routes/fulfillment'
+import { Route as FulfillmentAuditRouteImport } from './routes/fulfillment-audit'
+import { Route as FulfillmentDecisionsRouteImport } from './routes/fulfillment-decisions'
+import { Route as FulfillmentTestsRouteImport } from './routes/fulfillment-tests'
+import { Route as InTransitRouteImport } from './routes/in-transit'
+import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
+import { Route as InventoryConsistencyRouteImport } from './routes/inventory-consistency'
+import { Route as InventoryReconcileRouteImport } from './routes/inventory-reconcile'
+import { Route as InventoryTraceabilityRouteImport } from './routes/inventory-traceability'
+import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as McpDocsRouteImport } from './routes/mcp-docs'
+import { Route as PendingOperationsRouteImport } from './routes/pending-operations'
+import { Route as PoTrackingRouteImport } from './routes/po-tracking'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as ProfitCalculatorRouteImport } from './routes/profit-calculator'
+import { Route as ProfitCostHistoryRouteImport } from './routes/profit-cost-history'
+import { Route as ProfitScenariosRouteImport } from './routes/profit-scenarios'
+import { Route as ProfitsRouteImport } from './routes/profits'
+import { Route as PurchaseOrdersRouteImport } from './routes/purchase-orders'
+import { Route as QrPriceListRouteImport } from './routes/qr-price-list'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SalesAnalysisRouteImport } from './routes/sales-analysis'
+import { Route as SalesAuditRouteImport } from './routes/sales-audit'
+import { Route as SalesRangeRouteImport } from './routes/sales-range'
+import { Route as SalesTodayRouteImport } from './routes/sales-today'
+import { Route as ScanAndSellRouteImport } from './routes/scan-and-sell'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ShippingOrderRouteImport } from './routes/shipping-order'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as StockIntakeRouteImport } from './routes/stock-intake'
+import { Route as StockShortagesRouteImport } from './routes/stock-shortages'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TeamCallStatusRouteImport } from './routes/team-call-status'
+import { Route as TeamChatRouteImport } from './routes/team-chat'
+import { Route as TrustRouteImport } from './routes/trust'
+import { Route as WhatsappRouteImport } from './routes/whatsapp'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
-import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
-import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AdminAccessStudioRouteImport } from './routes/admin_.access-studio'
+import { Route as AdminLeadershipViewersRouteImport } from './routes/admin_.leadership-viewers'
+import { Route as ApiXChatRouteImport } from './routes/api/x-chat'
+import { Route as DeliveryReceiptsIndexRouteImport } from './routes/delivery-receipts.index'
+import { Route as DeliveryReceiptsIdRouteImport } from './routes/delivery-receipts.$id'
+import { Route as DeliveryReceiptsArchiveRouteImport } from './routes/delivery-receipts.archive'
+import { Route as DeliveryReceiptsNewRouteImport } from './routes/delivery-receipts.new'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as InvoicesIndexRouteImport } from './routes/invoices.index'
+import { Route as InvoicesIdRouteImport } from './routes/invoices.$id'
+import { Route as InvoicesArchiveRouteImport } from './routes/invoices.archive'
+import { Route as InvoicesDraftsRouteImport } from './routes/invoices.drafts'
+import { Route as InvoicesNewRouteImport } from './routes/invoices.new'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp.webhook'
-import { Route as ApiPublicLivekitWebhookRouteImport } from './routes/api/public/livekit/webhook'
-import { Route as ApiPublicHooksWarrantySyncWorkerRouteImport } from './routes/api/public/hooks/warranty-sync-worker'
-import { Route as ApiPublicHooksTaskOverdueRemindersRouteImport } from './routes/api/public/hooks/task-overdue-reminders'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
+import { Route as DeliveryReceiptsIdEditRouteImport } from './routes/delivery-receipts_.$id.edit'
+import { Route as InvoicesIdEditRouteImport } from './routes/invoices_.$id.edit'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicHooksDailyBackupRouteImport } from './routes/api/public/hooks/daily-backup'
+import { Route as ApiPublicHooksTaskOverdueRemindersRouteImport } from './routes/api/public/hooks/task-overdue-reminders'
+import { Route as ApiPublicHooksWarrantySyncWorkerRouteImport } from './routes/api/public/hooks/warranty-sync-worker'
+import { Route as ApiPublicLivekitWebhookRouteImport } from './routes/api/public/livekit/webhook'
+import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp.webhook'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 
-const WhatsappRoute = WhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TrustRoute = TrustRouteImport.update({
-  id: '/trust',
-  path: '/trust',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TeamChatRoute = TeamChatRouteImport.update({
-  id: '/team-chat',
-  path: '/team-chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TeamCallStatusRoute = TeamCallStatusRouteImport.update({
-  id: '/team-call-status',
-  path: '/team-call-status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StockShortagesRoute = StockShortagesRouteImport.update({
-  id: '/stock-shortages',
-  path: '/stock-shortages',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StockIntakeRoute = StockIntakeRouteImport.update({
-  id: '/stock-intake',
-  path: '/stock-intake',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShippingOrderRoute = ShippingOrderRouteImport.update({
-  id: '/shipping-order',
-  path: '/shipping-order',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScanAndSellRoute = ScanAndSellRouteImport.update({
-  id: '/scan-and-sell',
-  path: '/scan-and-sell',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesTodayRoute = SalesTodayRouteImport.update({
-  id: '/sales-today',
-  path: '/sales-today',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesRangeRoute = SalesRangeRouteImport.update({
-  id: '/sales-range',
-  path: '/sales-range',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesAuditRoute = SalesAuditRouteImport.update({
-  id: '/sales-audit',
-  path: '/sales-audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesAnalysisRoute = SalesAnalysisRouteImport.update({
-  id: '/sales-analysis',
-  path: '/sales-analysis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QrPriceListRoute = QrPriceListRouteImport.update({
-  id: '/qr-price-list',
-  path: '/qr-price-list',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PurchaseOrdersRoute = PurchaseOrdersRouteImport.update({
-  id: '/purchase-orders',
-  path: '/purchase-orders',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfitsRoute = ProfitsRouteImport.update({
-  id: '/profits',
-  path: '/profits',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfitScenariosRoute = ProfitScenariosRouteImport.update({
-  id: '/profit-scenarios',
-  path: '/profit-scenarios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfitCostHistoryRoute = ProfitCostHistoryRouteImport.update({
-  id: '/profit-cost-history',
-  path: '/profit-cost-history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfitCalculatorRoute = ProfitCalculatorRouteImport.update({
-  id: '/profit-calculator',
-  path: '/profit-calculator',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductsRoute = ProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PoTrackingRoute = PoTrackingRouteImport.update({
-  id: '/po-tracking',
-  path: '/po-tracking',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PendingOperationsRoute = PendingOperationsRouteImport.update({
-  id: '/pending-operations',
-  path: '/pending-operations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpDocsRoute = McpDocsRouteImport.update({
-  id: '/mcp-docs',
-  path: '/mcp-docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
-  id: '/invoices-system-notes',
-  path: '/invoices-system-notes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryTraceabilityRoute = InventoryTraceabilityRouteImport.update({
-  id: '/inventory-traceability',
-  path: '/inventory-traceability',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryReconcileRoute = InventoryReconcileRouteImport.update({
-  id: '/inventory-reconcile',
-  path: '/inventory-reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryConsistencyRoute = InventoryConsistencyRouteImport.update({
-  id: '/inventory-consistency',
-  path: '/inventory-consistency',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryAuditRoute = InventoryAuditRouteImport.update({
-  id: '/inventory-audit',
-  path: '/inventory-audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryRoute = InventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InTransitRoute = InTransitRouteImport.update({
-  id: '/in-transit',
-  path: '/in-transit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FulfillmentTestsRoute = FulfillmentTestsRouteImport.update({
-  id: '/fulfillment-tests',
-  path: '/fulfillment-tests',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FulfillmentDecisionsRoute = FulfillmentDecisionsRouteImport.update({
-  id: '/fulfillment-decisions',
-  path: '/fulfillment-decisions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FulfillmentAuditRoute = FulfillmentAuditRouteImport.update({
-  id: '/fulfillment-audit',
-  path: '/fulfillment-audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FulfillmentRoute = FulfillmentRouteImport.update({
-  id: '/fulfillment',
-  path: '/fulfillment',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FinanceAuditRoute = FinanceAuditRouteImport.update({
-  id: '/finance-audit',
-  path: '/finance-audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EngineersAnalysisRoute = EngineersAnalysisRouteImport.update({
-  id: '/engineers-analysis',
-  path: '/engineers-analysis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadRoute = DownloadRouteImport.update({
-  id: '/download',
-  path: '/download',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DistributorsRoute = DistributorsRouteImport.update({
-  id: '/distributors',
-  path: '/distributors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DistributorRoute = DistributorRouteImport.update({
-  id: '/distributor',
-  path: '/distributor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DiagnosticsRoute = DiagnosticsRouteImport.update({
-  id: '/diagnostics',
-  path: '/diagnostics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeliveryAuditRoute = DeliveryAuditRouteImport.update({
-  id: '/delivery-audit',
-  path: '/delivery-audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DefectiveItemsRoute = DefectiveItemsRouteImport.update({
-  id: '/defective-items',
-  path: '/defective-items',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersRoute = CustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CallHistoryRoute = CallHistoryRouteImport.update({
-  id: '/call-history',
-  path: '/call-history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CallCenterReportsRoute = CallCenterReportsRouteImport.update({
-  id: '/call-center-reports',
-  path: '/call-center-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CallCenterRoute = CallCenterRouteImport.update({
-  id: '/call-center',
-  path: '/call-center',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BulkReceiveRoute = BulkReceiveRouteImport.update({
-  id: '/bulk-receive',
-  path: '/bulk-receive',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BackDeductionReportRoute = BackDeductionReportRouteImport.update({
-  id: '/back-deduction-report',
-  path: '/back-deduction-report',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditLogRoute = AuditLogRouteImport.update({
-  id: '/audit-log',
-  path: '/audit-log',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -382,64 +107,301 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuditLogRoute = AuditLogRouteImport.update({
+  id: '/audit-log',
+  path: '/audit-log',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesIndexRoute = InvoicesIndexRouteImport.update({
-  id: '/invoices/',
-  path: '/invoices/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeliveryReceiptsIndexRoute = DeliveryReceiptsIndexRouteImport.update({
-  id: '/delivery-receipts/',
-  path: '/delivery-receipts/',
+const BackDeductionReportRoute = BackDeductionReportRouteImport.update({
+  id: '/back-deduction-report',
+  path: '/back-deduction-report',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesNewRoute = InvoicesNewRouteImport.update({
-  id: '/invoices/new',
-  path: '/invoices/new',
+const BulkReceiveRoute = BulkReceiveRouteImport.update({
+  id: '/bulk-receive',
+  path: '/bulk-receive',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesDraftsRoute = InvoicesDraftsRouteImport.update({
-  id: '/invoices/drafts',
-  path: '/invoices/drafts',
+const CallCenterRoute = CallCenterRouteImport.update({
+  id: '/call-center',
+  path: '/call-center',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
-  id: '/invoices/archive',
-  path: '/invoices/archive',
+const CallCenterReportsRoute = CallCenterReportsRouteImport.update({
+  id: '/call-center-reports',
+  path: '/call-center-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesIdRoute = InvoicesIdRouteImport.update({
-  id: '/invoices/$id',
-  path: '/invoices/$id',
+const CallHistoryRoute = CallHistoryRouteImport.update({
+  id: '/call-history',
+  path: '/call-history',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeliveryReceiptsNewRoute = DeliveryReceiptsNewRouteImport.update({
-  id: '/delivery-receipts/new',
-  path: '/delivery-receipts/new',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeliveryReceiptsArchiveRoute = DeliveryReceiptsArchiveRouteImport.update({
-  id: '/delivery-receipts/archive',
-  path: '/delivery-receipts/archive',
+const DefectiveItemsRoute = DefectiveItemsRouteImport.update({
+  id: '/defective-items',
+  path: '/defective-items',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeliveryReceiptsIdRoute = DeliveryReceiptsIdRouteImport.update({
-  id: '/delivery-receipts/$id',
-  path: '/delivery-receipts/$id',
+const DeliveryAuditRoute = DeliveryAuditRouteImport.update({
+  id: '/delivery-audit',
+  path: '/delivery-audit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiXChatRoute = ApiXChatRouteImport.update({
-  id: '/api/x-chat',
-  path: '/api/x-chat',
+const DiagnosticsRoute = DiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DistributorRoute = DistributorRouteImport.update({
+  id: '/distributor',
+  path: '/distributor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DistributorsRoute = DistributorsRouteImport.update({
+  id: '/distributors',
+  path: '/distributors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EngineersAnalysisRoute = EngineersAnalysisRouteImport.update({
+  id: '/engineers-analysis',
+  path: '/engineers-analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceAuditRoute = FinanceAuditRouteImport.update({
+  id: '/finance-audit',
+  path: '/finance-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FulfillmentRoute = FulfillmentRouteImport.update({
+  id: '/fulfillment',
+  path: '/fulfillment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FulfillmentAuditRoute = FulfillmentAuditRouteImport.update({
+  id: '/fulfillment-audit',
+  path: '/fulfillment-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FulfillmentDecisionsRoute = FulfillmentDecisionsRouteImport.update({
+  id: '/fulfillment-decisions',
+  path: '/fulfillment-decisions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FulfillmentTestsRoute = FulfillmentTestsRouteImport.update({
+  id: '/fulfillment-tests',
+  path: '/fulfillment-tests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InTransitRoute = InTransitRouteImport.update({
+  id: '/in-transit',
+  path: '/in-transit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryAuditRoute = InventoryAuditRouteImport.update({
+  id: '/inventory-audit',
+  path: '/inventory-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryConsistencyRoute = InventoryConsistencyRouteImport.update({
+  id: '/inventory-consistency',
+  path: '/inventory-consistency',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryReconcileRoute = InventoryReconcileRouteImport.update({
+  id: '/inventory-reconcile',
+  path: '/inventory-reconcile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryTraceabilityRoute = InventoryTraceabilityRouteImport.update({
+  id: '/inventory-traceability',
+  path: '/inventory-traceability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
+  id: '/invoices-system-notes',
+  path: '/invoices-system-notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpDocsRoute = McpDocsRouteImport.update({
+  id: '/mcp-docs',
+  path: '/mcp-docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendingOperationsRoute = PendingOperationsRouteImport.update({
+  id: '/pending-operations',
+  path: '/pending-operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoTrackingRoute = PoTrackingRouteImport.update({
+  id: '/po-tracking',
+  path: '/po-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitCalculatorRoute = ProfitCalculatorRouteImport.update({
+  id: '/profit-calculator',
+  path: '/profit-calculator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitCostHistoryRoute = ProfitCostHistoryRouteImport.update({
+  id: '/profit-cost-history',
+  path: '/profit-cost-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitScenariosRoute = ProfitScenariosRouteImport.update({
+  id: '/profit-scenarios',
+  path: '/profit-scenarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfitsRoute = ProfitsRouteImport.update({
+  id: '/profits',
+  path: '/profits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchaseOrdersRoute = PurchaseOrdersRouteImport.update({
+  id: '/purchase-orders',
+  path: '/purchase-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrPriceListRoute = QrPriceListRouteImport.update({
+  id: '/qr-price-list',
+  path: '/qr-price-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesAnalysisRoute = SalesAnalysisRouteImport.update({
+  id: '/sales-analysis',
+  path: '/sales-analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesAuditRoute = SalesAuditRouteImport.update({
+  id: '/sales-audit',
+  path: '/sales-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesRangeRoute = SalesRangeRouteImport.update({
+  id: '/sales-range',
+  path: '/sales-range',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesTodayRoute = SalesTodayRouteImport.update({
+  id: '/sales-today',
+  path: '/sales-today',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanAndSellRoute = ScanAndSellRouteImport.update({
+  id: '/scan-and-sell',
+  path: '/scan-and-sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingOrderRoute = ShippingOrderRouteImport.update({
+  id: '/shipping-order',
+  path: '/shipping-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StockIntakeRoute = StockIntakeRouteImport.update({
+  id: '/stock-intake',
+  path: '/stock-intake',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StockShortagesRoute = StockShortagesRouteImport.update({
+  id: '/stock-shortages',
+  path: '/stock-shortages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamCallStatusRoute = TeamCallStatusRouteImport.update({
+  id: '/team-call-status',
+  path: '/team-call-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamChatRoute = TeamChatRouteImport.update({
+  id: '/team-chat',
+  path: '/team-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrustRoute = TrustRouteImport.update({
+  id: '/trust',
+  path: '/trust',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhatsappRoute = WhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminAccessStudioRoute = AdminAccessStudioRouteImport.update({
+  id: '/admin_/access-studio',
+  path: '/admin/access-studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLeadershipViewersRoute = AdminLeadershipViewersRouteImport.update({
@@ -447,41 +409,64 @@ const AdminLeadershipViewersRoute = AdminLeadershipViewersRouteImport.update({
   path: '/admin/leadership-viewers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminAccessStudioRoute = AdminAccessStudioRouteImport.update({
-  id: '/admin_/access-studio',
-  path: '/admin/access-studio',
+const ApiXChatRoute = ApiXChatRouteImport.update({
+  id: '/api/x-chat',
+  path: '/api/x-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
+const DeliveryReceiptsIndexRoute = DeliveryReceiptsIndexRouteImport.update({
+  id: '/delivery-receipts/',
+  path: '/delivery-receipts/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
-  id: '/invoices_/$id/edit',
-  path: '/invoices/$id/edit',
+const DeliveryReceiptsIdRoute = DeliveryReceiptsIdRouteImport.update({
+  id: '/delivery-receipts/$id',
+  path: '/delivery-receipts/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeliveryReceiptsIdEditRoute = DeliveryReceiptsIdEditRouteImport.update({
-  id: '/delivery-receipts_/$id/edit',
-  path: '/delivery-receipts/$id/edit',
+const DeliveryReceiptsArchiveRoute = DeliveryReceiptsArchiveRouteImport.update({
+  id: '/delivery-receipts/archive',
+  path: '/delivery-receipts/archive',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
-  id: '/api/public/push-dispatch',
-  path: '/api/public/push-dispatch',
+const DeliveryReceiptsNewRoute = DeliveryReceiptsNewRouteImport.update({
+  id: '/delivery-receipts/new',
+  path: '/delivery-receipts/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesIndexRoute = InvoicesIndexRouteImport.update({
+  id: '/invoices/',
+  path: '/invoices/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesIdRoute = InvoicesIdRouteImport.update({
+  id: '/invoices/$id',
+  path: '/invoices/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesArchiveRoute = InvoicesArchiveRouteImport.update({
+  id: '/invoices/archive',
+  path: '/invoices/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesDraftsRoute = InvoicesDraftsRouteImport.update({
+  id: '/invoices/drafts',
+  path: '/invoices/drafts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesNewRoute = InvoicesNewRouteImport.update({
+  id: '/invoices/new',
+  path: '/invoices/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
@@ -490,44 +475,30 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
+  id: '/api/public/push-dispatch',
+  path: '/api/public/push-dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappWebhookRoute =
-  ApiPublicWhatsappWebhookRouteImport.update({
-    id: '/api/public/whatsapp/webhook',
-    path: '/api/public/whatsapp/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicLivekitWebhookRoute = ApiPublicLivekitWebhookRouteImport.update({
-  id: '/api/public/livekit/webhook',
-  path: '/api/public/livekit/webhook',
+const DeliveryReceiptsIdEditRoute = DeliveryReceiptsIdEditRouteImport.update({
+  id: '/delivery-receipts_/$id/edit',
+  path: '/delivery-receipts/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksWarrantySyncWorkerRoute =
-  ApiPublicHooksWarrantySyncWorkerRouteImport.update({
-    id: '/api/public/hooks/warranty-sync-worker',
-    path: '/api/public/hooks/warranty-sync-worker',
+const InvoicesIdEditRoute = InvoicesIdEditRouteImport.update({
+  id: '/invoices_/$id/edit',
+  path: '/invoices/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHooksDailyBackupRoute =
+  ApiPublicHooksDailyBackupRouteImport.update({
+    id: '/api/public/hooks/daily-backup',
+    path: '/api/public/hooks/daily-backup',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksTaskOverdueRemindersRoute =
@@ -536,10 +507,39 @@ const ApiPublicHooksTaskOverdueRemindersRoute =
     path: '/api/public/hooks/task-overdue-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksDailyBackupRoute =
-  ApiPublicHooksDailyBackupRouteImport.update({
-    id: '/api/public/hooks/daily-backup',
-    path: '/api/public/hooks/daily-backup',
+const ApiPublicHooksWarrantySyncWorkerRoute =
+  ApiPublicHooksWarrantySyncWorkerRouteImport.update({
+    id: '/api/public/hooks/warranty-sync-worker',
+    path: '/api/public/hooks/warranty-sync-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLivekitWebhookRoute = ApiPublicLivekitWebhookRouteImport.update({
+  id: '/api/public/livekit/webhook',
+  path: '/api/public/livekit/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWhatsappWebhookRoute =
+  ApiPublicWhatsappWebhookRouteImport.update({
+    id: '/api/public/whatsapp/webhook',
+    path: '/api/public/whatsapp/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -1173,396 +1173,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/whatsapp': {
-      id: '/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/whatsapp'
-      preLoaderRoute: typeof WhatsappRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trust': {
-      id: '/trust'
-      path: '/trust'
-      fullPath: '/trust'
-      preLoaderRoute: typeof TrustRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/team-chat': {
-      id: '/team-chat'
-      path: '/team-chat'
-      fullPath: '/team-chat'
-      preLoaderRoute: typeof TeamChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/team-call-status': {
-      id: '/team-call-status'
-      path: '/team-call-status'
-      fullPath: '/team-call-status'
-      preLoaderRoute: typeof TeamCallStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stock-shortages': {
-      id: '/stock-shortages'
-      path: '/stock-shortages'
-      fullPath: '/stock-shortages'
-      preLoaderRoute: typeof StockShortagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stock-intake': {
-      id: '/stock-intake'
-      path: '/stock-intake'
-      fullPath: '/stock-intake'
-      preLoaderRoute: typeof StockIntakeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shipping-order': {
-      id: '/shipping-order'
-      path: '/shipping-order'
-      fullPath: '/shipping-order'
-      preLoaderRoute: typeof ShippingOrderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scan-and-sell': {
-      id: '/scan-and-sell'
-      path: '/scan-and-sell'
-      fullPath: '/scan-and-sell'
-      preLoaderRoute: typeof ScanAndSellRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales-today': {
-      id: '/sales-today'
-      path: '/sales-today'
-      fullPath: '/sales-today'
-      preLoaderRoute: typeof SalesTodayRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales-range': {
-      id: '/sales-range'
-      path: '/sales-range'
-      fullPath: '/sales-range'
-      preLoaderRoute: typeof SalesRangeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales-audit': {
-      id: '/sales-audit'
-      path: '/sales-audit'
-      fullPath: '/sales-audit'
-      preLoaderRoute: typeof SalesAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales-analysis': {
-      id: '/sales-analysis'
-      path: '/sales-analysis'
-      fullPath: '/sales-analysis'
-      preLoaderRoute: typeof SalesAnalysisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/qr-price-list': {
-      id: '/qr-price-list'
-      path: '/qr-price-list'
-      fullPath: '/qr-price-list'
-      preLoaderRoute: typeof QrPriceListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/purchase-orders': {
-      id: '/purchase-orders'
-      path: '/purchase-orders'
-      fullPath: '/purchase-orders'
-      preLoaderRoute: typeof PurchaseOrdersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profits': {
-      id: '/profits'
-      path: '/profits'
-      fullPath: '/profits'
-      preLoaderRoute: typeof ProfitsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profit-scenarios': {
-      id: '/profit-scenarios'
-      path: '/profit-scenarios'
-      fullPath: '/profit-scenarios'
-      preLoaderRoute: typeof ProfitScenariosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profit-cost-history': {
-      id: '/profit-cost-history'
-      path: '/profit-cost-history'
-      fullPath: '/profit-cost-history'
-      preLoaderRoute: typeof ProfitCostHistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profit-calculator': {
-      id: '/profit-calculator'
-      path: '/profit-calculator'
-      fullPath: '/profit-calculator'
-      preLoaderRoute: typeof ProfitCalculatorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/products': {
-      id: '/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof ProductsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/po-tracking': {
-      id: '/po-tracking'
-      path: '/po-tracking'
-      fullPath: '/po-tracking'
-      preLoaderRoute: typeof PoTrackingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pending-operations': {
-      id: '/pending-operations'
-      path: '/pending-operations'
-      fullPath: '/pending-operations'
-      preLoaderRoute: typeof PendingOperationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp-docs': {
-      id: '/mcp-docs'
-      path: '/mcp-docs'
-      fullPath: '/mcp-docs'
-      preLoaderRoute: typeof McpDocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invoices-system-notes': {
-      id: '/invoices-system-notes'
-      path: '/invoices-system-notes'
-      fullPath: '/invoices-system-notes'
-      preLoaderRoute: typeof InvoicesSystemNotesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory-traceability': {
-      id: '/inventory-traceability'
-      path: '/inventory-traceability'
-      fullPath: '/inventory-traceability'
-      preLoaderRoute: typeof InventoryTraceabilityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory-reconcile': {
-      id: '/inventory-reconcile'
-      path: '/inventory-reconcile'
-      fullPath: '/inventory-reconcile'
-      preLoaderRoute: typeof InventoryReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory-consistency': {
-      id: '/inventory-consistency'
-      path: '/inventory-consistency'
-      fullPath: '/inventory-consistency'
-      preLoaderRoute: typeof InventoryConsistencyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory-audit': {
-      id: '/inventory-audit'
-      path: '/inventory-audit'
-      fullPath: '/inventory-audit'
-      preLoaderRoute: typeof InventoryAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory': {
-      id: '/inventory'
-      path: '/inventory'
-      fullPath: '/inventory'
-      preLoaderRoute: typeof InventoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/in-transit': {
-      id: '/in-transit'
-      path: '/in-transit'
-      fullPath: '/in-transit'
-      preLoaderRoute: typeof InTransitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fulfillment-tests': {
-      id: '/fulfillment-tests'
-      path: '/fulfillment-tests'
-      fullPath: '/fulfillment-tests'
-      preLoaderRoute: typeof FulfillmentTestsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fulfillment-decisions': {
-      id: '/fulfillment-decisions'
-      path: '/fulfillment-decisions'
-      fullPath: '/fulfillment-decisions'
-      preLoaderRoute: typeof FulfillmentDecisionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fulfillment-audit': {
-      id: '/fulfillment-audit'
-      path: '/fulfillment-audit'
-      fullPath: '/fulfillment-audit'
-      preLoaderRoute: typeof FulfillmentAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fulfillment': {
-      id: '/fulfillment'
-      path: '/fulfillment'
-      fullPath: '/fulfillment'
-      preLoaderRoute: typeof FulfillmentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/finance-audit': {
-      id: '/finance-audit'
-      path: '/finance-audit'
-      fullPath: '/finance-audit'
-      preLoaderRoute: typeof FinanceAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/engineers-analysis': {
-      id: '/engineers-analysis'
-      path: '/engineers-analysis'
-      fullPath: '/engineers-analysis'
-      preLoaderRoute: typeof EngineersAnalysisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download': {
-      id: '/download'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/distributors': {
-      id: '/distributors'
-      path: '/distributors'
-      fullPath: '/distributors'
-      preLoaderRoute: typeof DistributorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/distributor': {
-      id: '/distributor'
-      path: '/distributor'
-      fullPath: '/distributor'
-      preLoaderRoute: typeof DistributorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/diagnostics': {
-      id: '/diagnostics'
-      path: '/diagnostics'
-      fullPath: '/diagnostics'
-      preLoaderRoute: typeof DiagnosticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/delivery-audit': {
-      id: '/delivery-audit'
-      path: '/delivery-audit'
-      fullPath: '/delivery-audit'
-      preLoaderRoute: typeof DeliveryAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/defective-items': {
-      id: '/defective-items'
-      path: '/defective-items'
-      fullPath: '/defective-items'
-      preLoaderRoute: typeof DefectiveItemsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers': {
-      id: '/customers'
-      path: '/customers'
-      fullPath: '/customers'
-      preLoaderRoute: typeof CustomersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/call-history': {
-      id: '/call-history'
-      path: '/call-history'
-      fullPath: '/call-history'
-      preLoaderRoute: typeof CallHistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/call-center-reports': {
-      id: '/call-center-reports'
-      path: '/call-center-reports'
-      fullPath: '/call-center-reports'
-      preLoaderRoute: typeof CallCenterReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/call-center': {
-      id: '/call-center'
-      path: '/call-center'
-      fullPath: '/call-center'
-      preLoaderRoute: typeof CallCenterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bulk-receive': {
-      id: '/bulk-receive'
-      path: '/bulk-receive'
-      fullPath: '/bulk-receive'
-      preLoaderRoute: typeof BulkReceiveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/back-deduction-report': {
-      id: '/back-deduction-report'
-      path: '/back-deduction-report'
-      fullPath: '/back-deduction-report'
-      preLoaderRoute: typeof BackDeductionReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/audit-log': {
-      id: '/audit-log'
-      path: '/audit-log'
-      fullPath: '/audit-log'
-      preLoaderRoute: typeof AuditLogRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -1572,109 +1187,396 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/audit-log': {
+      id: '/audit-log'
+      path: '/audit-log'
+      fullPath: '/audit-log'
+      preLoaderRoute: typeof AuditLogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/': {
-      id: '/invoices/'
-      path: '/invoices'
-      fullPath: '/invoices/'
-      preLoaderRoute: typeof InvoicesIndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/delivery-receipts/': {
-      id: '/delivery-receipts/'
-      path: '/delivery-receipts'
-      fullPath: '/delivery-receipts/'
-      preLoaderRoute: typeof DeliveryReceiptsIndexRouteImport
+    '/back-deduction-report': {
+      id: '/back-deduction-report'
+      path: '/back-deduction-report'
+      fullPath: '/back-deduction-report'
+      preLoaderRoute: typeof BackDeductionReportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/new': {
-      id: '/invoices/new'
-      path: '/invoices/new'
-      fullPath: '/invoices/new'
-      preLoaderRoute: typeof InvoicesNewRouteImport
+    '/bulk-receive': {
+      id: '/bulk-receive'
+      path: '/bulk-receive'
+      fullPath: '/bulk-receive'
+      preLoaderRoute: typeof BulkReceiveRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/drafts': {
-      id: '/invoices/drafts'
-      path: '/invoices/drafts'
-      fullPath: '/invoices/drafts'
-      preLoaderRoute: typeof InvoicesDraftsRouteImport
+    '/call-center': {
+      id: '/call-center'
+      path: '/call-center'
+      fullPath: '/call-center'
+      preLoaderRoute: typeof CallCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/archive': {
-      id: '/invoices/archive'
-      path: '/invoices/archive'
-      fullPath: '/invoices/archive'
-      preLoaderRoute: typeof InvoicesArchiveRouteImport
+    '/call-center-reports': {
+      id: '/call-center-reports'
+      path: '/call-center-reports'
+      fullPath: '/call-center-reports'
+      preLoaderRoute: typeof CallCenterReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/$id': {
-      id: '/invoices/$id'
-      path: '/invoices/$id'
-      fullPath: '/invoices/$id'
-      preLoaderRoute: typeof InvoicesIdRouteImport
+    '/call-history': {
+      id: '/call-history'
+      path: '/call-history'
+      fullPath: '/call-history'
+      preLoaderRoute: typeof CallHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/delivery-receipts/new': {
-      id: '/delivery-receipts/new'
-      path: '/delivery-receipts/new'
-      fullPath: '/delivery-receipts/new'
-      preLoaderRoute: typeof DeliveryReceiptsNewRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/delivery-receipts/archive': {
-      id: '/delivery-receipts/archive'
-      path: '/delivery-receipts/archive'
-      fullPath: '/delivery-receipts/archive'
-      preLoaderRoute: typeof DeliveryReceiptsArchiveRouteImport
+    '/defective-items': {
+      id: '/defective-items'
+      path: '/defective-items'
+      fullPath: '/defective-items'
+      preLoaderRoute: typeof DefectiveItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/delivery-receipts/$id': {
-      id: '/delivery-receipts/$id'
-      path: '/delivery-receipts/$id'
-      fullPath: '/delivery-receipts/$id'
-      preLoaderRoute: typeof DeliveryReceiptsIdRouteImport
+    '/delivery-audit': {
+      id: '/delivery-audit'
+      path: '/delivery-audit'
+      fullPath: '/delivery-audit'
+      preLoaderRoute: typeof DeliveryAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/x-chat': {
-      id: '/api/x-chat'
-      path: '/api/x-chat'
-      fullPath: '/api/x-chat'
-      preLoaderRoute: typeof ApiXChatRouteImport
+    '/diagnostics': {
+      id: '/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/diagnostics'
+      preLoaderRoute: typeof DiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/leadership-viewers': {
-      id: '/admin_/leadership-viewers'
-      path: '/admin/leadership-viewers'
-      fullPath: '/admin/leadership-viewers'
-      preLoaderRoute: typeof AdminLeadershipViewersRouteImport
+    '/distributor': {
+      id: '/distributor'
+      path: '/distributor'
+      fullPath: '/distributor'
+      preLoaderRoute: typeof DistributorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/access-studio': {
-      id: '/admin_/access-studio'
-      path: '/admin/access-studio'
-      fullPath: '/admin/access-studio'
-      preLoaderRoute: typeof AdminAccessStudioRouteImport
+    '/distributors': {
+      id: '/distributors'
+      path: '/distributors'
+      fullPath: '/distributors'
+      preLoaderRoute: typeof DistributorsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/engineers-analysis': {
+      id: '/engineers-analysis'
+      path: '/engineers-analysis'
+      fullPath: '/engineers-analysis'
+      preLoaderRoute: typeof EngineersAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/finance-audit': {
+      id: '/finance-audit'
+      path: '/finance-audit'
+      fullPath: '/finance-audit'
+      preLoaderRoute: typeof FinanceAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fulfillment': {
+      id: '/fulfillment'
+      path: '/fulfillment'
+      fullPath: '/fulfillment'
+      preLoaderRoute: typeof FulfillmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fulfillment-audit': {
+      id: '/fulfillment-audit'
+      path: '/fulfillment-audit'
+      fullPath: '/fulfillment-audit'
+      preLoaderRoute: typeof FulfillmentAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fulfillment-decisions': {
+      id: '/fulfillment-decisions'
+      path: '/fulfillment-decisions'
+      fullPath: '/fulfillment-decisions'
+      preLoaderRoute: typeof FulfillmentDecisionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fulfillment-tests': {
+      id: '/fulfillment-tests'
+      path: '/fulfillment-tests'
+      fullPath: '/fulfillment-tests'
+      preLoaderRoute: typeof FulfillmentTestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/in-transit': {
+      id: '/in-transit'
+      path: '/in-transit'
+      fullPath: '/in-transit'
+      preLoaderRoute: typeof InTransitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-audit': {
+      id: '/inventory-audit'
+      path: '/inventory-audit'
+      fullPath: '/inventory-audit'
+      preLoaderRoute: typeof InventoryAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-consistency': {
+      id: '/inventory-consistency'
+      path: '/inventory-consistency'
+      fullPath: '/inventory-consistency'
+      preLoaderRoute: typeof InventoryConsistencyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-reconcile': {
+      id: '/inventory-reconcile'
+      path: '/inventory-reconcile'
+      fullPath: '/inventory-reconcile'
+      preLoaderRoute: typeof InventoryReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-traceability': {
+      id: '/inventory-traceability'
+      path: '/inventory-traceability'
+      fullPath: '/inventory-traceability'
+      preLoaderRoute: typeof InventoryTraceabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices-system-notes': {
+      id: '/invoices-system-notes'
+      path: '/invoices-system-notes'
+      fullPath: '/invoices-system-notes'
+      preLoaderRoute: typeof InvoicesSystemNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp-docs': {
+      id: '/mcp-docs'
+      path: '/mcp-docs'
+      fullPath: '/mcp-docs'
+      preLoaderRoute: typeof McpDocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pending-operations': {
+      id: '/pending-operations'
+      path: '/pending-operations'
+      fullPath: '/pending-operations'
+      preLoaderRoute: typeof PendingOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/po-tracking': {
+      id: '/po-tracking'
+      path: '/po-tracking'
+      fullPath: '/po-tracking'
+      preLoaderRoute: typeof PoTrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profit-calculator': {
+      id: '/profit-calculator'
+      path: '/profit-calculator'
+      fullPath: '/profit-calculator'
+      preLoaderRoute: typeof ProfitCalculatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profit-cost-history': {
+      id: '/profit-cost-history'
+      path: '/profit-cost-history'
+      fullPath: '/profit-cost-history'
+      preLoaderRoute: typeof ProfitCostHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profit-scenarios': {
+      id: '/profit-scenarios'
+      path: '/profit-scenarios'
+      fullPath: '/profit-scenarios'
+      preLoaderRoute: typeof ProfitScenariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profits': {
+      id: '/profits'
+      path: '/profits'
+      fullPath: '/profits'
+      preLoaderRoute: typeof ProfitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchase-orders': {
+      id: '/purchase-orders'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders'
+      preLoaderRoute: typeof PurchaseOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-price-list': {
+      id: '/qr-price-list'
+      path: '/qr-price-list'
+      fullPath: '/qr-price-list'
+      preLoaderRoute: typeof QrPriceListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-analysis': {
+      id: '/sales-analysis'
+      path: '/sales-analysis'
+      fullPath: '/sales-analysis'
+      preLoaderRoute: typeof SalesAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-audit': {
+      id: '/sales-audit'
+      path: '/sales-audit'
+      fullPath: '/sales-audit'
+      preLoaderRoute: typeof SalesAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-range': {
+      id: '/sales-range'
+      path: '/sales-range'
+      fullPath: '/sales-range'
+      preLoaderRoute: typeof SalesRangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-today': {
+      id: '/sales-today'
+      path: '/sales-today'
+      fullPath: '/sales-today'
+      preLoaderRoute: typeof SalesTodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan-and-sell': {
+      id: '/scan-and-sell'
+      path: '/scan-and-sell'
+      fullPath: '/scan-and-sell'
+      preLoaderRoute: typeof ScanAndSellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-order': {
+      id: '/shipping-order'
+      path: '/shipping-order'
+      fullPath: '/shipping-order'
+      preLoaderRoute: typeof ShippingOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stock-intake': {
+      id: '/stock-intake'
+      path: '/stock-intake'
+      fullPath: '/stock-intake'
+      preLoaderRoute: typeof StockIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stock-shortages': {
+      id: '/stock-shortages'
+      path: '/stock-shortages'
+      fullPath: '/stock-shortages'
+      preLoaderRoute: typeof StockShortagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team-call-status': {
+      id: '/team-call-status'
+      path: '/team-call-status'
+      fullPath: '/team-call-status'
+      preLoaderRoute: typeof TeamCallStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team-chat': {
+      id: '/team-chat'
+      path: '/team-chat'
+      fullPath: '/team-chat'
+      preLoaderRoute: typeof TeamChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trust': {
+      id: '/trust'
+      path: '/trust'
+      fullPath: '/trust'
+      preLoaderRoute: typeof TrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/whatsapp': {
+      id: '/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof WhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/list-tools': {
@@ -1684,39 +1586,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices_/$id/edit': {
-      id: '/invoices_/$id/edit'
-      path: '/invoices/$id/edit'
-      fullPath: '/invoices/$id/edit'
-      preLoaderRoute: typeof InvoicesIdEditRouteImport
+    '/admin_/access-studio': {
+      id: '/admin_/access-studio'
+      path: '/admin/access-studio'
+      fullPath: '/admin/access-studio'
+      preLoaderRoute: typeof AdminAccessStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/delivery-receipts_/$id/edit': {
-      id: '/delivery-receipts_/$id/edit'
-      path: '/delivery-receipts/$id/edit'
-      fullPath: '/delivery-receipts/$id/edit'
-      preLoaderRoute: typeof DeliveryReceiptsIdEditRouteImport
+    '/admin_/leadership-viewers': {
+      id: '/admin_/leadership-viewers'
+      path: '/admin/leadership-viewers'
+      fullPath: '/admin/leadership-viewers'
+      preLoaderRoute: typeof AdminLeadershipViewersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/push-dispatch': {
-      id: '/api/public/push-dispatch'
-      path: '/api/public/push-dispatch'
-      fullPath: '/api/public/push-dispatch'
-      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+    '/api/x-chat': {
+      id: '/api/x-chat'
+      path: '/api/x-chat'
+      fullPath: '/api/x-chat'
+      preLoaderRoute: typeof ApiXChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/delivery-receipts/': {
+      id: '/delivery-receipts/'
+      path: '/delivery-receipts'
+      fullPath: '/delivery-receipts/'
+      preLoaderRoute: typeof DeliveryReceiptsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-receipts/$id': {
+      id: '/delivery-receipts/$id'
+      path: '/delivery-receipts/$id'
+      fullPath: '/delivery-receipts/$id'
+      preLoaderRoute: typeof DeliveryReceiptsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-receipts/archive': {
+      id: '/delivery-receipts/archive'
+      path: '/delivery-receipts/archive'
+      fullPath: '/delivery-receipts/archive'
+      preLoaderRoute: typeof DeliveryReceiptsArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-receipts/new': {
+      id: '/delivery-receipts/new'
+      path: '/delivery-receipts/new'
+      fullPath: '/delivery-receipts/new'
+      preLoaderRoute: typeof DeliveryReceiptsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices/': {
+      id: '/invoices/'
+      path: '/invoices'
+      fullPath: '/invoices/'
+      preLoaderRoute: typeof InvoicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices/$id': {
+      id: '/invoices/$id'
+      path: '/invoices/$id'
+      fullPath: '/invoices/$id'
+      preLoaderRoute: typeof InvoicesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices/archive': {
+      id: '/invoices/archive'
+      path: '/invoices/archive'
+      fullPath: '/invoices/archive'
+      preLoaderRoute: typeof InvoicesArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices/drafts': {
+      id: '/invoices/drafts'
+      path: '/invoices/drafts'
+      fullPath: '/invoices/drafts'
+      preLoaderRoute: typeof InvoicesDraftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices/new': {
+      id: '/invoices/new'
+      path: '/invoices/new'
+      fullPath: '/invoices/new'
+      preLoaderRoute: typeof InvoicesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.lovable/oauth/consent': {
@@ -1726,46 +1691,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+    '/api/public/push-dispatch': {
+      id: '/api/public/push-dispatch'
+      path: '/api/public/push-dispatch'
+      fullPath: '/api/public/push-dispatch'
+      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/delivery-receipts_/$id/edit': {
+      id: '/delivery-receipts_/$id/edit'
+      path: '/delivery-receipts/$id/edit'
+      fullPath: '/delivery-receipts/$id/edit'
+      preLoaderRoute: typeof DeliveryReceiptsIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/whatsapp/webhook': {
-      id: '/api/public/whatsapp/webhook'
-      path: '/api/public/whatsapp/webhook'
-      fullPath: '/api/public/whatsapp/webhook'
-      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+    '/invoices_/$id/edit': {
+      id: '/invoices_/$id/edit'
+      path: '/invoices/$id/edit'
+      fullPath: '/invoices/$id/edit'
+      preLoaderRoute: typeof InvoicesIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/livekit/webhook': {
-      id: '/api/public/livekit/webhook'
-      path: '/api/public/livekit/webhook'
-      fullPath: '/api/public/livekit/webhook'
-      preLoaderRoute: typeof ApiPublicLivekitWebhookRouteImport
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/warranty-sync-worker': {
-      id: '/api/public/hooks/warranty-sync-worker'
-      path: '/api/public/hooks/warranty-sync-worker'
-      fullPath: '/api/public/hooks/warranty-sync-worker'
-      preLoaderRoute: typeof ApiPublicHooksWarrantySyncWorkerRouteImport
+    '/api/public/hooks/daily-backup': {
+      id: '/api/public/hooks/daily-backup'
+      path: '/api/public/hooks/daily-backup'
+      fullPath: '/api/public/hooks/daily-backup'
+      preLoaderRoute: typeof ApiPublicHooksDailyBackupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/task-overdue-reminders': {
@@ -1775,11 +1740,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksTaskOverdueRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/daily-backup': {
-      id: '/api/public/hooks/daily-backup'
-      path: '/api/public/hooks/daily-backup'
-      fullPath: '/api/public/hooks/daily-backup'
-      preLoaderRoute: typeof ApiPublicHooksDailyBackupRouteImport
+    '/api/public/hooks/warranty-sync-worker': {
+      id: '/api/public/hooks/warranty-sync-worker'
+      path: '/api/public/hooks/warranty-sync-worker'
+      fullPath: '/api/public/hooks/warranty-sync-worker'
+      preLoaderRoute: typeof ApiPublicHooksWarrantySyncWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/livekit/webhook': {
+      id: '/api/public/livekit/webhook'
+      path: '/api/public/livekit/webhook'
+      fullPath: '/api/public/livekit/webhook'
+      preLoaderRoute: typeof ApiPublicLivekitWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/webhook': {
+      id: '/api/public/whatsapp/webhook'
+      path: '/api/public/whatsapp/webhook'
+      fullPath: '/api/public/whatsapp/webhook'
+      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
