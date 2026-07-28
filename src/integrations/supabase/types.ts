@@ -1060,6 +1060,7 @@ export type Database = {
           quantity: number
           receipt_id: string
           serial_number: string | null
+          stock_applied_at: string | null
         }
         Insert: {
           back_deducted_at?: string | null
@@ -1074,6 +1075,7 @@ export type Database = {
           quantity: number
           receipt_id: string
           serial_number?: string | null
+          stock_applied_at?: string | null
         }
         Update: {
           back_deducted_at?: string | null
@@ -1088,6 +1090,7 @@ export type Database = {
           quantity?: number
           receipt_id?: string
           serial_number?: string | null
+          stock_applied_at?: string | null
         }
         Relationships: [
           {
@@ -3584,6 +3587,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_flags: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: boolean
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: boolean
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: boolean
+        }
+        Relationships: []
+      }
       task_comments: {
         Row: {
           author_id: string
@@ -4411,6 +4435,10 @@ export type Database = {
         Args: { p_actor_email: string; p_dri_ids: string[]; p_from_po: string }
         Returns: Json
       }
+      apply_delivery_signature: {
+        Args: { p_receipt_id: string }
+        Returns: Json
+      }
       apply_po_receipt: {
         Args: {
           items_in: Json
@@ -4891,6 +4919,7 @@ export type Database = {
         | { Args: { _room_id: string; _user_id: string }; Returns: boolean }
       is_company_member: { Args: never; Returns: boolean }
       is_distributor: { Args: { _user_id?: string }; Returns: boolean }
+      is_flag_on: { Args: { _key: string }; Returns: boolean }
       is_inventory_admin: { Args: never; Returns: boolean }
       is_invoice_shortage_eligible: {
         Args: { _delivery_status: string; _status: string }
@@ -5134,11 +5163,20 @@ export type Database = {
         Args: { _notes?: string; _user_id: string }
         Returns: undefined
       }
+      release_invoice_reservation: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
       renumber_purchase_orders: { Args: never; Returns: Json }
+      reserve_invoice_items: { Args: { p_invoice_id: string }; Returns: Json }
       reset_all_inventory: { Args: { p_actor_email: string }; Returns: Json }
       return_defective_item: {
         Args: { _defective_id: string; _notes?: string; _quantity: number }
         Returns: undefined
+      }
+      reverse_delivery_signature: {
+        Args: { p_receipt_id: string }
+        Returns: Json
       }
       revert_back_deductions: {
         Args: { p_actor_email: string; p_dri_ids: string[]; p_reason: string }
