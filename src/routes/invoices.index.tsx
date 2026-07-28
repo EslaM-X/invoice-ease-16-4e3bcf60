@@ -74,12 +74,10 @@ function InvoicesList() {
         .range(0, 9999);
       if (from) query = query.gte("created_at", from);
       if (to) query = query.lte("created_at", to + "T23:59:59");
-      // Server-side filter using the computed state to avoid the flash of
-      // archived invoices while the client aggregates delivery receipts.
-      // Note: complete-delivery-but-unpaid rows are hidden here; toggle
-      // "hide closed" off to inspect them.
+      // Server-side archive flag: fully paid + fully delivered only.
+      // Keeps unpaid complete-delivery rows visible while hiding true archive rows instantly.
       if (hideClosed) {
-        query = query.not("delivery_computed_state", "eq", "complete");
+        query = query.eq("archive_ready" as any, false);
       }
       const { data } = await query;
       return data ?? [];
@@ -94,8 +92,7 @@ function InvoicesList() {
       let cq = supabase
         .from("invoices")
         .select("id", { count: "exact", head: true })
-        .not("status", "in", "(voided,draft)")
-        .eq("delivery_computed_state", "complete");
+        .eq("archive_ready" as any, true);
       if (from) cq = cq.gte("created_at", from);
       if (to) cq = cq.lte("created_at", to + "T23:59:59");
       const { count } = await cq;
@@ -197,6 +194,7 @@ function InvoicesList() {
   useBatchedRealtimeTables(["invoices", "delivery_receipts"], () => { load(); }, [user?.id]);
 
   const isClosed = (i: any) => {
+    if (i.archive_ready === true) return true;
     if (i.status === "voided") return false;
     const total = Number(i.total ?? 0);
     const paid = Number(i.paid_amount ?? 0);

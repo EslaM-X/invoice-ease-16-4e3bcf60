@@ -115,6 +115,7 @@ function InvoiceView() {
 
   const isAr = lang === "ar";
   const isVoided = inv.status === "voided";
+  const isDelivered = inv.delivery_status === "delivered" || inv.delivery_computed_state === "complete" || inv.archive_ready === true;
 
   // Use the invoice/receipt number as the default PDF filename.
   const safeName = (s: string) => String(s || "invoice").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").trim();
@@ -300,7 +301,7 @@ function InvoiceView() {
             </span>
           </div>
         )}
-        {!isVoided && inv.delivery_status === "delivered" && (
+        {!isVoided && isDelivered && (
           <div className="pointer-events-none absolute inset-0 flex items-start justify-end z-10 p-6 sm:p-10">
             <span className="rotate-[12deg] rounded-lg border-4 border-emerald-600 px-6 py-1.5 text-3xl font-black tracking-widest text-emerald-600 opacity-30">
               {isAr ? "تم التسليم" : "DELIVERED"}
@@ -538,7 +539,7 @@ function InvoiceView() {
 
       <DeliveryStatusControl
         invoiceId={id}
-        status={inv.delivery_status}
+        status={isDelivered ? "delivered" : inv.delivery_status}
         assigneeId={inv.delivery_assignee_id ?? null}
         assigneeLabel={inv.delivery_assignee_label ?? null}
         isVoided={isVoided}

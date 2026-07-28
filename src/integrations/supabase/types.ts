@@ -1790,6 +1790,7 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          archive_ready: boolean
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -1838,6 +1839,7 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          archive_ready?: boolean
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -1886,6 +1888,7 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          archive_ready?: boolean
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -4364,6 +4367,7 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          archive_ready: boolean
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -4996,6 +5000,7 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          archive_ready: boolean
           created_at: string
           created_by: string | null
           created_by_email: string | null
