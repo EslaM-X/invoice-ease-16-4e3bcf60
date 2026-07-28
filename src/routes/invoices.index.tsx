@@ -75,10 +75,10 @@ function InvoicesList() {
       if (to) query = query.lte("created_at", to + "T23:59:59");
       // Server-side filter using the computed state to avoid the flash of
       // archived invoices while the client aggregates delivery receipts.
+      // Note: complete-delivery-but-unpaid rows are hidden here; toggle
+      // "hide closed" off to inspect them.
       if (hideClosed) {
-        query = query.or(
-          "delivery_computed_state.neq.complete,and(paid_amount.is.null,total.gt.0),paid_amount.lt.total"
-        ) as any;
+        query = query.not("delivery_computed_state", "eq", "complete");
       }
       const { data } = await query;
       return data ?? [];
