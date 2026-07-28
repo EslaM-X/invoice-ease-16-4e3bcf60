@@ -98,16 +98,20 @@ function Dashboard() {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     try {
-    const [{ data: invs }, { data: allInvs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
+    const [{ data: invs }, { count: archivedCount }, { data: openInvs }, { count: cust }, productsResult, { data: sampleRows }, { data: settingsRow }, { data: latestRateRows }] = await Promise.all([
       supabase.from("invoices")
         .select("id, total, paid_amount, delivery_status, delivery_computed_state, archive_ready, customer_name, created_at, invoice_number, status")
         .not("status", "in", "(voided,void,draft,cancelled,canceled)")
         .order("created_at", { ascending: false })
         .limit(200),
-      // Full set (minimal fields) for accurate open/partial/closed counts across ALL invoices,
-      // matching the invoices list and archive badge exactly.
+      // Closed KPI = same source of truth as the archive page: archive_ready flag.
+      supabase.from("invoices")
+        .select("id", { count: "exact", head: true })
+        .eq("archive_ready" as any, true),
+      // Open pool = non-archived, non-draft, non-void — matches the invoices page filter.
       supabase.from("invoices")
         .select("id, total, paid_amount, archive_ready, delivery_status, delivery_computed_state")
+        .eq("archive_ready" as any, false)
         .not("status", "in", "(voided,void,draft,cancelled,canceled)"),
       supabase.from("customers").select("*", { count: "exact", head: true }),
       cachedListFetch(
@@ -149,30 +153,32 @@ function Dashboard() {
       })
       .reduce((s: number, r: any) => s + Math.max(0, (Number(r.quantity) || 0) - (Number(r.returned_quantity) || 0)), 0);
 
-    // Dashboard KPIs use the same live receipt math as the invoices page, not
-    // only the persisted state. This prevents stale delivery_computed_state rows
-    // from counting fully signed invoices as open, and avoids counting invoices
-    // that are only out for delivery as "partial" before a signature exists.
-    let closed = 0, partial = 0, open = 0;
-    const countingRows = (allInvs ?? invs ?? []) as any[];
-    const countingIds = countingRows.map((i: any) => i.id).filter(Boolean);
-    let deliverySummaries: Record<string, ReturnType<typeof computeDeliverySummaries>[string]> = {};
-    if (countingIds.length > 0) {
+    // KPI reconciliation — mirror the invoices page exactly:
+    // - closed  = archive_ready = true (same as archive route badge)
+    // - open    = non-archived, non-draft, non-void rows
+    // - partial = subset of open with signed-but-incomplete receipts
+    // - total   = closed + open (matches archive + open invoices lists)
+    const openRows = (openInvs ?? []) as any[];
+    const closed = archivedCount ?? 0;
+    const open = openRows.length;
+    let partial = 0;
+    const openIds = openRows.map((i) => i.id).filter(Boolean);
+    if (openIds.length > 0) {
       const [{ data: countReceiptRows }, { data: countItemRows }] = await Promise.all([
         supabase
           .from("delivery_receipts" as any)
           .select("id, invoice_id, status")
-          .in("invoice_id", countingIds)
+          .in("invoice_id", openIds)
           .range(0, 19999),
         supabase
           .from("invoice_items")
           .select("id, invoice_id, product_id, product_name, quantity, serial_number, color")
-          .in("invoice_id", countingIds)
+          .in("invoice_id", openIds)
           .range(0, 49999),
       ]);
       const activeReceiptIds = ((countReceiptRows as any[]) ?? [])
-        .filter((receipt: any) => ["out_for_delivery", "signed", "paid"].includes(String(receipt.status ?? "")))
-        .map((receipt: any) => receipt.id)
+        .filter((r: any) => ["out_for_delivery", "signed", "paid"].includes(String(r.status ?? "")))
+        .map((r: any) => r.id)
         .filter(Boolean);
       let countReceiptItemRows: any[] = [];
       if (activeReceiptIds.length > 0) {
@@ -183,32 +189,20 @@ function Dashboard() {
           .range(0, 49999);
         countReceiptItemRows = (data as any[]) ?? [];
       }
-      deliverySummaries = computeDeliverySummaries(
+      const summaries = computeDeliverySummaries(
         ((countItemRows as any[]) ?? []) as any[],
         ((countReceiptRows as any[]) ?? []) as any[],
         countReceiptItemRows,
       );
+      openRows.forEach((i: any) => {
+        const s = i.id ? summaries[i.id] : undefined;
+        if (s && s.total > 0 && s.completed > 0 && s.completed < s.total) partial++;
+      });
     }
-    countingRows.forEach((i: any) => {
-      const total = Number(i.total ?? 0);
-      const paid = Number(i.paid_amount ?? 0);
-      const fullyPaid = total > 0 && paid >= total - 0.001;
-      const summary = i.id ? deliverySummaries[i.id] : undefined;
-      const receiptComplete = Boolean(summary?.complete);
-      const isClosed = i.archive_ready === true || (fullyPaid && (i.delivery_status === "delivered" || i.delivery_computed_state === "complete" || receiptComplete));
-      if (isClosed) {
-        closed++;
-        return;
-      }
-
-      open++;
-      if (summary && summary.total > 0 && summary.completed > 0 && summary.completed < summary.total) partial++;
-
-    });
 
     const nextStats = {
       sales,
-      invoices: countingRows.length,
+      invoices: closed + open,
       closed,
       partial,
       open,
@@ -239,6 +233,7 @@ function Dashboard() {
       setLoaded(true);
     }
   };
+
 
   const saveFxRate = async () => {
     if (!user) return;
