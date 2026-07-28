@@ -78,7 +78,7 @@ function ArchivePage() {
           .in("invoice_id", paidIds)
           .range(0, 49999),
       ]);
-      const activeReceiptIds = (drs ?? [])
+      const activeReceiptIds = ((drs ?? []) as any[])
         .filter((receipt: any) => ["out_for_delivery", "signed", "paid"].includes(receipt.status))
         .map((receipt: any) => receipt.id);
       const { data: drItems } = activeReceiptIds.length
@@ -87,7 +87,11 @@ function ArchivePage() {
             .select("receipt_id, invoice_item_id, quantity, note")
             .in("receipt_id", activeReceiptIds)
         : { data: [] as any[] };
-      const summaries = computeDeliverySummaries(invItems ?? [], drs ?? [], drItems ?? []);
+      const summaries = computeDeliverySummaries(
+        (invItems ?? []) as any[],
+        (drs ?? []) as any[],
+        (drItems ?? []) as any[],
+      );
 
       closed = fullyPaid.filter((i: any) => {
         const summary = summaries[i.id];

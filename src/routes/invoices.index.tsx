@@ -127,7 +127,11 @@ function InvoicesList() {
           .from("delivery_receipt_items" as any)
           .select("receipt_id, invoice_item_id, quantity, note")
           .in("receipt_id", validReceiptIds);
-        const summaries = computeDeliverySummaries(invItems ?? [], drs ?? [], drItems ?? []);
+        const summaries = computeDeliverySummaries(
+          (invItems ?? []) as any[],
+          (drs ?? []) as any[],
+          (drItems ?? []) as any[],
+        );
         Object.entries(summaries).forEach(([invoiceId, summary]) => {
           deliveredByInv[invoiceId] = summary.completed;
         });
