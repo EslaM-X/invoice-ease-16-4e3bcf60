@@ -137,10 +137,48 @@ function InvoicesList() {
         });
       }
 
-      const progress: Record<string, { delivered: number; total: number }> = {};
+      const progress: typeof delivProgress = {};
       ids.forEach((id: string) => {
-        progress[id] = { delivered: deliveredByInv[id] ?? 0, total: totals[id] ?? 0 };
+        const s = deliveredByInv[id] !== undefined
+          ? (Object.values({}) as any) // placeholder, replaced below
+          : undefined;
+        void s;
+        progress[id] = {
+          delivered: deliveredByInv[id] ?? 0,
+          total: totals[id] ?? 0,
+          awaitingSignature: 0,
+          awaitingSignatureOnly: false,
+          incomplete: [],
+        };
       });
+      // Merge extra reason data from summaries when available
+      if (validReceiptIds.length) {
+        const { data: drItems2 } = await supabase
+          .from("delivery_receipt_items" as any)
+          .select("receipt_id, invoice_item_id, quantity, note")
+          .in("receipt_id", validReceiptIds);
+        const sums = computeDeliverySummaries(
+          (invItems ?? []) as any[],
+          (drs ?? []) as any[],
+          (drItems2 ?? []) as any[],
+        );
+        Object.entries(sums).forEach(([invId, s]) => {
+          const awaiting = s.incompleteItems.reduce((n, it) => n + it.awaitingSignature, 0);
+          progress[invId] = {
+            delivered: s.completed,
+            total: s.total,
+            awaitingSignature: awaiting,
+            awaitingSignatureOnly: s.awaitingSignatureOnly,
+            incomplete: s.incompleteItems.map((it) => ({
+              product_name: it.product_name,
+              required: it.required,
+              completed: it.completed,
+              awaitingSignature: it.awaitingSignature,
+              notDispatched: it.notDispatched,
+            })),
+          };
+        });
+      }
       setDelivProgress(progress);
     }
   };
