@@ -74,7 +74,7 @@ function ArchivePage() {
           .range(0, 19999),
         supabase
           .from("invoice_items")
-          .select("id, invoice_id, product_name, quantity")
+          .select("id, invoice_id, product_id, product_name, quantity")
           .in("invoice_id", paidIds)
           .range(0, 49999),
       ]);

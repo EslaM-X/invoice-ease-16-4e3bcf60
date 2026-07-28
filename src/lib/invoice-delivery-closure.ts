@@ -14,6 +14,7 @@ type DeliveryMode = "active" | "completed";
 export type InvoiceDeliveryLine = {
   id: string;
   invoice_id: string | null;
+  product_id?: string | null;
   product_name?: string | null;
   quantity?: number | string | null;
   serial_number?: string | null;
@@ -66,6 +67,7 @@ export function computeDeliverySummaries(
 
   invoiceItems.forEach((item) => {
     if (!item.invoice_id || !item.id) return;
+    if (!isDeliverableInvoiceLine(item)) return;
     const lines = itemsByInvoice.get(item.invoice_id) ?? [];
     lines.push(item);
     itemsByInvoice.set(item.invoice_id, lines);
@@ -124,6 +126,10 @@ export function computeDeliverySummaries(
   });
 
   return summaries;
+}
+
+export function isDeliverableInvoiceLine(item: Pick<InvoiceDeliveryLine, "product_id" | "quantity">) {
+  return Boolean(item.product_id) && toNumber(item.quantity) > 0;
 }
 
 function effectiveDeliveredQuantity(

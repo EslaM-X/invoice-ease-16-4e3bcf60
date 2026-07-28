@@ -18,7 +18,7 @@ import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
-import { computeDeliverySummaries } from "@/lib/invoice-delivery-closure";
+import { computeDeliverySummaries, isDeliverableInvoiceLine } from "@/lib/invoice-delivery-closure";
 import type { SalesEvent } from "@/lib/data";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
 import { addBusinessDays } from "@/lib/delivery-terms";
@@ -92,7 +92,7 @@ function InvoicesList() {
           .range(0, 19999),
         supabase
           .from("invoice_items")
-          .select("id, invoice_id, product_name, quantity, serial_number")
+          .select("id, invoice_id, product_id, product_name, quantity, serial_number")
           .in("invoice_id", ids)
           .range(0, 49999), // serial search needs every line item
       ]);
@@ -111,7 +111,9 @@ function InvoicesList() {
       const serialsMap: Record<string, string[]> = {};
       (invItems ?? []).forEach((it: any) => {
         if (!it.invoice_id) return;
-        totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
+        if (isDeliverableInvoiceLine(it)) {
+          totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
+        }
         if (it.serial_number) {
           // Normalize: lowercase + strip spaces/dashes/dots so search matches
           // regardless of how the serial was typed.
