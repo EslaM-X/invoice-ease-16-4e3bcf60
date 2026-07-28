@@ -121,46 +121,26 @@ function InvoicesList() {
       });
       setSerialsByInvoice(serialsMap);
 
-      const deliveredByInv: Record<string, number> = {};
-      if (validReceiptIds.length) {
-        const { data: drItems } = await supabase
-          .from("delivery_receipt_items" as any)
-          .select("receipt_id, invoice_item_id, quantity, note")
-          .in("receipt_id", validReceiptIds);
-        const summaries = computeDeliverySummaries(
-          (invItems ?? []) as any[],
-          (drs ?? []) as any[],
-          (drItems ?? []) as any[],
-        );
-        Object.entries(summaries).forEach(([invoiceId, summary]) => {
-          deliveredByInv[invoiceId] = summary.completed;
-        });
-      }
-
       const progress: typeof delivProgress = {};
       ids.forEach((id: string) => {
-        const s = deliveredByInv[id] !== undefined
-          ? (Object.values({}) as any) // placeholder, replaced below
-          : undefined;
-        void s;
         progress[id] = {
-          delivered: deliveredByInv[id] ?? 0,
+          delivered: 0,
           total: totals[id] ?? 0,
           awaitingSignature: 0,
           awaitingSignatureOnly: false,
           incomplete: [],
         };
       });
-      // Merge extra reason data from summaries when available
       if (validReceiptIds.length) {
-        const { data: drItems2 } = await supabase
+        const { data: drItems } = await supabase
           .from("delivery_receipt_items" as any)
           .select("receipt_id, invoice_item_id, quantity, note")
-          .in("receipt_id", validReceiptIds);
+          .in("receipt_id", validReceiptIds)
+          .range(0, 49999);
         const sums = computeDeliverySummaries(
           (invItems ?? []) as any[],
           (drs ?? []) as any[],
-          (drItems2 ?? []) as any[],
+          (drItems ?? []) as any[],
         );
         Object.entries(sums).forEach(([invId, s]) => {
           const awaiting = s.incompleteItems.reduce((n, it) => n + it.awaitingSignature, 0);
