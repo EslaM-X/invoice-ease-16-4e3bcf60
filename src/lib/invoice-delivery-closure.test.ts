@@ -17,7 +17,7 @@ describe("invoice delivery closure", () => {
     expect(summaries["inv-1"]?.completed).toBe(1);
   });
 
-  it("closes multipart products once any signed part covers the required quantity", () => {
+  it("keeps multipart products open until signed mixer and trim parts cover the required quantity", () => {
     const baseItems = [
       { id: "item-multipart", invoice_id: "inv-2", product_id: "prod-2", product_name: "JOY WALL MOUNTED TWO HOLE BASIN MIXER", quantity: 1 },
     ];
@@ -26,10 +26,9 @@ describe("invoice delivery closure", () => {
       { id: "dr-trim", invoice_id: "inv-2", status: "signed" },
     ];
 
-    // mixer alone now suffices (staff sometimes records only the delivered part)
     expect(computeDeliverySummaries(baseItems, receipts, [
       { receipt_id: "dr-mixer", invoice_item_id: "item-multipart", quantity: 1, note: "[PART:mixer]" },
-    ])["inv-2"]?.complete).toBe(true);
+    ])["inv-2"]?.complete).toBe(false);
 
     expect(computeDeliverySummaries(baseItems, receipts, [
       { receipt_id: "dr-mixer", invoice_item_id: "item-multipart", quantity: 1, note: "[PART:mixer]" },
@@ -53,6 +52,23 @@ describe("invoice delivery closure", () => {
     );
 
     expect(summaries["inv-sub"]?.complete).toBe(true);
+  });
+
+  it("does not use aggregate fallback when receipt rows are explicit multipart mixer/trim parts", () => {
+    const summaries = computeDeliverySummaries(
+      [
+        { id: "item-multipart", invoice_id: "inv-partial", product_id: "prod-2", product_name: "JOY WALL MOUNTED TWO HOLE BASIN MIXER", quantity: 1 },
+        { id: "item-single", invoice_id: "inv-partial", product_id: "prod-3", product_name: "JOY CLICKCLACKWASTE", quantity: 1 },
+      ],
+      [{ id: "dr-partial", invoice_id: "inv-partial", status: "signed" }],
+      [
+        { receipt_id: "dr-partial", invoice_item_id: "item-multipart", quantity: 1, note: "[PART:mixer]" },
+        { receipt_id: "dr-partial", invoice_item_id: "item-single", quantity: 1 },
+      ],
+    );
+
+    expect(summaries["inv-partial"]?.complete).toBe(false);
+    expect(summaries["inv-partial"]?.completed).toBe(1);
   });
 
 

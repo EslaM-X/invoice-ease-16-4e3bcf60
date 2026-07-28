@@ -204,7 +204,7 @@ function effectiveDeliveredQuantity(
     else untagged += quantity;
   });
 
-  return full + untagged + Math.max(mixer, trim);
+  return full + untagged + Math.min(mixer, trim);
 }
 
 
