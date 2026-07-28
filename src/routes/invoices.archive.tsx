@@ -49,20 +49,13 @@ function ArchivePage() {
     let query = supabase
       .from("invoices")
       .select("*")
-      .not("status", "in", "(voided,draft)")
-      .eq("delivery_computed_state", "complete")
+      .eq("archive_ready" as any, true)
       .order("updated_at", { ascending: false })
       .limit(1000);
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", to + "T23:59:59");
     const { data } = await query;
-    const fullyPaid = (data ?? []).filter((i: any) => {
-      const total = Number(i.total ?? 0);
-      const paid = Number(i.paid_amount ?? 0);
-      return total > 0 && paid >= total - 0.001;
-    });
-
-    const closed = fullyPaid;
+    const closed = data ?? [];
 
     setList(closed);
 

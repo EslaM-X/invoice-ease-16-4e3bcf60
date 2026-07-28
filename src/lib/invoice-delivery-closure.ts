@@ -80,6 +80,7 @@ export function computeDeliverySummaries(
   // Aggregate signed / active quantities per invoice for the fallback rule below.
   const totalsByInvoice = new Map<string, { completed: number; active: number }>();
   const hasSplitPartMarkersByInvoice = new Map<string, boolean>();
+  const substitutePoolsByInvoice = new Map<string, { completed: number; active: number }>();
   receiptItems.forEach((receiptItem) => {
     if (!receiptItem.receipt_id) return;
     const receipt = receiptById.get(receiptItem.receipt_id);
@@ -95,6 +96,23 @@ export function computeDeliverySummaries(
     totalsByInvoice.set(receipt.invoice_id, bucket);
   });
 
+  receiptItems.forEach((receiptItem) => {
+    if (!receiptItem.receipt_id || receiptItem.invoice_item_id) return;
+    const receipt = receiptById.get(receiptItem.receipt_id);
+    if (!receipt?.invoice_id) return;
+    if (/\[PART:(full|mixer|trim)\]/i.test(receiptItem.note ?? "")) return;
+    if (isFeeReceiptItem(receiptItem)) return;
+    const qty = toNumber(receiptItem.quantity);
+    if (qty <= 0) return;
+    const invoiceItems = itemsByInvoice.get(receipt.invoice_id) ?? [];
+    const matchesExistingLine = invoiceItems.some((item) => legacyReceiptItemMatchesInvoiceLine(receiptItem, item));
+    if (matchesExistingLine) return;
+    const pool = substitutePoolsByInvoice.get(receipt.invoice_id) ?? { completed: 0, active: 0 };
+    if (receipt.status && ACTIVE_DELIVERY_STATUSES.has(receipt.status)) pool.active += qty;
+    if (receipt.status && COMPLETED_DELIVERY_STATUSES.has(receipt.status)) pool.completed += qty;
+    substitutePoolsByInvoice.set(receipt.invoice_id, pool);
+  });
+
   const summaries: Record<string, InvoiceDeliverySummary> = {};
   itemsByInvoice.forEach((items, invoiceId) => {
     const total = items.reduce((sum, item) => sum + toNumber(item.quantity), 0);
@@ -105,17 +123,31 @@ export function computeDeliverySummaries(
     let completed = 0;
     let active = 0;
     let complete = items.length > 0;
+    const substitutePool = { ...(substitutePoolsByInvoice.get(invoiceId) ?? { completed: 0, active: 0 }) };
 
     items.forEach((item) => {
       const itemRequired = toNumber(item.quantity);
-      const itemCompleted = Math.min(
+      let itemCompleted = Math.min(
         itemRequired,
         effectiveDeliveredQuantity(item, receiptItems, receiptById, "completed"),
       );
-      const itemActive = Math.min(
+      let itemActive = Math.min(
         itemRequired,
         effectiveDeliveredQuantity(item, receiptItems, receiptById, "active"),
       );
+
+      if (!isMultiPartProduct(item.product_name)) {
+        if (itemCompleted < itemRequired && substitutePool.completed > 0) {
+          const fill = Math.min(itemRequired - itemCompleted, substitutePool.completed);
+          itemCompleted += fill;
+          substitutePool.completed -= fill;
+        }
+        if (itemActive < itemRequired && substitutePool.active > 0) {
+          const fill = Math.min(itemRequired - itemActive, substitutePool.active);
+          itemActive += fill;
+          substitutePool.active -= fill;
+        }
+      }
 
       completedByItem[item.id] = itemCompleted;
       activeByItem[item.id] = itemActive;
@@ -227,6 +259,10 @@ function legacyReceiptItemMatchesInvoiceLine(receiptItem: DeliveryReceiptItemLit
   if (receiptColor && receiptColor !== normalizeText(item.color)) return false;
 
   return true;
+}
+
+function isFeeReceiptItem(receiptItem: DeliveryReceiptItemLite) {
+  return /رسوم\s*شحن|shipping|delivery\s*fee|transport/i.test(receiptItem.product_name ?? "");
 }
 
 function normalizeText(value?: string | null) {
