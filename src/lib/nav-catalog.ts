@@ -105,6 +105,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "distributors", to: "/distributors", labelAr: "الموزّعين", labelEn: "Distributors", group: "settings_group" },
   { key: "admin_panel", to: "/admin", labelAr: "لوحة الأدمن", labelEn: "Admin Panel", group: "settings_group", requires: "admin" },
   { key: "access_studio", to: "/admin/access-studio", labelAr: "استوديو الصلاحيات", labelEn: "Access Studio", group: "settings_group", requires: "admin" },
+  { key: "delivery_review", to: "/delivery-review", labelAr: "مراجعة تدقيق التسليم", labelEn: "Delivery Review", group: "settings_group", requires: "admin" },
 ];
 
 // -----------------------------------------------------------------------------

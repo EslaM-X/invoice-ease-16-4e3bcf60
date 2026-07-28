@@ -974,6 +974,42 @@ export type Database = {
           },
         ]
       }
+      delivery_match_log: {
+        Row: {
+          computed_at: string
+          id: string
+          invoice_id: string
+          invoice_item_id: string | null
+          match_rule: string
+          matched_qty: number
+          notes: string | null
+          receipt_id: string | null
+          receipt_item_id: string | null
+        }
+        Insert: {
+          computed_at?: string
+          id?: string
+          invoice_id: string
+          invoice_item_id?: string | null
+          match_rule: string
+          matched_qty?: number
+          notes?: string | null
+          receipt_id?: string | null
+          receipt_item_id?: string | null
+        }
+        Update: {
+          computed_at?: string
+          id?: string
+          invoice_id?: string
+          invoice_item_id?: string | null
+          match_rule?: string
+          matched_qty?: number
+          notes?: string | null
+          receipt_id?: string | null
+          receipt_item_id?: string | null
+        }
+        Relationships: []
+      }
       delivery_receipt_audit_log: {
         Row: {
           action: string
@@ -1764,6 +1800,8 @@ export type Database = {
           customer_phone: string | null
           delivery_assignee_id: string | null
           delivery_assignee_label: string | null
+          delivery_completed_at: string | null
+          delivery_computed_state: string
           delivery_days: number | null
           delivery_status: string
           delivery_status_override: boolean
@@ -1810,6 +1848,8 @@ export type Database = {
           customer_phone?: string | null
           delivery_assignee_id?: string | null
           delivery_assignee_label?: string | null
+          delivery_completed_at?: string | null
+          delivery_computed_state?: string
           delivery_days?: number | null
           delivery_status?: string
           delivery_status_override?: boolean
@@ -1856,6 +1896,8 @@ export type Database = {
           customer_phone?: string | null
           delivery_assignee_id?: string | null
           delivery_assignee_label?: string | null
+          delivery_completed_at?: string | null
+          delivery_computed_state?: string
           delivery_days?: number | null
           delivery_status?: string
           delivery_status_override?: boolean
@@ -4332,6 +4374,8 @@ export type Database = {
           customer_phone: string | null
           delivery_assignee_id: string | null
           delivery_assignee_label: string | null
+          delivery_completed_at: string | null
+          delivery_computed_state: string
           delivery_days: number | null
           delivery_status: string
           delivery_status_override: boolean
@@ -4368,6 +4412,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      approve_invoice_delivery_manual: {
+        Args: { _invoice_id: string; _reason?: string }
+        Returns: undefined
       }
       approve_user_account: {
         Args: { _notes?: string; _user_id: string }
@@ -4430,6 +4478,10 @@ export type Database = {
           _room_id: string
         }
         Returns: undefined
+      }
+      compute_invoice_delivery_state_v2: {
+        Args: { _invoice_id: string }
+        Returns: string
       }
       consume_needs_order_for_product: {
         Args: { _delta: number; _product_id: string }
@@ -4946,6 +4998,8 @@ export type Database = {
           customer_phone: string | null
           delivery_assignee_id: string | null
           delivery_assignee_label: string | null
+          delivery_completed_at: string | null
+          delivery_computed_state: string
           delivery_days: number | null
           delivery_status: string
           delivery_status_override: boolean
