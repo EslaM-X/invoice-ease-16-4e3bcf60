@@ -1580,6 +1580,74 @@ export type Database = {
           },
         ]
       }
+      invoice_archive_audit: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          affected_items: Json | null
+          created_at: string
+          event_type: string
+          id: string
+          invoice_id: string
+          invoice_number: string | null
+          new_archive_ready: boolean | null
+          new_computed_state: string | null
+          new_delivery_status: string | null
+          old_archive_ready: boolean | null
+          old_computed_state: string | null
+          old_delivery_status: string | null
+          paid_amount: number | null
+          reason: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          affected_items?: Json | null
+          created_at?: string
+          event_type: string
+          id?: string
+          invoice_id: string
+          invoice_number?: string | null
+          new_archive_ready?: boolean | null
+          new_computed_state?: string | null
+          new_delivery_status?: string | null
+          old_archive_ready?: boolean | null
+          old_computed_state?: string | null
+          old_delivery_status?: string | null
+          paid_amount?: number | null
+          reason?: string | null
+          total_amount?: number | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          affected_items?: Json | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          invoice_id?: string
+          invoice_number?: string | null
+          new_archive_ready?: boolean | null
+          new_computed_state?: string | null
+          new_delivery_status?: string | null
+          old_archive_ready?: boolean | null
+          old_computed_state?: string | null
+          old_delivery_status?: string | null
+          paid_amount?: number | null
+          reason?: string | null
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_archive_audit_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_events: {
         Row: {
           created_at: string
