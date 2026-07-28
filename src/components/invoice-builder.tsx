@@ -1664,6 +1664,14 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
                               </span>
                             )}
                             <span>{t("stock")}: <span className={out ? "text-destructive font-bold" : low ? "text-warning-foreground font-bold" : ""}>{p.stock_quantity}</span></span>
+                            {((p as any).reserved_quantity ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300" title={lang === "ar" ? "محجوز بفواتير أخرى" : "reserved by other invoices"}>
+                                🔒 {lang === "ar" ? "محجوز" : "reserved"}: {(p as any).reserved_quantity}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300" title={lang === "ar" ? "المتاح للبيع" : "available to sell"}>
+                              ✓ {lang === "ar" ? "متاح" : "available"}: {effectiveStockFor(p)}
+                            </span>
                             {transit > 0 && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-300">
                                 🚚 {lang === "ar" ? "في الطريق" : "in transit"}: {transit}
