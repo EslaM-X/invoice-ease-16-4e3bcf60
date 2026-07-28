@@ -64,15 +64,22 @@ function InvoicesList() {
 
   const load = async () => {
     if (!user) return;
-    const cacheKey = `invoices:${from || "_"}:${to || "_"}`;
+    const cacheKey = `invoices:${from || "_"}:${to || "_"}:${hideClosed ? "open" : "all"}`;
     const { data } = await cachedListFetch<any>(cacheKey, async () => {
       let query = supabase
         .from("invoices")
         .select("*")
         .order("created_at", { ascending: false })
-        .range(0, 9999); // lift the default 1000-row cap
+        .range(0, 9999);
       if (from) query = query.gte("created_at", from);
       if (to) query = query.lte("created_at", to + "T23:59:59");
+      // Server-side filter using the computed state to avoid the flash of
+      // archived invoices while the client aggregates delivery receipts.
+      if (hideClosed) {
+        query = query.or(
+          "delivery_computed_state.neq.complete,and(paid_amount.is.null,total.gt.0),paid_amount.lt.total"
+        ) as any;
+      }
       const { data } = await query;
       return data ?? [];
     }, { forceRefresh: true });
@@ -81,7 +88,7 @@ function InvoicesList() {
     const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
     setSalesEvents((ev ?? []) as SalesEvent[]);
 
-    // Linked delivery receipts count + delivered quantity progress
+    // Detailed per-line progress (used for badges/tooltips) — non-blocking.
     if (data.length) {
       const ids = data.map((i: any) => i.id);
       const [{ data: drs }, { data: invItems }] = await Promise.all([
@@ -94,15 +101,13 @@ function InvoicesList() {
           .from("invoice_items")
           .select("id, invoice_id, product_id, product_name, quantity, serial_number, color")
           .in("invoice_id", ids)
-          .range(0, 49999), // serial search needs every line item
+          .range(0, 49999),
       ]);
       const counts: Record<string, number> = {};
-      const drToInvoice: Record<string, string> = {};
       const validReceiptIds: string[] = [];
       (drs ?? []).forEach((r: any) => {
         if (!r.invoice_id) return;
         counts[r.invoice_id] = (counts[r.invoice_id] ?? 0) + 1;
-        if (r.status !== "draft") drToInvoice[r.id] = r.invoice_id;
         if (["out_for_delivery", "signed", "paid"].includes(r.status)) validReceiptIds.push(r.id);
       });
       setDrCounts(counts);
@@ -115,8 +120,6 @@ function InvoicesList() {
           totals[it.invoice_id] = (totals[it.invoice_id] ?? 0) + Number(it.quantity ?? 0);
         }
         if (it.serial_number) {
-          // Normalize: lowercase + strip spaces/dashes/dots so search matches
-          // regardless of how the serial was typed.
           const norm = String(it.serial_number).toLowerCase().replace(/[\s_\-./]+/g, "");
           (serialsMap[it.invoice_id] ??= []).push(norm);
         }
@@ -171,7 +174,7 @@ function InvoicesList() {
     const h = setTimeout(() => { setFromDebounced(from); setToDebounced(to); }, 300);
     return () => clearTimeout(h);
   }, [from, to]);
-  useEffect(() => { load(); }, [user, fromDebounced, toDebounced]);
+  useEffect(() => { load(); }, [user, fromDebounced, toDebounced, hideClosed]);
   // Deferred text search — keeps the input responsive while filtering ~10k rows in memory.
   const qDeferred = useDeferredValue(q);
   useBatchedRealtimeTables(["invoices", "delivery_receipts"], () => { load(); }, [user?.id]);
@@ -181,9 +184,11 @@ function InvoicesList() {
     const total = Number(i.total ?? 0);
     const paid = Number(i.paid_amount ?? 0);
     const fullyPaid = total > 0 && paid >= total - 0.001;
+    // Prefer server-computed state; fall back to client-side progress for older rows.
+    const serverComplete = i.delivery_computed_state === "complete";
     const progress = delivProgress[i.id];
     const fullyDeliveredByReceipts = Boolean(progress && progress.total > 0 && progress.delivered >= progress.total);
-    return fullyPaid && (i.delivery_status === "delivered" || fullyDeliveredByReceipts);
+    return fullyPaid && (serverComplete || i.delivery_status === "delivered" || fullyDeliveredByReceipts);
   };
   const closedCount = list.filter(isClosed).length;
   const draftCount = list.filter((i) => i.status === "draft").length;
