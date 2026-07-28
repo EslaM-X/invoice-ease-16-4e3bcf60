@@ -151,6 +151,20 @@ export function DeliveryReceiptForm({
           .select("invoice_item_id, note, quantity, receipt_id")
           .in("invoice_item_id", itemIds);
         const { data: dris } = await q;
+        const receiptIds = Array.from(new Set(((dris ?? []) as any[]).map((r) => r.receipt_id).filter(Boolean)));
+        const activeStatuses = new Set(["draft", "out_for_delivery", "signed", "paid"]);
+        const receiptStatusMap = new Map<string, string>();
+        if (receiptIds.length > 0) {
+          const { data: recs } = await supabase
+            .from("delivery_receipts" as any)
+            .select("id, status")
+            .in("id", receiptIds);
+          for (const rec of (recs ?? []) as any[]) receiptStatusMap.set(rec.id, rec.status);
+        }
+        const activeDris = ((dris ?? []) as any[]).filter((r) => {
+          if (receiptId && r.receipt_id === receiptId) return false;
+          return activeStatuses.has(receiptStatusMap.get(r.receipt_id) ?? "");
+        });
         const strictDelivered = buildEffectiveDelivered(
           items.map((i) => ({
             id: i.id,
@@ -162,16 +176,15 @@ export function DeliveryReceiptForm({
             quantity: i.quantity,
             unit_price: 0,
           })) as FInvItem[],
-          ((dris ?? []).filter((r: any) => !(receiptId && r.receipt_id === receiptId)).map((r: any) => ({
+          activeDris.map((r: any) => ({
             invoice_item_id: r.invoice_item_id,
             quantity: r.quantity,
             note: r.note,
-          }))) as FDeliveredRow[],
+          })) as FDeliveredRow[],
           DEFAULT_DELIVERY_MODE,
         );
         for (const [k, v] of strictDelivered) deliveredStrictMap.set(k, v);
-        for (const r of (dris ?? []) as any[]) {
-          if (receiptId && r.receipt_id === receiptId) continue;
+        for (const r of activeDris) {
           const arr = priorNotesMap.get(r.invoice_item_id) ?? [];
           for (let k = 0; k < (r.quantity || 0); k++) arr.push(r.note ?? "");
           priorNotesMap.set(r.invoice_item_id, arr);
