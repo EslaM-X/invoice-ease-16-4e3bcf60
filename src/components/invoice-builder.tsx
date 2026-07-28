@@ -781,7 +781,7 @@ export function InvoiceBuilder({ mode, invoiceId, initial, autoScan, draftKey, d
         const p = products.find((x) => x.id === it.product_id);
         if (!p) continue;
         const baseline = initialQtyByProduct.get(it.product_id) ?? 0;
-        const stockAvail = Math.max(0, (p.stock_quantity ?? 0) + baseline);
+        const stockAvail = Math.max(0, effectiveStockFor(p) + baseline);
         const transit = inTransitQty[it.product_id] ?? 0;
         if (it.quantity > stockAvail) {
           const gap = it.quantity - stockAvail;
