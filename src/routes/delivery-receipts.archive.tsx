@@ -32,32 +32,15 @@ function Page() {
 
   const load = async () => {
     if (!user) return;
-    // Archive = receipts explicitly closed/paid/returned/cancelled, OR receipts
-    // whose parent invoice is fully paid ("completed") or fully delivered.
-    const { data: archivedByStatus } = await supabase
+    // Archive = any receipt whose archived_at is set (auto or manual).
+    // The trigger tg_dr_recompute_state_v2 auto-sets archived_at when the
+    // parent invoice reaches "complete" delivery state.
+    const { data } = await supabase
       .from("delivery_receipts" as any)
       .select("*")
-      .in("status", ARCHIVED)
-      .order("archived_at", { ascending: false, nullsFirst: false });
-    const { data: closedInvoices } = await supabase
-      .from("invoices")
-      .select("id, invoice_number, customer_name, total, status, delivery_status")
-      .or("status.eq.completed,delivery_status.eq.delivered");
-    const closedIds = (closedInvoices ?? []).map((i: any) => i.id);
-    let archivedByInvoice: any[] = [];
-    if (closedIds.length > 0) {
-      const { data } = await supabase
-        .from("delivery_receipts" as any)
-        .select("*")
-        .in("invoice_id", closedIds)
-        .not("status", "in", `(${ARCHIVED.map((s) => `"${s}"`).join(",")})`)
-        .order("created_at", { ascending: false });
-      archivedByInvoice = (data ?? []) as any[];
-    }
-    const merged = [...(archivedByStatus ?? []), ...archivedByInvoice] as any[];
-    // Deduplicate
-    const seen = new Set<string>();
-    const list = merged.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: false });
+    const list = (data ?? []) as any[];
     setRows(list);
     const ids = Array.from(new Set(list.map((r) => r.invoice_id)));
     if (ids.length > 0) {
