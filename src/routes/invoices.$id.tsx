@@ -19,6 +19,7 @@ import { InvoiceTimeline } from "@/components/invoice-timeline";
 import { useRealtimeTable } from "@/lib/realtime";
 import { PaymentsManager } from "@/components/payments-manager";
 import { InvoiceActivityPanel } from "@/components/invoice-activity-panel";
+import { AddItemsToInvoiceDialog } from "@/components/add-items-to-invoice-dialog";
 
 export const Route = createFileRoute("/invoices/$id")({ component: () => <AppShell><InvoiceView /></AppShell> });
 
