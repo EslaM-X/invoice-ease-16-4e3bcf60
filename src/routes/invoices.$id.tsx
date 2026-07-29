@@ -258,6 +258,7 @@ function InvoiceView() {
               <Button variant="outline" className="gap-2 rounded-full" onClick={() => navigate({ to: "/invoices/$id/edit", params: { id } })}>
                 <Pencil className="h-4 w-4" />{t("edit")}
               </Button>
+              <AddItemsToInvoiceDialog invoiceId={id} invoiceNumber={inv.invoice_number} onAdded={load} />
               {(() => {
                 const totalNum = Number(inv.total);
                 const paidNum = Number(inv.paid_amount ?? 0);
