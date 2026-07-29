@@ -4419,6 +4419,10 @@ export type Database = {
       }
     }
     Functions: {
+      add_invoice_items: {
+        Args: { _invoice_id: string; _items: Json }
+        Returns: string
+      }
       add_payment: {
         Args: {
           _amount: number
