@@ -5211,6 +5211,10 @@ export type Database = {
           serial_number: string
         }[]
       }
+      sync_invoice_archive_from_delivery_receipt: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
       undo_bulk_receipt_op: {
         Args: { p_actor_email: string; p_op_id: string; p_reason: string }
         Returns: Json
