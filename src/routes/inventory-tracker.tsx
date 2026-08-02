@@ -98,8 +98,9 @@ function InventoryTrackerPage() {
 
   useBatchedRealtimeTables(
     ["products", "invoice_items", "delivery_receipt_items", "delivery_receipts", "purchase_order_items"],
-    load,
-    1500
+    () => { load(); },
+    [],
+    { debounceMs: 1500 }
   );
 
   const filtered = useMemo(() => {
