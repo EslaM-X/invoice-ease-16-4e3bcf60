@@ -39,6 +39,7 @@ import { Route as InventoryAuditRouteImport } from './routes/inventory-audit'
 import { Route as InventoryConsistencyRouteImport } from './routes/inventory-consistency'
 import { Route as InventoryReconcileRouteImport } from './routes/inventory-reconcile'
 import { Route as InventoryTraceabilityRouteImport } from './routes/inventory-traceability'
+import { Route as InventoryTrackerRouteImport } from './routes/inventory-tracker'
 import { Route as InvoicesSystemNotesRouteImport } from './routes/invoices-system-notes'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as McpDocsRouteImport } from './routes/mcp-docs'
@@ -247,6 +248,11 @@ const InventoryReconcileRoute = InventoryReconcileRouteImport.update({
 const InventoryTraceabilityRoute = InventoryTraceabilityRouteImport.update({
   id: '/inventory-traceability',
   path: '/inventory-traceability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryTrackerRoute = InventoryTrackerRouteImport.update({
+  id: '/inventory-tracker',
+  path: '/inventory-tracker',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesSystemNotesRoute = InvoicesSystemNotesRouteImport.update({
@@ -587,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/inventory-consistency': typeof InventoryConsistencyRoute
   '/inventory-reconcile': typeof InventoryReconcileRoute
   '/inventory-traceability': typeof InventoryTraceabilityRoute
+  '/inventory-tracker': typeof InventoryTrackerRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/mcp': typeof McpRoute
   '/mcp-docs': typeof McpDocsRoute
@@ -678,6 +685,7 @@ export interface FileRoutesByTo {
   '/inventory-consistency': typeof InventoryConsistencyRoute
   '/inventory-reconcile': typeof InventoryReconcileRoute
   '/inventory-traceability': typeof InventoryTraceabilityRoute
+  '/inventory-tracker': typeof InventoryTrackerRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/mcp': typeof McpRoute
   '/mcp-docs': typeof McpDocsRoute
@@ -770,6 +778,7 @@ export interface FileRoutesById {
   '/inventory-consistency': typeof InventoryConsistencyRoute
   '/inventory-reconcile': typeof InventoryReconcileRoute
   '/inventory-traceability': typeof InventoryTraceabilityRoute
+  '/inventory-tracker': typeof InventoryTrackerRoute
   '/invoices-system-notes': typeof InvoicesSystemNotesRoute
   '/mcp': typeof McpRoute
   '/mcp-docs': typeof McpDocsRoute
@@ -863,6 +872,7 @@ export interface FileRouteTypes {
     | '/inventory-consistency'
     | '/inventory-reconcile'
     | '/inventory-traceability'
+    | '/inventory-tracker'
     | '/invoices-system-notes'
     | '/mcp'
     | '/mcp-docs'
@@ -954,6 +964,7 @@ export interface FileRouteTypes {
     | '/inventory-consistency'
     | '/inventory-reconcile'
     | '/inventory-traceability'
+    | '/inventory-tracker'
     | '/invoices-system-notes'
     | '/mcp'
     | '/mcp-docs'
@@ -1045,6 +1056,7 @@ export interface FileRouteTypes {
     | '/inventory-consistency'
     | '/inventory-reconcile'
     | '/inventory-traceability'
+    | '/inventory-tracker'
     | '/invoices-system-notes'
     | '/mcp'
     | '/mcp-docs'
@@ -1137,6 +1149,7 @@ export interface RootRouteChildren {
   InventoryConsistencyRoute: typeof InventoryConsistencyRoute
   InventoryReconcileRoute: typeof InventoryReconcileRoute
   InventoryTraceabilityRoute: typeof InventoryTraceabilityRoute
+  InventoryTrackerRoute: typeof InventoryTrackerRoute
   InvoicesSystemNotesRoute: typeof InvoicesSystemNotesRoute
   McpRoute: typeof McpRoute
   McpDocsRoute: typeof McpDocsRoute
@@ -1408,6 +1421,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory-traceability'
       fullPath: '/inventory-traceability'
       preLoaderRoute: typeof InventoryTraceabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-tracker': {
+      id: '/inventory-tracker'
+      path: '/inventory-tracker'
+      fullPath: '/inventory-tracker'
+      preLoaderRoute: typeof InventoryTrackerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices-system-notes': {
@@ -1857,6 +1877,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryConsistencyRoute: InventoryConsistencyRoute,
   InventoryReconcileRoute: InventoryReconcileRoute,
   InventoryTraceabilityRoute: InventoryTraceabilityRoute,
+  InventoryTrackerRoute: InventoryTrackerRoute,
   InvoicesSystemNotesRoute: InvoicesSystemNotesRoute,
   McpRoute: McpRoute,
   McpDocsRoute: McpDocsRoute,
