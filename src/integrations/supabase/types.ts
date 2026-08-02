@@ -4805,6 +4805,29 @@ export type Database = {
           stock_quantity: number
         }[]
       }
+      get_inventory_tracker: {
+        Args: never
+        Returns: {
+          available_quantity: number
+          collection: string
+          color: string
+          delivered_qty: number
+          image_url: string
+          incoming_qty: number
+          is_spare_part: boolean
+          low_stock_threshold: number
+          net_after_incoming: number
+          open_demand_qty: number
+          out_for_delivery_qty: number
+          product_id: string
+          product_name: string
+          reserved_quantity: number
+          serial_number: string
+          shortage_qty: number
+          sold_qty: number
+          stock_quantity: number
+        }[]
+      }
       get_my_approval_state: {
         Args: never
         Returns: {
