@@ -319,7 +319,7 @@ function InvoiceView() {
           </div>
         )}
         {!isVoided && (() => {
-          const totalNum = Number(inv.total);
+          const totalNum = payableTotal;
           const paidNum = Number(inv.paid_amount ?? 0);
           if (paidNum >= totalNum && totalNum > 0) {
             return (
