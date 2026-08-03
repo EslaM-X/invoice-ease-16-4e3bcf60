@@ -117,6 +117,14 @@ function InvoiceView() {
   const isAr = lang === "ar";
   const isVoided = inv.status === "voided";
   const isDelivered = inv.delivery_status === "delivered" || inv.delivery_computed_state === "complete" || inv.archive_ready === true;
+  // Payable total = net total (after discount) + VAT when tax is enabled on the invoice.
+  const payableTotal = (() => {
+    const disc = Number(inv.discount ?? 0);
+    const net = disc > 0 ? +(Number(inv.subtotal ?? 0) - disc).toFixed(2) : Number(inv.subtotal ?? 0);
+    const taxOn = (inv as any).tax_enabled === true;
+    const rate = Number((inv as any).tax_rate ?? 0.14) || 0.14;
+    return +(net + (taxOn ? Math.round(net * rate * 100) / 100 : 0)).toFixed(2);
+  })();
 
   // Use the invoice/receipt number as the default PDF filename.
   const safeName = (s: string) => String(s || "invoice").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").trim();
