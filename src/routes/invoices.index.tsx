@@ -554,6 +554,7 @@ function InvoicesList() {
                             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">#{i.receipt_number}</span>
                           )}
                           <span>{i.invoice_number}</span>
+                          <VatBadge taxEnabled={(i as any).tax_enabled} taxRate={(i as any).tax_rate} isAr={isAr} />
                           {voided && (
                             <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
                               {t("voided")}
