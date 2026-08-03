@@ -16,6 +16,7 @@ import { exportInvoicesOrdersStyle } from "@/lib/orders-export";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
+import { VatBadge } from "@/components/vat-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
 import { computeDeliverySummaries, isDeliverableInvoiceLine } from "@/lib/invoice-delivery-closure";
