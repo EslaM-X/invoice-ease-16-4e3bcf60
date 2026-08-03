@@ -117,6 +117,14 @@ function InvoiceView() {
   const isAr = lang === "ar";
   const isVoided = inv.status === "voided";
   const isDelivered = inv.delivery_status === "delivered" || inv.delivery_computed_state === "complete" || inv.archive_ready === true;
+  // Payable total = net total (after discount) + VAT when tax is enabled on the invoice.
+  const payableTotal = (() => {
+    const disc = Number(inv.discount ?? 0);
+    const net = disc > 0 ? +(Number(inv.subtotal ?? 0) - disc).toFixed(2) : Number(inv.subtotal ?? 0);
+    const taxOn = (inv as any).tax_enabled === true;
+    const rate = Number((inv as any).tax_rate ?? 0.14) || 0.14;
+    return +(net + (taxOn ? Math.round(net * rate * 100) / 100 : 0)).toFixed(2);
+  })();
 
   // Use the invoice/receipt number as the default PDF filename.
   const safeName = (s: string) => String(s || "invoice").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").trim();
@@ -260,7 +268,7 @@ function InvoiceView() {
               </Button>
               <AddItemsToInvoiceDialog invoiceId={id} invoiceNumber={inv.invoice_number} onAdded={load} />
               {(() => {
-                const totalNum = Number(inv.total);
+                const totalNum = payableTotal;
                 const paidNum = Number(inv.paid_amount ?? 0);
                 return (
                   <PaymentsManager
@@ -311,7 +319,7 @@ function InvoiceView() {
           </div>
         )}
         {!isVoided && (() => {
-          const totalNum = Number(inv.total);
+          const totalNum = payableTotal;
           const paidNum = Number(inv.paid_amount ?? 0);
           if (paidNum >= totalNum && totalNum > 0) {
             return (
@@ -461,7 +469,12 @@ function InvoiceView() {
                 })()}
                 {(() => {
                   const discNum = Number(inv.discount ?? 0);
-                  const totalNum = discNum > 0 ? +(Number(inv.subtotal ?? 0) - discNum).toFixed(2) : Number(inv.subtotal ?? 0);
+                  const netNum = discNum > 0 ? +(Number(inv.subtotal ?? 0) - discNum).toFixed(2) : Number(inv.subtotal ?? 0);
+                  const taxOn = (inv as any).tax_enabled === true;
+                  const taxRate = Number((inv as any).tax_rate ?? 0.14) || 0.14;
+                  const taxAmt = taxOn ? Math.round(netNum * taxRate * 100) / 100 : 0;
+                  // Payable base includes VAT when the invoice has tax enabled.
+                  const totalNum = +(netNum + taxAmt).toFixed(2);
                   const paidNum = Number(inv.paid_amount ?? 0);
                   const remainingNum = +(totalNum - paidNum).toFixed(2);
                   const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;
