@@ -49,8 +49,7 @@ npx cap open android    # يفتح Android Studio
 محتاج Mac + Xcode.
 
 ```bash
-bun run build
-npx cap sync ios
+npm run mobile:sync
 npx cap open ios        # يفتح Xcode
 ```
 
@@ -69,14 +68,21 @@ npx cap open ios        # يفتح Xcode
 
 ```bash
 # مرة واحدة
-npm install --save-dev electron @electron/packager
+npm run electron:setup
 
 # في كل بيلد
-bun run build
-npx @electron/packager . "Steinheim" --platform=win32 --arch=x64 --out=electron-release --overwrite --ignore="^/(android|ios|src|public|electron-release)"
+npm run electron:build:win
 ```
 
-النتيجة في `electron-release/Steinheim-win32-x64/`. زِبّها (`.zip`) وارفعها، أو اعمل installer بـ `electron-builder` لو محتاج `.exe` رسمي.
+النتيجة في `electron-release/Steinheim-win32-x64/` وجواها `Steinheim.exe`. زِبّ الفولدر (`.zip`) وارفعه، أو اعمل installer رسمي بـ `electron-builder` لو محتاج ملف تثبيت واحد.
+
+لتجربة النافذة قبل ما تبني:
+
+```bash
+npm run electron:dev
+```
+
+> نسخة الديسكتوب **أونلاين**: بتفتح نظام الشركة الحي مباشرة، فالبيانات لحظية ومشتركة مع الموبايل والويب. لو النت قطع بتظهر شاشة "لا يوجد اتصال" مع إعادة محاولة تلقائية كل 5 ثواني.
 
 publish من `/download` → Platform: Windows.
 
@@ -87,8 +93,8 @@ publish من `/download` → Platform: Windows.
 محتاج Mac.
 
 ```bash
-bun run build
-npx @electron/packager . "Steinheim" --platform=darwin --arch=universal --out=electron-release --overwrite --ignore="^/(android|ios|src|public|electron-release)"
+npm run electron:setup
+npm run electron:build:mac
 
 # اعمل DMG
 hdiutil create -volname "Steinheim" -srcfolder electron-release/Steinheim-darwin-universal -ov -format UDZO Steinheim.dmg
