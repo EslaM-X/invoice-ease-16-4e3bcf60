@@ -461,7 +461,12 @@ function InvoiceView() {
                 })()}
                 {(() => {
                   const discNum = Number(inv.discount ?? 0);
-                  const totalNum = discNum > 0 ? +(Number(inv.subtotal ?? 0) - discNum).toFixed(2) : Number(inv.subtotal ?? 0);
+                  const netNum = discNum > 0 ? +(Number(inv.subtotal ?? 0) - discNum).toFixed(2) : Number(inv.subtotal ?? 0);
+                  const taxOn = (inv as any).tax_enabled === true;
+                  const taxRate = Number((inv as any).tax_rate ?? 0.14) || 0.14;
+                  const taxAmt = taxOn ? Math.round(netNum * taxRate * 100) / 100 : 0;
+                  // Payable base includes VAT when the invoice has tax enabled.
+                  const totalNum = +(netNum + taxAmt).toFixed(2);
                   const paidNum = Number(inv.paid_amount ?? 0);
                   const remainingNum = +(totalNum - paidNum).toFixed(2);
                   const paidPct = totalNum > 0 ? Math.round((paidNum / totalNum) * 100) : 0;
