@@ -1,39 +1,47 @@
-# Reservation Engine — Status
+# نظام Steinheim: نسخ مثبَّتة لكل الأجهزة + تثبيت كامل للريلتايم
 
-## Wave 1 — Schema + Backfill ✅
-- `invoice_items.reserved_qty`, `invoice_items.delivered_qty`
-- `products.reserved_quantity`, generated `products.available_quantity`
-- Trigger `sync_product_reserved_qty` keeps product totals in sync
-- Backfill: delivered/reserved computed from historical receipts + active invoices
+## تحليل الفيديو (بدقة)
 
-## Wave 2 — RPCs + Delivery Hooks (behind flag) ✅
-- `system_flags.reservation_engine` toggle
-- `reserve_invoice_items(invoice_id)` — sets `reserved_qty`, auto-opens `shortage_requests` on deficit
-- `release_invoice_reservation(invoice_id)` — clears reservations
-- `apply_delivery_signature(receipt_id)` — signed receipt → deducts stock, moves reserved→delivered, sets `stock_applied_at`
-- `reverse_delivery_signature(receipt_id)` — undoes the above
-- `tg_dr_reservation_hook` on `delivery_receipts` (gated by flag)
+الفيديو: "كيف تبني تطبيق سطح مكتب احترافي باستخدام Google AI Studio - Arena وFreeBuff مجاناً؟" — قناة ArabiTech AI، مدته 8:39.
 
-## Wave 3 — Switch-Over + UI ✅
-- `invoices.stock_flow` marker (`immediate` vs `reservation`) — separates legacy from new invoices
-- `cover_invoice_item` skips immediate stock deduction when flag is on (PO reservations still linked)
-- `create_invoice` (both overloads) tag new invoices `reservation`, call `reserve_invoice_items` after loop
-- `delete_invoice` / `convert_invoice_to_draft` — restore only `delivered_qty` for reservation-flow invoices, keep full-restore for legacy
-- `tg_release_on_status_change` trigger — auto-releases reservations on cancelled/voided/draft
-- Flag flipped **ON**; existing live invoices re-normalized via `reserve_invoice_items`
-- UI: `invoice-builder` uses `effectiveStockFor(p) = stock - reserved_by_others`, shows Stock / Reserved / Available badges
-- UI: `products` page shows the same 3 badges per row
+خلاصته في 4 مراحل:
+1. توليد واجهة React لنظام مخزون بالذكاء الاصطناعي (AI Studio / Arena).
+2. تشغيل المشروع محليًا (`npm install` / `npm run dev`).
+3. تغليفه بـ Electron لتحويله إلى ملف `.exe` للويندوز عبر أداة FreeBuff.
+4. تثبيت التطبيق واستعراض مميزاته: عمل بدون إنترنت، قاعدة بيانات محلية، واجهة عربية RTL، مخزون/إنتاج/نقاط بيع/تقارير.
 
-## State snapshot after Wave 3
-- Engine flag: **ON**
-- Legacy invoices: 103 (still `immediate`) — behave exactly as before
-- New invoices going forward: `reservation` flow
-- Products currently reserved: 72 (266 units total across live invoices)
+الفرق الجوهري عن مشروعنا: الفيديو بيبني تطبيق **فردي بقاعدة بيانات محلية على الجهاز** — يعني كل موظف عنده نسخة بيانات لوحده، ومفيش مشاركة لحظية. مشروعنا نظام شركة متعدد المستخدمين على قاعدة بيانات سحابية واحدة مع صلاحيات وريلتايم. فاللي هناخده من الفيديو هو **فكرة التغليف والتثبيت (EXE)** فقط — مش قاعدة البيانات المحلية، لأنها هتكسر مشاركة البيانات بين الموظفين.
 
-## What happens now on a new invoice
-1. `create_invoice` inserts rows without touching `stock_quantity`.
-2. `reserve_invoice_items` sets `reserved_qty` per line; any deficit → auto-`shortage_requests`.
-3. `products.reserved_quantity` updates via trigger → `available_quantity` drops.
-4. When a delivery receipt is signed → `apply_delivery_signature` deducts real stock and shifts `reserved → delivered`.
-5. Cancel/void/draft → reservations auto-released.
-6. Delete invoice → only delivered portion restocked (legacy invoices still fully restocked).
+## الوضع الحالي (متحقق منه)
+
+- في بالفعل ملف Electron جاهز (`electron/main.cjs`) بس **مش متسطّب كحزم** ومفيش سكربتات بناء في `package.json`، ومفيش `main` entry.
+- في إعداد Capacitor جاهز (`capacitor.config.ts`) لأندرويد و iOS مع OTA، ودليل بناء عربي (`CAPACITOR_BUILD.md`)، وصفحة `/download` بتوزّع النسخ على الموظفين مع إشعارات.
+- التطبيق مثبّت كـ PWA فعليًا (manifest + service worker + محدّث نسخ).
+- الريلتايم مفعّل على 55 جدول، وفيه طبقة `useRealtimeTable` بإعادة اتصال وdebounce.
+
+## الخطة (3 موجات)
+
+### الموجة 1 — نسخة الويندوز والماك (Electron)
+- تثبيت `electron` و `@electron/packager` كـ devDependencies، وإضافة `main` وسكربتات `electron:dev` / `electron:build:win` / `electron:build:mac` في `package.json`.
+- تحديث `electron/main.cjs`: تحميل النظام أونلاين من الدومين الرسمي (بيانات لحظية مشتركة)، شاشة "لا يوجد اتصال" بدل الشاشة البيضاء، إعادة محاولة تلقائية، منع فتح روابط خارجية داخل التطبيق، ذاكرة لحجم/مكان النافذة، ودعم إشعارات الويندوز.
+- إضافة أيقونات التطبيق وميتاداتا (اسم/شركة/نسخة) عشان يظهر احترافي في قائمة البرامج.
+- توثيق أوامر البناء في `CAPACITOR_BUILD.md` (بناء الويندوز والماك يتم على جهازك بأمر واحد، الساندبوكس مايقدرش يوقّع الملفات).
+
+### الموجة 2 — أندرويد و iOS + توزيع من داخل التطبيق
+- تثبيت حزم Capacitor الأساسية وربط `bun run build` بـ `cap sync`، وتوثيق خطوات `cap add android/ios` والبناء من Android Studio / Xcode.
+- ضبط `capacitor.config.ts` للعمل أونلاين لحظي مع كاش للقراءة وقت انقطاع النت.
+- تحسين صفحة `/download`: كشف نظام الجهاز تلقائيًا وعرض النسخة المناسبة أولًا، تعليمات تثبيت مصوّرة لكل منصة، وزر "تثبيت من المتصفح" للـ PWA لمن لا يريد تحميل ملف.
+
+### الموجة 3 — تثبيت الأونلاين والريلتايم (مراجعة شاملة)
+- مراجعة كل اشتراكات الريلتايم في المشروع وتوحيدها على طبقة واحدة (منع الاشتراكات المكررة والتسريبات عند التنقل بين الصفحات).
+- إعادة الاتصال الفوري عند رجوع النت/فتح الجهاز + إعادة تحميل البيانات المتأخرة (بدل الانتظار للاشتراك التالي).
+- مؤشر حالة اتصال واضح (متصل / إعادة اتصال / غير متصل) في كل الشاشات.
+- مراجعة الجداول المفعّل عليها الريلتايم مقابل الشاشات الفعلية، وإضافة الناقص فقط عند الحاجة.
+- فحص الأداء: الاستعلامات البطيئة، الفهارس الناقصة، والصفحات اللي بتعمل تحميل زائد.
+- تشغيل الاختبارات الحالية والتأكد إن البناء نظيف.
+
+## ملاحظات تقنية
+
+- بناء `.exe` موقّع و `.dmg` و `.ipa` لازم يتم على جهاز ويندوز/ماك (أدوات التوقيع مش متاحة في بيئة Lovable) — هتستلم أوامر جاهزة سطر واحد لكل منصة.
+- لن يتم لمس أي بيانات: الفواتير، محاضر الاستلام، المخزون، والصلاحيات تفضل زي ما هي. كل التغييرات في طبقة التغليف والواجهة والاتصال.
+- قاعدة البيانات تفضل واحدة سحابية لكل الأجهزة — لا قواعد بيانات محلية منفصلة زي الفيديو.
