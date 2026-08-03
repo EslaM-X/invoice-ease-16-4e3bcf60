@@ -174,17 +174,27 @@ function DownloadPage() {
             const meta = PLATFORM_META[p];
             const latest = latestByPlatform[p];
             const Icon = meta.icon;
+            const mine = myPlatform === p;
             return (
-              <Card key={p} className="p-5 flex flex-col gap-3">
+              <Card
+                key={p}
+                className={`p-5 flex flex-col gap-3 ${mine ? "border-primary/60 ring-1 ring-primary/30" : ""}`}
+              >
                 <div className="flex items-center gap-3">
                   <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center">
                     <Icon className="size-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold">{ar ? meta.ar : meta.en}</div>
+                    <div className="font-semibold flex items-center gap-2 flex-wrap">
+                      {ar ? meta.ar : meta.en}
+                      {mine && (
+                        <Badge className="text-[10px]">{ar ? "جهازك الحالي" : "Your device"}</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{meta.ext}</div>
                   </div>
                 </div>
+
 
                 {latest ? (
                   <>
