@@ -3,6 +3,10 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "main": "electron/main.cjs",
+  "productName": "Steinheim",
+  "description": "Steinheim company management system",
+  "version": "1.0.0",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -11,7 +15,12 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "electron:setup": "npm install --no-save electron @electron/packager",
+    "electron:dev": "npx electron .",
+    "electron:build:win": "npx @electron/packager . Steinheim --platform=win32 --arch=x64 --out=electron-release --overwrite --app-version=1.0.0 --win32metadata.CompanyName=Steinheim --win32metadata.FileDescription=\"Steinheim Management System\" --icon=public/favicon.ico --ignore=\"^/(android|ios|src|public|tests|supabase|electron-release|node_modules)\"",
+    "electron:build:mac": "npx @electron/packager . Steinheim --platform=darwin --arch=universal --out=electron-release --overwrite --app-version=1.0.0 --app-bundle-id=com.steinheim.app --ignore=\"^/(android|ios|src|public|tests|supabase|electron-release|node_modules)\"",
+    "mobile:sync": "vite build && npx cap sync"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
