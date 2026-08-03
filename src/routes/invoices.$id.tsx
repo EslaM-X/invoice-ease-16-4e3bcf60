@@ -260,7 +260,7 @@ function InvoiceView() {
               </Button>
               <AddItemsToInvoiceDialog invoiceId={id} invoiceNumber={inv.invoice_number} onAdded={load} />
               {(() => {
-                const totalNum = Number(inv.total);
+                const totalNum = payableTotal;
                 const paidNum = Number(inv.paid_amount ?? 0);
                 return (
                   <PaymentsManager
