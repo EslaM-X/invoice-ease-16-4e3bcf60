@@ -154,9 +154,24 @@ export function useRealtimeTable(
       }
     };
     const onOnline = () => { attempt = 0; connect(); };
+    // Desktop/mobile app windows can stay "visible" while the socket dies in
+    // the background — re-check the channel on focus and bfcache restore too.
+    const ensureJoined = () => {
+      if (cancelled) return;
+      if (!channel || (channel as any).state !== "joined") {
+        attempt = 0;
+        connect();
+      } else {
+        fire();
+      }
+    };
+    const onFocus = () => ensureJoined();
+    const onPageShow = (e: PageTransitionEvent) => { if (e.persisted) ensureJoined(); };
 
     window.addEventListener("app:resync", onResync);
     window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
@@ -166,6 +181,8 @@ export function useRealtimeTable(
       if (maxWaitTimer) clearTimeout(maxWaitTimer);
       window.removeEventListener("app:resync", onResync);
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVis);
       cleanupChannel();
     };
@@ -228,7 +245,34 @@ export function useBatchedRealtimeTables(
       }
     };
 
+    // Reconnect bookkeeping — mirrors useRealtimeTable so multi-table pages
+    // recover from dropped sockets instead of silently going stale.
+    let attempt = 0;
+    let backoffTimer: ReturnType<typeof setTimeout> | null = null;
+    let hadFailure = false;
+
+    const emit = (status: "reconnecting" | "reconnected" | "failed", detail: Record<string, unknown> = {}) => {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("app:realtime-status", { detail: { table: tables.join(","), status, ...detail } }),
+        );
+      } catch { /* noop for SSR */ }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled || backoffTimer) return;
+      attempt = Math.min(attempt + 1, 6);
+      const delay = Math.min(1000 * 2 ** (attempt - 1), 30000);
+      hadFailure = true;
+      emit(attempt >= 6 ? "failed" : "reconnecting", { attempt, delayMs: delay });
+      backoffTimer = setTimeout(() => {
+        backoffTimer = null;
+        connect();
+      }, delay);
+    };
+
     const connect = () => {
+      if (cancelled) return;
       cleanup();
       for (const table of tables) {
         const ch = supabase.channel(uniqueRealtimeTopic(`rtb-${table}`));
@@ -242,9 +286,15 @@ export function useBatchedRealtimeTables(
           }),
         );
         ch.subscribe((status: string) => {
+          if (cancelled) return;
           if (status === "SUBSCRIBED") {
+            attempt = 0;
+            if (backoffTimer) { clearTimeout(backoffTimer); backoffTimer = null; }
+            if (hadFailure) { emit("reconnected"); hadFailure = false; }
             // Trigger an initial fetch (once per table is fine — they coalesce).
             fire(table, { eventType: "UPDATE", new: null, old: null });
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            scheduleReconnect();
           }
         });
         channels.push(ch);
@@ -253,24 +303,37 @@ export function useBatchedRealtimeTables(
 
     connect();
 
+    const allJoined = () => channels.length > 0 && channels.every((ch) => (ch as any).state === "joined");
+
     const onResync = () => fire(lastTable, { eventType: "UPDATE", new: null, old: null });
     const onVis = () => {
       if (document.hidden) return;
       if (pendingWhileHidden) { pendingWhileHidden = false; flush(); }
       else fire(lastTable, { eventType: "UPDATE", new: null, old: null });
+      if (!allJoined()) { attempt = 0; connect(); }
     };
-    const onOnline = () => connect();
+    const onOnline = () => { attempt = 0; connect(); };
+    const onFocus = () => {
+      if (!allJoined()) { attempt = 0; connect(); }
+      else fire(lastTable, { eventType: "UPDATE", new: null, old: null });
+    };
+    const onPageShow = (e: PageTransitionEvent) => { if (e.persisted) { attempt = 0; connect(); } };
 
     window.addEventListener("app:resync", onResync);
     window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
       cancelled = true;
       if (debounceTimer) clearTimeout(debounceTimer);
       if (maxWaitTimer) clearTimeout(maxWaitTimer);
+      if (backoffTimer) clearTimeout(backoffTimer);
       window.removeEventListener("app:resync", onResync);
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVis);
       cleanup();
     };
