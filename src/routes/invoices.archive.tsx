@@ -12,6 +12,7 @@ import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { TableSkeleton } from "@/components/skeletons";
 import { AuthorBadge } from "@/components/author-badge";
+import { VatBadge } from "@/components/vat-badge";
 import { exportInvoicesToExcel, type InvoiceRow } from "@/lib/invoice-export";
 import { Checkbox } from "@/components/ui/checkbox";
 
