@@ -154,9 +154,24 @@ export function useRealtimeTable(
       }
     };
     const onOnline = () => { attempt = 0; connect(); };
+    // Desktop/mobile app windows can stay "visible" while the socket dies in
+    // the background — re-check the channel on focus and bfcache restore too.
+    const ensureJoined = () => {
+      if (cancelled) return;
+      if (!channel || (channel as any).state !== "joined") {
+        attempt = 0;
+        connect();
+      } else {
+        fire();
+      }
+    };
+    const onFocus = () => ensureJoined();
+    const onPageShow = (e: PageTransitionEvent) => { if (e.persisted) ensureJoined(); };
 
     window.addEventListener("app:resync", onResync);
     window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
@@ -166,6 +181,8 @@ export function useRealtimeTable(
       if (maxWaitTimer) clearTimeout(maxWaitTimer);
       window.removeEventListener("app:resync", onResync);
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVis);
       cleanupChannel();
     };
