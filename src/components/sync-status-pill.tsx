@@ -64,9 +64,17 @@ export function SyncStatusPill() {
   }, []);
 
   const effectiveOnline = online;
-  const Icon = useMemo(() => (!effectiveOnline ? CloudOff : pending > 0 ? CloudUpload : Cloud), [effectiveOnline, pending]);
+  const rtDegraded = effectiveOnline && rtStatus !== "live";
+  const Icon = useMemo(
+    () => (!effectiveOnline || rtDegraded ? CloudOff : pending > 0 ? CloudUpload : Cloud),
+    [effectiveOnline, rtDegraded, pending],
+  );
   if (!mounted) return null;
   const tone = !effectiveOnline
+    ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
+    : rtStatus === "failed"
+    ? "border-red-500/40 bg-red-500/15 text-red-200"
+    : rtStatus === "reconnecting"
     ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
     : pending > 0
     ? "border-sky-500/40 bg-sky-500/15 text-sky-200"
@@ -74,9 +82,13 @@ export function SyncStatusPill() {
 
   const labelMain = !effectiveOnline
     ? lang === "ar" ? "غير متصل" : "Offline"
+    : rtStatus === "failed"
+    ? lang === "ar" ? "انقطع اللحظي" : "Live lost"
+    : rtStatus === "reconnecting"
+    ? lang === "ar" ? "إعادة اتصال" : "Reconnecting"
     : pending > 0
     ? lang === "ar" ? `${pending} قيد الرفع` : `${pending} pending`
-    : lang === "ar" ? "متزامن" : "Synced";
+    : lang === "ar" ? "متزامن لحظيًا" : "Live";
 
   const tip = lang === "ar"
     ? `آخر مزامنة: ${formatRelativeTime(lastSync, "ar")}`
