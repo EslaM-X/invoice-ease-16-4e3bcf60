@@ -45,12 +45,28 @@ const PLATFORM_META: Record<Platform, { ar: string; en: string; icon: any; ext: 
   web:     { ar: "ويب",   en: "Web",     icon: Globe,         ext: "URL" },
 };
 
+/** Best-guess platform for the current device (used to highlight its build). */
+function detectPlatform(): Platform {
+  if (typeof navigator === "undefined") return "web";
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return "android";
+  if (/iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && "ontouchend" in document)) return "ios";
+  if (/Windows/i.test(ua)) return "windows";
+  if (/Macintosh|Mac OS X/i.test(ua)) return "macos";
+  return "web";
+}
+
+type Deferred = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+
 function DownloadPage() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const { isAdmin } = useRole();
   const [updates, setUpdates] = useState<AppUpdate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myPlatform, setMyPlatform] = useState<Platform | null>(null);
+  const [installEvent, setInstallEvent] = useState<Deferred | null>(null);
+  const [installed, setInstalled] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -68,11 +84,49 @@ function DownloadPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Device detection + browser install support (runs after hydration only).
+  useEffect(() => {
+    setMyPlatform(detectPlatform());
+    setInstalled(
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true,
+    );
+    const onBip = (e: Event) => { e.preventDefault(); setInstallEvent(e as Deferred); };
+    const onInstalled = () => { setInstalled(true); setInstallEvent(null); };
+    window.addEventListener("beforeinstallprompt", onBip as EventListener);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBip as EventListener);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  const installFromBrowser = async () => {
+    if (!installEvent) {
+      toast.info(
+        ar
+          ? "من متصفح الجهاز: افتح القائمة ثم «تثبيت التطبيق» (على آيفون: مشاركة ← إضافة إلى الشاشة الرئيسية)."
+          : "Open your browser menu → “Install app” (on iPhone: Share → Add to Home Screen).",
+      );
+      return;
+    }
+    try {
+      await installEvent.prompt();
+      await installEvent.userChoice;
+      setInstallEvent(null);
+    } catch { /* user dismissed */ }
+  };
+
   // Latest per platform
   const latestByPlatform: Partial<Record<Platform, AppUpdate>> = {};
   for (const u of updates) {
     if (!latestByPlatform[u.platform]) latestByPlatform[u.platform] = u;
   }
+
+  const orderedPlatforms = (Object.keys(PLATFORM_META) as Platform[]).sort((a, b) => {
+    if (!myPlatform) return 0;
+    return (a === myPlatform ? -1 : 0) - (b === myPlatform ? -1 : 0);
+  });
 
   return (
     <AppShell>
@@ -88,9 +142,35 @@ function DownloadPage() {
           </p>
         </div>
 
+        {/* Install straight from the browser (PWA) */}
+        <Card className="p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="font-semibold flex items-center gap-2">
+              <Globe className="size-4 text-primary" />
+              {ar ? "تثبيت فوري من المتصفح" : "Install straight from the browser"}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {ar
+                ? "من غير ما تنزّل أي ملف — التطبيق بيتثبّت بأيقونة على الجهاز وبيشتغل بالبيانات اللحظية نفسها."
+                : "No file download — installs an app icon on this device and runs on the same live data."}
+            </p>
+          </div>
+          {installed ? (
+            <Badge variant="secondary" className="gap-1 shrink-0">
+              <CheckCircle2 className="size-3" />
+              {ar ? "مثبّت بالفعل" : "Already installed"}
+            </Badge>
+          ) : (
+            <Button onClick={installFromBrowser} className="gap-2 shrink-0">
+              <Download className="size-4" />
+              {ar ? "تثبيت الآن" : "Install now"}
+            </Button>
+          )}
+        </Card>
+
         {/* Latest builds grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(Object.keys(PLATFORM_META) as Platform[]).map((p) => {
+          {orderedPlatforms.map((p) => {
             const meta = PLATFORM_META[p];
             const latest = latestByPlatform[p];
             const Icon = meta.icon;
