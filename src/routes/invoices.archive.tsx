@@ -12,6 +12,7 @@ import { fmtDate, fmtMoney } from "@/lib/utils-money";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { TableSkeleton } from "@/components/skeletons";
 import { AuthorBadge } from "@/components/author-badge";
+import { VatBadge } from "@/components/vat-badge";
 import { exportInvoicesToExcel, type InvoiceRow } from "@/lib/invoice-export";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -255,6 +256,7 @@ function ArchivePage() {
                           </span>
                         )}
                         <span>{i.invoice_number}</span>
+                        <VatBadge taxEnabled={(i as any).tax_enabled} taxRate={(i as any).tax_rate} isAr={isAr} />
                         <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-1">
                           <CheckCircle2 className="h-3 w-3" />
                           {isAr ? "مُغلقة" : "Closed"}

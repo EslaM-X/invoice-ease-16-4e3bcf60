@@ -16,6 +16,7 @@ import { exportInvoicesOrdersStyle } from "@/lib/orders-export";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
+import { VatBadge } from "@/components/vat-badge";
 import { TableSkeleton } from "@/components/skeletons";
 import { cachedListFetch } from "@/lib/list-cache";
 import { computeDeliverySummaries, isDeliverableInvoiceLine } from "@/lib/invoice-delivery-closure";
@@ -553,6 +554,7 @@ function InvoicesList() {
                             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">#{i.receipt_number}</span>
                           )}
                           <span>{i.invoice_number}</span>
+                          <VatBadge taxEnabled={(i as any).tax_enabled} taxRate={(i as any).tax_rate} isAr={lang === "ar"} />
                           {voided && (
                             <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
                               {t("voided")}

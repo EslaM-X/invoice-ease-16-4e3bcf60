@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { InvoiceTimeline } from "@/components/invoice-timeline";
+import { VatBadge } from "@/components/vat-badge";
 import { useRealtimeTable } from "@/lib/realtime";
 import { PaymentsManager } from "@/components/payments-manager";
 import { InvoiceActivityPanel } from "@/components/invoice-activity-panel";
@@ -355,6 +356,11 @@ function InvoiceView() {
           <div className="mt-4 text-center text-[15px] text-black" dir="ltr">
             Invoice <span className="ltr-nums">#{inv.receipt_number ?? inv.invoice_number}</span>
           </div>
+          {(inv as any).tax_enabled === true && (
+            <div className="mt-2 flex justify-center">
+              <VatBadge taxEnabled={(inv as any).tax_enabled} taxRate={(inv as any).tax_rate} isAr={isAr} variant="print" />
+            </div>
+          )}
 
           <div className="mt-6 text-[13px] text-black space-y-0.5" dir={isAr ? "rtl" : "ltr"}>
             {(inv as any).subject && (
