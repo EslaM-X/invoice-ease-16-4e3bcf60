@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import steinheimLogo from "@/assets/steinheim-logo.png";
 import { InvoiceTimeline } from "@/components/invoice-timeline";
+import { VatBadge } from "@/components/vat-badge";
 import { useRealtimeTable } from "@/lib/realtime";
 import { PaymentsManager } from "@/components/payments-manager";
 import { InvoiceActivityPanel } from "@/components/invoice-activity-panel";
