@@ -17,6 +17,7 @@ export function SyncStatusPill() {
   const [lastSync, setLast] = useState<number | null>(null);
   const [pending, setPending] = useState(0);
   const [online, setOnline] = useState(true);
+  const [rtStatus, setRtStatus] = useState<"live" | "reconnecting" | "failed">("live");
   const [, force] = useState(0);
 
   useEffect(() => {
@@ -33,9 +34,17 @@ export function SyncStatusPill() {
     const onOutbox = () => refresh();
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
+    // Realtime health, emitted by the subscription layer in @/lib/realtime.
+    const onRealtime = (e: Event) => {
+      const status = (e as CustomEvent).detail?.status as string | undefined;
+      if (status === "reconnecting") setRtStatus("reconnecting");
+      else if (status === "failed") setRtStatus("failed");
+      else if (status === "reconnected") setRtStatus("live");
+    };
     window.addEventListener("app:last-sync", onSync);
     window.addEventListener("app:sync-success", onSync);
     window.addEventListener("app:outbox-changed", onOutbox);
+    window.addEventListener("app:realtime-status", onRealtime as EventListener);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     // Re-render every 10s so relative time stays fresh
@@ -46,6 +55,7 @@ export function SyncStatusPill() {
       window.removeEventListener("app:last-sync", onSync);
       window.removeEventListener("app:sync-success", onSync);
       window.removeEventListener("app:outbox-changed", onOutbox);
+      window.removeEventListener("app:realtime-status", onRealtime as EventListener);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       clearInterval(tick);
