@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Search, Route as RouteIcon, History as HistoryIcon } from "lucide-react";
 import { POTrackerDialog, statusBadge, statusLabel, PO_FLOW } from "@/components/po-tracker-dialog";
+import { POCostBanner, POCostCell } from "@/components/po-cost-summary";
 import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 import { toast } from "sonner";
 
