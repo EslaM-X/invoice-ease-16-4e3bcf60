@@ -37,9 +37,10 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
             {total.short}
           </div>
           {total.compact && (
-            <div className="text-xs tabular-nums opacity-70">≈ {total.full}</div>
+            <div className="text-xs tabular-nums text-muted-foreground">≈ {total.full}</div>
           )}
-          <div className="mt-1 text-[11px] opacity-75">
+          <div className="mt-1 text-[11px] text-muted-foreground">
+
             {isAr
               ? `${fmtNumber(t.poCount, lang)} أمر شراء · ${fmtNumber(t.qty, lang)} قطعة · $${t.usd.toFixed(2)} · متوسط الصرف ${t.avgRate.toFixed(2)}`
               : `${fmtNumber(t.poCount, lang)} POs · ${fmtNumber(t.qty, lang)} units · $${t.usd.toFixed(2)} · avg rate ${t.avgRate.toFixed(2)}`}
