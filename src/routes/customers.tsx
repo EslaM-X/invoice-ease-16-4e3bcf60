@@ -55,6 +55,11 @@ function Customers() {
   const emptyForm = { name: "", phone: "", address: "", category: "", company_name: "", contact_person: "", sales_channel: "showroom", sales_event_id: "", source_notes: "" };
   const [form, setForm] = useState(emptyForm);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [invoices, setInvoices] = useState<CustomerInvoice[]>([]);
+  const [sortBy, setSortBy] = useState<"value" | "count" | "recent" | "name">("value");
+  const [vipOnly, setVipOnly] = useState(false);
+  const [dueOnly, setDueOnly] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -66,8 +71,16 @@ function Customers() {
     const { data: ev } = await (supabase.from as any)("sales_events").select("*").order("year", { ascending: false }).order("name");
     setSalesEvents((ev ?? []) as SalesEvent[]);
   };
+  const loadInvoices = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("invoices")
+      .select("id, invoice_number, customer_id, customer_name, customer_phone, subtotal, discount, total, tax_enabled, tax_rate, paid_amount, status, delivery_computed_state, created_at")
+      .order("created_at", { ascending: false });
+    setInvoices((data ?? []) as unknown as CustomerInvoice[]);
+  };
   const refreshPending = async () => setPendingIds(await getPendingRowIds("customers"));
-  useEffect(() => { load(); refreshPending(); }, [user]);
+  useEffect(() => { load(); loadInvoices(); refreshPending(); }, [user]);
   useEffect(() => {
     const on = () => refreshPending();
     window.addEventListener("app:outbox-changed", on);
@@ -78,15 +91,34 @@ function Customers() {
     };
   }, []);
   useRealtimeTable("customers", () => { load(); refreshPending(); });
+  useBatchedRealtimeTables(["invoices", "payments"], () => { loadInvoices(); });
+
+  const statsMap = useMemo(
+    () => buildCustomerStats(list.map((c) => ({ id: c.id, name: c.name, phone: c.phone })), invoices),
+    [list, invoices],
+  );
+  const statsFor = (id: string): CustomerStats => statsMap.get(id) ?? EMPTY_STATS;
 
   const filtered = list.filter((c) => {
     const s = q.trim().toLowerCase();
     if (categoryFilter !== "all" && (c.category ?? "") !== categoryFilter) return false;
     if (channelFilter !== "all" && (c.sales_channel ?? "") !== channelFilter) return false;
     if (eventFilter !== "all" && (c.sales_event_id ?? "") !== eventFilter) return false;
+    const st = statsFor(c.id);
+    if (vipOnly && st.tier !== "vip") return false;
+    if (dueOnly && st.remaining <= 0.01) return false;
     if (!s) return true;
     return [c.name, c.phone, c.address, c.company_name, c.contact_person, c.source_notes].some((x) => (x ?? "").toLowerCase().includes(s));
+  }).sort((a, b) => {
+    const sa = statsFor(a.id), sb = statsFor(b.id);
+    if (sortBy === "value") return sb.totalValue - sa.totalValue;
+    if (sortBy === "count") return sb.count - sa.count;
+    if (sortBy === "recent") return new Date(sb.lastAt ?? 0).getTime() - new Date(sa.lastAt ?? 0).getTime();
+    return a.name.localeCompare(b.name);
   });
+
+  const profileCustomer = profileId ? list.find((c) => c.id === profileId) ?? null : null;
+
 
   const openAdd = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (c: Customer) => { setEditing(c); setForm({ name: c.name, phone: c.phone ?? "", address: c.address ?? "", category: c.category ?? "", company_name: c.company_name ?? "", contact_person: c.contact_person ?? "", sales_channel: c.sales_channel ?? "showroom", sales_event_id: c.sales_event_id ?? "", source_notes: c.source_notes ?? "" }); setOpen(true); };
