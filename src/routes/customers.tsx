@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import type { Customer } from "@/lib/data";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { exportCustomersToExcel, exportCustomersToCSV, type CustomerRow } from "@/lib/invoice-export";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useRealtimeTable, useBatchedRealtimeTables } from "@/lib/realtime";
 import { AuthorBadge } from "@/components/author-badge";
 import { cachedListFetch } from "@/lib/list-cache";
 import { enqueueOrRun } from "@/lib/outbox";
@@ -22,6 +22,11 @@ import { getPendingRowIds } from "@/lib/sync-state";
 import { CloudUpload } from "lucide-react";
 import type { SalesEvent } from "@/lib/data";
 import { CUSTOMER_CATEGORIES, SALES_CHANNELS, categoryBadgeClass, labelForCustomerCategory, labelForSalesChannel } from "@/lib/sales-classification";
+import { buildCustomerStats, tierClass, tierLabel, EMPTY_STATS, type CustomerInvoice, type CustomerStats } from "@/lib/customer-stats";
+import { CustomerProfileSheet } from "@/components/customer-profile-sheet";
+import { fmtMoney } from "@/lib/utils-money";
+import { useMemo } from "react";
+
 
 export const Route = createFileRoute("/customers")({
   component: () => <AppShell><Customers /></AppShell>,
