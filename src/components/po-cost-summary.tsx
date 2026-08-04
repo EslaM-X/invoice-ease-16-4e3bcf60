@@ -55,15 +55,16 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
             return (
               <div
                 key={p.label}
-                className="rounded-xl border border-primary/20 bg-background/10 p-2.5 backdrop-blur-sm dark:bg-background/40"
+                className="rounded-xl border border-primary/20 bg-muted/60 p-2.5"
                 title={v.full}
               >
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <Icon className="h-3 w-3 text-primary" />
                   {p.label}
                 </div>
-                <div className="mt-0.5 text-sm font-bold tabular-nums">{v.short}</div>
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-background/25">
+                <div className="mt-0.5 text-sm font-bold tabular-nums text-foreground">{v.short}</div>
+                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-border">
+
                   <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%` }} />
                 </div>
               </div>
