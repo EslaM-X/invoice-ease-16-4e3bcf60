@@ -265,27 +265,66 @@ function Customers() {
         <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">{lang === "ar" ? "كل المعارض" : "All events"}</option>{salesEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}{ev.year ? ` ${ev.year}` : ""}</option>)}</select>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="h-9 rounded-full border bg-background px-3 text-xs">
+          <option value="value">{lang === "ar" ? "ترتيب: الأعلى قيمة" : "Sort: Highest value"}</option>
+          <option value="count">{lang === "ar" ? "ترتيب: عدد الفواتير" : "Sort: Invoice count"}</option>
+          <option value="recent">{lang === "ar" ? "ترتيب: آخر تعامل" : "Sort: Most recent"}</option>
+          <option value="name">{lang === "ar" ? "ترتيب: الاسم" : "Sort: Name"}</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => setVipOnly((v) => !v)}
+          className={`h-9 rounded-full border px-3 text-xs font-semibold transition-colors ${vipOnly ? tierClass("vip") : "bg-background text-muted-foreground"}`}
+        >
+          {lang === "ar" ? "VIP فقط" : "VIP only"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDueOnly((v) => !v)}
+          className={`h-9 rounded-full border px-3 text-xs font-semibold transition-colors ${dueOnly ? "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300" : "bg-background text-muted-foreground"}`}
+        >
+          {lang === "ar" ? "عليه متبقي" : "Has balance"}
+        </button>
+      </div>
+
       <div className="surface-elevated overflow-hidden rounded-2xl border bg-card perf-contain">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">{t("no_customers")}</div>
         ) : (
           <div className="overflow-x-auto smooth-scroll">
-          <table className="w-full text-sm min-w-[480px]">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-muted/50 text-start">
               <tr>
                 <th className="px-4 py-3 text-start font-medium">{t("name")}</th>
-                <th className="px-4 py-3 text-start font-medium">{t("phone")}</th>
+                <th className="px-4 py-3 text-start font-medium">{lang === "ar" ? "حجم الشغل" : "Volume"}</th>
+                <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">{t("phone")}</th>
                 <th className="px-4 py-3 text-start font-medium hidden sm:table-cell">Catgry</th>
-                <th className="px-4 py-3 text-start font-medium hidden md:table-cell">{lang === "ar" ? "المصدر" : "Source"}</th>
+                <th className="px-4 py-3 text-start font-medium hidden lg:table-cell">{lang === "ar" ? "المصدر" : "Source"}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-muted/30">
+              {filtered.map((c) => {
+                const st = statsFor(c.id);
+                const pct = Math.round(st.deliveredRatio * 100);
+                return (
+                <tr
+                  key={c.id}
+                  onClick={() => setProfileId(c.id)}
+                  className="cursor-pointer hover:bg-muted/30"
+                >
                   <td className="px-4 py-3 font-medium">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span>{c.name}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tierClass(st.tier)}`}>
+                        {tierLabel(st.tier, lang === "ar")}
+                      </span>
+                      {st.remaining > 0.01 ? (
+                        <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold text-rose-600 dark:text-rose-300">
+                          {lang === "ar" ? "متبقي" : "Due"} {fmtMoney(st.remaining)}
+                        </span>
+                      ) : null}
                       {pendingIds.has(c.id) ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
                           <CloudUpload className="h-2.5 w-2.5" />
@@ -295,10 +334,30 @@ function Customers() {
                     </div>
                     <AuthorBadge email={c.created_by_email} label="created by" className="mt-0.5" />
                   </td>
-                  <td className="px-4 py-3">{c.phone || "—"}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell"><span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(c.category)}`}>{labelForCustomerCategory(c.category, lang as any)}</span></td>
-                  <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{labelForSalesChannel(c.sales_channel, lang as any)}{c.company_name ? ` · ${c.company_name}` : ""}</td>
                   <td className="px-4 py-3">
+                    {st.count === 0 ? (
+                      <span className="text-xs text-muted-foreground">{lang === "ar" ? "لا فواتير" : "No invoices"}</span>
+                    ) : (
+                      <div className="min-w-[130px]">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-bold tabular-nums">{fmtMoney(st.totalValue)}</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {st.count} {lang === "ar" ? "فاتورة" : "inv"}
+                          </span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                          {lang === "ar" ? `مُسلَّم ${st.delivered}/${st.count}` : `Delivered ${st.delivered}/${st.count}`}
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden sm:table-cell">{c.phone || "—"}</td>
+                  <td className="px-4 py-3 hidden sm:table-cell"><span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(c.category)}`}>{labelForCustomerCategory(c.category, lang as any)}</span></td>
+                  <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">{labelForSalesChannel(c.sales_channel, lang as any)}{c.company_name ? ` · ${c.company_name}` : ""}</td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
                       <AlertDialog>
@@ -319,12 +378,21 @@ function Customers() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
           </div>
         )}
       </div>
+
+      <CustomerProfileSheet
+        open={!!profileCustomer}
+        onOpenChange={(v) => { if (!v) setProfileId(null); }}
+        customer={profileCustomer}
+        stats={profileCustomer ? statsFor(profileCustomer.id) : null}
+        isAr={lang === "ar"}
+      />
     </div>
+
   );
 }
