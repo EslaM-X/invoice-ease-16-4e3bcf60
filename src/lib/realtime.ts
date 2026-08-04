@@ -273,12 +273,17 @@ export function useBatchedRealtimeTables(
       } catch { /* noop for SSR */ }
     };
 
+    let generation = 0;
+
     const scheduleReconnect = () => {
       if (cancelled || backoffTimer) return;
-      attempt = Math.min(attempt + 1, 6);
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (attempt >= 6) return; // stop retrying until focus/online
+      attempt = attempt + 1;
       const delay = Math.min(1000 * 2 ** (attempt - 1), 30000);
       hadFailure = true;
-      emit(attempt >= 6 ? "failed" : "reconnecting", { attempt, delayMs: delay });
+      emit("reconnecting", { attempt, delayMs: delay });
       backoffTimer = setTimeout(() => {
         backoffTimer = null;
         connect();
@@ -287,20 +292,27 @@ export function useBatchedRealtimeTables(
 
     const connect = () => {
       if (cancelled) return;
+      generation += 1;
+      const gen = generation;
       cleanup();
       for (const table of tables) {
         const ch = supabase.channel(uniqueRealtimeTopic(`rtb-${table}`));
         ch.on(
           "postgres_changes",
           { event: "*", schema: "public", table },
-          (payload: any) => fire(table, {
-            eventType: payload.eventType,
-            new: payload.new,
-            old: payload.old,
-          }),
+          (payload: any) => {
+            if (cancelled || gen !== generation) return;
+            fire(table, {
+              eventType: payload.eventType,
+              new: payload.new,
+              old: payload.old,
+            });
+          },
         );
         ch.subscribe((status: string) => {
-          if (cancelled) return;
+          // Superseded channels emit CLOSED when removed — ignore them,
+          // otherwise every reconnect triggers another reconnect.
+          if (cancelled || gen !== generation) return;
           if (status === "SUBSCRIBED") {
             attempt = 0;
             if (backoffTimer) { clearTimeout(backoffTimer); backoffTimer = null; }
@@ -314,6 +326,7 @@ export function useBatchedRealtimeTables(
         channels.push(ch);
       }
     };
+
 
     connect();
 
