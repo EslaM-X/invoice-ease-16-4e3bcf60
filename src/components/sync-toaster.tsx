@@ -1,18 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 
 /**
- * Listens to app:sync-success / app:sync-failed / app:realtime-status events
- * and surfaces user-facing toasts. Mounted once at the app root.
+ * Listens to app:sync-success / app:sync-failed and surfaces user-facing
+ * toasts. Mounted once at the app root.
  *
- * Realtime toasts are throttled and coalesced: many tables can disconnect
- * during one network blip; users see one "reconnecting" toast, not twenty.
+ * Realtime connection status is deliberately silent (no toasts) — it is
+ * shown only in the sync status pill.
  */
 export function SyncToaster() {
   const { lang } = useI18n();
-  const reconnectingToastId = useRef<string | number | null>(null);
-  const lastEmit = useRef<{ status: string; at: number }>({ status: "", at: 0 });
+
 
   useEffect(() => {
     const onSuccess = (e: Event) => {
