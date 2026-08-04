@@ -359,12 +359,7 @@ function POTrackingPage() {
                   <div className="font-bold tabular-nums">${(Number(p.total_usd) || 0).toFixed(2)}</div>
                   <div className="text-[10px] text-muted-foreground">{p.total_qty} {isAr ? "قطعة" : "units"}</div>
                 </div>
-                {p.total_egp != null && (
-                  <div className="text-end">
-                    <div className="text-[10px] text-muted-foreground">EGP</div>
-                    <div className="font-bold tabular-nums text-primary">{fmtMoney(Number(p.total_egp), "EGP", lang)}</div>
-                  </div>
-                )}
+                <POCostCell po={p as any} />
                 <Button size="sm" onClick={() => setTrackId(p.id)} className="gap-1">
                   <Activity className="h-3.5 w-3.5" /> {isAr ? "تتبع" : "Track"}
                 </Button>
