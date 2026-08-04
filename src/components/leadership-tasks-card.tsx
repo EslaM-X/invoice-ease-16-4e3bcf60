@@ -235,8 +235,7 @@ function LeaderAvatar({ url, name, email, size = 192, prefetchRef }: { url: stri
               alt={name || email || ""}
               loading="eager"
               decoding="async"
-              // @ts-expect-error fetchpriority is a valid HTML attribute
-              fetchpriority="high"
+              fetchPriority="high"
               draggable={false}
               onLoad={(e) => {
                 const el = e.currentTarget;

@@ -7,10 +7,7 @@ import { Toaster } from "sonner";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
-import { OfflineBanner } from "@/components/offline-banner";
 import { InstallPrompt } from "@/components/install-prompt";
-import { SyncStatusPill } from "@/components/sync-status-pill";
-import { SyncToaster } from "@/components/sync-toaster";
 import { PwaVersionGuard } from "@/components/pwa-version-guard";
 import { StaleChunkGuard } from "@/components/stale-chunk-guard";
 import { ApprovalGate } from "@/components/approval-gate";
@@ -142,7 +139,6 @@ function RootComponent() {
             <PwaVersionGuard />
             <StaleChunkGuard />
             <LuxurySplash />
-            <OfflineBanner />
             <ApprovalGate>
               <GlobalPresenceHeartbeat />
               <GlobalCallNotifier />
@@ -150,8 +146,6 @@ function RootComponent() {
               <Outlet />
             </ApprovalGate>
             <InstallPrompt />
-            <SyncStatusPill />
-            <SyncToaster />
             <Toaster
               position="top-center"
               richColors

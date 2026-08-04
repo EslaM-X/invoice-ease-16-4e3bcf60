@@ -245,8 +245,8 @@ export default function ChatPopupNotifier() {
     };
     check();
     const mo = new MutationObserver(check);
-    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state", "style"] });
-    const iv = window.setInterval(check, 700);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
+    const iv = window.setInterval(check, 1500);
     return () => { mo.disconnect(); window.clearInterval(iv); };
   }, [dnd, pos, size, minimized]);
 
