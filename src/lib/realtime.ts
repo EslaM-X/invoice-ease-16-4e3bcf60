@@ -19,10 +19,10 @@ export function uniqueRealtimeTopic(prefix: string): string {
 // Debounce window for coalescing realtime bursts. A few hundred ms is
 // imperceptible to humans but collapses dozens of "items inserted at once"
 // events into a single refetch, dramatically reducing re-renders.
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 800;
 // If a burst keeps firing, still flush at least once per this window so the
 // UI never stalls behind continuous activity.
-const MAX_WAIT_MS = 1500;
+const MAX_WAIT_MS = 2500;
 
 /**
  * Subscribe to realtime changes on a table. Reliable across network drops.
