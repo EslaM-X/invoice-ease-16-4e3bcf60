@@ -612,7 +612,6 @@ const ProductCard = memo(function ProductCard({
             className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
             loading={eager ? "eager" : "lazy"}
             decoding="async"
-            // @ts-expect-error: standard browser attr not yet typed
             fetchPriority={eager ? "high" : "auto"}
           />
         ) : (
