@@ -1,0 +1,13 @@
+* text=auto eol=lf
+
+# Keep the generated MCP/route files LF so plugin regeneration on Windows
+# doesn't produce line-ending-only diffs (see AGENTS.md).
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
