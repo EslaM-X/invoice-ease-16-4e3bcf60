@@ -293,6 +293,8 @@ function POTrackingPage() {
         </button>
       </div>
 
+      <POCostBanner rows={filtered as any} />
+
       {/* List */}
       <Card className="overflow-hidden">
         <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
