@@ -613,7 +613,7 @@ const ProductCard = memo(function ProductCard({
             loading={eager ? "eager" : "lazy"}
             decoding="async"
             // @ts-expect-error: standard browser attr not yet typed
-            fetchpriority={eager ? "high" : "auto"}
+            fetchPriority={eager ? "high" : "auto"}
           />
         ) : (
           <div className="flex flex-col items-center text-white/20">
