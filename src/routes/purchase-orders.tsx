@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRole } from "@/lib/use-role";
-import { useRealtimeTable } from "@/lib/realtime";
+import { useRealtimeTable, useBatchedRealtimeTables } from "@/lib/realtime";
 import { fmtMoney, fmtDateTime } from "@/lib/utils-money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -182,7 +182,18 @@ function PurchaseOrdersPage() {
   useEffect(() => {
     loadPOs();
   }, []);
-  useRealtimeTable("purchase_orders", loadPOs, []);
+  useBatchedRealtimeTables(
+    [
+      "purchase_orders",
+      "purchase_order_items",
+      "po_status_history",
+      "po_receipts",
+      "po_receipt_items",
+    ],
+    () => loadPOs(),
+    [],
+    { debounceMs: 200, maxWaitMs: 900 },
+  );
 
   const statusBadge = (s: string) => trackerStatusBadge(s, isAr);
 

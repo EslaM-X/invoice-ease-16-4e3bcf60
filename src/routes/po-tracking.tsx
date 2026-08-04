@@ -133,9 +133,10 @@ function POTrackingPage() {
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
-    ["purchase_orders", "po_status_history", "po_receipts", "po_receipt_items", "purchase_order_items"],
+    ["purchase_orders", "po_status_history", "po_receipts", "po_receipt_items", "purchase_order_items", "products"],
     () => { if (user) load(); },
     [user?.id],
+    { debounceMs: 200, maxWaitMs: 900 },
   );
 
   const receiptStatusOf = (poId: string): "fully" | "partial" | "none" => {
