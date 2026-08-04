@@ -8,13 +8,14 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useRole } from "@/lib/use-role";
 import { useBatchedRealtimeTables } from "@/lib/realtime";
-import { fmtDateTime, fmtMoney } from "@/lib/utils-money";
+import { fmtDateTime } from "@/lib/utils-money";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Search, Route as RouteIcon, History as HistoryIcon } from "lucide-react";
 import { POTrackerDialog, statusBadge, statusLabel, PO_FLOW } from "@/components/po-tracker-dialog";
+import { POCostBanner, POCostCell } from "@/components/po-cost-summary";
 import { shipmentMeta, SHIPMENT_TYPES, type ShipmentType } from "@/lib/shipment-types";
 import { toast } from "sonner";
 
@@ -293,6 +294,8 @@ function POTrackingPage() {
         </button>
       </div>
 
+      <POCostBanner rows={filtered as any} />
+
       {/* List */}
       <Card className="overflow-hidden">
         <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -356,12 +359,7 @@ function POTrackingPage() {
                   <div className="font-bold tabular-nums">${(Number(p.total_usd) || 0).toFixed(2)}</div>
                   <div className="text-[10px] text-muted-foreground">{p.total_qty} {isAr ? "قطعة" : "units"}</div>
                 </div>
-                {p.total_egp != null && (
-                  <div className="text-end">
-                    <div className="text-[10px] text-muted-foreground">EGP</div>
-                    <div className="font-bold tabular-nums text-primary">{fmtMoney(Number(p.total_egp), "EGP", lang)}</div>
-                  </div>
-                )}
+                <POCostCell po={p as any} />
                 <Button size="sm" onClick={() => setTrackId(p.id)} className="gap-1">
                   <Activity className="h-3.5 w-3.5" /> {isAr ? "تتبع" : "Track"}
                 </Button>
