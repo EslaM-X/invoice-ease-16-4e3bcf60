@@ -182,7 +182,18 @@ function PurchaseOrdersPage() {
   useEffect(() => {
     loadPOs();
   }, []);
-  useRealtimeTable("purchase_orders", loadPOs, []);
+  useBatchedRealtimeTables(
+    [
+      "purchase_orders",
+      "purchase_order_items",
+      "po_status_history",
+      "po_receipts",
+      "po_receipt_items",
+    ],
+    () => loadPOs(),
+    [],
+    { debounceMs: 200, maxWaitMs: 900 },
+  );
 
   const statusBadge = (s: string) => trackerStatusBadge(s, isAr);
 
