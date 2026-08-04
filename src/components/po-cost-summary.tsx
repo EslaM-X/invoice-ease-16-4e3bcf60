@@ -22,9 +22,10 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,hsl(var(--foreground)/0.92),hsl(var(--foreground)/0.75))] p-5 text-background shadow-lg dark:bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)))] dark:text-foreground">
-      <div className="pointer-events-none absolute -end-16 -top-20 h-56 w-56 rounded-full bg-primary/25 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -start-10 h-52 w-52 rounded-full bg-primary/15 blur-3xl" />
+    <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-card p-5 text-card-foreground shadow-lg">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
+      <div className="pointer-events-none absolute -end-16 -top-20 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+
 
       <div className="relative flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-[240px]">
@@ -36,9 +37,10 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
             {total.short}
           </div>
           {total.compact && (
-            <div className="text-xs tabular-nums opacity-70">≈ {total.full}</div>
+            <div className="text-xs tabular-nums text-muted-foreground">≈ {total.full}</div>
           )}
-          <div className="mt-1 text-[11px] opacity-75">
+          <div className="mt-1 text-[11px] text-muted-foreground">
+
             {isAr
               ? `${fmtNumber(t.poCount, lang)} أمر شراء · ${fmtNumber(t.qty, lang)} قطعة · $${t.usd.toFixed(2)} · متوسط الصرف ${t.avgRate.toFixed(2)}`
               : `${fmtNumber(t.poCount, lang)} POs · ${fmtNumber(t.qty, lang)} units · $${t.usd.toFixed(2)} · avg rate ${t.avgRate.toFixed(2)}`}
@@ -53,15 +55,16 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
             return (
               <div
                 key={p.label}
-                className="rounded-xl border border-primary/20 bg-background/10 p-2.5 backdrop-blur-sm dark:bg-background/40"
+                className="rounded-xl border border-primary/20 bg-muted/60 p-2.5"
                 title={v.full}
               >
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <Icon className="h-3 w-3 text-primary" />
                   {p.label}
                 </div>
-                <div className="mt-0.5 text-sm font-bold tabular-nums">{v.short}</div>
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-background/25">
+                <div className="mt-0.5 text-sm font-bold tabular-nums text-foreground">{v.short}</div>
+                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-border">
+
                   <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%` }} />
                 </div>
               </div>
@@ -71,14 +74,15 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
       </div>
 
       <div className="relative mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-background/10 px-2 py-0.5 font-semibold dark:bg-background/40">
+        <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-muted/60 px-2 py-0.5 font-semibold text-foreground">
           <Receipt className="h-3 w-3" />
           {isAr ? "الضرائب غير محتسبة ضمن التكلفة" : "Taxes excluded from cost"}
           {" · "}
-          <span className="tabular-nums opacity-80">{fmtMoney(t.taxesEgp, "EGP", lang)}</span>
+          <span className="tabular-nums text-muted-foreground">{fmtMoney(t.taxesEgp, "EGP", lang)}</span>
         </span>
         {t.pricedCount < t.poCount && (
-          <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 font-semibold text-amber-300 dark:text-amber-400">
+          <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-700 dark:text-amber-400">
+
             {isAr
               ? `${t.poCount - t.pricedCount} أمر بانتظار التسعير`
               : `${t.poCount - t.pricedCount} awaiting pricing`}
