@@ -74,14 +74,15 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
       </div>
 
       <div className="relative mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-background/10 px-2 py-0.5 font-semibold dark:bg-background/40">
+        <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-muted/60 px-2 py-0.5 font-semibold text-foreground">
           <Receipt className="h-3 w-3" />
           {isAr ? "الضرائب غير محتسبة ضمن التكلفة" : "Taxes excluded from cost"}
           {" · "}
-          <span className="tabular-nums opacity-80">{fmtMoney(t.taxesEgp, "EGP", lang)}</span>
+          <span className="tabular-nums text-muted-foreground">{fmtMoney(t.taxesEgp, "EGP", lang)}</span>
         </span>
         {t.pricedCount < t.poCount && (
-          <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 font-semibold text-amber-300 dark:text-amber-400">
+          <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-700 dark:text-amber-400">
+
             {isAr
               ? `${t.poCount - t.pricedCount} أمر بانتظار التسعير`
               : `${t.poCount - t.pricedCount} awaiting pricing`}
