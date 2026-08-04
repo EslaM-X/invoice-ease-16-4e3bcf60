@@ -22,9 +22,10 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,hsl(var(--foreground)/0.92),hsl(var(--foreground)/0.75))] p-5 text-background shadow-lg dark:bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)))] dark:text-foreground">
-      <div className="pointer-events-none absolute -end-16 -top-20 h-56 w-56 rounded-full bg-primary/25 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -start-10 h-52 w-52 rounded-full bg-primary/15 blur-3xl" />
+    <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-card p-5 text-card-foreground shadow-lg">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
+      <div className="pointer-events-none absolute -end-16 -top-20 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+
 
       <div className="relative flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-[240px]">
