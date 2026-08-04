@@ -116,8 +116,12 @@ export function POCostBanner({ rows }: { rows: POCostRow[] }) {
 
 export function POCostCell({ po, compact }: { po: POCostRow; compact?: boolean }) {
   const { lang } = useI18n();
+  const canView = useCanViewPOCost();
   const isAr = lang === "ar";
   const c = useMemo(() => computePOCost(po), [po]);
+
+  if (!canView) return null;
+
 
   if (!c.priced) {
     return (
