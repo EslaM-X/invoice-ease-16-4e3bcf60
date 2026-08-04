@@ -25,9 +25,11 @@ export function useCanViewPOCost(): boolean {
 
 export function POCostBanner({ rows }: { rows: POCostRow[] }) {
   const { lang } = useI18n();
+  const canView = useCanViewPOCost();
   const isAr = lang === "ar";
   const t = useMemo(() => sumPOCosts(rows), [rows]);
   const total = fmtMoneyAdaptive(t.totalEgp, "EGP", lang);
+  if (!canView) return null;
 
   const parts: { label: string; value: number; icon: any }[] = [
     { label: isAr ? "أساس بالجنيه" : "Base EGP", value: t.baseEgp, icon: Coins },
