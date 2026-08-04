@@ -1,8 +1,23 @@
 import { useMemo } from "react";
 import { Coins, Ship, Landmark, Plus, Receipt, Wallet } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 import { fmtMoney, fmtMoneyAdaptive, fmtNumber } from "@/lib/utils-money";
 import { computePOCost, sumPOCosts, type POCostRow } from "@/lib/po-cost";
+
+/** Only these accounts may see purchase-order landed cost in EGP. */
+export const PO_COST_VIEWER_EMAILS = new Set([
+  "k.elsharbatly@steinheim-eg.com",
+  "cfo@steinheim-eg.com",
+  "h.elsharbatly@steinheim-eg.com",
+  "e.hesham@steinheim-eg.com",
+]);
+
+export function useCanViewPOCost(): boolean {
+  const { user } = useAuth();
+  const email = (user?.email ?? "").trim().toLowerCase();
+  return !!email && PO_COST_VIEWER_EMAILS.has(email);
+}
 
 /* ------------------------------------------------------------------ */
 /* Grand total banner — Noir & Gold                                    */
