@@ -291,16 +291,7 @@ function PurchaseOrdersPage() {
                     {p.total_qty} {isAr ? "قطعة" : "units"}
                   </div>
                 </div>
-                {p.total_egp != null && (
-                  <div className="text-end">
-                    <div className="text-xs text-muted-foreground">
-                      {isAr ? "إجمالي EGP" : "Total EGP"}
-                    </div>
-                    <div className="font-bold tabular-nums text-primary">
-                      {fmtMoney(Number(p.total_egp), "EGP", lang)}
-                    </div>
-                  </div>
-                )}
+                <POCostCell po={p as any} />
                 <div>{statusBadge(p.status)}</div>
                 {(isAdmin || isPurchasing || isCFO) && (
                   <Button
