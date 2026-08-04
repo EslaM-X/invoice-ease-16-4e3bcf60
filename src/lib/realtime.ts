@@ -93,19 +93,30 @@ export function useRealtimeTable(
       }
     };
 
+    let generation = 0;
+
     const scheduleReconnect = () => {
-      if (cancelled) return;
-      attempt = Math.min(attempt + 1, 6);
+      if (cancelled || backoffTimer) return;
+      // Don't spin while the tab is hidden or the device is offline — the
+      // focus/online listeners below will reconnect when it makes sense.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (attempt >= 6) return; // give up quietly until focus/online
+      attempt = attempt + 1;
       const delay = Math.min(1000 * 2 ** (attempt - 1), 30000);
       hadFailure = true;
       emit("reconnecting", { attempt, delayMs: delay });
-      if (backoffTimer) clearTimeout(backoffTimer);
-      backoffTimer = setTimeout(connect, delay);
+      backoffTimer = setTimeout(() => {
+        backoffTimer = null;
+        connect();
+      }, delay);
     };
 
 
     const connect = () => {
       if (cancelled) return;
+      generation += 1;
+      const gen = generation;
       cleanupChannel();
       const ch = supabase.channel(uniqueRealtimeTopic(`rt-${table}`));
       channel = ch;
@@ -114,6 +125,7 @@ export function useRealtimeTable(
         "postgres_changes",
         { event: "*", schema: "public", table },
         (payload: any) => {
+          if (cancelled || gen !== generation) return;
           fire({
             eventType: payload.eventType,
             new: payload.new,
@@ -123,18 +135,20 @@ export function useRealtimeTable(
       );
 
       ch.subscribe((status: string) => {
-        if (cancelled) return;
+        // Ignore callbacks from superseded channels: removeChannel() emits
+        // CLOSED on the old channel and would otherwise trigger a storm.
+        if (cancelled || gen !== generation) return;
         if (status === "SUBSCRIBED") {
           attempt = 0;
           if (backoffTimer) { clearTimeout(backoffTimer); backoffTimer = null; }
           if (hadFailure) { emit("reconnected"); hadFailure = false; }
           fire();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          if (attempt >= 6) emit("failed", { attempt });
           scheduleReconnect();
         }
       });
     };
+
 
     connect();
 
