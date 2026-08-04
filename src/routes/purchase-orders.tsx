@@ -236,6 +236,8 @@ function PurchaseOrdersPage() {
         </div>
       </div>
 
+      <POCostBanner rows={pos as any} />
+
       <Card className="overflow-hidden">
         <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {isAr ? "الكل" : "All"} ({pos.length})
