@@ -35,7 +35,9 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
+        # iphone-12 and iphone-se projects use the webkit engine, pixel-5
+        # uses chromium — both must be installed for the matrix to run.
+        run: bunx playwright install --with-deps chromium webkit
 
       - name: Build (dev mode for faster CI)
         run: bun run build:dev
