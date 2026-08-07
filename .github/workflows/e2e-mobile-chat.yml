@@ -40,12 +40,17 @@ jobs:
       - name: Build (dev mode for faster CI)
         run: bun run build:dev
 
-      - name: Start preview server
+      - name: Start dev server
+        # `vite preview` cannot serve this stack: the Lovable config builds
+        # via nitro to `.output/` (cloudflare preset), so the TanStack preview
+        # entry `dist/server/server.js` is never produced. The dev server is
+        # what Playwright is configured for (localhost:8080) and is the only
+        # way to serve the app here.
         run: |
-          bun run preview --host 127.0.0.1 --port 8080 &
+          bun run dev --host 127.0.0.1 --port 8080 &
           echo $! > .preview.pid
-          # Wait for the server to accept connections (max ~30s).
-          for i in $(seq 1 60); do
+          # Wait for the server to accept connections (max ~90s).
+          for i in $(seq 1 180); do
             if curl -fsS "$PW_BASE_URL" >/dev/null 2>&1; then
               echo "preview up"; exit 0
             fi
@@ -56,7 +61,7 @@ jobs:
       - name: Run mobile chat spec (project=${{ matrix.device }}, dir=${{ matrix.dir }})
         run: bunx playwright test tests/e2e/team-chat-mobile.spec.ts --project=${{ matrix.device }}
 
-      - name: Stop preview server
+      - name: Stop dev server
         if: always()
         run: |
           if [ -f .preview.pid ]; then kill "$(cat .preview.pid)" || true; fi
