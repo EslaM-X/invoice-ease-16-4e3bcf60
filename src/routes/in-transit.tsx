@@ -84,13 +84,14 @@ function InTransitPage() {
   const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [reservedByProductMap, setReservedByProductMap] = useState<Record<string, number>>({});
   const [deliveredByProduct, setDeliveredByProduct] = useState<Record<string, number>>({});
+  const [samplesByProduct, setSamplesByProduct] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const [alertRows, setAlertRows] = useState<any[]>([]);
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
   const [reloading, setReloading] = useState(false);
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }, { data: alertsData }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }, { data: alertsData }, { data: samplesOut }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at,shipment_code,shipment_type").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.rpc("get_active_invoice_reservations" as any),
@@ -98,7 +99,15 @@ function InTransitPage() {
       supabase.rpc("get_reserved_qty_by_product" as any),
       supabase.rpc("get_delivered_qty_by_product" as any),
       supabase.rpc("get_inventory_shortage_alerts" as any),
+      supabase.from("defective_items").select("product_id,quantity,returned_quantity").eq("item_type", "display").eq("status", "out").limit(2000),
     ]);
+    const sampleMap: Record<string, number> = {};
+    ((samplesOut as any[]) ?? []).forEach((row: any) => {
+      if (!row.product_id) return;
+      const out = Number(row.quantity || 0) - Number(row.returned_quantity || 0);
+      if (out > 0) sampleMap[row.product_id] = (sampleMap[row.product_id] ?? 0) + out;
+    });
+    setSamplesByProduct(sampleMap);
     setAlertRows((alertsData as any) ?? []);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
@@ -139,11 +148,16 @@ function InTransitPage() {
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
-    ["purchase_orders", "purchase_order_items", "products", "invoice_items", "invoices", "delivery_receipts", "delivery_receipt_items"],
+    ["purchase_orders", "purchase_order_items", "products", "invoice_items", "invoices", "delivery_receipts", "delivery_receipt_items", "defective_items", "shortage_requests", "inventory_logs"],
     () => { if (user) load(); },
     [user?.id],
   );
 
+
+  const totalSamplesOut = useMemo(
+    () => Object.values(samplesByProduct).reduce((s, v) => s + Number(v || 0), 0),
+    [samplesByProduct],
+  );
 
   const reservedTotalUnits = useMemo(
     () => activeReservations.reduce((s, r: any) => s + Number(r.reserved_qty || 0), 0),
@@ -458,11 +472,13 @@ function InTransitPage() {
       </div>
 
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         <SummaryCard icon={Boxes} label={isAr ? "إجمالي المخزون" : "Total in stock"} value={totals.inStock} color="text-emerald-600" bg="bg-emerald-500/10" />
         <SummaryCard icon={Truck} label={isAr ? "إجمالي في الطريق" : "Total in transit"} value={totals.inTransit} color="text-violet-600" bg="bg-violet-500/10" />
         <SummaryCard icon={Package} label={isAr ? "منتجات قادمة" : "Products incoming"} value={totals.transitProducts} color="text-primary" bg="bg-primary/10" />
         <SummaryCard icon={ShoppingBag} label={isAr ? "محجوز في فواتير" : "Reserved in invoices"} value={totals.reserved} color="text-amber-600" bg="bg-amber-500/10" />
+        <SummaryCard icon={Warehouse} label={isAr ? "متاح للبيع" : "Available to sell"} value={totals.inStock - totals.reserved} color="text-primary" bg="bg-primary/10" />
+        <SummaryCard icon={AlertCircle} label={isAr ? "عينات معرض" : "Display samples"} value={totalSamplesOut} color="text-fuchsia-600" bg="bg-fuchsia-500/10" />
         <SummaryCard icon={TrendingUp} label={isAr ? "إجمالي المباع" : "Total sold"} value={totals.sold} color="text-blue-600" bg="bg-blue-500/10" />
       </div>
 
@@ -741,6 +757,30 @@ function InTransitPage() {
                       </div>
                       <div className={`text-lg font-bold tabular-nums ${rv > 0 ? "text-amber-700" : "text-muted-foreground"}`}>
                         {rv}
+                      </div>
+                    </div>
+                  ); })()}
+                  {(() => {
+                    const rv = reservedByProductMap[r.product_id] ?? 0;
+                    const av = r.in_stock - rv;
+                    return (
+                      <div className={`rounded-md px-3 py-1.5 text-end ${av < 0 ? "bg-destructive/10" : "bg-primary/10"}`}>
+                        <div className={`text-[10px] font-medium ${av < 0 ? "text-destructive" : "text-primary"}`}>
+                          {isAr ? "متاح للبيع" : "Available"}
+                        </div>
+                        <div className={`text-lg font-bold tabular-nums ${av < 0 ? "text-destructive" : "text-primary"}`}>
+                          {av}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {(() => { const gv = samplesByProduct[r.product_id] ?? 0; return (
+                    <div className={`rounded-md px-3 py-1.5 text-end ${gv > 0 ? "bg-fuchsia-500/10" : "bg-muted/40"}`}>
+                      <div className={`text-[10px] font-medium ${gv > 0 ? "text-fuchsia-700" : "text-muted-foreground"}`}>
+                        {isAr ? "عينات معرض" : "Display samples"}
+                      </div>
+                      <div className={`text-lg font-bold tabular-nums ${gv > 0 ? "text-fuchsia-700" : "text-muted-foreground"}`}>
+                        {gv}
                       </div>
                     </div>
                   ); })()}

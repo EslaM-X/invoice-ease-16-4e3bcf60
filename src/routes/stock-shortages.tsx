@@ -174,7 +174,7 @@ function StockShortagesPage() {
   }, []);
 
   useBatchedRealtimeTables(
-    ["invoice_po_reservations", "purchase_order_items", "products", "shortage_requests"],
+    ["invoice_po_reservations", "purchase_order_items", "products", "shortage_requests", "invoice_items", "invoices", "delivery_receipt_items", "delivery_receipts", "inventory_logs"],
     () => { load(); loadRequests(); },
     [],
     { debounceMs: 400 },
