@@ -84,6 +84,7 @@ function InTransitPage() {
   const [soldByProduct, setSoldByProduct] = useState<Record<string, number>>({});
   const [reservedByProductMap, setReservedByProductMap] = useState<Record<string, number>>({});
   const [deliveredByProduct, setDeliveredByProduct] = useState<Record<string, number>>({});
+  const [samplesByProduct, setSamplesByProduct] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"transit" | "reserved">("transit");
 
   const [alertRows, setAlertRows] = useState<any[]>([]);
