@@ -154,6 +154,11 @@ function InTransitPage() {
   );
 
 
+  const totalSamplesOut = useMemo(
+    () => Object.values(samplesByProduct).reduce((s, v) => s + Number(v || 0), 0),
+    [samplesByProduct],
+  );
+
   const reservedTotalUnits = useMemo(
     () => activeReservations.reduce((s, r: any) => s + Number(r.reserved_qty || 0), 0),
     [activeReservations]
