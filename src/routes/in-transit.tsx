@@ -148,7 +148,7 @@ function InTransitPage() {
 
   useEffect(() => { if (user) load(); }, [user]);
   useBatchedRealtimeTables(
-    ["purchase_orders", "purchase_order_items", "products", "invoice_items", "invoices", "delivery_receipts", "delivery_receipt_items"],
+    ["purchase_orders", "purchase_order_items", "products", "invoice_items", "invoices", "delivery_receipts", "delivery_receipt_items", "defective_items", "shortage_requests", "inventory_logs"],
     () => { if (user) load(); },
     [user?.id],
   );
