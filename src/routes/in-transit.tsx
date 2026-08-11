@@ -467,11 +467,13 @@ function InTransitPage() {
       </div>
 
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         <SummaryCard icon={Boxes} label={isAr ? "إجمالي المخزون" : "Total in stock"} value={totals.inStock} color="text-emerald-600" bg="bg-emerald-500/10" />
         <SummaryCard icon={Truck} label={isAr ? "إجمالي في الطريق" : "Total in transit"} value={totals.inTransit} color="text-violet-600" bg="bg-violet-500/10" />
         <SummaryCard icon={Package} label={isAr ? "منتجات قادمة" : "Products incoming"} value={totals.transitProducts} color="text-primary" bg="bg-primary/10" />
         <SummaryCard icon={ShoppingBag} label={isAr ? "محجوز في فواتير" : "Reserved in invoices"} value={totals.reserved} color="text-amber-600" bg="bg-amber-500/10" />
+        <SummaryCard icon={Warehouse} label={isAr ? "متاح للبيع" : "Available to sell"} value={totals.inStock - totals.reserved} color="text-primary" bg="bg-primary/10" />
+        <SummaryCard icon={AlertCircle} label={isAr ? "عينات معرض" : "Display samples"} value={totalSamplesOut} color="text-fuchsia-600" bg="bg-fuchsia-500/10" />
         <SummaryCard icon={TrendingUp} label={isAr ? "إجمالي المباع" : "Total sold"} value={totals.sold} color="text-blue-600" bg="bg-blue-500/10" />
       </div>
 
