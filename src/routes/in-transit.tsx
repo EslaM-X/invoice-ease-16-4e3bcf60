@@ -91,7 +91,7 @@ function InTransitPage() {
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
   const [reloading, setReloading] = useState(false);
   const load = async () => {
-    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }, { data: alertsData }] = await Promise.all([
+    const [{ data: prods }, { data: posRows }, { data: activeResv }, { data: sold }, { data: reservedRpc }, { data: delivered }, { data: alertsData }, { data: samplesOut }] = await Promise.all([
       supabase.from("products").select("id,name,serial_number,color,image_url,stock_quantity,collection,low_stock_threshold,cost_price,price").limit(2000),
       supabase.from("purchase_orders").select("id,po_number,supplier_name,status,expected_arrival_at,shipped_at,shipment_code,shipment_type").in("status", IN_TRANSIT_STATUSES as any).limit(500),
       supabase.rpc("get_active_invoice_reservations" as any),
@@ -99,7 +99,15 @@ function InTransitPage() {
       supabase.rpc("get_reserved_qty_by_product" as any),
       supabase.rpc("get_delivered_qty_by_product" as any),
       supabase.rpc("get_inventory_shortage_alerts" as any),
+      supabase.from("defective_items").select("product_id,quantity,returned_quantity").eq("item_type", "display").eq("status", "out").limit(2000),
     ]);
+    const sampleMap: Record<string, number> = {};
+    ((samplesOut as any[]) ?? []).forEach((row: any) => {
+      if (!row.product_id) return;
+      const out = Number(row.quantity || 0) - Number(row.returned_quantity || 0);
+      if (out > 0) sampleMap[row.product_id] = (sampleMap[row.product_id] ?? 0) + out;
+    });
+    setSamplesByProduct(sampleMap);
     setAlertRows((alertsData as any) ?? []);
     setProducts((prods as any) ?? []);
     const posMap: Record<string, PO> = {};
