@@ -753,6 +753,30 @@ function InTransitPage() {
                       </div>
                     </div>
                   ); })()}
+                  {(() => {
+                    const rv = reservedByProductMap[r.product_id] ?? 0;
+                    const av = r.in_stock - rv;
+                    return (
+                      <div className={`rounded-md px-3 py-1.5 text-end ${av < 0 ? "bg-destructive/10" : "bg-primary/10"}`}>
+                        <div className={`text-[10px] font-medium ${av < 0 ? "text-destructive" : "text-primary"}`}>
+                          {isAr ? "متاح للبيع" : "Available"}
+                        </div>
+                        <div className={`text-lg font-bold tabular-nums ${av < 0 ? "text-destructive" : "text-primary"}`}>
+                          {av}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {(() => { const gv = samplesByProduct[r.product_id] ?? 0; return (
+                    <div className={`rounded-md px-3 py-1.5 text-end ${gv > 0 ? "bg-fuchsia-500/10" : "bg-muted/40"}`}>
+                      <div className={`text-[10px] font-medium ${gv > 0 ? "text-fuchsia-700" : "text-muted-foreground"}`}>
+                        {isAr ? "عينات معرض" : "Display samples"}
+                      </div>
+                      <div className={`text-lg font-bold tabular-nums ${gv > 0 ? "text-fuchsia-700" : "text-muted-foreground"}`}>
+                        {gv}
+                      </div>
+                    </div>
+                  ); })()}
                   {(() => { const sv = soldByProduct[r.product_id] ?? 0; return (
                     <div className={`rounded-md px-3 py-1.5 text-end ${sv > 0 ? "bg-blue-500/10" : "bg-muted/40"}`}>
                       <div className={`text-[10px] font-medium ${sv > 0 ? "text-blue-700" : "text-muted-foreground"}`}>
