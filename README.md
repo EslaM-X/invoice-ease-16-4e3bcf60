@@ -1,5 +1,7 @@
 # Steinheim · Company Management System
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Full-stack management platform for Steinheim Egypt: invoicing, customer and
 distributor management, inventory and traceability, call center, delivery
 receipts, finance and audit reports — built for desktop, mobile and web.
