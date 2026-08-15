@@ -1,310 +1,66 @@
-# InvoiceFlow Pro
+# Steinheim · Company Management System
 
-Create a full-stack responsive web application (mobile + tablet + desktop) using modern UI/UX best practices. The app must support both Arabic (RTL) and English (LTR) with a toggle switch.
+Full-stack management platform for Steinheim Egypt: invoicing, customer and
+distributor management, inventory and traceability, call center, delivery
+receipts, finance and audit reports — built for desktop, mobile and web.
 
-Use Supabase as backend (database, authentication, storage).
+> Designed and developed by [EslaM-X](https://github.com/EslaM-X).
 
-========================
+---
 
-🔹 CORE FEATURES
+## Modules
 
-========================
+| Module | What it covers |
+| --- | --- |
+| **Invoicing** | Customer, product and price lists, per-invoice serials, QR codes, bulk receive |
+| **Inventory** | Tracking, reconcile, traceability, consistency and audit views |
+| **Distribution** | Distributors, delivery receipts, in-transit, delivery audit and review |
+| **Call center** | Call history, call center reports, livekit calls |
+| **Finance** | Back-deduction reports, finance audit, fulfillment decisions |
+| **Operations** | Admin studio, leadership viewers, audit log, diagnostics |
 
-1. CUSTOMER MANAGEMENT
+## Stack
 
-- Add/Edit/Delete customers
+| Layer | Tech |
+| --- | --- |
+| Framework | TanStack Start · React · TypeScript |
+| Backend | Supabase (database · auth · storage) |
+| Desktop | Electron (packaged build for Windows / macOS) |
+| Mobile | Capacitor (web-to-native sync) |
+| Email | Server-rendered templates |
 
-- Fields:
+## Quick start
 
-  - Name
-
-  - Phone Number
-
-  - Address
-
-- Auto-fill customer data when selected
-
-- Searchable customer list
-
-2. PRODUCT & PRICE LIST SYSTEM
-
-- Full product database (price list)
-
-- Fields:
-
-  - Product Name
-
-  - Serial Number (editable per invoice)
-
-  - Color
-
-  - Price
-
-  - QR Code (linked to product)
-
-  - Stock Quantity
-
-- Ability to import/export price list (CSV)
-
-- Real-time stock tracking
-
-3. QR CODE SYSTEM
-
-- Scan QR code using device camera
-
-- When scanned:
-
-  - Auto-fetch product from database
-
-  - Add directly to invoice
-
-- QR linked to product ID in database
-
-4. INVENTORY MANAGEMENT
-
-- Track stock increase/decrease
-
-- Auto update stock when invoice is created
-
-- Alert when stock is low
-
-- Inventory dashboard:
-
-  - Available stock
-
-  - Sold items
-
-  - Low stock alerts
-
-5. INVOICE BUILDER
-
-- Create new invoice easily
-
-- Add products dynamically
-
-- Edit:
-
-  - Quantity
-
-  - Price
-
-  - Discount per item or total
-
-  - Serial Number
-
-  - Color
-
-- Remove any product
-
-- Auto calculate:
-
-  - Subtotal
-
-  - Discount
-
-  - Final Total
-
-6. MULTI-LANGUAGE INVOICE
-
-- Generate invoice in:
-
-  - Arabic
-
-  - English
-
-- Toggle language before printing
-
-7. PRINTABLE INVOICE
-
-- Clean professional layout
-
-- Include:
-
-  - Logo (uploaded by user)
-
-  - Company Name
-
-  - Address
-
-  - Social Media Links
-
-  - Payment Terms
-
-  - Delivery Terms
-
-- Export options:
-
-  - Print مباشرة
-
-  - PDF download
-
-8. ORDER MANAGEMENT
-
-- Save invoices
-
-- Create new order anytime
-
-- Duplicate invoice
-
-- Edit previous invoices
-
-9. REPORTS & EXPORT
-
-- Export ALL invoices:
-
-  - PDF
-
-  - Excel
-
-- Filter:
-
-  - By date
-
-  - By customer
-
-- Dashboard:
-
-  - Total sales
-
-  - Number of invoices
-
-  - Top products
-
-10. SETTINGS PANEL
-
-- Upload logo
-
-- Edit:
-
-  - Company info
-
-  - Payment terms
-
-  - Delivery terms
-
-  - Social media links
-
-- Save globally (applies to all invoices)
-
-========================
-
-🔹 DATABASE (SUPABASE)
-
-========================
-
-Tables:
-
-- customers
-
-- products
-
-- inventory_logs
-
-- invoices
-
-- invoice_items
-
-- settings
-
-Relations:
-
-- invoice مرتبط بـ customer
-
-- invoice_items مرتبطة بـ products
-
-- inventory auto updates on invoice creation
-
-========================
-
-🔹 UI/UX REQUIREMENTS
-
-========================
-
-- Fully responsive (mobile-first)
-
-- Clean modern dashboard
-
-- Dark/Light mode
-
-- Fast performance
-
-- Arabic RTL support
-
-- Smooth transitions
-
-========================
-
-🔹 TECHNICAL REQUIREMENTS
-
-========================
-
-- Use Supabase for:
-
-  - Auth
-
-  - Database
-
-  - Storage (for logo)
-
-- QR Scanner using device camera
-
-- Real-time updates
-
-- Error handling (no crashes)
-
-- Validation for all inputs
-
-========================
-
-🔹 EXTRA FEATURES (IMPORTANT)
-
-========================
-
-- Auto-save invoice draft
-
-- Offline support (cache last data)
-
-- Toast notifications
-
-- Confirmation before delete
-
-- Role-based access (optional)
-
-========================
-
-🔹 FINAL OUTPUT
-
-========================
-
-The app must be:
-
-- Fully working production-ready
-
-- Bug-free
-
-- Easy to use for non-technical users
-
-- Fast invoice creation workflow (under 30 seconds)
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://invoice-ease-16.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b0b17c9d-b438-4cc8-ac75-28eb254ddc6e).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+```bash
+npm install
 npm run dev
 ```
+
+## Test
+
+```bash
+npm test          # vitest
+npm run lint      # eslint
+```
+
+## Packaging
+
+```bash
+npm run electron:build:win     # Windows desktop build
+npm run electron:build:mac     # macOS universal build
+npm run mobile:sync            # sync web build to Capacitor
+```
+
+## Project layout
+
+```
+src/
+  routes/       TanStack Start file-based routes (pages + API)
+  components/   UI + chat components
+  integrations/ Supabase and Lovable integrations
+  lib/          email templates, MCP tools, shared libs
+```
+
+## License
+
+MIT. See `LICENSE`.
